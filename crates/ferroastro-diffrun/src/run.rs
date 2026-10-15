@@ -189,9 +189,7 @@ pub fn run_leg(
         let steps = out.stats.steps;
         match next {
             None => {
-                if let Some(p) = &path
-                    && p.exists()
-                {
+                if let Some(p) = path.as_ref().filter(|p| p.exists()) {
                     std::fs::remove_file(p).map_err(|e| store_err(p, e))?;
                 }
                 return Ok(Some(LegResult {
@@ -264,16 +262,18 @@ pub fn check_identical_ics(
     let mut shared: Option<(String, String)> = None;
     let first = initial.first();
     for (leg, ic) in initial {
-        if let Some((l0, ic0)) = first
-            && (ic.constants != ic0.constants
+        // Nested `if let` (not a let-chain): the workspace MSRV is 1.85.
+        if let Some((l0, ic0)) = first {
+            if ic.constants != ic0.constants
                 || ic.mode != ic0.mode
-                || ic.epoch_jd_tdb.map(f64::to_bits) != ic0.epoch_jd_tdb.map(f64::to_bits))
-        {
-            return Err(DiffrunError::IcMismatch {
-                a: l0.clone(),
-                b: leg.clone(),
-                problem: "constants version, mode or epoch differ".into(),
-            });
+                || ic.epoch_jd_tdb.map(f64::to_bits) != ic0.epoch_jd_tdb.map(f64::to_bits)
+            {
+                return Err(DiffrunError::IcMismatch {
+                    a: l0.clone(),
+                    b: leg.clone(),
+                    problem: "constants version, mode or epoch differ".into(),
+                });
+            }
         }
         for r in &ic.records {
             let bits = record_bits(r);

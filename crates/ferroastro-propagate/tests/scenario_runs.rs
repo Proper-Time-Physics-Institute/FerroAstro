@@ -498,9 +498,10 @@ fn small_body_switches_add_minor_and_ring_bodies_without_touching_the_majors() {
     let fin = all.final_state.as_ref().unwrap();
     let mut ring_checked = 0;
     for (i, id) in fin.bodies.iter().enumerate() {
-        if let Some(r) = b.records.iter().find(|r| r.naif == *id)
-            && cat.get(NaifId(*id)).is_ok_and(|e| e.tier() == Tier::Ring)
-        {
+        let Some(r) = b.records.iter().find(|r| r.naif == *id) else {
+            continue;
+        };
+        if cat.get(NaifId(*id)).is_ok_and(|e| e.tier() == Tier::Ring) {
             assert_eq!(
                 bits(&fin.positions[i]),
                 bits(&r.position),

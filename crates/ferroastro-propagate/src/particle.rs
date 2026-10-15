@@ -209,17 +209,18 @@ pub(crate) fn run<R: Real>(
         R::from_f64(spec.span_seconds()),
         cfg,
     )?;
-    if let Some(w) = wanted
-        && run.passages.len() < w
-    {
-        return Err(PropagateError::Run {
-            scenario: n.to_owned(),
-            problem: format!(
-                "only {} of {w} perihelion passages within span.years = {}",
-                run.passages.len(),
-                spec.span.years
-            ),
-        });
+    // Nested `if let` (not a let-chain): the workspace MSRV is 1.85.
+    if let Some(w) = wanted {
+        if run.passages.len() < w {
+            return Err(PropagateError::Run {
+                scenario: n.to_owned(),
+                problem: format!(
+                    "only {} of {w} perihelion passages within span.years = {}",
+                    run.passages.len(),
+                    spec.span.years
+                ),
+            });
+        }
     }
     let p64 = |z: [f64; 3]| z.map(|c| [c, 0.0]);
     Ok(RunOutput {

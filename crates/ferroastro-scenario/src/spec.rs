@@ -414,14 +414,15 @@ impl ScenarioSpec {
             .and_then(toml::Value::as_str)
             .unwrap_or("?")
             .to_owned();
-        if let Some(forces) = table.get("forces").and_then(toml::Value::as_table)
-            && let Some(unknown) = forces.keys().find(|k| !SWITCHES.contains(&k.as_str()))
-        {
-            return Err(ScenarioError::UnknownSwitch {
-                name,
-                switch: unknown.clone(),
-                valid: SWITCHES.join(", "),
-            });
+        // Nested `if let` (not a let-chain): the workspace MSRV is 1.85.
+        if let Some(forces) = table.get("forces").and_then(toml::Value::as_table) {
+            if let Some(unknown) = forces.keys().find(|k| !SWITCHES.contains(&k.as_str())) {
+                return Err(ScenarioError::UnknownSwitch {
+                    name,
+                    switch: unknown.clone(),
+                    valid: SWITCHES.join(", "),
+                });
+            }
         }
         let spec: Self =
             table
@@ -519,10 +520,10 @@ impl ScenarioSpec {
         if self.span.stop_after_passages == Some(0) {
             return err("span.stop_after_passages", &0, "at least 1");
         }
-        if let Some(c) = self.output.cadence_days
-            && !(c.is_finite() && c > 0.0)
-        {
-            return err("output.cadence_days", &c, "finite and > 0");
+        if let Some(c) = self.output.cadence_days {
+            if !(c.is_finite() && c > 0.0) {
+                return err("output.cadence_days", &c, "finite and > 0");
+            }
         }
         for b in &self.output.perihelion {
             if !has(*b) || *b == self.central_body {
@@ -545,10 +546,10 @@ impl ScenarioSpec {
             ("integrator.pc_tolerance", self.integrator.pc_tolerance),
             ("integrator.dt0_days", self.integrator.dt0_days),
         ] {
-            if let Some(v) = v
-                && !(v.is_finite() && v > 0.0)
-            {
-                return err(field, &v, "finite and > 0");
+            if let Some(v) = v {
+                if !(v.is_finite() && v > 0.0) {
+                    return err(field, &v, "finite and > 0");
+                }
             }
         }
         Ok(())

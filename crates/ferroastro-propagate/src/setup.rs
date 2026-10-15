@@ -196,16 +196,17 @@ pub(crate) fn epoch<R: Real>(
                 )
             })?;
             let jdepoc = h.value("JDEPOC")?;
-            if let Some(jd) = spec.initial_conditions.epoch_jd_tdb
-                && jd.to_bits() != jdepoc.to_bits()
-            {
-                return Err(ferroastro_scenario::ScenarioError::Value {
-                    name: n.to_owned(),
-                    field: "initial_conditions.epoch_jd_tdb",
-                    value: jd.to_string(),
-                    problem: format!("de440-header ICs are at JDEPOC = {jdepoc}"),
+            // Nested `if let` (not a let-chain): the workspace MSRV is 1.85.
+            if let Some(jd) = spec.initial_conditions.epoch_jd_tdb {
+                if jd.to_bits() != jdepoc.to_bits() {
+                    return Err(ferroastro_scenario::ScenarioError::Value {
+                        name: n.to_owned(),
+                        field: "initial_conditions.epoch_jd_tdb",
+                        value: jd.to_string(),
+                        problem: format!("de440-header ICs are at JDEPOC = {jdepoc}"),
+                    }
+                    .into());
                 }
-                .into());
             }
             jdepoc
         }

@@ -537,17 +537,17 @@ impl<R: Real> NBodyRun<R> {
                 break;
             }
         }
-        if let Some(w) = wanted
-            && out.finished
-            && self.driver.passages < w
-        {
-            return Err(PropagateError::Run {
-                scenario: self.spec.name.clone(),
-                problem: format!(
-                    "only {} of {w} perihelion passages within span.years = {}",
-                    self.driver.passages, self.spec.span.years
-                ),
-            });
+        // Nested `if let` (not a let-chain): the workspace MSRV is 1.85.
+        if let Some(w) = wanted {
+            if out.finished && self.driver.passages < w {
+                return Err(PropagateError::Run {
+                    scenario: self.spec.name.clone(),
+                    problem: format!(
+                        "only {} of {w} perihelion passages within span.years = {}",
+                        self.driver.passages, self.spec.span.years
+                    ),
+                });
+            }
         }
         out.final_state =
             Some(self.record(self.ias.time(), self.ias.positions(), self.ias.velocities())?);
