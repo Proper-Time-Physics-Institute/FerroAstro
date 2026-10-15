@@ -582,3 +582,95 @@ profile was not re-run: no WP4 change touches the integrator or the NUM-023 test
   version = "JPL DE441 via Horizons API v<signature.version>", gauge = "DE441 (PPN, isotropic/harmonic, as
   integrated by JPL)", estimator).
 - If a check fails, the number is reported and nothing is loosened without a NEEDS HUMAN REVIEW note.
+
+### What was built
+- `ferroastro-testdata::horizons`: `VectorQuery`, `fetch_vectors` (chunking, serial requests with a 1 s pause,
+  query-derived cache names, one automatic re-fetch of an unparsable cached answer), `parse_vector_answer`
+  (checks TDB, `KM-S`, geometric states and the frame line, and extracts `signature.version` and both
+  `{source: …}` strings), and a check that consecutive chunks agree **bit for bit** at their shared epoch.
+  New code `FA-E0203`.
+- `ferroastro-precession::park2017` (NUM-011): `SampledOrbit<F>` (typed by frame; built from raw arrays or
+  `Epoch<Tdb>` + `State<F, Heliocentric>`), `ReferencePlane<F>` (`park2017_mean_orbit()` for `Icrf` only, so the
+  ICRF pole cannot be applied to ecliptic data; `xy_plane()` for any frame), `find_passages`,
+  `perihelion_longitudes` (`Projected` / `DogLeg`), `fit_longitudes` (formal and block jack-knife σ),
+  `fft_frequencies` and `Park2017Result::report` (PHY-015 metadata). Also `lsq` (Householder QR with column
+  equilibration and a rank check) and `spectral` (radix-2 FFT). New code `FA-E0603`.
+- Vectors `tests/vectors/park2017-estimator.toml`: Park17 pole, total rate (± 0.01 NUM-011), its σ and Q; SW92
+  Table 1 and 2a ϖ̇ and mean motions, all re-read digit for digit from the JPL page by `data_sw92_table1_mercury`.
+  SW92 ϖ̇ in ″/cy carries the ± 20 bound derived in the plan.
+- Tests: `num011_park2017_synthetic.rs` (offline: exact recovery of a driven precession, supplied and FFT-found
+  periodic terms, dog-leg vs projected spherical trigonometry, input refusal, frame triad vs the vectors) and
+  `data_park2017_horizons.rs` (two `data_*` tests, below).
+
+### Interpretations and deviations from the plan
+- **SW92 window.** The plan's end date JD 2 470 172.5 was a slip: that is 2051-Jan-01. The test uses 1800-Jan-01 0h to
+  2050-Jan-01 0h TDB (JD 2 378 496.5 – 2 469 807.5). That span is not a whole number of 2-day steps, so it uses a
+  **1-day** step (2 chunks). The tolerance is unchanged.
+- **FFT refinement.** The plan said "periodogram peaks". The unit test showed that the peak of the DFT power of a
+  real sinusoid with few cycles is pulled by its negative-frequency image (1e-4 relative at 7 cycles). Peaks are
+  therefore refined by minimising the residual sum of squares of `[1, t, t², sin νt, cos νt]` (golden section within
+  ± 1 FFT bin). This is a least-squares periodogram.
+- **Longitude origin.** Park17 measures the angle "with respect to the initial position vector". Here it is measured
+  from the frame's x-axis, which shifts only B.
+- **Epoch.** t = 0 at J2000.0 TDB, for Park's "2000 January 1" (effect 2Q·0.5 d ≈ 6e-7 ″/cy).
+- **Centre.** Heliocentric (Horizons `500@10`, the Sun's body centre), as PHY-016 specifies. Park17 does not say
+  whether its passages are heliocentric or barycentric. **Open question.**
+- **Park17 Table 2 amplitudes are not reproduced.** Sampled once per orbit, `k·n_M + j·n_P` aliases to
+  `≈ j·n_P + k·ϖ̇`, so `1n_M − 2n_J` and `2n_J` (and similar pairs) are nearly collinear. Our fit gives 14.80″ and
+  6.70″ for them, against Park's 0.83″ and 7.24″. The rate is orthogonal to these terms and is not affected: 11
+  FFT-derived terms give the same ϖ̇ to 1e-5 ″/cy. The amplitudes are printed, not asserted. How Park separated
+  the aliased pairs is unknown. **Open question.**
+- **NUM-011 scope delivered:** the estimator, configurable pole, both frequency sources, both σ, and the
+  acceptance on a DE440-class model (DE441, 1000–3000 CE). **Not delivered:** making it "the canonical
+  observable for every absolute rate". The single-body rungs (WP4) still use the initial-plane passage estimator,
+  and moving them over needs FerroAstro's own long N-body runs (EIH, M1+).
+- **PHY-016 groundwork only.** The fetcher (≥ 500 yr: 2000 yr delivered), `signature.version` and the source string
+  are recorded per chunk. The DE441 side of the comparison exists (575.30916 ″/cy, Park frame, Park fit).
+  FerroAstro's EIH-FULL side does not exist yet, so the PHY-016 acceptance itself is **not** met.
+
+### WP5 real-data results (data tier, run locally 2026-10-15 UTC on an empty `FA_DATA_DIR`, all downloads fresh)
+| test | measured | oracle / tolerance | result | provenance |
+|---|---|---|---|---|
+| `data_sw92_table1_mercury` (extended) | 12 new SW92 rate/mean-motion tokens | vectors, exact | PASS (all equal) | approx_pos.html sha256 `9f7b30ca…f9c4d742`, Last-Modified 2026-10-06 |
+| `data_sw92_rate_from_horizons_de441_ecliptic` | dog-leg ϖ̇ = **571.968 ″/cy** (formal σ 0.332, jack-knife σ 0.147, 10 blocks); 1038 passages; rms residual 7.71″ | SW92 Table 1 577.716804 ± 20 → **−5.749** | PASS | Horizons API v1.2, DE441, "Ecliptic of J2000.0", 2 chunks (1 d step), sha256 `1f79316e…23da5c`, `4d1901a5…7966f2` |
+| `data_park17_rate_from_horizons_de441_mean_orbit` | ϖ̇ = **575.30916 ″/cy**, formal σ 0.00083, **jack-knife σ 0.00153** (20 blocks); Q = −0.0447605 ″/cy²; 8304 passages; rms residual 0.437″ | Park17 575.3100: NUM-011 ± 0.01 and 3·√(0.0015² + σ_jk²) = ± 0.00643 → **−0.00084 (−0.39 σ)** | PASS (both) | Horizons API v1.2, DE441, ICRF, 5 chunks of 73 051 rows (2 d step), sha256 `27ff0431…92383853`, `015ac2fd…358dfe`, `7d2a118a…cd37006`, `09033cf7…31cda9`, `db6db6a5…cb31cda9`—see test output |
+
+Sensitivity of (b), reported only (Δ vs 575.30916):
+| variant | ϖ̇ (″/cy) | Δ | jack-knife σ |
+|---|---|---|---|
+| linear only, no periodic terms | 575.30972 | +0.00056 | 0.07444 |
+| quadratic only | 575.30973 | +0.00056 | 0.00260 |
+| SW92 Table 1 mean motions | 575.30918 | +0.00001 | 0.00149 |
+| 11 FFT-derived frequencies (≥ 0.5″) | 575.30917 | +0.00001 | 0.00152 |
+| 4-day sampling (decimated) | 575.30916 | 0.00000 | — (max passage error 2.7e-3″ vs 1.1e-4″ at 2 d) |
+| 10 / 40 jack-knife blocks | 575.30916 | 0 | 0.00251 / 0.00109 |
+- The jack-knife σ depends on the block count (0.0011–0.0025): the residuals have structure on 50–200-yr scales.
+  The 3σ band evaluated at the largest of these (G = 10) would be ± 0.0088, and the result passes for every G.
+- Q = −0.0447605 vs Park17 −0.04478132 ″/cy² (−0.05 %, reported only).
+- Known model offsets, reported only: DE440/441 J2☉ 2.196e-7 vs Park17 2.25e-7 → −0.00068 ″/cy (printed by the test).
+  Park17's fitted β − 1 = −2.6e-5, if their integration used it → +0.00037 (= 42.98 × 2.6e-5 / 3). The measured
+  −0.00084 is consistent with the J2 offset dominating. With σ = 0.0015, that is not evidence for it.
+- (a) is inside the SW92 bound, but **it is not a precision agreement**. The gap of −5.75 ″/cy is 39 times our
+  jack-knife σ. Several things fit this picture. Adding the 14 periodic terms leaves −5.84. The projected angle in the
+  same ecliptic gives 568.980, which is 3.0 ″/cy below the dog-leg value: a definitional effect of the predicted
+  order. SW92's own Table 2a value (573.84) is closer (−1.87). Candidate causes, **unverified**: SW92 fitted
+  positions along the whole orbit, not perihelion passages, and their ϖ̇ absorbs whatever the six-element
+  linear model cannot represent; DE200 vs DE441; long-period terms in a 250-yr window. **Open question, flagged for
+  human review:** whether a tighter, independently justified SW92 oracle exists. No tolerance was changed.
+- Cost: the (b) test takes 20 s on a fresh cache (≈ 72 MB in 5 requests) and < 2 s cached. The (a) test takes 6 s
+  (≈ 18 MB). The weekly CI `data` job picks both up through the `data_*` filter.
+
+### WP5 gate results (2026-10-15, local, toolchain 1.95.0)
+All eight AGENTS.md commands passed:
+- fmt;
+- clippy `-D warnings`;
+- `cargo nextest run --workspace` (91 passed, 14 skipped = `data_*`/`nightly_*`), and the doctests;
+- `cargo deny check` (only `license-not-encountered`/`license-exception-not-encountered` warnings);
+- rustdoc `-D warnings`;
+- ruff check/format and mypy strict (8 files);
+- `reuse lint` (176/176);
+- `trace.py --check` (119 requirements, 174 citing tests).
+
+Extras: `uv run pytest` (15 passed), MSRV 1.85.0 nextest (90 passed, trybuild excluded), and the whole-workspace
+`data` profile on an empty cache (12 passed: the 2 new WP5 tests and the 10 from WP1–WP4). The `nightly` profile was
+not re-run: WP5 does not touch the integrator.
