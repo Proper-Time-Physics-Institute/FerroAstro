@@ -19,10 +19,15 @@ ferroastro-system.workspace = true
 thiserror.workspace = true
 
 [dev-dependencies]
+criterion.workspace = true
 ferroastro-constants.workspace = true
 ferroastro-frames.workspace = true
 ferroastro-testdata.workspace = true
 ferroastro-vectors.workspace = true
+
+[[bench]]
+name = "num009_tiers"
+harness = false
 
 [lints]
 workspace = true
