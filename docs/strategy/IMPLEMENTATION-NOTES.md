@@ -2509,6 +2509,17 @@ read; IAS15 is the existing WP3 clean-room integrator (Rein & Spiegel 2015).
 |   | (c) f64 geocentric vs f64 barycentric Moon − Earth | same | — | ≤ 2 × the barycentric round-off error | "agree to within the round-off gain" |
 | 4 | real data: Newtonian + J2, Sun + 8 planets + Moon from header.440, JDEPOC → +10 yr (1969-06-28 → 1979), vs de440.bsp every 10 d; residual table (barycentric and heliocentric, per body) | PR (cached JPL products, CI-005) | de440.bsp | Jupiter–Neptune barycentric **≤ 100 km** (PROVISIONAL, plan); all others reported | the model omits 1PN (mean-motion terms ~μ/(c²a)), asteroids and the KBO ring; Mercury/Earth/Moon are expected at the 10²–10³ km level and are not asserted |
 
+**Addendum to 1b (written after the cost-only timing, before any energy was computed).** The
+example `crates/ferroastro-forces/examples/nbody_cost.rs` (structural circular orbits, prints steps
+and wall time only) ran 1000 yr in 317 499 steps at 26 848 steps/s on one thread (release). 1b is
+therefore fixed at **32 runs × 100 000 yr** (≈ 3.2e7 steps per run, ≈ 1.0e9 steps in total, about
+20 min on the 32-thread local machine), with 32 log-spaced checkpoints from 10 Mercury orbits to
+100 000 yr. The ensemble members differ by multiplying Mercury's initial x coordinate by
+`1 + k·1e-13`, k = 0…31. The energy slope is asserted (±0.1 of ½); the momentum and the
+angular-momentum slopes are reported. The test runs alone (nextest `threads-required`) in the
+nightly tier. Total ensemble steps reach NUM-001's 1e9; a single run of 1e9 steps (~10 h) is not
+nightly-feasible.
+
 Expectations written before running (order of magnitude only, for the reviewer): 1PN mean-motion
 drift over 10 yr ≈ 3·2π·N_orbits·μ/(c²a)·a gives Jupiter ~20 km, Earth ~300 km, Mercury
 ≳ 10³ km. A run with Pluto added is reported as a second row set (not asserted).
