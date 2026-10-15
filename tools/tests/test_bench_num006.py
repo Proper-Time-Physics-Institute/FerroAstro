@@ -16,13 +16,19 @@ bench = importlib.util.module_from_spec(spec)
 sys.modules["bench_num006"] = bench
 spec.loader.exec_module(bench)
 
+# Synthetic timings (ns): only their ratios matter.
+BASE = [10.0, 11.0, 9.0]  # lint: allow-literal(synthetic timings)
+CAND = [10.1, 30.0, 10.0]  # lint: allow-literal(synthetic timings)
+SLOW = [11.0, 11.0, 11.0]  # lint: allow-literal(synthetic timings, 10 % slower)
+EXPECTED_RATIO = 10.1 / 10.0  # lint: allow-literal(median of CAND over median of BASE)
+
 
 # Verifies: NUM-006
 def test_band_comes_from_the_vector_and_verdict_uses_medians() -> None:
     tol = bench.band()
-    assert 0.0 < tol < 0.1
-    ratio, ok = bench.verdict([10.0, 11.0, 9.0], [10.1, 30.0, 10.0], tol)
-    assert abs(ratio - 10.1 / 10.0) < 1e-12
+    assert 0.0 < tol < 0.1  # lint: allow-literal(sanity range of a relative band)
+    ratio, ok = bench.verdict(BASE, CAND, tol)
+    assert abs(ratio - EXPECTED_RATIO) < 1e-12  # lint: allow-literal(float round-off)
     assert ok
-    _, bad = bench.verdict([10.0, 10.0, 10.0], [11.0, 11.0, 11.0], tol)
+    _, bad = bench.verdict([10.0, 10.0, 10.0], SLOW, tol)
     assert not bad
