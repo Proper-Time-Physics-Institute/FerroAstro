@@ -9,7 +9,7 @@
 
 - Requirements: **119** (draft 119)
 - `verification: test` requirements cited by at least one test: **16 / 92**
-- Citing tests: **81**; vectors referencing a requirement: **51**
+- Citing tests: **86**; vectors referencing a requirement: **51**
 
 | ID | Status | Crit. | Verification | Tests | Vectors |
 |---|---|---|---|---|---|
@@ -53,7 +53,7 @@
 | [PHY-016](PHY.md) | draft | medium | test | — | — |
 | [PHY-017](PHY.md) | draft | medium | inspection | — | — |
 | [PHY-018](PHY.md) | draft | high | inspection | `crates/ferroastro-vectors/tests/schema.rs::bad_values_are_rejected` | — |
-| [NUM-001](NUM.md) | draft | high | test | `crates/ferroastro-integrators/src/compensated.rs::compensated_sum_keeps_low_order_bits`<br>`crates/ferroastro-integrators/src/radau.rs::newton_and_monomial_forms_agree`<br>`crates/ferroastro-integrators/src/radau.rs::spacings_are_radau_roots_in_order`<br>`crates/ferroastro-integrators/tests/ias15_analytic.rs::damped_oscillator_matches_closed_form`<br>`crates/ferroastro-integrators/tests/ias15_analytic.rs::gyration_conserves_speed_and_is_reversible`<br>`crates/ferroastro-integrators/tests/ias15_analytic.rs::invalid_inputs_are_coded_errors`<br>`crates/ferroastro-integrators/tests/ias15_analytic.rs::kepler_orbits_match_analytic_solution`<br>`crates/ferroastro-precession/tests/phy001_newtonian_two_body.rs::n2b_sun_mercury_has_no_perihelion_precession` | — |
+| [NUM-001](NUM.md) | draft | high | test | `crates/ferroastro-integrators/src/compensated.rs::compensated_sum_keeps_low_order_bits`<br>`crates/ferroastro-integrators/src/dd.rs::division_and_product_are_double_double_accurate`<br>`crates/ferroastro-integrators/src/radau.rs::newton_and_monomial_forms_agree`<br>`crates/ferroastro-integrators/src/radau.rs::spacings_are_correctly_rounded`<br>`crates/ferroastro-integrators/src/radau.rs::spacings_are_radau_roots_in_order`<br>`crates/ferroastro-integrators/tests/ias15_analytic.rs::damped_oscillator_matches_closed_form`<br>`crates/ferroastro-integrators/tests/ias15_analytic.rs::gyration_conserves_speed_and_is_reversible`<br>`crates/ferroastro-integrators/tests/ias15_analytic.rs::invalid_inputs_are_coded_errors`<br>`crates/ferroastro-integrators/tests/ias15_analytic.rs::kepler_orbits_match_analytic_solution`<br>`crates/ferroastro-precession/tests/num023_brouwer.rs::nightly_num023_brouwer_slopes_ias15_f64`<br>`crates/ferroastro-precession/tests/phy001_newtonian_two_body.rs::n2b_sun_mercury_has_no_perihelion_precession` | — |
 | [NUM-002](NUM.md) | draft | high | test | — | — |
 | [NUM-003](NUM.md) | draft | medium | test | — | — |
 | [NUM-004](NUM.md) | draft | medium | test | — | — |
@@ -75,7 +75,7 @@
 | [NUM-020](NUM.md) | draft | high | inspection | — | — |
 | [NUM-021](NUM.md) | draft | medium | test | — | — |
 | [NUM-022](NUM.md) | draft | low | test | — | — |
-| [NUM-023](NUM.md) | draft | medium | test | `crates/ferroastro-integrators/src/diagnostics.rs::degenerate_inputs_are_errors`<br>`crates/ferroastro-integrators/src/diagnostics.rs::exact_line_and_power_law_are_recovered`<br>`crates/ferroastro-integrators/tests/ias15_analytic.rs::gyration_conserves_speed_and_is_reversible` | `NUM023-ENERGY-SLOPE`<br>`NUM023-PHASE-SLOPE` |
+| [NUM-023](NUM.md) | draft | medium | test | `crates/ferroastro-integrators/src/diagnostics.rs::degenerate_inputs_are_errors`<br>`crates/ferroastro-integrators/src/diagnostics.rs::exact_line_and_power_law_are_recovered`<br>`crates/ferroastro-integrators/tests/ias15_analytic.rs::gyration_conserves_speed_and_is_reversible`<br>`crates/ferroastro-precession/tests/num023_brouwer.rs::nightly_num023_brouwer_slopes_ias15_f64`<br>`crates/ferroastro-precession/tests/num023_brouwer.rs::nightly_num023_forward_backward_reversibility` | `NUM023-ENERGY-SLOPE`<br>`NUM023-PHASE-SLOPE` |
 | [NUM-024](NUM.md) | draft | medium | demonstration | — | — |
 | [NUM-025](NUM.md) | draft | low | test | — | — |
 | [TST-001](TST.md) | draft | high | test | — | — |

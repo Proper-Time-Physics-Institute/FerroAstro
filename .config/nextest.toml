@@ -20,3 +20,11 @@ slow-timeout = { period = "120s", terminate-after = 5 }
 [profile.ci]
 fail-fast = false
 slow-timeout = { period = "60s", terminate-after = 10 }
+
+[profile.nightly]
+# Nightly long-run tier (testing.md): `cargo nextest run --workspace --cargo-profile release --profile nightly --run-ignored only`.
+# Only tests named nightly_* run (e.g. the NUM-023 Brouwer-law ensemble); their output is the evidence.
+default-filter = "test(/^nightly_/)"
+fail-fast = false
+success-output = "immediate"
+slow-timeout = { period = "300s", terminate-after = 6 }
