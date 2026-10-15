@@ -333,6 +333,7 @@ dependencies = [
  "ferroastro-analytic",
  "ferroastro-constants",
  "ferroastro-core",
+ "ferroastro-ephem",
  "ferroastro-frames",
  "ferroastro-precession",
  "ferroastro-propagate",

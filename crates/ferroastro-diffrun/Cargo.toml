@@ -23,6 +23,7 @@ thiserror.workspace = true
 [dev-dependencies]
 ferroastro-analytic.workspace = true
 ferroastro-constants.workspace = true
+ferroastro-ephem.workspace = true
 ferroastro-frames.workspace = true
 ferroastro-testdata.workspace = true
 ferroastro-vectors.workspace = true

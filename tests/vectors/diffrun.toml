@@ -17,3 +17,17 @@ retrieved = "2026-10-15"
 tolerance = { abs = 1.0e-4 }
 tolerance_rationale = "NUM-013(a)'s own bound, copied. Comparison basis (documented, as NUM-013 requires): Mercury as a test particle about a fixed Sun (mu = GM_sun, DE440) from header.440 (Mercury minus Sun at JDEPOC), 1001 passages; the same IC hash for every toggle (asserted); the Park2017 estimator (Park17 mean-orbit plane, projected longitude, quadratic + 14 Table-2 terms) on the passages located by the driver; analytic rate = schwarzschild_advance / j2_inclined_rate / lense_thirring_rate with a, e of the initial osculating orbit (mu = GM_sun) and the period from mu = GM_sun, i.e. the integrated dynamics' own mean motion. Differs from NUM013-ISOLATION-DIFF (WP6) in the basis only: DE440 J2 instead of Park17's 2.25e-7 (the scenario spec takes its constants from gm_set = de440), real instead of equatorial geometry, header.440 instead of SW92 ICs. Pre-registered in WP14 before the test was run."
 verified_by = "WP14 builder agent, 2026-10-15: bound copied from NUM-013(a)."
+
+[[vector]]
+id = "DIFFRUN-IC-SOURCE-AGREEMENT"
+requirement = ["NUM-013", "CI-009"]
+quantity = "P-add Venus contribution (Sun + Mercury + Venus minus Sun + Mercury, JDEPOC +/- 20 yr, Park2017 estimator with a quadratic fit) from header.440 initial conditions minus the same from de440.bsp evaluated at JDEPOC"
+value = 0.0
+unit = "arcsec/cy"
+kind = "analytic"
+source = "Identity of the two JPL products at JDEPOC: WP11 check 1 measured header.440 = de440.bsp to <= 6.7e-7 km and <= 8.4e-15 km/s for every body (REF-002), so both IC sources describe the same initial state and the differential rate must agree"
+citation = "FerroAstro docs/strategy/IMPLEMENTATION-NOTES.md WP11 check 1 and WP14 (bound derivation)"
+retrieved = "2026-10-15"
+tolerance = { abs = 1.0e-6 }
+tolerance_rationale = "Engineering bound fixed before the first run (WP14). An IC difference of 6.7e-7 km on r ~ 5e7 km moves passage longitudes by ~1e-14 rad; propagated over 40 yr (0.4 cy) that is <~ 1e-8 arcsec/cy in the slope, so 1e-6 is ~100x above the expected difference while 1e3x below the smallest PHY-012 row tolerance. PROVISIONAL; NEEDS HUMAN REVIEW with the other agent-set engineering bounds."
+verified_by = "WP14 builder agent, 2026-10-15: derivation above; WP11 numbers re-read in IMPLEMENTATION-NOTES."
