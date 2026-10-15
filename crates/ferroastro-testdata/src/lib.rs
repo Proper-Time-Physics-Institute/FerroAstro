@@ -12,6 +12,8 @@
 //! Tests that use this crate are network-dependent: they are `#[ignore]`d and named `data_*`, and
 //! run with `cargo nextest run --workspace --profile data --run-ignored only`.
 
+pub mod horizons;
+
 use ferroastro_core::ErrorCode;
 use serde::Deserialize;
 use sha2::{Digest, Sha256};
@@ -53,6 +55,12 @@ pub enum DataError {
     /// The manifest is missing, malformed, or lacks the product.
     #[error("FA-E0202: data manifest problem: {0}")]
     Manifest(String),
+    /// A data service answered with an error or with something that cannot be parsed.
+    #[error(
+        "FA-E0203: data service answer unusable: {0}; fix: inspect the cached answer in \
+         $FA_DATA_DIR (it is deleted and re-fetched once automatically) and the service status"
+    )]
+    Service(String),
 }
 
 impl DataError {
@@ -63,6 +71,7 @@ impl DataError {
             DataError::Fetch { .. } => ErrorCode::DataFetch,
             DataError::Checksum { .. } => ErrorCode::DataChecksum,
             DataError::Manifest(_) => ErrorCode::DataManifest,
+            DataError::Service(_) => ErrorCode::DataService,
         }
     }
 }

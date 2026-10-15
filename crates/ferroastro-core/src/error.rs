@@ -43,6 +43,8 @@ pub enum ErrorCode {
     DataChecksum,
     /// `FA-E0202`: the data manifest is missing or malformed.
     DataManifest,
+    /// `FA-E0203`: a data service (e.g. JPL Horizons) returned an error or an unparsable answer.
+    DataService,
     /// `FA-E0300`: a JPL `header.440` file is malformed.
     HeaderParse,
     /// `FA-E0301`: a requested ephemeris constant is not in the table or header.
@@ -69,6 +71,8 @@ pub enum ErrorCode {
     ForceModelGaugeMismatch,
     /// `FA-E0602`: a reported precession rate lacks a mandatory metadata field (PHY-015).
     ReportMetadataMissing,
+    /// `FA-E0603`: sampled input to an estimator is unusable (unsorted, too coarse, too short).
+    EstimatorInput,
     /// `FA-E0700`: an unknown rung, rung set or command-line option was requested.
     LadderSelection,
     /// `FA-E0701`: a ladder scenario file is missing or malformed.
@@ -77,7 +81,7 @@ pub enum ErrorCode {
 
 impl ErrorCode {
     /// Every code, in numeric order (used to prove codes are unique).
-    pub const ALL: [ErrorCode; 26] = [
+    pub const ALL: [ErrorCode; 28] = [
         ErrorCode::NonFinite,
         ErrorCode::OutOfRange,
         ErrorCode::VectorIo,
@@ -89,6 +93,7 @@ impl ErrorCode {
         ErrorCode::DataFetch,
         ErrorCode::DataChecksum,
         ErrorCode::DataManifest,
+        ErrorCode::DataService,
         ErrorCode::HeaderParse,
         ErrorCode::ConstantMissing,
         ErrorCode::ConstantsTable,
@@ -102,6 +107,7 @@ impl ErrorCode {
         ErrorCode::FitDegenerate,
         ErrorCode::ForceModelGaugeMismatch,
         ErrorCode::ReportMetadataMissing,
+        ErrorCode::EstimatorInput,
         ErrorCode::LadderSelection,
         ErrorCode::LadderScenario,
     ];
@@ -121,6 +127,7 @@ impl ErrorCode {
             ErrorCode::DataFetch => "FA-E0200",
             ErrorCode::DataChecksum => "FA-E0201",
             ErrorCode::DataManifest => "FA-E0202",
+            ErrorCode::DataService => "FA-E0203",
             ErrorCode::HeaderParse => "FA-E0300",
             ErrorCode::ConstantMissing => "FA-E0301",
             ErrorCode::ConstantsTable => "FA-E0302",
@@ -134,6 +141,7 @@ impl ErrorCode {
             ErrorCode::FitDegenerate => "FA-E0601",
             ErrorCode::ForceModelGaugeMismatch => "FA-E0502",
             ErrorCode::ReportMetadataMissing => "FA-E0602",
+            ErrorCode::EstimatorInput => "FA-E0603",
             ErrorCode::LadderSelection => "FA-E0700",
             ErrorCode::LadderScenario => "FA-E0701",
         }
