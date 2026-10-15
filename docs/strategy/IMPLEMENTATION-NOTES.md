@@ -1217,3 +1217,209 @@ All numbers equal those in WP4–WP6 to every printed digit.
    - NUM-023 predictor finding
 
 Reviewer artefacts are in the local scratchpad, not committed: the gate, data, nightly and mutation logs, `recompute.py` and `mutate.sh`.
+
+## WP7 — [M1 debt] `ferroastro-real`: `Real` trait, double-double backend, generic refactor
+
+Builder agent, 2026-10-15. Branch `m3-newtonian-nbody`, stacked on `m0-foundation`, draft PR #13. The section has
+three parts:
+- the progress-review corrections after WP6;
+- WP7 itself;
+- a time-boxed NUM-023 retry.
+
+No existing golden value or tolerance was changed. Two vectors had metadata-only edits. One new vector had its test
+domain amended (below), all flagged **NEEDS HUMAN REVIEW**.
+
+### Progress-review corrections (applied)
+| correction | change |
+|---|---|
+| Long tiers run locally | `ci.yml` job `long` is `workflow_dispatch` only. New `tools/run_long_local.sh` runs the `nightly` (release) and `data` profiles and logs the commit, dirty flag, UTC date, host, `rustc -Vv`, cargo and nextest versions, `FA_DATA_DIR`, and the full test output with each product's provenance to `target/long-local/<stamp>-<sha>.log`. It refuses to run if `FA_VECTORS_DIR` is set. **Maintainer question (open):** may the weekly `data` job stay on GitHub-hosted runners? It is unchanged until answered. Rulesets and CODEOWNERS were not touched. |
+| `IAS15-EQ11-DEADBEAT` | `notes` now says NEEDS HUMAN REVIEW (non-blind band). Value and tolerance unchanged. |
+| `NUM012-ESTIMATOR-SPREAD` | The `source` no longer says that the LRL 1PN terms "average out". It cites the WP6 +1.8e-5 ″/cy LRL offset under step-time sampling. Value and tolerance unchanged. **NEEDS HUMAN REVIEW** (metadata edit of a golden). |
+| Oracle substitution via `FA_VECTORS_DIR` | Every use prints a `NON-CANONICAL VECTORS` banner. The new `VectorSet::load_canonical()` refuses the override with the new code **FA-E0106**. The `data_*`/`nightly_*` tests, the ladder rung tests (`tests/common`), the examples and the CLI report use it. `cli_report.rs::report_refuses_a_vector_directory_override` runs the binary with the override and checks FA-E0106 and the banner. Mutation probes must now perturb `tests/vectors` in a scratch checkout. `load_workspace()` keeps the override, with the banner, for PR-tier probes. |
+| Data-profile retries | `.config/nextest.toml` `data`: `retries = 0`. Network retries live in `ferroastro-testdata` (`curl --retry 3 --retry-connrefused`) and in the Horizons client (one re-fetch of an unparsable answer). |
+| μ convention of the GR helper | Documented in `schwarzschild_advance`: `6πGM/c²` uses GM☉, while `n` and the period use GM☉ + GM☿, the Keplerian GM of Horizons' elements. `data_horizons_gr_rate_from_osculating_elements_vs_park17` also prints the GM☉-only rate and its shift (about 4e-6 ″/cy, reported only). |
+| Error-code ranges | The core `error.rs` table names `ferroastro-analytic` (FA-E0600) and `ferroastro-precession` (FA-E0601–0603) for 06xx. `integrators::diagnostics` fits now raise **FA-E0404** (`DiagnosticFitDegenerate`) instead of sharing FA-E0601. |
+| API-003 doctest clause | `tools/doctest_coverage.py` (2 pytest cases) runs as a CI step that only reports. Result: **0 of 258** public functions carry a runnable per-function doctest. The existing doctests are crate- or module-level. **NEEDS HUMAN REVIEW:** the "every public fn has a doctest" clause is deferred. A maintainer sets the `--min-ratio` gate. |
+| WP7/WP8 M1 requirements | WP7 adds citing tests and vectors for DEP-007, NUM-006 and NUM-010 (and DEP-012, API-001). DEP-009, DEP-010 and REF-009 belong to WP8 (ERFA, time) and remain uncited here. |
+| Human-owned questions | Left unresolved, as listed in the WP6 progress review. |
+
+### What was built
+- **`ferroastro-real` (L0, new).**
+  - The `Real` trait covers:
+    - arithmetic and its assignment forms;
+    - `mul_add`, `scale` (× binary64), `sqrt`, `hypot`, `recip`, `abs`, `min`/`max`;
+    - `is_finite`/`is_nan`, `total_cmp`, `floor`/`round`/`rem_euclid`, `powi`;
+    - the elementary functions the oracles use: `sin`, `cos`, `sin_cos`, `atan2`, `asin`, `acos`, `exp`, `exp_m1`, `ln`, `ln_1p`, `powf`;
+    - constants (`ZERO`, `ONE`, `TWO`, `HALF`, `PI`, `TAU`, `FRAC_PI_2`, `LN_2`, `EPSILON`) and conversions (`from_f64`, `from_parts`, `from_i32`, `to_f64`, `to_parts`).
+  - Backends:
+    - **f64**: inherent methods with `std`, or the pure-Rust `libm` in `no_std`.
+    - **`DoubleDouble`**: own implementation of JMP 2017 Alg. 6, 9, 12 and 18 and Lefèvre et al. 2023 Alg. 8. Its own `exp`/`ln`/trigonometric functions are described in `dd_math.rs`.
+    - **f128** behind feature `f128`. `build.rs` detects a nightly compiler and compiles the backend only there, so `--all-features` still builds on stable.
+  - `Neumaier<R>` compensated accumulator.
+  - The crate is `#![no_std]` (`std` default feature; `libm` alternative).
+- **Generic refactor, `R: Real = f64` everywhere, M0 call sites unchanged.**
+  - `ferroastro-core`: quantities, `Position`/`Displacement`/`State` and `Epoch` (still a two-part JD). The f64-only consts (`Length::ZERO`, `Epoch::j2000()`) sit in `impl X<f64>`. Generic `zero()` and `cast()` are new.
+  - `ferroastro-integrators`: `Ias15`, `SecondOrderSystem`, `StepReport`, the Kahan helpers, and Radau constants built in `ferroastro-real`'s double-double. The local `dd` module is deleted.
+  - `ferroastro-forces`: every term and model, plus `ForceModel`.
+  - `ferroastro-analytic`: every oracle, `Elements` and the vector helpers.
+  - `ferroastro-ladder`: `SingleBody::run_in::<R>` and `model_in::<R>`, and the generic `find_perihelia`.
+  - The IAS15 step-size factor is computed in f64 for every backend; it chooses Δt and does not affect accuracy.
+- **f64 results are bitwise identical.** Every rate, IC hash and step count printed by the PHY-001/005/010/011 and NUM-012/013 tests was diffed against a pre-refactor capture after each crate's refactor: identical except wall times.
+- **NUM-010 (new).**
+  - Opt-in dense output (`Ias15Config::dense_output`; off by default, so the hot path does not copy): `Ias15::dense_state`, `last_step_span`.
+  - `Ias15::locate_event(g)`: Illinois regula falsi on the last step's collocation polynomial, solved in the step fraction τ.
+- **CI:** new `wasm32` job (PR-fast). It builds real, core, integrators, forces and analytic for `wasm32-unknown-unknown`, plus `ferroastro-real` as `no_std` + `libm`. Both builds were verified locally on 1.95.0.
+- **NUM-006 benchmark harness:** `tools/bench_num006.py` (1 pytest case).
+  - It puts a baseline and a candidate into detached worktrees, gives both the baseline's bench source, and runs Criterion `ias15_sun_mercury/propagate_1_julian_year` alternately for 5 rounds.
+  - It compares the medians of the medians against vector `NUM006-F64-BENCH-RATIO` (2 %).
+
+### DD backend choice (ADR-0002 follow-up; recorded audit, scratch crate, not committed)
+100 000 random normalised double-words (|exponent| ≤ 60), oracle astro-float at 384 bits. Max relative error is in u² = 2⁻¹⁰⁶; speed is ns/op, the median of 5 passes over 10⁶ operations, release build. Same machine, 2026-10-15.
+
+| op | own: error | own: ns/op | `qd` 0.8.0 (MIT): error | `qd`: ns/op | `twofloat` 0.8.4 (BSD-3): error | `twofloat`: ns/op |
+|---|---|---|---|---|---|---|
+| add | 1.91 | 4.3 | **47.1** | 6.4 | 1.91 | 4.2 |
+| mul | 2.99 | 8.0 | 3.11 | 7.8 | 2.99 | 8.2 |
+| div | 4.44 | 14.7 | 1.70 | 31.2 | **9.0e15** (binary64-accurate only) | 13.0 |
+| sqrt | 2.75 | 10.5 | 7.05 | 63.7 | 7.88 | 10.4 |
+
+**Decision: our own double-double.**
+- It is best or equal on accuracy everywhere except `qd`'s division, and it stays within the proved bounds.
+- Its speed equals `twofloat`'s, and it is 2–6× faster than `qd` on div and sqrt.
+- `twofloat`'s division is only binary64-accurate, and `qd`'s addition is the "sloppy" one.
+- It adds no runtime dependency.
+
+**NEEDS HUMAN REVIEW:** record this as the ADR-0002 follow-up. ADR text is human-owned and was not edited.
+
+### DEP-012 results (`crates/ferroastro-real/tests/dep012_ulp_bounds.rs`, proptest, deterministic ChaCha, vs astro-float 384 bit)
+All 26 bounds were pre-registered in `tests/vectors/real-backends.toml` before the first run. The proved bounds cite the theorem. The elementary-function bounds are engineering bounds and are labelled as such.
+
+| op (cases) | measured max | bound | source |
+|---|---|---|---|
+| DD add / sub / sub same-exponent (4096 each) | 1.35 / 1.43 / 0.99 u² | 3 | JMP 2017 Thm 3.1 |
+| DD mul / scale / mul_add | 3.06 / 1.23 / 2.59 u² | 5 / 2 / 8 | Thm 5.4 / Thm 4.3 / derived |
+| DD div / recip | 3.99 / 2.69 u² | 9.8 | Thm 7.2 |
+| DD sqrt / hypot | 2.41 / 2.96 u² | 3.125 / 8 | Lefèvre et al. 2023 Thm 3.6 / derived |
+| DD exp (x ∈ [−600, 700]) / expm1 | 1.82 / 4.87 u² rel. | 128 | engineering |
+| DD ln / ln near 1 / ln1p | 1.71 / 3.63 / 4.43 u² rel. | 128 | engineering |
+| DD powf | 197.9 u² rel. | 256 | engineering (condition number \|y ln x\| ≤ 140) |
+| DD sin / cos / asin / acos / atan2 | 1.18 / 0.94 / 2.10 / 3.07 / 4.46 u² abs. | 128 | engineering |
+| f64 add, sub, mul, div, sqrt, recip, mul_add | ≤ 0.5000 ulp | 0.5 | IEEE 754-2019 §5.4.1 |
+
+The f64 bounds also pass on the `no_std` `libm` path.
+
+The first run found two real problems:
+1. **`ln_1p` truncation bug, fixed:** 274 u² at x = −0.398. The atanh series was sized for |z| ≤ 0.1716 but was used up to |x| < ½, where |z| reaches ⅓. The series is now restricted to x ∈ (−0.29, 0.41).
+2. **`exp` underflow of the trailing word:** 2.3e-17 relative at x = −688.2. Below x ≈ −634.8 the result is under 2⁻⁹¹⁶, so its trailing word is subnormal. This is a format limit ("barring underflow" in JMP 2017). **NEEDS HUMAN REVIEW:** the pre-registered test domain [−700, 700] was amended to [−600, 700] after this failure. The bound was unchanged, and the vector's `notes` say so. The new lower end comes from the format limit, not from the measurement.
+
+`hypot` was added to `Real` during the core refactor. Its bound (8 u²) was pre-registered before its first run.
+
+Sources (read for the bounds):
+- JMP 2017: HAL hal-01351529v3, sha256 `2a820178…6cbc0`.
+- Lefèvre et al. 2023: HAL hal-03482567v2, sha256 `a60eb7ed…8ac93`.
+
+### NUM-006, DEP-007 and API-001 results
+- **Monomorphisation** (`num006_backends.rs`): one generic Kepler solver.
+  - Residual: 2.2e-16 in f64 and 1.9e-34 in DD.
+  - On **nightly** (`rustc 1.101.0-nightly 2026-10-14`, installed user-level with `rustup toolchain install nightly --profile minimal` for this check only) the f128 backend matches DD to ≤ 8.2e-33 for sqrt, exp, sin and ln (`cargo +nightly test -p ferroastro-real --features f128`).
+  - On stable the f128 test is compiled out, so CI does not exercise f128.
+- **f64 benchmark unchanged (NUM-006):** `tools/bench_num006.py`, baseline `c5fd5a0` (non-generic integrator and forces), 5 alternated rounds, ratio = candidate/baseline:
+
+  | candidate | what is generic | ratio | verdict (±2 %) |
+  |---|---|---|---|
+  | `a913cc4` | integrator | 0.9922 | PASS |
+  | `6b39fcd` | integrator + forces + analytic + ladder | 0.9846 | PASS |
+  | `42b4a99` | final WP7 code, including the opt-in `pc_b_from_g` branch | 1.0048 | PASS |
+
+  - In the `42b4a99` run the candidate was slower in all 5 rounds (by 0.2–1.3 %), probably the extra `pc_b_from_g` branch per node update.
+  - In the `6b39fcd` run the candidate was faster in all 5 rounds. Its round medians were 2.11–2.29 ms, against the baseline's 2.18–2.33 ms.
+  - The machine is shared: load average about 13 on 32 cores during the runs. A single-round plumbing run on identical integrator code showed a 6.5 % spread, so one round is not evidence.
+  - **NEEDS HUMAN REVIEW:** the 2 % band is PROVISIONAL (vector `NUM006-F64-BENCH-RATIO`).
+- **API-001 with DD:**
+  - The trybuild suite now has 9 compile-fail cases: the 4 M0 classes in f64, the same 4 in `DoubleDouble`, and the new class "backend mismatch" (`Length<f64> + Length<DoubleDouble>`).
+  - One compile-pass case composes the newtypes in DD.
+  - The WP1 deviation is closed. The f64 `unit_mismatch.stderr` gained a rustc `= note:` line (same error E0308).
+- **DEP-007 coverage.** Each component compiles and passes its tests with f64 and DD.
+  - **Integrator:** `num010_dense_events`.
+  - **Force model:** `double_double_terms_match_f64_and_each_other` checks every term: DD rounds to the f64 acceleration within f64 round-off, and the R3 and PPN-Lagrangian forms agree to DD round-off.
+  - **Analytic oracles:** PHY-004 in DD gives 42.98047897736962 + 1.3e-15 against f64 42.980478977369629, 1 ulp apart. The elements round trip closes to DD round-off.
+  - **Not covered:** the "ephemeris evaluator" (WP10) and "time arithmetic" (WP8) clauses. Only the `Epoch` type is generic so far.
+
+### PHY-005 in f64 and double-double (pre-registered `PHY005-F64-DD-AGREEMENT`, 1e-6 ″/cy)
+| initial state | f64 ″/cy | double-double ″/cy | f64 − DD | steps; wall (opt-level 1) |
+|---|---|---|---|---|
+| SW92 J2000 mean elements (PR tier) | 42.980468783683 | 42.980468783558 | +1.25e-10 | 76 468; 0.59 s f64, 3.29 s DD |
+| header.440 GROUP 1041: Mercury − Sun at JDEPOC 2440400.5 (data tier, D5) | 42.980085159575 | 42.980085160105 | −5.30e-10 | — |
+
+- Both rows pass 42.980 ± 0.001 (PHY005-GR-NUM-RATE) and the agreement bound, with about 2000× margin.
+- The header.440 state gives a = 0.38709935 au and e = 0.2056166109 at JDEPOC.
+  - Centre, axes and units (SSB, ICRF, au and au/day) are inferred, per OI-23. They are used only as an initial condition, never as an oracle; a units error would move the rate by orders of magnitude.
+  - The heliocentric state is X1 − XS. The barycentric Sun's motion is ignored in this test-particle rung.
+- NUM-015 for D5: relative −4.4e-8 passes. The absolute 1.2e-15 rad floor is "exceeded", as in WP4: anomalistic vs Keplerian period. That item stays with humans.
+
+### NUM-010 results (`num010_dense_events.rs`)
+Keplerian Mercury-like orbit: DE440 GM☉, SW92 a and e, aphelion start, 100 orbits, 7660 steps.
+
+| check | measured | bound | vector |
+|---|---|---|---|
+| f64 dense-output event location vs the integrated trajectory's own r·v root (every 10th event re-integrated) | 1.69e-12 s | 1e-6 s | `NUM010-EVENT-LOCATION` |
+| double-double event times vs analytic P/2 + kP | 1.16e-15 s | 1e-6 s | `NUM010-KEPLER-PERIHELION-TIMES` |
+| f64 event times vs analytic (reported only) | 2.18e-11 s | — | — |
+
+Interpretation: NUM-010's "≤ 1e-6 s" is read as the location error. "Match the analytic values to round-off" is shown in DD, where round-off is negligible.
+- The f64 drift is reported, not asserted. My pre-registration estimate of 1e-5 s for it was far too pessimistic: measured 2.2e-11 s.
+- The ladder's passage refinement still re-integrates, to keep f64 results bitwise identical. Switching it to dense output is a later option.
+
+### NUM-023 retry (time-boxed; WP6 item)
+32 × 20 000-orbit ensemble (4.89e7 steps), release build, report-only env knobs. The baseline is the WP6 known failure.
+
+| variant | energy slope | phase slope | ensemble mean dE/E at 2·10⁴ orbits (RMS) | wall |
+|---|---|---|---|---|
+| baseline: `B += c·Δg` increments (as committed) | 0.629 ± 0.018 | 1.590 | ≈ RMS, −4.6e-14 (WP3) | 27–41 s |
+| PC iterated until all B are bitwise stable | 0.619 ± 0.021 | 1.576 | — | 27 s |
+| **B recomputed from g** each node update, Neumaier sum | 0.474 ± 0.015 | 1.443 | −5.4e-15 (1.34e-14) | 41 s |
+| **B recomputed from g**, plain FMA sum | 0.509 ± 0.012 | 1.471 | −6.9e-16 (1.52e-14) | 47 s |
+| same, reversed sum order (as committed) | 0.466 ± 0.011 | 1.442 | +3.0e-15 (1.51e-14) | 58 s (2 tests in parallel) |
+| same, default 64 × 2000 ensemble | 0.436 ± 0.011 | 1.411 | −7.6e-16 (3.7e-15) | 15 s |
+
+**Finding:** the systematic energy drift comes from accumulating B by increments `c[node][m]·Δg`. It is not from the PC stopping rule; bitwise convergence does not help. It is not from missing compensation either; a plain recompute works.
+- With B recomputed from the Newton coefficients, both slopes are within NUM-023's ±0.1 at ≥ 5e7 steps.
+- The ensemble mean falls to 5–40 % of the RMS. It was ≈ 100 % before.
+
+**Committed as opt-in:** `Ias15Config::pc_b_from_g` (default **off**) and the report-only knob `FA_NUM023_PC_B_FROM_G=1`. Nothing else changed:
+- the default integrator;
+- `nightly_num023_long_ensemble_known_failure`, which still guards the default configuration;
+- the ±0.1 tolerance.
+
+**NEEDS HUMAN REVIEW:** adopting it as the default would:
+- change every f64 result at round-off level;
+- add about 1.5× wall time in this experiment (a NUM-006 question);
+- turn the known-failure guard green.
+
+The NUM-001 1e9-step clause was not tested. These ensembles total about 5e7 steps.
+
+### DEP-015 provenance checklist (new dependencies in Cargo.lock)
+| crate | role | licence (file read) | maintenance | WASM |
+|---|---|---|---|---|
+| `libm` 0.2.16 | optional runtime dep of `ferroastro-real` (`no_std`) | MIT (`LICENSE.txt` read; rust-lang/compiler-builtins) | latest 0.2.16, 2026-03-17 | pure Rust; built for wasm32 |
+| `astro-float` 0.9.6 (+ `-num` 0.3.7, `-macro` 0.4.6) | dev-dependency only (DEP-012 oracle) | MIT (`LICENSE` read: "Copyright (c) 2022 stencillogic"). **The `-num` and `-macro` packages ship no licence file; only their SPDX field says MIT.** NEEDS HUMAN REVIEW: accept the repository licence for them. | releases 2026-08-07 | not needed (dev only) |
+| `proptest` 1.11.0 | dev-dependency | MIT OR Apache-2.0 (both files present) | 1.12.0 released 2026-10-10; resolver held 1.11.0 for MSRV 1.85 | dev only |
+| transitive: `rand*` 0.9, `rand_xorshift`, `unarray`, `bitflags`, `lazy_static`, `getrandom` 0.3, `syn` 1, `wasip2`, `wit-bindgen`, `r-efi`, `ppv-lite86` | dev-only, via proptest and astro-float | all MIT and/or Apache-2.0. `r-efi` is "MIT OR Apache-2.0 OR LGPL-2.1-or-later", taken under MIT. `wasip2` and `wit-bindgen` add "Apache-2.0 WITH LLVM-exception" | `unarray` last release 2022-11-30 (> 24 months; dev-only transitive of proptest; justification: test-only) | — |
+
+`cargo deny check` passes. `anise` is not a dependency (unsettled decision). `qd` and `twofloat` were used only in the scratch audit crate and are not in Cargo.lock.
+
+### Interpretations and NEEDS HUMAN REVIEW (WP7)
+1. **ADR-0002 follow-up:** the DD backend is our own (audit above).
+2. **`NUM006-F64-BENCH-RATIO`:** the 2 % band is provisional. The measurements are on a shared machine.
+3. **`REAL-DD-EXP-REL-ERR`:** test domain amended after the first run (format underflow). Bound unchanged.
+4. **Engineering bounds:** the DD elementary-function bounds (128 and 256 u²) are FerroAstro's own and are not proved. DEP-012 asks for "documented ulp bounds", and these are documented and pre-registered.
+5. **NUM-023:** whether to adopt `pc_b_from_g` (above).
+6. **API-003:** doctest-coverage threshold (above).
+7. **DEP-015:** licence files of `astro-float-num` and `-macro`.
+8. **Maintainer question:** the weekly GitHub `data` job (above).
+9. **DEP-007 "ephemeris evaluator" and "time arithmetic":** not covered until WP10 and WP8.
+10. **Requirement-text suggestions** for PR #2 (not edited here):
+    - NUM-010 could state that "≤ 1e-6 s" is the location error, and that "to round-off" is backend-dependent.
+    - DEP-012 could name the u² unit for double-word bounds.
+    - NUM-006 could carry the benchmark band.
+11. **Nightly toolchain:** installed user-level (`~/.rustup`) only to exercise `--features f128`. `rust-toolchain.toml` is unchanged.
