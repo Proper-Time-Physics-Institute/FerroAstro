@@ -1,0 +1,29 @@
+{
+  "entries": [
+    {
+      "command": "python -m oracles.jpl_runner",
+      "cpu": "13th Gen Intel(R) Core(TM) i9-13900 (32 logical CPUs)",
+      "extra": {},
+      "file": "ref001-verification.json",
+      "frame": "ICRF axes, solar-system-barycentric (DE440)",
+      "generated_utc": "2026-10-15T19:02:08Z",
+      "image_digest": "sha256:ac1eb8d216289d2132af5c3900f5b4ea1634e3f23e57341574c396cf9ae82a0d",
+      "input_sha256": {
+        "MANIFEST.toml": "fcc0a5a9b2343bf1c4fc4784531bc23e59ce6c97cb4cfa0a177e20ea3208275f",
+        "de440.bsp": "a4ce9bf9b3282becc9f4b2ac3cebe03a2ae7599981aabd7265fd8482fff7c4b5",
+        "header.440": "0f4636b663e6f00af9efa2b605ef23635489f56b23dd1a5e3821d3acc6ac3359",
+        "testpo.440": "45084a7f406b8e41032e7d99dd8042d4df97a9f752a68c06d1a27af16693429f"
+      },
+      "output_sha256": "4257b62747404c92c3559b6a788722c669168de0f70b9e1ac08fe8705fc89ed6",
+      "runner_sha": "98ac4bb8d60ec595e83f187d95887f6ed37b863b",
+      "runner_sha256": "944c045f8324a3f1413f8d444ff1d2f4a6714727bab0fecb5a511846e4f974d9",
+      "scenario": "ref001-pins",
+      "time_scale": "TDB (JDEPOC)",
+      "tool": "jpl",
+      "units": "bytes; SHA-256 hex; header-vs-bsp differences in km and km/s",
+      "version": "jplephem 2.24",
+      "wall_clock_s": 0.186
+    }
+  ],
+  "schema_version": 1
+}

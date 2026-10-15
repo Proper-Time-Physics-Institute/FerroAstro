@@ -1,0 +1,36 @@
+{
+  "entries": [
+    {
+      "command": "python -m oracles.rebound_runner --scenario /in/stage-a-sun-8planets-newton-100yr.toml --header /in/header.440 --out-dir /out",
+      "cpu": "13th Gen Intel(R) Core(TM) i9-13900 (32 logical CPUs)",
+      "extra": {
+        "gravity": "basic",
+        "ias15_adaptive_mode": "PRS23",
+        "ias15_epsilon": "1e-09",
+        "ias15_min_dt": "0.0",
+        "rebound_version": "5.2.2",
+        "reboundx_version": "5.1.0",
+        "relative_energy_change": "1.314561730818533e-15",
+        "steps_done": "16017"
+      },
+      "file": "stage-a-sun-8planets-newton-100yr.rebound.states.csv",
+      "frame": "ICRF axes, solar-system-barycentric (DE440 header.440 frame)",
+      "generated_utc": "2026-10-15T19:02:07Z",
+      "image_digest": "sha256:36f545850f03be1d6cd51a3ed6f8459f205ed08596d0b7afd53bf7db493b03e3",
+      "input_sha256": {
+        "header.440": "0f4636b663e6f00af9efa2b605ef23635489f56b23dd1a5e3821d3acc6ac3359",
+        "stage-a-sun-8planets-newton-100yr.toml": "c7d044d018bb59ab565c4830101e4bf338af55a55ed6fb07fbf142e1fa4a009c"
+      },
+      "output_sha256": "a4adc8eb07561882827dd460ef57729d0977e1b9cd772ca701fb2c006d012d27",
+      "runner_sha": "98ac4bb8d60ec595e83f187d95887f6ed37b863b",
+      "runner_sha256": "944c045f8324a3f1413f8d444ff1d2f4a6714727bab0fecb5a511846e4f974d9",
+      "scenario": "stage-a-sun-8planets-newton-100yr",
+      "time_scale": "TDB",
+      "tool": "rebound",
+      "units": "t_days: TDB days since epoch_jd_tdb; position: km; velocity: km/s",
+      "version": "rebound 5.2.2, reboundx 5.1.0",
+      "wall_clock_s": 0.368
+    }
+  ],
+  "schema_version": 1
+}

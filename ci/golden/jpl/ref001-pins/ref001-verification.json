@@ -1,0 +1,84 @@
+{
+  "all_pins_ok": true,
+  "date_utc": "2026-10-15",
+  "header_vs_bsp_at_jdepoc": {
+    "epoch_jd_tdb": 2440400.5,
+    "max_abs_dr_km": 4.76837158203125e-07,
+    "max_abs_dv_km_s": 7.105427357601002e-15,
+    "per_body": {
+      "EMB": {
+        "max_abs_dr_km": 7.450580596923828e-09,
+        "max_abs_dv_km_s": 4.440892098500626e-16
+      },
+      "Jupiter": {
+        "max_abs_dr_km": 1.4901161193847656e-08,
+        "max_abs_dv_km_s": 8.881784197001252e-16
+      },
+      "Mars": {
+        "max_abs_dr_km": 5.587935447692871e-09,
+        "max_abs_dv_km_s": 7.105427357601002e-15
+      },
+      "Mercury": {
+        "max_abs_dr_km": 0.0,
+        "max_abs_dv_km_s": 7.105427357601002e-15
+      },
+      "Neptune": {
+        "max_abs_dr_km": 4.76837158203125e-07,
+        "max_abs_dv_km_s": 8.881784197001252e-16
+      },
+      "Pluto": {
+        "max_abs_dr_km": 2.384185791015625e-07,
+        "max_abs_dv_km_s": 2.220446049250313e-16
+      },
+      "Saturn": {
+        "max_abs_dr_km": 1.1920928955078125e-07,
+        "max_abs_dv_km_s": 1.7763568394002505e-15
+      },
+      "Sun": {
+        "max_abs_dr_km": 1.1641532182693481e-10,
+        "max_abs_dv_km_s": 4.336808689942018e-19
+      },
+      "Uranus": {
+        "max_abs_dr_km": 2.9802322387695312e-08,
+        "max_abs_dv_km_s": 5.551115123125783e-17
+      },
+      "Venus": {
+        "max_abs_dr_km": 3.725290298461914e-09,
+        "max_abs_dv_km_s": 7.105427357601002e-15
+      }
+    }
+  },
+  "job": "ref001-pins",
+  "products": [
+    {
+      "bytes": 22802,
+      "fetched": false,
+      "file": "header.440",
+      "name": "de440-header",
+      "pin_ok": true,
+      "sha256": "0f4636b663e6f00af9efa2b605ef23635489f56b23dd1a5e3821d3acc6ac3359",
+      "sha256_pinned": "0f4636b663e6f00af9efa2b605ef23635489f56b23dd1a5e3821d3acc6ac3359",
+      "url": "https://ssd.jpl.nasa.gov/ftp/eph/planets/ascii/de440/header.440"
+    },
+    {
+      "bytes": 858238,
+      "fetched": false,
+      "file": "testpo.440",
+      "name": "de440-testpo",
+      "pin_ok": true,
+      "sha256": "45084a7f406b8e41032e7d99dd8042d4df97a9f752a68c06d1a27af16693429f",
+      "sha256_pinned": "45084a7f406b8e41032e7d99dd8042d4df97a9f752a68c06d1a27af16693429f",
+      "url": "https://ssd.jpl.nasa.gov/ftp/eph/planets/ascii/de440/testpo.440"
+    },
+    {
+      "bytes": 119799808,
+      "fetched": false,
+      "file": "de440.bsp",
+      "name": "de440-bsp",
+      "pin_ok": true,
+      "sha256": "a4ce9bf9b3282becc9f4b2ac3cebe03a2ae7599981aabd7265fd8482fff7c4b5",
+      "sha256_pinned": "a4ce9bf9b3282becc9f4b2ac3cebe03a2ae7599981aabd7265fd8482fff7c4b5",
+      "url": "https://ssd.jpl.nasa.gov/ftp/eph/planets/bsp/de440.bsp"
+    }
+  ]
+}
