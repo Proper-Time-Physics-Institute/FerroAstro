@@ -3397,3 +3397,196 @@ each by number (`COMMAND = '<number>;'`, CENTER `500@10`, ICRF, TDB) at JDEPOC, 
 sampled sb441 state by **1e6 km** (`REF003-KBO-HORIZONS-POS-GROSS`; Horizons uses its current
 orbit solution, so this is a gross identity check only). `ferroastro-testdata::horizons` gains the
 parsed target name and the URL encoding of `;`.
+
+### What was built (WP15)
+- **`tools/sample_sb441.py`** (jplephem 2.24, ruff + mypy strict, 4 pytests incl. a substituted-cache
+  refusal citing CI-005): verifies the SHA-256 of `sb441-n373s.bsp` and `header.440` against the
+  MANIFEST, samples every target at JDEPOC, writes
+  `tests/goldens/sb441-n373s-jdepoc-states.csv` (373 rows, Sun-centred ICRF km and km/s, NAIF id
+  and header symbol `MAnnnn` for the 343 numbered asteroids; generated at `bcc3320`, file sha256
+  `68db3138…5d638`). Header lines: source file, URL, SHA-256, retrieval date, header.440 SHA-256,
+  JDEPOC, centre, frame, units, generator commit, engine.
+- **`ferroastro-system`** (new edge to `ferroastro-frames`, layer check green):
+  - `SmallBodyStates` (parser with FA-E1101 errors, provenance line), `place_small_bodies`
+    (Sun-centred + the header Sun; the majors are never rebarycentred);
+  - `KBO_IDENTIFICATION` (MA8001 Eris 2136199, MA8007 Orcus 2090482, MA8009 2002 UX25 2055637),
+    `Catalogue::with_identified_kbos`;
+  - `KBO_RING` / `kbo_ring_states` / `Catalogue::with_kbo_ring`: 36 Ring bodies, pseudo-ids
+    9 000 000 + nnnn, fixed at 44 au in `ECLIPJ2000`, longitudes k·10°.
+  - The μ* doc comment now records the comparison with the printed Park et al. 2021 Eq. 2.
+- **`ferroastro-scenario`:** `forces.kbos`, `forces.kbo_ring` (new switch names, not CI-002's),
+  `output.sample_bodies` (record only named bodies; a 393-body run would otherwise store every
+  body every day). New fields are skipped when unset, so every existing scenario digest is
+  unchanged. Schema regenerated; the Python validator passes.
+- **`ferroastro-propagate`:** the `asteroids = N` (first N header asteroids), `kbos` and
+  `kbo_ring` switches in N-body mode (refused in test-particle mode), `DataSources::with_small_bodies`.
+  Minor bodies use `MinorFromMajors` with the reaction on (N-AST is the asteroids' pull on
+  Mercury), Ring bodies `RingMasses`. GMs from header.440 (bit-identical to the DE440 table for
+  the majors); the small-body provenance is appended to the run's IC source.
+- **`ferroastro-testdata::horizons`:** the parsed `Target body name`, and `;` URL-encoded (small-body
+  commands); cache names of numeric commands unchanged.
+- **Tests:** `ferroastro-system/tests/ref003_small_bodies.rs` (PR: file coverage and pins, the
+  identification rule re-derived from the `PP2018-T1-*` vectors, the ring, placement, the SSB of the
+  full set), two data tests in `data_system_initial_conditions.rs` (round trip through
+  `ferroastro-ephem`; KBO ids against Horizons), `ferroastro-propagate` small-body scenario test,
+  `ferroastro-diffrun/tests/nightly_phy013.rs`, `ferroastro-forces/tests/nightly_num009_tier_cost.rs`
+  and the criterion bench `ferroastro-forces/benches/num009_tiers.rs`. Vectors:
+  `tests/vectors/small-bodies.toml`, `PARK17-T3-ASTEROIDS` in `park2017-table3.toml`.
+
+### WP15 results (PR tier, cached pinned header.440 + committed REF-003 file, 2026-10-15, toolchain 1.95.0)
+| check | measured | tolerance | margin / note |
+|---|---|---|---|
+| 1a file: rows, unique ids, every header asteroid with its `MAnnnn`, SHA-256 = pin, JDEPOC bitwise | 373 rows; 343 asteroids; 30 TNO targets = 30 header KBO masses; pins equal | exact | pass |
+| identification rule re-derived from the vectors | {MA8001 Eris, MA8007 Orcus, MA8009 2002 UX25} = the table | exact | pass |
+| ring: radius, plane, rest, dipole | 36 points, \|r\| − 44 au ≤ 8 ulp, ecliptic z ≤ 8 ulp, v = 0, dipole 4.98e-7 km | 8 / 64 ulp | pass |
+| placement: placed = file + header Sun (bitwise per component), 346 bodies | bitwise | exact | pass |
+| propagate: the 11 major records unchanged by the switches; 393 records; ring at rest after 1 yr; samples only Sun + Mercury; two runs bitwise; refusals coded | as stated | exact | pass |
+| **3 SSB of the full placed set at JDEPOC (μ*)** | **8.260077 km** (Newtonian 8.260081 km); velocity 1.025e-8 km/s | ≤ 90 km (B = 89.73 km) | **0.092**, non-gating (OI-24) |
+
+Check 3 in steps (μ*): header bodies alone **122.689086 km**; + 343 asteroids **122.649586 km**;
++ Eris, Orcus, 2002 UX25 + ring **8.260077 km**. The three identified KBOs (Eris is 95% of their
+GM; the ring adds no dipole) move the barycentre by about 114 km (Eris alone was not run):
+the WP11 hypothesis (the offset is the KBO masses) is borne out, and the header.440 states are
+consistent with an SSB that includes the KBOs (Park 2021 §2.2: "SSBC has shifted by ∼100 km, which
+is mainly due to the addition of KBOs"). The 8.26 km residual is within what the 27 unplaced KBO
+masses can supply (bound 89.7 km). **OI-24 evidence, not a closure.**
+
+### WP15 real-data results (data tier, run 2026-10-15)
+| check | measured | tolerance | note |
+|---|---|---|---|
+| 1b `ferroastro-ephem` on the pinned sb441-n373s.bsp at JDEPOC vs every row of the jplephem file (373 targets) | **0 km, 0 km/s** (bitwise) | 1e-6 km, 1e-9 km/s (`SB441-JPLEPHEM-*`) | sb441-n373s.bsp sha256 `21431132…a8da10b`, 982 106 112 B, Last-Modified "Thu, 02 Sep 2021 22:54:49 GMT", retrieved 2026-10-15 (cache hit, re-verified) |
+| addendum: Horizons by MPC number at JDEPOC (live, cache miss, `signature.version` 1.2) | target names "136199 Eris (2003 UB313)" (source JPL#103), "90482 Orcus (2004 DW)" (JPL#61), "55637 Uni (2002 UX25)" (JPL#58); \|Δr\| 104 606 / 73 045 / **129 517** km | 1e6 km (gross) | ids confirmed; the differences are orbit-solution differences at 1969 |
+
+### Mutation probes (WP15; each applied by a script, the named crate's PR tier run, the file restored with `git checkout`; tree clean afterwards)
+| mutant | result |
+|---|---|
+| M1 small-body velocity components swapped (`vx`↔`vy`) | killed (placement test) |
+| M2 asteroids as test particles (`MinorReaction::Off`) in propagate | killed (model must state "reaction on Majors = 1"; the assertion was added for this probe) |
+| M3 ring radius 44 → 40 au | killed (ring test vs `DE440-KBO-RING-RADIUS`; the first version compared the constant with itself and was rewritten before the probe) |
+| M4 one asteroid fewer than requested | killed (record count) |
+| M5 Eris's NAIF id replaced by Haumea's (2136108) | **survives the PR tier** (the SSB check is non-gating; the rule test compares names). **Killed by the data tier** (Horizons names 2136108 Haumea) |
+| M6 `sample_bodies` filter inverted | killed (samples must hold only Sun + Mercury) |
+| M7 ring longitudes k·π/36 instead of k·2π/36 | killed (dipole bound) |
+
+### Progress-review corrections (status in WP15)
+- **F1–F4:** applied in WP11, unchanged. The new Horizons data test runs inside the `horizons`
+  test group of the data profile (serial), as F4 requires.
+- **F5:** applied in WP13; WP15 computes no analytic rate.
+- **WP14 PHY-012 / N-AST:** the N-AST differential with ±0.0003 is added (`PARK17-T3-ASTEROIDS`)
+  under the maintainer protocol (P-add, identical ICs, one estimator), non-gating like every
+  Park17 row while OI-38 is open; P-remove is reported next to it. Results below.
+- **PHY-014, WP16/WP17:** not touched by WP15.
+- **`cargo check --workspace` before every push:** done. Caveat: `73d28fe` builds but its CLI
+  refusal test still expected `asteroids` to be refused; fixed in `ea3d3b8` (test-only).
+  `879a567` builds; its clippy doc lint was fixed in `65a5f45`.
+- **NUM-023 guard, the ±0.1 tolerance and the human-only list:** untouched.
+
+### Deviations and NEEDS HUMAN REVIEW (WP15)
+1. **KBO identification (OI-24).** Only 3 of the 30 header KBO masses are tied to objects, by a
+   rule against Pitjeva & Pitjev 2018 Table 1 (fixed before any FerroAstro run, applied once;
+   ids confirmed by Horizons). The other 27 (total GM 1150 km³/s²) are not placed. The SSB residual
+   of 8.26 km is consistent with that. **NEEDS HUMAN REVIEW:** read IOM 392R-21-005 for the full
+   MA8001…MA8030 list; then extend `KBO_IDENTIFICATION` and tighten `SSB-FULL-SET-OFFSET-POS`.
+2. **Ring geometry (OI-24).** Plane, radius and count are Park 2021's; the phase (k·10° from the
+   ECLIPJ2000 x-axis), "fixed" rather than orbiting, and the SSB as centre are FerroAstro's.
+   **NEEDS HUMAN REVIEW.**
+3. **sb441-n373s.bsp, not sb441-n373.bsp.** REF-003 names `sb441-n373*.bsp`; only the "s" file is
+   pinned (MANIFEST note). Its comment area says it is an SPKMERGE subset of the full file over
+   1550–2650. That the JDEPOC states are identical in both files is UNVERIFIED.
+4. **DE441 vs DE440 asteroid states.** The sb441 file belongs to DE441 (directory
+   `asteroids_de441`); DE440's own asteroid ICs are not in any pinned product (WP11 deviation 5).
+5. **New scenario switches `kbos`, `kbo_ring` and the field `output.sample_bodies`** (CI-002
+   surface). **NEEDS HUMAN REVIEW** (requirement text for PR #2: CI-002's switch list).
+6. **NUM-009 "16 Majors".** Interpreted as the 11 DE440 majors + the 5 header asteroids with the
+   largest GMs, with the other 338 numbered asteroids Minor (the acceptance's "343 Minor bodies"
+   would count those 5 twice). **NEEDS HUMAN REVIEW** (NUM-009 text; Subbotin et al. 2023 should
+   name its 16).
+7. **NUM-009 B/A bound is non-gating (`blocked_by = "OI-42"`).** The < 2× acceptance presupposes
+   EIH Majors (NUM-009 statement and notes; OI-42 holds the EIH cost estimate). With Newtonian
+   Majors it cannot hold (force pairs alone ≈ 46×). Results below. **NEEDS HUMAN REVIEW:** keep
+   NUM-009's check for WP19 (EIH), or restate it.
+8. **`PARK17-T3-ASTEROIDS` tolerance ±0.0003** is agent-set from the red-team proposal and the
+   review correction; no requirement holds N-AST yet (PHY.md line 10). **NEEDS HUMAN REVIEW**
+   (a new requirement in PR #2).
+9. **μ* transcription (WP11 deviation 2):** now compared with the printed Eq. 2 of Park et al. 2021
+   by this agent; a human second reading remains for NUM-018 sign-off.
+10. **PHY-013 and the Park17 sum.** 532.3035 includes the Mercury self row (OI-09) and the
+    Mercury+Venus row; FerroAstro's full run has no counterpart rows. They cancel to −0.0003.
+
+### WP15 NUM-009 timing (checks 2a/2b; release, local, one process, nothing else running; log `target/wp15/nightly-num009-f642ae5.log`)
+16 Majors = the 11 DE440 majors + asteroids 1, 4, 2, 10, 511 (largest header GMs); 338 Minor.
+IAS15 default, Newtonian with the geocentric Moon, 10 Julian yr from JDEPOC, median of 5.
+| config | bodies | steps | median wall | µs/step |
+|---|---|---|---|---|
+| A: 16 Major | 16 | 5172 | 0.406 s | 78.5 |
+| B: 16 Major + 338 Minor (tiered) | 354 | 5172 | 11.458 s | 2215.3 |
+| C: 354 Major (all-mutual) | 354 | 5174 | 97.680 s (runs 78.9–205.2 s: noisy) | 18879 |
+
+- **2a NUM-009 B/A = 28.2, OUTSIDE < 2.** Non-gating (`blocked_by = "OI-42"`). As predicted in the
+  plan, Newtonian Majors cannot meet a bound written for EIH Majors (the pair work alone is
+  ≈ 46× A; IAS15's per-coordinate work scales with 354/16). The step count is unchanged (5172),
+  so tiering costs nothing in step size.
+- **2b B/C = 0.117 < 1: pass** (tiering is 8.5× cheaper than all-mutual).
+- 2c: the criterion bench compiles in the PR tier; it was not measured (CI-008: the fixed runner).
+
+### WP15 nightly result: PHY-013 N-SUM and N-AST (check 4; release, local, 32 threads)
+Logs: `target/wp15/nightly-phy013-73d28fe-dirty.log` (first run, code identical to `5274588`:
+**terminated by the nightly profile's 30-min limit** with the two full-model legs about 60% done
+and checkpointed) and `target/wp15/nightly-phy013-f642ae5-resumed.log` (after `f642ae5` raised the
+limit for this test: the full-model legs **resumed from their on-disk checkpoints** (CI-010), the
+other eight legs ran from scratch because completed legs are never cached; 1855 s wall). Evidence
+tables: `target/diffrun/phy013-*.{md,json}`.
+
+Setup: as WP14 (header.440 records at JDEPOC, Newtonian, IAS15 ε = 1e-9, f64, legs −969.570157 and
++1030.594114 yr, fit window JD 2086295–2816795, 8 304 passages per configuration, the WP14
+Park2017 estimator). Shared IC hash over Sun + Mercury `6d875b67…bada552` (the WP14 value) in all
+10 legs; every body's record identical in every leg that contains it (asserted by the harness).
+
+| configuration | bodies | ϖ̇ (″/cy) | jack-knife σ | IAS15 steps (both legs) |
+|---|---|---|---|---|
+| base (Sun + Mercury) | 2 | −0.000000 | 0.000000 | 635 160 |
+| base + 343 asteroids | 345 | 0.001242 | 0.000000 | 635 160 |
+| planets (WP14 full) | 11 | **532.303644** (= WP14) | 0.001558 | 1 034 228 |
+| planets + 343 asteroids | 354 | 532.304889 | 0.001558 | 1 034 228 |
+| full (+ 3 KBOs + 36-point ring) | 393 | **532.304907** | 0.001558 | 1 034 228 |
+
+| row | value (″/cy) | oracle | Δ | margin | status |
+|---|---|---|---|---|---|
+| **PHY-013 N-SUM (full)** | **532.304907** | 532.30 ± 0.01 | +0.004907 | **0.49** | **pass (gating)** |
+| N-AST, P-add (maintainer protocol) | 0.001242 | Park17 0.0012 ± 0.0003 | +0.000042 | 0.14 | within; non-gating (OI-38) |
+| N-AST, P-remove | 0.001245 | 0.0012 | +0.000045 | 0.15 | reported |
+| KBOs + ring increment | +0.000019 | — (plan estimate for the ring ≈ 2e-5) | — | — | reported |
+| Clemence 1947 planets-only | 531.504 | — | — | — | information only, never asserted (OI-01) |
+
+Readings:
+- The planets-only configuration reproduces WP14's full rate to every printed digit: restricting
+  the sampled bodies (`output.sample_bodies`) does not change the dynamics or the estimator input.
+- Adding 343 Minor bodies, 3 KBOs and the ring leaves the IAS15 step sequence unchanged (same step
+  counts); the global step criterion is set by Mercury and the Moon.
+- The PHY-013 margin (0.49) is mostly the difference between the Park17 row sum (532.3035) and
+  FerroAstro's full rate (+0.0014), plus the 0.0035 by which 532.3035 exceeds the rounded 532.30
+  the requirement states.
+- The jack-knife σ of the asteroid rows is the root-sum-square over configurations (WP14
+  deviation 8), so P-remove shows 0.0022 although the paired difference is far smaller.
+- The configuration table's "bodies" column lists the scenario's named bodies only; the small
+  bodies appear in the model line (393 bodies: 11 Major, 346 Minor, 36 Ring).
+
+### WP15 gate results (2026-10-15, local, toolchain 1.95.0, code tip `f642ae5`)
+| command | result |
+|---|---|
+| `cargo fmt --all --check` | pass |
+| `cargo clippy --workspace --all-targets --all-features -- -D warnings` | pass |
+| `cargo nextest run --workspace` + `cargo test --doc --workspace` | **235 passed, 37 skipped**; 15 doctests pass |
+| `cargo deny check` | advisories, bans, licenses, sources ok (no new packages in Cargo.lock) |
+| `RUSTDOCFLAGS="-D warnings" cargo doc --no-deps --workspace` | pass |
+| ruff check / ruff format --check / mypy strict / pytest | pass / pass / pass / 41 passed |
+| `reuse lint` | compliant |
+| `trace.py --check` | pass: 119 requirements, 482 citing tests (TRACE.md regenerated) |
+| `check_layers.py`, `lint_literals.py`, `lint_workflows.py` | 19 crates, 99 edges, 0 errors; 0 findings; 0 findings |
+| wasm32 build of `ferroastro-system` and `ferroastro-diffrun` | pass |
+| data tier, `ferroastro-system` (`--profile data --run-ignored only`) | 4/4 pass (incl. the two WP15 tests: round trip 0 km / 0 km/s; Horizons KBO identities, max 1.295e5 km) |
+| nightly: `nightly_phy013_n_sum_and_asteroid_differential` | pass (PHY-013 532.304907, margin 0.49) after one resume, see above |
+| nightly: `nightly_num009_tiered_minor_bodies_cost` | pass (2b 0.117); 2a 28.2 reported, non-gating (OI-42) |
+
+Not run in this WP: the full `tools/run_long_local.sh` (nightly tier ≈ 2 h with the WP12 Brouwer
+ensemble, plus the whole data tier). Every WP15 test of those tiers was run individually above.
