@@ -12,6 +12,7 @@ repository.workspace = true
 
 [dependencies]
 ferroastro-core.workspace = true
+ferroastro-real.workspace = true
 thiserror.workspace = true
 
 [dev-dependencies]

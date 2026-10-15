@@ -23,17 +23,22 @@
 //! proposed successor is smaller than `safety·Δt` is rejected and redone; growth is capped at
 //! `Δt/safety`.
 //!
-//! # Units
-//! The integrator is unit-agnostic: it advances raw `f64` coordinates of a second-order system
+//! # Units and precision
+//! The integrator is unit-agnostic: it advances raw coordinates of a second-order system
 //! `ẍ = f(t, x, ẋ)`. Typed quantities (ADR-0001) live at the force-model boundary
-//! (`ferroastro-forces`), which documents its internal units.
+//! (`ferroastro-forces`), which documents its internal units. The scalar is any backend
+//! `R: Real` (DEP-007, NUM-006); `Ias15` alone means `Ias15<f64>`, whose arithmetic is exactly that
+//! of the M0 `f64` integrator. The step-size controller (a choice of `Δt`, not part of the
+//! solution's accuracy) is evaluated in `f64` for every backend.
 
 use crate::IntegratorError;
 use crate::compensated::kahan_add;
 use crate::radau::{NODES, Radau, TERMS};
+use ferroastro_real::Real;
 
-/// A second-order system `ẍ = f(t, x, ẋ)` in flat coordinates (usually 3 per body).
-pub trait SecondOrderSystem {
+/// A second-order system `ẍ = f(t, x, ẋ)` in flat coordinates (usually 3 per body), evaluated in
+/// backend `R` (default `f64`).
+pub trait SecondOrderSystem<R: Real = f64> {
     /// Number of coordinates.
     fn dimension(&self) -> usize;
 
@@ -42,13 +47,7 @@ pub trait SecondOrderSystem {
     ///
     /// # Errors
     /// A force-model error ([`IntegratorError::Dynamics`]) if the configuration is singular.
-    fn acceleration(
-        &self,
-        t: f64,
-        x: &[f64],
-        v: &[f64],
-        a: &mut [f64],
-    ) -> Result<(), IntegratorError>;
+    fn acceleration(&self, t: R, x: &[R], v: &[R], a: &mut [R]) -> Result<(), IntegratorError>;
 }
 
 /// IAS15 settings. The defaults are those of Rein & Spiegel 2015.
@@ -67,6 +66,10 @@ pub struct Ias15Config {
     pub min_dt: f64,
     /// Maximum consecutive rejections of one step before failing with `FA-E0401`. Default 64.
     pub max_rejections: u32,
+    /// Keep the polynomial of the last accepted step for [`Ias15::dense_state`] and
+    /// [`Ias15::locate_event`] (NUM-010). Off by default: it copies the step's coefficients after
+    /// every step, which the plain propagation does not need.
+    pub dense_output: bool,
 }
 
 impl Default for Ias15Config {
@@ -78,6 +81,7 @@ impl Default for Ias15Config {
             pc_tolerance: 1e-16,
             min_dt: 0.0,
             max_rejections: 64,
+            dense_output: false,
         }
     }
 }
@@ -128,11 +132,11 @@ pub struct Ias15Stats {
 
 /// What one accepted step did.
 #[derive(Debug, Clone, Copy, PartialEq)]
-pub struct StepReport {
+pub struct StepReport<R: Real = f64> {
     /// Time at the end of the step.
-    pub t: f64,
+    pub t: R,
     /// Step actually taken.
-    pub dt_done: f64,
+    pub dt_done: R,
     /// Predictor–corrector iterations of the accepted attempt.
     pub iterations: u32,
     /// True when the step was shortened to land exactly on the requested limit.
@@ -152,28 +156,65 @@ const X_DIV: [f64; NODES] = [2.0, 6.0, 12.0, 20.0, 30.0, 42.0, 56.0, 72.0];
 /// Coefficient divisors of the velocity integral, `m+1` for `τᵐ`, m = 0…7.
 const V_DIV: [f64; NODES] = [1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0];
 
-/// The IAS15 integrator state.
+/// The IAS15 integrator state, in backend `R` (default `f64`).
 #[derive(Debug, Clone)]
-pub struct Ias15 {
+pub struct Ias15<R: Real = f64> {
     cfg: Ias15Config,
-    rc: Radau,
+    rc: Radau<R>,
     n: usize,
-    t: f64,
-    t_comp: f64,
-    x: Vec<f64>,
-    v: Vec<f64>,
-    x_comp: Vec<f64>,
-    v_comp: Vec<f64>,
-    dt_trial: f64,
+    t: R,
+    t_comp: R,
+    x: Vec<R>,
+    v: Vec<R>,
+    x_comp: Vec<R>,
+    v_comp: Vec<R>,
+    dt_trial: R,
     /// `b[m-1][i]` = `Bₘ` of coordinate `i` (IAS15's `b_{m−1}`).
-    b: [Vec<f64>; TERMS],
-    g: [Vec<f64>; TERMS],
-    a0: Vec<f64>,
-    an: Vec<f64>,
-    xs: Vec<f64>,
-    vs: Vec<f64>,
-    b7_prev: Vec<f64>,
+    b: [Vec<R>; TERMS],
+    g: [Vec<R>; TERMS],
+    a0: Vec<R>,
+    an: Vec<R>,
+    xs: Vec<R>,
+    vs: Vec<R>,
+    b7_prev: Vec<R>,
     stats: Ias15Stats,
+    last: Option<LastStep<R>>,
+}
+
+/// The polynomial of the last accepted step (dense output, NUM-010).
+#[derive(Debug, Clone)]
+struct LastStep<R: Real> {
+    t0: R,
+    dt: R,
+    /// Start-of-step position and velocity, compensation applied (`x − x_comp`).
+    x0: Vec<R>,
+    v0: Vec<R>,
+    a0: Vec<R>,
+    b: [Vec<R>; TERMS],
+}
+
+impl<R: Real> LastStep<R> {
+    /// Position and velocity at step fraction `tau` (the integrals of the step's acceleration
+    /// polynomial: degree 9 in position, 8 in velocity).
+    #[expect(
+        clippy::indexing_slicing,
+        reason = "all vectors have the integrator dimension; i < x.len()"
+    )]
+    fn eval(&self, tau: R, x: &mut [R], v: &mut [R]) {
+        for i in 0..x.len().min(v.len()).min(self.x0.len()) {
+            let mut sx = self.b[TERMS - 1][i] / div::<R>(&X_DIV, TERMS);
+            let mut sv = self.b[TERMS - 1][i] / div::<R>(&V_DIV, TERMS);
+            for m in (0..TERMS - 1).rev() {
+                sx = sx.mul_add(tau, self.b[m][i] / div::<R>(&X_DIV, m + 1));
+                sv = sv.mul_add(tau, self.b[m][i] / div::<R>(&V_DIV, m + 1));
+            }
+            sx = sx.mul_add(tau, self.a0[i] / div::<R>(&X_DIV, 0));
+            sv = sv.mul_add(tau, self.a0[i] / div::<R>(&V_DIV, 0));
+            let tdt = tau * self.dt;
+            x[i] = self.x0[i] + tdt * sx.mul_add(tdt, self.v0[i]);
+            v[i] = self.v0[i] + tdt * sv;
+        }
+    }
 }
 
 fn check_len(what: &'static str, got: usize, expected: usize) -> Result<(), IntegratorError> {
@@ -188,11 +229,16 @@ fn check_len(what: &'static str, got: usize, expected: usize) -> Result<(), Inte
     }
 }
 
-fn max_abs(values: &[f64]) -> f64 {
-    values.iter().fold(0.0_f64, |m, &x| m.max(x.abs()))
+fn max_abs<R: Real>(values: &[R]) -> R {
+    values.iter().fold(R::ZERO, |m, &x| m.max(x.abs()))
 }
 
-impl Ias15 {
+/// `X_DIV[k]` or `V_DIV[k]` as a backend value (exact small integers).
+fn div<R: Real>(table: &[f64; NODES], k: usize) -> R {
+    R::from_f64(table.get(k).copied().unwrap_or(1.0))
+}
+
+impl<R: Real> Ias15<R> {
     /// Start an integration at time `t0` with positions `x0`, velocities `v0` and a first trial
     /// step `dt0` (its sign sets the direction; the step control adapts it from the first step).
     ///
@@ -201,35 +247,35 @@ impl Ias15 {
     /// slices do not match `dimension`, `FA-E0400` for non-finite initial values.
     pub fn new(
         dimension: usize,
-        t0: f64,
-        x0: &[f64],
-        v0: &[f64],
-        dt0: f64,
+        t0: R,
+        x0: &[R],
+        v0: &[R],
+        dt0: R,
         cfg: Ias15Config,
     ) -> Result<Self, IntegratorError> {
         cfg.validate()?;
         check_len("initial position", x0.len(), dimension)?;
         check_len("initial velocity", v0.len(), dimension)?;
-        if !(dt0.is_finite() && dt0 != 0.0) {
+        if !(dt0.is_finite() && dt0 != R::ZERO) {
             return Err(IntegratorError::Config {
                 name: "dt0",
-                value: dt0,
+                value: dt0.to_f64(),
                 valid: "finite and non-zero",
             });
         }
         if !t0.is_finite() || x0.iter().chain(v0).any(|z| !z.is_finite()) {
             return Err(IntegratorError::NonFinite {
                 what: "initial state",
-                t: t0,
+                t: t0.to_f64(),
             });
         }
-        let zeros = || vec![0.0; dimension];
+        let zeros = || vec![R::ZERO; dimension];
         Ok(Self {
             cfg,
             rc: Radau::new(),
             n: dimension,
             t: t0,
-            t_comp: 0.0,
+            t_comp: R::ZERO,
             x: x0.to_vec(),
             v: v0.to_vec(),
             x_comp: zeros(),
@@ -243,30 +289,31 @@ impl Ias15 {
             vs: zeros(),
             b7_prev: zeros(),
             stats: Ias15Stats::default(),
+            last: None,
         })
     }
 
     /// Current time.
     #[must_use]
-    pub const fn time(&self) -> f64 {
+    pub const fn time(&self) -> R {
         self.t
     }
 
     /// Current positions.
     #[must_use]
-    pub fn positions(&self) -> &[f64] {
+    pub fn positions(&self) -> &[R] {
         &self.x
     }
 
     /// Current velocities.
     #[must_use]
-    pub fn velocities(&self) -> &[f64] {
+    pub fn velocities(&self) -> &[R] {
         &self.v
     }
 
     /// The step the next call to [`Ias15::step`] will try.
     #[must_use]
-    pub const fn next_dt(&self) -> f64 {
+    pub const fn next_dt(&self) -> R {
         self.dt_trial
     }
 
@@ -287,7 +334,7 @@ impl Ias15 {
     pub fn reverse(&mut self) {
         self.dt_trial = -self.dt_trial;
         for bm in &mut self.b {
-            bm.fill(0.0);
+            bm.fill(R::ZERO);
         }
     }
 
@@ -296,17 +343,17 @@ impl Ias15 {
         clippy::indexing_slicing,
         reason = "all state vectors have length self.n, checked in Ias15::new"
     )]
-    fn predict(&mut self, tau: f64, dt: f64) {
+    fn predict(&mut self, tau: R, dt: R) {
         for i in 0..self.n {
             // Horner in τ for Σ_m coef_m τ^m / div with coef_0 = a0, coef_m = B_m.
-            let mut sx = self.b[TERMS - 1][i] / X_DIV[TERMS];
-            let mut sv = self.b[TERMS - 1][i] / V_DIV[TERMS];
+            let mut sx = self.b[TERMS - 1][i] / div::<R>(&X_DIV, TERMS);
+            let mut sv = self.b[TERMS - 1][i] / div::<R>(&V_DIV, TERMS);
             for m in (0..TERMS - 1).rev() {
-                sx = sx.mul_add(tau, self.b[m][i] / X_DIV[m + 1]);
-                sv = sv.mul_add(tau, self.b[m][i] / V_DIV[m + 1]);
+                sx = sx.mul_add(tau, self.b[m][i] / div::<R>(&X_DIV, m + 1));
+                sv = sv.mul_add(tau, self.b[m][i] / div::<R>(&V_DIV, m + 1));
             }
-            sx = sx.mul_add(tau, self.a0[i] / X_DIV[0]);
-            sv = sv.mul_add(tau, self.a0[i] / V_DIV[0]);
+            sx = sx.mul_add(tau, self.a0[i] / div::<R>(&X_DIV, 0));
+            sv = sv.mul_add(tau, self.a0[i] / div::<R>(&V_DIV, 0));
             let tdt = tau * dt;
             let dx = tdt * sx.mul_add(tdt, self.v[i]);
             let dv = tdt * sv;
@@ -323,7 +370,7 @@ impl Ias15 {
     fn g_from_b(&mut self) {
         for k in 1..=TERMS {
             for i in 0..self.n {
-                let mut s = 0.0;
+                let mut s = R::ZERO;
                 for m in k..=TERMS {
                     s = self.rc.d[k][m].mul_add(self.b[m - 1][i], s);
                 }
@@ -353,8 +400,8 @@ impl Ias15 {
     }
 
     /// Scale `B` for a retried step from the same start: `a(τ_old) = a(q τ_new)`.
-    fn rescale_b(&mut self, q: f64) {
-        let mut qm = 1.0;
+    fn rescale_b(&mut self, q: R) {
+        let mut qm = R::ONE;
         for bm in &mut self.b {
             qm *= q;
             for z in bm.iter_mut() {
@@ -370,8 +417,8 @@ impl Ias15 {
         clippy::needless_range_loop,
         reason = "fixed TERMS x n tables; indices bounded by TERMS and self.n"
     )]
-    fn extrapolate_b(&mut self, q: f64) {
-        // Binomial coefficients C(m, k) for m, k <= 7, built by Pascal's rule.
+    fn extrapolate_b(&mut self, q: R) {
+        // Binomial coefficients C(m, k) for m, k <= 7, built by Pascal's rule (exact integers).
         let mut binom = [[0.0_f64; NODES]; NODES];
         for m in 0..NODES {
             binom[m][0] = 1.0;
@@ -380,14 +427,14 @@ impl Ias15 {
             }
         }
         for i in 0..self.n {
-            let old: [f64; NODES] =
-                std::array::from_fn(|m| if m == 0 { 0.0 } else { self.b[m - 1][i] });
-            let mut qk = 1.0;
+            let old: [R; NODES] =
+                std::array::from_fn(|m| if m == 0 { R::ZERO } else { self.b[m - 1][i] });
+            let mut qk = R::ONE;
             for k in 1..=TERMS {
                 qk *= q;
-                let mut s = 0.0;
+                let mut s = R::ZERO;
                 for m in k..=TERMS {
-                    s = binom[m][k].mul_add(old[m], s);
+                    s = R::from_f64(binom[m][k]).mul_add(old[m], s);
                 }
                 self.b[k - 1][i] = qk * s;
             }
@@ -397,11 +444,11 @@ impl Ias15 {
     /// Predictor–corrector iterations for a step of length `dt`. Returns the iteration count,
     /// the largest acceleration component seen, and whether the iteration ran out (hit
     /// `max_iterations` without converging or stalling).
-    fn correct<S: SecondOrderSystem + ?Sized>(
+    fn correct<S: SecondOrderSystem<R> + ?Sized>(
         &mut self,
         sys: &S,
-        dt: f64,
-    ) -> Result<(u32, f64, Exit), IntegratorError> {
+        dt: R,
+    ) -> Result<(u32, R, Exit), IntegratorError> {
         self.g_from_b();
         let mut last_err = f64::INFINITY;
         let mut iterations = 0_u32;
@@ -417,7 +464,7 @@ impl Ias15 {
                 if self.an.iter().any(|z| !z.is_finite()) {
                     return Err(IntegratorError::NonFinite {
                         what: "acceleration",
-                        t: t_node,
+                        t: t_node.to_f64(),
                     });
                 }
                 max_a = max_a.max(max_abs(&self.an));
@@ -426,8 +473,12 @@ impl Ias15 {
             let change = self.b[TERMS - 1]
                 .iter()
                 .zip(&self.b7_prev)
-                .fold(0.0_f64, |m, (a, b)| m.max((a - b).abs()));
-            let err = if max_a > 0.0 { change / max_a } else { 0.0 };
+                .fold(R::ZERO, |m, (&a, &b)| m.max((a - b).abs()));
+            let err = if max_a > R::ZERO {
+                (change / max_a).to_f64()
+            } else {
+                0.0
+            };
             // At least two iterations: with a zero predictor, B7 can look converged after one
             // pass while the lower coefficients are not.
             let converged = iterations >= 2 && err <= self.cfg.pc_tolerance;
@@ -447,21 +498,43 @@ impl Ias15 {
         }
     }
 
+    /// Keep the converged polynomial of the step about to be taken (dense output, NUM-010).
+    fn save_last_step(&mut self, dt: R) {
+        self.last = Some(LastStep {
+            t0: self.t,
+            dt,
+            x0: self
+                .x
+                .iter()
+                .zip(&self.x_comp)
+                .map(|(&a, &c)| a - c)
+                .collect(),
+            v0: self
+                .v
+                .iter()
+                .zip(&self.v_comp)
+                .map(|(&a, &c)| a - c)
+                .collect(),
+            a0: self.a0.clone(),
+            b: self.b.clone(),
+        });
+    }
+
     /// Compensated update of `x`, `v` to the end (`τ = 1`) of a converged step of length `dt`.
     #[expect(
         clippy::indexing_slicing,
         reason = "fixed TERMS x n tables; indices bounded by TERMS and self.n"
     )]
-    fn advance_state(&mut self, dt: f64) -> Result<(), IntegratorError> {
+    fn advance_state(&mut self, dt: R) -> Result<(), IntegratorError> {
         for i in 0..self.n {
-            let mut sx = self.b[TERMS - 1][i] / X_DIV[TERMS];
-            let mut sv = self.b[TERMS - 1][i] / V_DIV[TERMS];
+            let mut sx = self.b[TERMS - 1][i] / div::<R>(&X_DIV, TERMS);
+            let mut sv = self.b[TERMS - 1][i] / div::<R>(&V_DIV, TERMS);
             for m in (0..TERMS - 1).rev() {
-                sx += self.b[m][i] / X_DIV[m + 1];
-                sv += self.b[m][i] / V_DIV[m + 1];
+                sx += self.b[m][i] / div::<R>(&X_DIV, m + 1);
+                sv += self.b[m][i] / div::<R>(&V_DIV, m + 1);
             }
-            sx += self.a0[i] / X_DIV[0];
-            sv += self.a0[i] / V_DIV[0];
+            sx += self.a0[i] / div::<R>(&X_DIV, 0);
+            sv += self.a0[i] / div::<R>(&V_DIV, 0);
             let dx = dt * sx.mul_add(dt, self.v[i]);
             let dv = dt * sv;
             kahan_add(&mut self.x[i], &mut self.x_comp[i], dx);
@@ -470,14 +543,40 @@ impl Ias15 {
         if self.x.iter().chain(&self.v).any(|z| !z.is_finite()) {
             return Err(IntegratorError::NonFinite {
                 what: "position",
-                t: self.t,
+                t: self.t.to_f64(),
             });
         }
         Ok(())
     }
 
-    /// Take one accepted step, never stepping past `t_limit` (pass `f64::INFINITY` or
-    /// `f64::NEG_INFINITY` for no limit in the direction of integration).
+    /// Step-size proposal after a converged step of length `dt` (Rein & Spiegel 2015 global
+    /// criterion, Eq. 11): `dt·(ε/b̃)^(1/7)` with `b̃ = max|B₇|/max|a|`; the factor is evaluated
+    /// in f64 for every backend.
+    fn proposal(&self, dt: R, max_a: R) -> Result<R, IntegratorError> {
+        let safety = R::from_f64(self.cfg.safety);
+        let b7 = max_abs(&self.b[TERMS - 1]);
+        let ratio = if max_a > R::ZERO {
+            (b7 / max_a).to_f64()
+        } else {
+            0.0
+        };
+        let dt_new = if ratio > 0.0 && ratio.is_finite() {
+            dt * R::from_f64((self.cfg.epsilon / ratio).powf(1.0 / 7.0))
+        } else {
+            dt / safety
+        };
+        if dt_new.is_finite() {
+            Ok(dt_new)
+        } else {
+            Err(IntegratorError::NonFinite {
+                what: "step",
+                t: self.t.to_f64(),
+            })
+        }
+    }
+
+    /// Take one accepted step, never stepping past `t_limit` (pass an infinite value, e.g.
+    /// `R::from_f64(f64::INFINITY)`, for no limit in the direction of integration).
     ///
     /// Position and velocity at the end of the step are, with `τ = 1`,
     /// `x = x₀ + Δt·v₀ + Δt²·(a₀/2 + B₁/6 + B₂/12 + … + B₇/72)` and
@@ -485,20 +584,21 @@ impl Ias15 {
     ///
     /// # Errors
     /// Force-model errors, `FA-E0400` on non-finite values, `FA-E0401` when the step collapses.
-    pub fn step<S: SecondOrderSystem + ?Sized>(
+    pub fn step<S: SecondOrderSystem<R> + ?Sized>(
         &mut self,
         sys: &S,
-        t_limit: f64,
-    ) -> Result<StepReport, IntegratorError> {
+        t_limit: R,
+    ) -> Result<StepReport<R>, IntegratorError> {
         check_len("system", sys.dimension(), self.n)?;
         sys.acceleration(self.t, &self.x, &self.v, &mut self.a0)?;
         self.stats.force_evaluations += 1;
         if self.a0.iter().any(|z| !z.is_finite()) {
             return Err(IntegratorError::NonFinite {
                 what: "acceleration",
-                t: self.t,
+                t: self.t.to_f64(),
             });
         }
+        let safety = R::from_f64(self.cfg.safety);
         let mut rejections = 0_u32;
         loop {
             let remaining = t_limit - self.t;
@@ -507,49 +607,36 @@ impl Ias15 {
             if clamped {
                 dt = remaining;
             }
-            if dt == 0.0 {
+            if dt == R::ZERO {
                 return Ok(StepReport {
                     t: self.t,
-                    dt_done: 0.0,
+                    dt_done: R::ZERO,
                     iterations: 0,
                     reached_limit: true,
                 });
             }
             let (iterations, max_a, exit) = self.correct(sys, dt)?;
 
-            // Step-size control (Rein & Spiegel 2015 global criterion).
-            let b7 = max_abs(&self.b[TERMS - 1]);
-            let ratio = if max_a > 0.0 { b7 / max_a } else { 0.0 };
-            let mut dt_new = if ratio > 0.0 && ratio.is_finite() {
-                dt * (self.cfg.epsilon / ratio).powf(1.0 / 7.0)
-            } else {
-                dt / self.cfg.safety
-            };
-            if !dt_new.is_finite() {
-                return Err(IntegratorError::NonFinite {
-                    what: "step",
-                    t: self.t,
-                });
-            }
-            if dt_new.abs() < self.cfg.safety * dt.abs() {
+            let mut dt_new = self.proposal(dt, max_a)?;
+            if dt_new.abs() < safety * dt.abs() {
                 rejections += 1;
                 self.stats.rejected += 1;
-                if dt_new.abs() <= self.cfg.min_dt
-                    || dt_new == 0.0
+                if dt_new.abs().to_f64() <= self.cfg.min_dt
+                    || dt_new == R::ZERO
                     || rejections > self.cfg.max_rejections
                 {
                     return Err(IntegratorError::StepUnderflow {
-                        dt: dt_new,
+                        dt: dt_new.to_f64(),
                         min_dt: self.cfg.min_dt,
-                        t: self.t,
+                        t: self.t.to_f64(),
                     });
                 }
                 self.rescale_b(dt_new / dt);
                 self.dt_trial = dt_new;
                 continue;
             }
-            if dt_new.abs() > dt.abs() / self.cfg.safety {
-                dt_new = dt / self.cfg.safety;
+            if dt_new.abs() > dt.abs() / safety {
+                dt_new = dt / safety;
             }
             // When clamped, `dt_new` was computed from the short step; keep the step the
             // controller had proposed before clamping, if that is larger.
@@ -559,12 +646,15 @@ impl Ias15 {
                 dt_new
             };
 
+            if self.cfg.dense_output {
+                self.save_last_step(dt);
+            }
             self.advance_state(dt)?;
             kahan_add(&mut self.t, &mut self.t_comp, dt);
             if clamped {
                 // Land exactly on the limit.
                 self.t = t_limit;
-                self.t_comp = 0.0;
+                self.t_comp = R::ZERO;
             }
             self.stats.steps += 1;
             match exit {
@@ -579,14 +669,14 @@ impl Ias15 {
                 }
             }
             let q = next / dt;
-            if q.abs() <= 1.0 / self.cfg.safety {
+            if q.abs() <= R::ONE / safety {
                 self.extrapolate_b(q);
             } else {
                 // Only after a step shortened to hit `t_limit`: extrapolating that short step's
                 // polynomial by a large factor amplifies its round-off, so restart the predictor
                 // from zero (as on the first step) instead.
                 for bm in &mut self.b {
-                    bm.fill(0.0);
+                    bm.fill(R::ZERO);
                 }
                 self.stats.cold_starts += 1;
             }
@@ -600,6 +690,103 @@ impl Ias15 {
         }
     }
 
+    /// The time span `(t₀, t₀ + Δt)` of the last accepted step, when dense output is on.
+    #[must_use]
+    pub fn last_step_span(&self) -> Option<(R, R)> {
+        self.last.as_ref().map(|l| (l.t0, l.t0 + l.dt))
+    }
+
+    /// Dense output (NUM-010): position and velocity at time `t` inside the last accepted step,
+    /// from that step's collocation polynomial, written into `x` and `v`.
+    ///
+    /// # Errors
+    /// `FA-E0402` if dense output is off, no step was taken yet, or `t` lies outside the last
+    /// step; `FA-E0403` if `x` or `v` has the wrong length.
+    pub fn dense_state(&self, t: R, x: &mut [R], v: &mut [R]) -> Result<(), IntegratorError> {
+        check_len("dense-output position", x.len(), self.n)?;
+        check_len("dense-output velocity", v.len(), self.n)?;
+        let last = self.last.as_ref().ok_or(IntegratorError::Config {
+            name: "dense_output",
+            value: 0.0,
+            valid: "enabled (Ias15Config::dense_output) and at least one accepted step",
+        })?;
+        let tau = (t - last.t0) / last.dt;
+        // Accept round-off excursions of a few ulp at either end of the step.
+        let slack = R::EPSILON.scale(16.0);
+        if !(tau >= -slack && tau <= R::ONE + slack) {
+            return Err(IntegratorError::Config {
+                name: "dense-output time (fraction of the last step)",
+                value: tau.to_f64(),
+                valid: "0 <= tau <= 1",
+            });
+        }
+        let tau = tau.max(R::ZERO).min(R::ONE);
+        last.eval(tau, x, v);
+        Ok(())
+    }
+
+    /// Event location (NUM-010): the time of a sign change of `g(t, x, v)` inside the last
+    /// accepted step, found on the dense-output polynomial by the Illinois variant of regula
+    /// falsi in the step fraction `τ` until the bracket is below 4 ulp of 1 (or 200 iterations). Returns `None` when `g`
+    /// has the same sign at both ends of the step. For a heliocentric orbit,
+    /// `g = r·v` locates perihelion (rising through zero) and aphelion (falling).
+    ///
+    /// # Errors
+    /// The errors of [`Ias15::dense_state`].
+    pub fn locate_event<G>(&self, g: G) -> Result<Option<R>, IntegratorError>
+    where
+        G: Fn(R, &[R], &[R]) -> R,
+    {
+        let Some(last) = self.last.as_ref() else {
+            return Err(IntegratorError::Config {
+                name: "dense_output",
+                value: 0.0,
+                valid: "enabled (Ias15Config::dense_output) and at least one accepted step",
+            });
+        };
+        let t0 = last.t0;
+        // Solve in the step fraction τ ∈ [0, 1] (exact end points), then map to t = t₀ + τΔt.
+        let (mut x, mut v) = (vec![R::ZERO; self.n], vec![R::ZERO; self.n]);
+        let mut at = |tau: R| -> R {
+            last.eval(tau, &mut x, &mut v);
+            g(tau.mul_add(last.dt, t0), &x, &v)
+        };
+        let to_t = |tau: R| tau.mul_add(last.dt, t0);
+        let (mut a, mut b) = (R::ZERO, R::ONE);
+        let (mut fa, mut fb) = (at(a), at(b));
+        if fa == R::ZERO {
+            return Ok(Some(to_t(a)));
+        }
+        if (fa < R::ZERO) == (fb < R::ZERO) {
+            return Ok(None);
+        }
+        let mut side = 0_i8;
+        let tiny = R::EPSILON.scale(4.0);
+        for _ in 0..200 {
+            let c = (a * fb - b * fa) / (fb - fa);
+            let fc = at(c);
+            if fc == R::ZERO || (b - a).abs() <= tiny {
+                return Ok(Some(to_t(c)));
+            }
+            if (fc < R::ZERO) == (fb < R::ZERO) {
+                b = c;
+                fb = fc;
+                if side == -1 {
+                    fa = fa.scale(0.5);
+                }
+                side = -1;
+            } else {
+                a = c;
+                fa = fc;
+                if side == 1 {
+                    fb = fb.scale(0.5);
+                }
+                side = 1;
+            }
+        }
+        Ok(Some(to_t((a * fb - b * fa) / (fb - fa))))
+    }
+
     /// Integrate to `t_end`, calling `observer` after every accepted step.
     ///
     /// # Errors
@@ -607,26 +794,26 @@ impl Ias15 {
     pub fn integrate_to<S, F>(
         &mut self,
         sys: &S,
-        t_end: f64,
+        t_end: R,
         mut observer: F,
     ) -> Result<(), IntegratorError>
     where
-        S: SecondOrderSystem + ?Sized,
-        F: FnMut(&Self, &StepReport) -> Result<(), IntegratorError>,
+        S: SecondOrderSystem<R> + ?Sized,
+        F: FnMut(&Self, &StepReport<R>) -> Result<(), IntegratorError>,
     {
         if !t_end.is_finite() {
             return Err(IntegratorError::Config {
                 name: "t_end",
-                value: t_end,
+                value: t_end.to_f64(),
                 valid: "finite",
             });
         }
-        if (t_end - self.t) * self.dt_trial < 0.0 {
+        if (t_end - self.t) * self.dt_trial < R::ZERO {
             self.reverse();
         }
         loop {
             let report = self.step(sys, t_end)?;
-            if report.dt_done != 0.0 {
+            if report.dt_done != R::ZERO {
                 observer(self, &report)?;
             }
             if report.reached_limit {

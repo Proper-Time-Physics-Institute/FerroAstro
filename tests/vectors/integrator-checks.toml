@@ -101,3 +101,31 @@ retrieved = "2026-10-15"
 tolerance = { rel = 0.02 }
 tolerance_rationale = "PROVISIONAL (WP7 brief): 2 % on the median of 5 alternated runs. NUM-006 says 'unchanged' without a number; 2 % is above the run-to-run scatter of a median on a shared 32-thread machine and below the 10-30 % that a missed inlining or a boxed scalar would cost. NEEDS HUMAN REVIEW: confirm the band."
 verified_by = "WP7 builder agent, 2026-10-15: written before the first comparison run; tools/bench_num006.py reads the band from this vector."
+
+[[vector]]
+id = "NUM010-EVENT-LOCATION"
+requirement = ["NUM-010"]
+quantity = "largest |t_event - t_true| of the perihelion events (r.v = 0, rising) located on the IAS15 dense-output polynomial, where t_true is the root of r.v on the integrated trajectory itself (|r.v| / |d(r.v)/dt| after integrating exactly to t_event)"
+value = 0.0
+unit = "s"
+kind = "analytic"
+source = "NUM-010 acceptance: perihelion events are located to <= 1e-6 s. The dense output is the step's own collocation polynomial, so a correct event finder puts the root of r.v where the integrated trajectory has it; the residual is the location error."
+citation = "FerroAstro docs/requirements/NUM.md NUM-010"
+retrieved = "2026-10-15"
+tolerance = { abs = 1.0e-6 }
+tolerance_rationale = "NUM-010's own bound (1e-6 s). Written in WP7 before the first run."
+verified_by = "WP7 builder agent, 2026-10-15: bound copied from NUM-010; measured values in IMPLEMENTATION-NOTES WP7."
+
+[[vector]]
+id = "NUM010-KEPLER-PERIHELION-TIMES"
+requirement = ["NUM-010"]
+quantity = "largest |t_event - t_analytic| over 100 perihelion passages of a Keplerian Mercury-like orbit (mu = DE440 GM_sun, SW92 a and e) integrated by IAS15 in double-double; t_analytic = P/2 + k P from an aphelion start"
+value = 0.0
+unit = "s"
+kind = "analytic"
+source = "Closed Kepler ellipse: perihelion recurs every P = 2 pi sqrt(a^3/mu). NUM-010 acceptance: on a Kepler orbit the perihelion times match the analytic values to round-off. In double-double the round-off is ~1e-32 relative, so the event times are limited by the step truncation at epsilon = 1e-9 and must still meet the 1e-6 s location bound."
+citation = "Murray & Dermott 1999, Solar System Dynamics, Sec. 2.4 (Kepler's third law); FerroAstro docs/requirements/NUM.md NUM-010"
+retrieved = "2026-10-15"
+tolerance = { abs = 1.0e-6 }
+tolerance_rationale = "NUM-010's location bound applied to the double-double run, which removes round-off as an explanation. The f64 run is reported, not asserted against the analytic times: after ~7000 steps its along-track round-off (Brouwer t^(3/2), ~1e-11 rad) amounts to ~1e-5 s, which is round-off by NUM-010's own wording. Written in WP7 before the first run."
+verified_by = "WP7 builder agent, 2026-10-15: analytic (Kepler's third law); measured values in IMPLEMENTATION-NOTES WP7."

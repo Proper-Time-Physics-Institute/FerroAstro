@@ -276,6 +276,7 @@ name = "ferroastro-integrators"
 version = "0.0.0"
 dependencies = [
  "ferroastro-core",
+ "ferroastro-real",
  "ferroastro-vectors",
  "thiserror",
 ]
