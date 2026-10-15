@@ -46,7 +46,9 @@ statement: >-
   The license allow-list SHALL be Apache-2.0, Apache-2.0 WITH LLVM-exception,
   MIT, BSD-2-Clause, BSD-3-Clause, ISC, Zlib, Unicode-3.0 / Unicode-DFS-2016,
   CC0-1.0 and MPL-2.0. MPL-2.0 SHALL be allowed only for crates named in a
-  reviewed exception list, initially `hifitime` and `anise`.
+  reviewed exception list, initially `hifitime` (production) and `anise`
+  (**dev-dependency / test oracle only** until the SOFA terms reaching it via
+  `sofars` are cleared, OI-16; maintainer decision 2026-10-14).
 acceptance: >-
   deny.toml contains exactly this allow-list and an MPL-2.0 exception list of
   {hifitime, anise}. A canary MPL-2.0 crate not on the exception list fails

@@ -340,8 +340,12 @@ statement: >-
   initial conditions with one rung toggled and outputs Δϖ̇ with a per-body and
   interaction-term decomposition.
 acceptance: >-
-  The harness reproduces GR 42.98 ″/cy, J₂ 0.0286 ″/cy (J₂ = 2.25×10⁻⁷) and
-  LT −0.0020 ″/cy, each within 10⁻⁴ ″/cy.
+  Split by rung type (maintainer decision 2026-10-14, Journal #8):
+  (a) isolated single-body terms (Sun + Mercury only: GR 42.98 ″/cy, J₂
+  0.0286 ″/cy at J₂ = 2.25×10⁻⁷, LT −0.0020 ″/cy) agree with the analytic
+  formulas within 10⁻⁴ ″/cy; (b) N-body differential contributions agree with
+  the Park 2017 Table 3 values within ±0.005 ″/cy (as PHY-012), with
+  interaction cross terms reported separately.
 source: >-
   docs/strategy/journal/04-numerical-methods.md §3.2 and NUM-013.
 parent: null
@@ -353,8 +357,8 @@ notes: >-
   the PHY tolerances (GR ±0.001, J2 ±0.0005, LT ±0.0002). Journal #4 R4 notes
   that in an N-body run, planet-interaction residuals in the GR differential
   are ≲ 10⁻² ″/cy, so 10⁻⁴ is achievable only when the comparison isolates the
-  single-body term (e.g. Sun + Mercury only). The comparison basis SHALL be
-  documented. Park's switch-on/off protocol is UNVERIFIED.
+  single-body term (e.g. Sun + Mercury only). RESOLVED by the split acceptance
+  above. The comparison basis SHALL be documented. Park's switch-on/off protocol is UNVERIFIED.
 ```
 
 ### NUM-014 — Frame utilities, inertial default
@@ -508,9 +512,11 @@ related: [PHY-010, PHY-011, NUM-013]
 notes: >-
   The LT form used here (IERS-style, Journal #4 R3b) and PHY-011's INPOP21a
   Eq. 1 form SHALL be shown to agree; R3b typography versus DE440 is
-  UNVERIFIED. Journal #4 states the DE430 J₂ (2.1106088532726840×10⁻⁷) was
-  "~7% too high" when estimated without LT, whereas Journal #1 says fitting J₂
-  without LT biases it low; this direction conflict is open (OPEN-ITEMS.md).
+  UNVERIFIED. A J₂ fitted without LT is biased LOW: the LT precession is
+  negative, so the fit absorbs it by lowering J₂ (INPOP 2.01→2.218×10⁻⁷ once LT
+  is modelled; DE430 2.11 < DE440 2.196×10⁻⁷). Journal #4's original "~7% too
+  high" wording was corrected on 2026-10-14. Confirmation against the Park 2021
+  text is pending (OI-50).
 ```
 
 ### NUM-020 — Second independent check of the EIH transcription

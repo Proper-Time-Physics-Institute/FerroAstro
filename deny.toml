@@ -24,7 +24,7 @@ allow = [
 # MPL-2.0 only for reviewed crates, used unmodified (DEP-002, DEP-004).
 exceptions = [
     { allow = ["MPL-2.0"], crate = "hifitime" },
-    { allow = ["MPL-2.0"], crate = "anise" },
+    { allow = ["MPL-2.0"], crate = "anise" },  # dev-dependency / test oracle ONLY until OI-16 (SOFA terms via sofars) is cleared
 ]
 
 [bans]

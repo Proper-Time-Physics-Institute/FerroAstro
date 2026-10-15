@@ -229,7 +229,7 @@ Analytic test, for an orbit in the solar equatorial plane:
 
 $$\Delta\varpi_{J_2}=\frac{3\pi J_2R_\odot^2}{p^2}\ \text{per orbit}$$
 
-This gives 0.0280″/cy for $J_2 = 2.2\times10^{-7}$, $R_\odot = 6.96\times10^5$ km, and 0.0286″/cy for $J_2 = 2.25\times10^{-7}$, matching Park. General inclination: $\dot\omega = \tfrac{3nJ_2R^2}{4p^2}(5\cos^2 i - 1)$ and $\dot\Omega = -\tfrac{3nJ_2R^2}{2p^2}\cos i$ (standard; UNVERIFIED citation). Reference values: DE430 $J_{2\odot} = 2.1106088532726840\times10^{-7}$, estimated without LT and noted to be ~7% too high **[V]**.
+This gives 0.0280″/cy for $J_2 = 2.2\times10^{-7}$, $R_\odot = 6.96\times10^5$ km, and 0.0286″/cy for $J_2 = 2.25\times10^{-7}$, matching Park. General inclination: $\dot\omega = \tfrac{3nJ_2R^2}{4p^2}(5\cos^2 i - 1)$ and $\dot\Omega = -\tfrac{3nJ_2R^2}{2p^2}\cos i$ (standard; UNVERIFIED citation). Reference values: DE430 $J_{2\odot} = 2.1106088532726840\times10^{-7}$, estimated without LT. *(Corrected 2026-10-14: the original text said "~7% too high". A J₂ fitted without the negative LT term is biased **low**, consistent with INPOP 2.01→2.218 and with DE430 < DE440. The "7%" in Park 2021 refers to LT being about 7% of the oblateness precession. To be confirmed against the Park 2021 text, OI-50.)*
 
 **R2. Special-relativistic Kepler (Sommerfeld-type).** Newtonian force acting on relativistic momentum, $\frac{d}{dt}(\gamma\mathbf v) = -\mu\mathbf r/r^3$, which is equivalent to
 

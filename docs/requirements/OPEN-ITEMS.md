@@ -69,7 +69,9 @@ This checklist collects every claim in Journals #0–#6 that is marked **UNVERIF
 - [ ] **OI-47** The Taylor-integrator jet cost factor. **Qualifies:** NUM-025.
 - [ ] **OI-48** Inner-solar-system Lyapunov time ~5 Myr (Laskar 1989); La2010 and La2004 integrator details. **Qualifies:** none (context).
 - [ ] **OI-49** Citation details: Rein & Tamayo 2015 (MNRAS 452, 376 vol/page), Wisdom & Holman 1991, Everhart 1985 page, Quinlan & Tremaine 1990, Berry & Healy 2004 page range, Moyer 2003 DOI, La2010 volume. **Qualifies:** NUM-004 and bibliography.
-- [ ] **OI-50** Direction conflict: Journal #4 says the DE430 J₂ (2.1106088532726840×10⁻⁷), estimated without LT, was "~7% too high". Journal #1 says a J₂ fitted without LT is biased **low** (INPOP19a 2.01). Also, DE430's value is below DE440's 2.196×10⁻⁷. Re-read Park et al. 2021. **Qualifies:** NUM-019, PHY-010 (narrative only; no acceptance number depends on it).
+- [ ] **OI-50** Direction conflict: Journal #4 says the DE430 J₂ (2.1106088532726840×10⁻⁷), estimated without LT, was "~7% too high". Journal #1 says a J₂ fitted without LT is biased **low** (INPOP19a 2.01). Also, DE430's value is below DE440's 2.196×10⁻⁷. Re-read Park et al. 2021. **Provisional resolution (maintainer, 2026-10-14):** biased **low**. Journal #4 and NUM-019 are corrected; keep this open until the Park 2021 sentence is read. **Qualifies:** NUM-019, PHY-010 (narrative only; no acceptance number depends on it).
+
+> **Legal items deferred (maintainer decision 2026-10-14):** the CLA text, JPL DE / NAIF redistribution terms and SOFA terms via `sofars` are deferred until before the first release. Conservative defaults apply meanwhile: DCO, fetch-on-demand data with SHA-256 pins, and `anise` as an oracle only.
 
 ## Journal #5 — Organization and standards
 
