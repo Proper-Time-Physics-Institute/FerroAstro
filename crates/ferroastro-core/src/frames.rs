@@ -7,7 +7,7 @@
 //! them is a compile error. Frame/centre conversions will be explicit functions citing their
 //! source routine (ARCHITECTURE design rule 2); none exist in M0.
 
-use crate::units::Length;
+use crate::units::{Length, Velocity};
 use std::fmt::Debug;
 use std::marker::PhantomData;
 use std::ops::{Add, Sub};
@@ -131,6 +131,33 @@ impl<F: Frame, C: Center> Add<Displacement<F>> for Position<F, C> {
         let [a, b, c] = self.xyz;
         let [d, e, f] = rhs.xyz;
         Self::new(a + d, b + e, c + f)
+    }
+}
+
+/// A position and velocity in frame `F` relative to centre `C` (a Cartesian state vector).
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct State<F: Frame, C: Center> {
+    position: Position<F, C>,
+    velocity: [Velocity; 3],
+}
+
+impl<F: Frame, C: Center> State<F, C> {
+    /// Build a state from a position and its velocity components (same frame and centre).
+    #[must_use]
+    pub const fn new(position: Position<F, C>, velocity: [Velocity; 3]) -> Self {
+        Self { position, velocity }
+    }
+
+    /// The position.
+    #[must_use]
+    pub const fn position(&self) -> Position<F, C> {
+        self.position
+    }
+
+    /// The velocity components `[vx, vy, vz]`.
+    #[must_use]
+    pub const fn velocity(&self) -> [Velocity; 3] {
+        self.velocity
     }
 }
 

@@ -10,6 +10,9 @@
 //! | `FA-E0100`–`FA-E0199` | test-vector loading and checking (`ferroastro-vectors`) |
 //! | `FA-E0200`–`FA-E0299` | external data products (`ferroastro-testdata`) |
 //! | `FA-E0300`–`FA-E0399` | ephemeris constants and `header.440` parsing (`ferroastro-constants`) |
+//! | `FA-E0400`–`FA-E0499` | numerical integrators (`ferroastro-integrators`) |
+//! | `FA-E0500`–`FA-E0599` | force models (`ferroastro-forces`) |
+//! | `FA-E0600`–`FA-E0699` | orbital elements and precession estimators (`ferroastro-precession`) |
 
 use std::fmt;
 
@@ -45,11 +48,27 @@ pub enum ErrorCode {
     ConstantMissing,
     /// `FA-E0302`: the committed constants table is malformed or inconsistent.
     ConstantsTable,
+    /// `FA-E0400`: an integrator met a NaN or infinite state, acceleration or step.
+    IntegratorNonFinite,
+    /// `FA-E0401`: the adaptive step size collapsed below the configured minimum.
+    IntegratorStepUnderflow,
+    /// `FA-E0402`: an integrator configuration value is invalid.
+    IntegratorConfig,
+    /// `FA-E0403`: a state or acceleration slice has the wrong length.
+    IntegratorDimension,
+    /// `FA-E0500`: a force model was built with invalid parameters.
+    ForceModelInvalid,
+    /// `FA-E0501`: a force model met a singular configuration (e.g. two coincident bodies).
+    ForceModelSingular,
+    /// `FA-E0600`: orbital elements or a state are outside the domain of a conversion.
+    OrbitDomain,
+    /// `FA-E0601`: a precession or slope fit is ill-posed (too few or degenerate samples).
+    FitDegenerate,
 }
 
 impl ErrorCode {
     /// Every code, in numeric order (used to prove codes are unique).
-    pub const ALL: [ErrorCode; 14] = [
+    pub const ALL: [ErrorCode; 22] = [
         ErrorCode::NonFinite,
         ErrorCode::OutOfRange,
         ErrorCode::VectorIo,
@@ -64,6 +83,14 @@ impl ErrorCode {
         ErrorCode::HeaderParse,
         ErrorCode::ConstantMissing,
         ErrorCode::ConstantsTable,
+        ErrorCode::IntegratorNonFinite,
+        ErrorCode::IntegratorStepUnderflow,
+        ErrorCode::IntegratorConfig,
+        ErrorCode::IntegratorDimension,
+        ErrorCode::ForceModelInvalid,
+        ErrorCode::ForceModelSingular,
+        ErrorCode::OrbitDomain,
+        ErrorCode::FitDegenerate,
     ];
 
     /// The stable textual code, e.g. `"FA-E0001"`.
@@ -84,6 +111,14 @@ impl ErrorCode {
             ErrorCode::HeaderParse => "FA-E0300",
             ErrorCode::ConstantMissing => "FA-E0301",
             ErrorCode::ConstantsTable => "FA-E0302",
+            ErrorCode::IntegratorNonFinite => "FA-E0400",
+            ErrorCode::IntegratorStepUnderflow => "FA-E0401",
+            ErrorCode::IntegratorConfig => "FA-E0402",
+            ErrorCode::IntegratorDimension => "FA-E0403",
+            ErrorCode::ForceModelInvalid => "FA-E0500",
+            ErrorCode::ForceModelSingular => "FA-E0501",
+            ErrorCode::OrbitDomain => "FA-E0600",
+            ErrorCode::FitDegenerate => "FA-E0601",
         }
     }
 }
