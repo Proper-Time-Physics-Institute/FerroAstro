@@ -8,8 +8,8 @@
 > workflow run; run URLs are not written here so that the file stays deterministic.
 
 - Requirements: **119** (draft 119)
-- `verification: test` requirements cited by at least one test: **33 / 92**
-- Citing tests: **204**; vectors referencing a requirement: **154**
+- `verification: test` requirements cited by at least one test: **34 / 92**
+- Citing tests: **208**; vectors referencing a requirement: **154**
 
 | ID | Status | Crit. | Verification | Tests | Vectors |
 |---|---|---|---|---|---|
@@ -58,7 +58,7 @@
 | [NUM-003](NUM.md) | draft | medium | test | — | — |
 | [NUM-004](NUM.md) | draft | medium | test | — | — |
 | [NUM-005](NUM.md) | draft | medium | test | — | — |
-| [NUM-006](NUM.md) | draft | high | test | `crates/ferroastro-real/src/compensated.rs::neumaier_recovers_cancelled_addends`<br>`crates/ferroastro-real/src/dd.rs::constants_are_normalised_and_identities_hold`<br>`crates/ferroastro-real/src/eft.rs::error_terms_are_exact`<br>`crates/ferroastro-real/tests/dep012_ulp_bounds.rs::dd_add_sub_within_jmp2017_theorem_3_1`<br>`crates/ferroastro-real/tests/dep012_ulp_bounds.rs::dd_div_recip_sqrt_within_proved_bounds`<br>`crates/ferroastro-real/tests/dep012_ulp_bounds.rs::dd_mul_scale_muladd_within_jmp2017`<br>`crates/ferroastro-real/tests/dep012_ulp_bounds.rs::f64_basic_operations_are_correctly_rounded` | `REAL-DD-ACOS-ABS-ERR`<br>`REAL-DD-ADD-REL-ERR`<br>`REAL-DD-ASIN-ABS-ERR`<br>`REAL-DD-ATAN2-ABS-ERR`<br>`REAL-DD-COS-ABS-ERR`<br>`REAL-DD-DIV-REL-ERR`<br>`REAL-DD-EXP-REL-ERR`<br>`REAL-DD-EXPM1-REL-ERR`<br>`REAL-DD-LN-REL-ERR`<br>`REAL-DD-LN1P-REL-ERR`<br>`REAL-DD-MUL-REL-ERR`<br>`REAL-DD-MULADD-ERR`<br>`REAL-DD-POWF-REL-ERR`<br>`REAL-DD-RECIP-REL-ERR`<br>`REAL-DD-SCALE-REL-ERR`<br>`REAL-DD-SIN-ABS-ERR`<br>`REAL-DD-SQRT-REL-ERR`<br>`REAL-DD-SUB-REL-ERR`<br>`REAL-F64-ADD-ULP`<br>`REAL-F64-DIV-ULP`<br>`REAL-F64-MUL-ULP`<br>`REAL-F64-MULADD-ULP`<br>`REAL-F64-RECIP-ULP`<br>`REAL-F64-SQRT-ULP`<br>`REAL-F64-SUB-ULP` |
+| [NUM-006](NUM.md) | draft | high | test | `crates/ferroastro-real/src/compensated.rs::neumaier_recovers_cancelled_addends`<br>`crates/ferroastro-real/src/dd.rs::constants_are_normalised_and_identities_hold`<br>`crates/ferroastro-real/src/eft.rs::error_terms_are_exact`<br>`crates/ferroastro-real/tests/dep012_ulp_bounds.rs::dd_add_sub_within_jmp2017_theorem_3_1`<br>`crates/ferroastro-real/tests/dep012_ulp_bounds.rs::dd_div_recip_sqrt_within_proved_bounds`<br>`crates/ferroastro-real/tests/dep012_ulp_bounds.rs::dd_mul_scale_muladd_within_jmp2017`<br>`crates/ferroastro-real/tests/dep012_ulp_bounds.rs::f64_basic_operations_are_correctly_rounded`<br>`crates/ferroastro-real/tests/num006_backends.rs::f128_backend_agrees_with_double_double`<br>`crates/ferroastro-real/tests/num006_backends.rs::generic_kepler_solve_converges_in_each_backend` | `REAL-DD-ACOS-ABS-ERR`<br>`REAL-DD-ADD-REL-ERR`<br>`REAL-DD-ASIN-ABS-ERR`<br>`REAL-DD-ATAN2-ABS-ERR`<br>`REAL-DD-COS-ABS-ERR`<br>`REAL-DD-DIV-REL-ERR`<br>`REAL-DD-EXP-REL-ERR`<br>`REAL-DD-EXPM1-REL-ERR`<br>`REAL-DD-LN-REL-ERR`<br>`REAL-DD-LN1P-REL-ERR`<br>`REAL-DD-MUL-REL-ERR`<br>`REAL-DD-MULADD-ERR`<br>`REAL-DD-POWF-REL-ERR`<br>`REAL-DD-RECIP-REL-ERR`<br>`REAL-DD-SCALE-REL-ERR`<br>`REAL-DD-SIN-ABS-ERR`<br>`REAL-DD-SQRT-REL-ERR`<br>`REAL-DD-SUB-REL-ERR`<br>`REAL-F64-ADD-ULP`<br>`REAL-F64-DIV-ULP`<br>`REAL-F64-MUL-ULP`<br>`REAL-F64-MULADD-ULP`<br>`REAL-F64-RECIP-ULP`<br>`REAL-F64-SQRT-ULP`<br>`REAL-F64-SUB-ULP` |
 | [NUM-007](NUM.md) | draft | high | test | — | — |
 | [NUM-008](NUM.md) | draft | high | test | — | — |
 | [NUM-009](NUM.md) | draft | medium | test | — | — |
@@ -96,7 +96,7 @@
 | [DEP-004](DEP.md) | draft | high | inspection | — | — |
 | [DEP-005](DEP.md) | draft | high | test | — | — |
 | [DEP-006](DEP.md) | draft | medium | test | — | — |
-| [DEP-007](DEP.md) | draft | high | test | — | — |
+| [DEP-007](DEP.md) | draft | high | test | `crates/ferroastro-real/tests/num006_backends.rs::f128_backend_agrees_with_double_double`<br>`crates/ferroastro-real/tests/num006_backends.rs::generic_kepler_solve_converges_in_each_backend` | — |
 | [DEP-008](DEP.md) | draft | high | inspection | — | — |
 | [DEP-009](DEP.md) | draft | high | test | — | — |
 | [DEP-010](DEP.md) | draft | high | test | — | — |
