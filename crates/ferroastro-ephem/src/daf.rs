@@ -312,7 +312,9 @@ impl<'a> Daf<'a> {
         if address < 1 {
             return Err(bounds("word address", address, "word", 1, max));
         }
-        f64_at(self.bytes, (address - 1) * WORD_BYTES, self.endian)
+        (address - 1)
+            .checked_mul(WORD_BYTES)
+            .and_then(|offset| f64_at(self.bytes, offset, self.endian))
             .ok_or_else(|| bounds("word address", address, "word", 1, max))
     }
 
@@ -321,9 +323,11 @@ impl<'a> Daf<'a> {
         if number < 1 {
             return Err(bounds(quantity, number, "record", 1, max));
         }
-        let start = (number - 1) * RECORD_BYTES;
-        self.bytes
-            .get(start..start + RECORD_BYTES)
+        // Checked: a corrupt NEXT pointer can be up to 2^53, which overflows a 32-bit usize
+        // (wasm32) when scaled to bytes.
+        (number - 1)
+            .checked_mul(RECORD_BYTES)
+            .and_then(|start| self.bytes.get(start..start.checked_add(RECORD_BYTES)?))
             .ok_or_else(|| bounds(quantity, number, "record", 1, max))
     }
 
