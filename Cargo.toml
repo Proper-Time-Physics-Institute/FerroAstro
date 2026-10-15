@@ -25,6 +25,7 @@ ferroastro-time = { path = "crates/ferroastro-time", version = "0.0.0" }
 ferroastro-vectors = { path = "crates/ferroastro-vectors", version = "0.0.0" }
 ferroastro-testdata = { path = "crates/ferroastro-testdata", version = "0.0.0" }
 ferroastro-constants = { path = "crates/ferroastro-constants", version = "0.0.0" }
+ferroastro-ephem = { path = "crates/ferroastro-ephem", version = "0.0.0" }
 ferroastro-analytic = { path = "crates/ferroastro-analytic", version = "0.0.0" }
 ferroastro-integrators = { path = "crates/ferroastro-integrators", version = "0.0.0" }
 ferroastro-forces = { path = "crates/ferroastro-forces", version = "0.0.0" }

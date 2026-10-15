@@ -270,6 +270,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "ferroastro-ephem"
+version = "0.0.0"
+dependencies = [
+ "ferroastro-constants",
+ "ferroastro-core",
+ "ferroastro-real",
+ "ferroastro-testdata",
+ "ferroastro-vectors",
+ "proptest",
+ "sha2",
+ "thiserror",
+]
+
+[[package]]
 name = "ferroastro-erfa"
 version = "0.0.0"
 dependencies = [
