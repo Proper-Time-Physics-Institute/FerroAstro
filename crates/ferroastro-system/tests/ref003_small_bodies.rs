@@ -182,6 +182,15 @@ fn kbo_identification_follows_from_the_rule() {
 /// Verifies: NUM-009
 #[test]
 fn kbo_ring_points_are_fixed_on_the_44_au_ecliptic_circle() {
+    let v = VectorSet::load_canonical().unwrap();
+    v.get("DE440-KBO-RING-RADIUS")
+        .unwrap()
+        .check(KBO_RING.radius_au)
+        .unwrap();
+    v.get("DE440-KBO-RING-POINTS")
+        .unwrap()
+        .check(f64::from(KBO_RING.points))
+        .unwrap();
     let (h, hprov) = header();
     let au = h.value("AU").unwrap();
     let mut cat = Catalogue::from_header(&h, &hprov).unwrap();
@@ -304,4 +313,46 @@ fn ssb_of_the_full_placed_body_set_at_jdepoc() {
     if blocked.is_none() {
         vec.check(result).unwrap();
     }
+}
+
+/// Placement: barycentric small-body state = Sun-centred file state + the Sun's barycentric
+/// state, component by component (one rounding each), for every Minor body.
+///
+/// Verifies: REF-003
+#[test]
+fn small_bodies_are_placed_relative_to_the_header_sun() {
+    let (h, hprov) = header();
+    let s = small_bodies();
+    let ic = InitialConditions::<f64>::from_header(&h, &hprov).unwrap();
+    let mut cat = Catalogue::from_header(&h, &hprov).unwrap();
+    cat.with_identified_kbos().unwrap();
+    let sun = ic.states().state(NaifId::SUN).unwrap();
+    let sp = sun
+        .position()
+        .components()
+        .map(ferroastro_core::units::Length::km);
+    let sv = sun
+        .velocity()
+        .map(ferroastro_core::units::Velocity::km_per_s);
+    let ids: Vec<NaifId> = cat.ids_in(Tier::Minor).collect();
+    let placed = place_small_bodies(&s, &ids, &sun).unwrap();
+    assert_eq!(placed.ids(), ids.as_slice());
+    for (i, id) in ids.iter().enumerate() {
+        let (p, w) = placed.raw_at(i).unwrap();
+        let r = s.get(*id).unwrap();
+        for k in 0..3 {
+            assert_eq!(
+                p[k].to_bits(),
+                (r.position_km[k] + sp[k]).to_bits(),
+                "{id:?}"
+            );
+            assert_eq!(
+                w[k].to_bits(),
+                (r.velocity_km_s[k] + sv[k]).to_bits(),
+                "{id:?}"
+            );
+        }
+    }
+    let missing = place_small_bodies(&s, &[NaifId::SUN], &sun).unwrap_err();
+    assert!(missing.to_string().starts_with("FA-E1100"), "{missing}");
 }

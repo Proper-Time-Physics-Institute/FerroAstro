@@ -480,6 +480,11 @@ fn small_body_switches_add_minor_and_ring_bodies_without_touching_the_majors() {
     println!("{}\n{}", out.model, out.ic_source);
     assert!(out.model.contains("minor-from-majors") && out.model.contains("ring-fixed-masses"));
     assert!(
+        out.model.contains("reaction on Majors = 1"),
+        "the asteroids must pull on the Majors (N-AST): {}",
+        out.model
+    );
+    assert!(
         out.states
             .iter()
             .all(|s| s.bodies == [NaifId::SUN.0, NaifId::MERCURY_BARYCENTER.0])

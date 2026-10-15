@@ -243,3 +243,31 @@ retrieved = "2026-10-15"
 tolerance = { abs = 1.0e6 }
 tolerance_rationale = "Gross bound (WP15 addendum, fixed before the first query): Horizons uses its current small-body orbit solution, not the DE441 perturber file, so the two differ by the orbit-solution change propagated back to 1969; 1e6 km (0.007 au) still separates each TNO from every other of the 30 targets (they are AU apart). The check confirms the NAIF id <-> object mapping of KBO_IDENTIFICATION, not the state."
 verified_by = "WP15 builder agent, 2026-10-15: pre-registered in the WP15 addendum of IMPLEMENTATION-NOTES before the first query."
+
+[[vector]]
+id = "DE440-KBO-RING-RADIUS"
+requirement = ["NUM-009", "REF-003"]
+quantity = "radius (semimajor axis) of the DE440 KBO ring"
+value = 44.0
+unit = "au"
+kind = "defined"
+source = "Park et al. 2021 section 2.2: 'The circular KBO ring was modeled as 36 point masses with equal mass located in the ecliptic plane with a semimajor axis of 44 au, with the ring mass estimated.'"
+citation = "Park, R. S., Folkner, W. M., Williams, J. G., & Boggs, D. H. 2021, AJ 161, 105, doi:10.3847/1538-3881/abd414, section 2.2"
+retrieved = "2026-10-15"
+tolerance = { abs = 0.0 }
+tolerance_rationale = "A model definition: exact."
+verified_by = "WP15 builder agent, 2026-10-15: read in the published PDF (iopscience, sha256 96c3945deb12e0f0843c2bf0703d3542d950cf85ff903b1fe11a501634f68ee0), pdftotext -layout, page 2."
+
+[[vector]]
+id = "DE440-KBO-RING-POINTS"
+requirement = ["NUM-009", "REF-003"]
+quantity = "number of equal point masses of the DE440 KBO ring"
+value = 36
+unit = "1"
+kind = "defined"
+source = "Park et al. 2021 section 2.2 (as DE440-KBO-RING-RADIUS); header.440 has 36 equal GMs MA8201..MA8236."
+citation = "Park, R. S., Folkner, W. M., Williams, J. G., & Boggs, D. H. 2021, AJ 161, 105, section 2.2"
+retrieved = "2026-10-15"
+tolerance = { abs = 0 }
+tolerance_rationale = "A count: exact."
+verified_by = "WP15 builder agent, 2026-10-15: as DE440-KBO-RING-RADIUS."
