@@ -25,7 +25,7 @@ fn data_sw92_table1_mercury() {
     let tokens: Vec<&str> = row.split_whitespace().skip(1).collect();
     println!("Table 1 Mercury row: {tokens:?}");
     assert_eq!(tokens.len(), 6, "a, e, I, L, long.peri., long.node.");
-    let vs = VectorSet::load_workspace().unwrap();
+    let vs = VectorSet::load_canonical().unwrap();
     for (id, tok) in [
         "SW92-MERCURY-A",
         "SW92-MERCURY-E",

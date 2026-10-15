@@ -86,3 +86,4 @@ retrieved = "2026-10-15"
 tolerance = { abs = 0.05 }
 tolerance_rationale = "Not blind: chosen after a WP6 probe measured +0.0112 (k = 1/7) and -0.150 (mutant k = 1/6). Justification independent of that number: b7 is not exactly proportional to dt^7 (the Radau fit mixes in O(dt^8) terms, a relative O(omega dt) ~ 1e-2 effect at ~70 steps per orbit), and the band must exclude the nearest plausible wrong exponents, |1 - 7k| = 0.167 (1/6) and 0.125 (1/8). 0.05 is below half of the smaller of these and above the O(1e-2) contamination."
 verified_by = "WP6 builder agent, 2026-10-15: derived from R&S Eq. 11; values measured on the m0-foundation branch, see IMPLEMENTATION-NOTES WP6."
+notes = "NEEDS HUMAN REVIEW (WP6 progress review, tagged in WP7): non-blind tolerance. The 0.05 band was fixed after the probe values were seen; a maintainer should confirm the band from the rationale alone. Value and tolerance unchanged since WP6."

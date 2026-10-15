@@ -13,7 +13,10 @@ slow-timeout = { period = "60s", terminate-after = 10 }
 # their provenance (URL, retrieval date, SHA-256), so show their output even when they pass.
 default-filter = "test(/^data_/)"
 fail-fast = false
-retries = 1
+# No test-level retries: a retried physics assertion would pass as FLAKY (WP6 review). Download
+# retries happen inside ferroastro-testdata (curl --retry 3 --retry-connrefused) and the Horizons
+# client (one re-fetch of an unparsable answer), i.e. for network errors only.
+retries = 0
 success-output = "immediate"
 slow-timeout = { period = "120s", terminate-after = 5 }
 

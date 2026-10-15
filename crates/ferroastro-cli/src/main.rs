@@ -8,8 +8,8 @@
 //!
 //! Runs the rung set and prints one table row per rung: numerical and analytic rate (″/cy),
 //! the NUM-015 per-orbit deviation, and — when the test vectors of a FerroAstro checkout are
-//! found (`FA_VECTORS_DIR`, else the workspace `tests/vectors`) — the requirement oracle and a
-//! PASS/FAIL verdict. `--details` prints the PHY-015 metadata block of every rung.
+//! found (the workspace `tests/vectors`; an `FA_VECTORS_DIR` override is refused with
+//! FA-E0106) — the requirement oracle and a PASS/FAIL verdict. `--details` prints the PHY-015 metadata block of every rung.
 
 use ferroastro_cli::{Options, parse_args, run};
 use std::process::ExitCode;

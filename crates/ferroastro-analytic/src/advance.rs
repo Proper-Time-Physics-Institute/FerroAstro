@@ -47,6 +47,14 @@ pub fn rate_arcsec_per_century(rate: AngularRate) -> f64 {
 /// * `c`: speed of light; `a`, `e`: semi-major axis and eccentricity;
 /// * `mu_period`: the gravitational parameter of the Keplerian period.
 ///
+/// **μ convention used throughout FerroAstro** (caveat C7, WP6 review): the advance takes the
+/// central mass alone, `gm_advance = GM☉` (test-particle limit of the Schwarzschild field), and
+/// the period — hence the mean motion `n` — takes the two-body `mu_period = GM☉ + GM☿`, which is
+/// also the GM with which JPL Horizons computes osculating elements. Using `GM☉` in both places
+/// changes Mercury's rate by about 4e-6 ″/cy (7e-6 ″/cy for `GM☉ + GM☿` in both). Harmless
+/// against PHY-004's 1e-4, but it matters once rates are differenced at NUM-013's 1e-4 level, so
+/// callers must keep the convention fixed across the runs they difference.
+///
 /// # Errors
 /// `FA-E0600` for `e ∉ [0, 1)` or non-positive `a`, `c`, `GM` or `μ`.
 pub fn schwarzschild_advance(

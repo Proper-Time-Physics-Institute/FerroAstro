@@ -3,8 +3,10 @@
 #
 # PR gates: the AGENTS.md command list, verbatim, plus MSRV (STD-005) and DCO (ORG-008).
 # Real-data tier: the `data` job runs the #[ignore]d network tests on a schedule / by hand only,
-# so PR CI never depends on JPL availability. The `long` job runs the #[ignore]d nightly_* tier
-# (testing.md) on the same schedule.
+# so PR CI never depends on JPL availability (whether this weekly job may stay on GitHub-hosted
+# runners is an open maintainer question, IMPLEMENTATION-NOTES WP7). The `long` job (nightly_*
+# tier) is manual-dispatch only: long tiers run on the maintainer's machine via
+# tools/run_long_local.sh (maintainer decision 2026-10-15).
 #
 # Security (STD-012, red-team §2): read-only token, no pull_request_target, every action pinned to a
 # commit SHA (checked by tools/lint_workflows.py), checkout without persisted credentials.
@@ -154,8 +156,8 @@ jobs:
         run: cargo nextest run --workspace --profile data --run-ignored only
 
   long:
-    name: long runs (nightly_* tier, release build)
-    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    name: long runs (nightly_* tier, release build; manual only, normally run locally)
+    if: github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-24.04
     timeout-minutes: 90
     steps:

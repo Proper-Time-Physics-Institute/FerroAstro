@@ -53,7 +53,7 @@ fn data_de440_table_matches_header() {
 #[ignore = "data: downloads JPL DE440 header.440 (network); run with --profile data"]
 fn data_de440_header_ref002_acceptance() {
     let h = header().unwrap();
-    let v = VectorSet::load_workspace().unwrap();
+    let v = VectorSet::load_canonical().unwrap();
     let count = |n: usize| f64::from(u32::try_from(n).unwrap());
     for (name, id) in [
         ("JDEPOC", "DE440-JDEPOC"),

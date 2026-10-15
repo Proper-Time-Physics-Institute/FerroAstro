@@ -242,8 +242,12 @@ pub fn fetch_url(url: &str, file: &str, pin: Option<&str>) -> Result<Fetched, Da
             "--silent",
             "--show-error",
             "--location",
+            // Network-level retries live here, not in the test runner: transient failures
+            // (timeouts, refused connections, HTTP 408/429/5xx) are retried by curl, while a
+            // failed physics assertion is never re-run (nextest `data` profile: retries = 0).
             "--retry",
             "3",
+            "--retry-connrefused",
         ])
         .args(["--max-time", "300", "--dump-header"])
         .arg(&headers)

@@ -152,7 +152,7 @@ struct Slopes {
 )]
 fn ensemble(runs: u32, orbits: u32) -> Slopes {
     let de = De440::load().unwrap();
-    let vs = VectorSet::load_workspace().unwrap();
+    let vs = VectorSet::load_canonical().unwrap();
     let (gm_sun, gm_me) = two_body::gms(&de);
     let mu = gm_sun + gm_me;
     let orbits = f64::from(orbits);
@@ -256,7 +256,7 @@ fn nightly_num023_brouwer_slopes_ias15_f64() {
     let Some(s) = checked_ensemble(DEFAULT_RUNS, DEFAULT_ORBITS) else {
         return;
     };
-    let vs = VectorSet::load_workspace().unwrap();
+    let vs = VectorSet::load_canonical().unwrap();
     let re = vs.get("NUM023-ENERGY-SLOPE").unwrap().check(s.energy);
     let rp = vs.get("NUM023-PHASE-SLOPE").unwrap().check(s.phase);
     println!("  energy slope check: {re:?}\n  phase slope check: {rp:?}");
@@ -274,7 +274,7 @@ fn nightly_num023_long_ensemble_known_failure() {
     let Some(s) = checked_ensemble(LONG_RUNS, LONG_ORBITS) else {
         return;
     };
-    let vs = VectorSet::load_workspace().unwrap();
+    let vs = VectorSet::load_canonical().unwrap();
     let re = vs.get("NUM023-ENERGY-SLOPE").unwrap().check(s.energy);
     let rp = vs.get("NUM023-PHASE-SLOPE").unwrap().check(s.phase);
     println!("  energy slope check: {re:?}\n  phase slope check: {rp:?}");
@@ -299,7 +299,7 @@ fn nightly_num023_long_ensemble_known_failure() {
 #[ignore = "nightly tier"]
 fn nightly_num023_forward_backward_reversibility() {
     let de = De440::load().unwrap();
-    let vs = VectorSet::load_workspace().unwrap();
+    let vs = VectorSet::load_canonical().unwrap();
     let (gm_sun, gm_me) = two_body::gms(&de);
     let mu = gm_sun + gm_me;
     let el = two_body::sw92_elements(&vs, &de);

@@ -54,8 +54,10 @@ pub enum IntegratorError {
         /// The system dimension.
         expected: usize,
     },
-    /// A least-squares fit is ill-posed.
-    #[error("FA-E0601: fit is ill-posed: {message}; fix: supply more, distinct, finite samples")]
+    /// A round-off diagnostic least-squares fit is ill-posed.
+    #[error(
+        "FA-E0404: diagnostic fit is ill-posed: {message}; fix: supply more, distinct, finite samples"
+    )]
     Fit {
         /// What is wrong.
         message: String,
@@ -79,7 +81,7 @@ impl IntegratorError {
             IntegratorError::StepUnderflow { .. } => ErrorCode::IntegratorStepUnderflow,
             IntegratorError::Config { .. } => ErrorCode::IntegratorConfig,
             IntegratorError::Dimension { .. } => ErrorCode::IntegratorDimension,
-            IntegratorError::Fit { .. } => ErrorCode::FitDegenerate,
+            IntegratorError::Fit { .. } => ErrorCode::DiagnosticFitDegenerate,
             IntegratorError::Dynamics { code, .. } => *code,
         }
     }

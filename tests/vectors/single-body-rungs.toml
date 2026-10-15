@@ -389,7 +389,7 @@ quantity = "spread (max - min) of the single-body rung rate over four estimators
 value = 0.0
 unit = "arcsec/cy"
 kind = "analytic"
-source = "For a single body the estimators measure the same secular advance; their definitions differ only by periodic terms (1PN periodic terms of the osculating LRL vector, sampling and interpolation of passages), which average out over 1000 orbits. NUM-012 acceptance asks the docs to report the spread."
+source = "For a single body the estimators measure the same secular advance; their definitions differ only by periodic terms (1PN periodic terms of the osculating LRL vector, sampling and interpolation of passages). The passage and Park2017 estimates agree to <= 2e-8 arcsec/cy, but the 1PN periodic terms of the Newtonian LRL vector do NOT average out under step-time (non-uniform) sampling: the WP6 measurement left a +1.8e-5 arcsec/cy LRL offset for GR (corrected in WP7; the earlier text said they average out). NUM-012 acceptance asks the docs to report the spread."
 citation = "FerroAstro docs/requirements/NUM.md NUM-012 and NUM-013; Park et al. 2017, AJ 153, 121, Sec. 4 (estimator)"
 retrieved = "2026-10-15"
 tolerance = { abs = 1.0e-4 }

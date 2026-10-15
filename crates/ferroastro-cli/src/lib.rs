@@ -164,8 +164,16 @@ pub fn run<W: Write>(opts: &Options, out: &mut W) -> Result<bool, CliError> {
     if let Some(n) = opts.orbits {
         setup.orbits = n;
     }
+    // The report is evidence: an FA_VECTORS_DIR override is refused (FA-E0106), never silently
+    // ignored; a checkout without tests/vectors only loses the oracle column.
     let vectors = if opts.check {
-        VectorSet::load_workspace().ok()
+        match VectorSet::load_canonical() {
+            Ok(v) => Some(v),
+            Err(e @ ferroastro_vectors::VectorError::NonCanonical { .. }) => {
+                return Err(CliError(e.to_string(), e.code()));
+            }
+            Err(_) => None,
+        }
     } else {
         None
     };

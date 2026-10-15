@@ -46,3 +46,21 @@ fn single_body_report_lists_every_rung_with_gauge_and_metadata() {
     }
     assert!(all_ok, "a rung failed its oracle in the CLI report");
 }
+
+/// The report is evidence, so the binary refuses an `FA_VECTORS_DIR` override (FA-E0106) with a
+/// NON-CANONICAL banner instead of checking rungs against substituted oracles (WP6 review).
+///
+/// Verifies: TST-002
+#[test]
+fn report_refuses_a_vector_directory_override() {
+    let out = std::process::Command::new(env!("CARGO_BIN_EXE_ferroastro"))
+        .args(["ladder", "--rungs", "single-body", "--orbits", "3"])
+        .env("FA_VECTORS_DIR", env!("CARGO_MANIFEST_DIR"))
+        .output()
+        .unwrap();
+    let stderr = String::from_utf8_lossy(&out.stderr);
+    println!("{stderr}");
+    assert!(!out.status.success(), "override was accepted");
+    assert!(stderr.contains("FA-E0106"), "no FA-E0106 in {stderr:?}");
+    assert!(stderr.contains("NON-CANONICAL VECTORS"), "no banner");
+}

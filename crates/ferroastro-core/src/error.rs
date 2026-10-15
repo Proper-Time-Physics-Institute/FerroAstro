@@ -10,9 +10,9 @@
 //! | `FA-E0100`–`FA-E0199` | test-vector loading and checking (`ferroastro-vectors`) |
 //! | `FA-E0200`–`FA-E0299` | external data products (`ferroastro-testdata`) |
 //! | `FA-E0300`–`FA-E0399` | ephemeris constants and `header.440` parsing (`ferroastro-constants`) |
-//! | `FA-E0400`–`FA-E0499` | numerical integrators (`ferroastro-integrators`) |
+//! | `FA-E0400`–`FA-E0499` | numerical integrators and their round-off diagnostics (`ferroastro-integrators`) |
 //! | `FA-E0500`–`FA-E0599` | force models (`ferroastro-forces`) |
-//! | `FA-E0600`–`FA-E0699` | orbital elements, analytic oracles and precession estimators (`ferroastro-analytic`, `ferroastro-precession`) |
+//! | `FA-E0600`–`FA-E0699` | shared by two crates: `FA-E0600` orbital elements and analytic oracles (`ferroastro-analytic`); `FA-E0601`–`FA-E0603` precession estimators and rate reports (`ferroastro-precession`) |
 //! | `FA-E0700`–`FA-E0799` | ladder rungs, scenarios and the CLI (`ferroastro-ladder`, `ferroastro-cli`) |
 
 use std::fmt;
@@ -37,6 +37,8 @@ pub enum ErrorCode {
     VectorDuplicateId,
     /// `FA-E0105`: a measured value lies outside the vector's tolerance.
     ToleranceExceeded,
+    /// `FA-E0106`: the committed vectors were required but `FA_VECTORS_DIR` redirects them.
+    VectorOverrideRefused,
     /// `FA-E0200`: an external data product could not be downloaded.
     DataFetch,
     /// `FA-E0201`: an external data product does not match its pinned SHA-256.
@@ -59,6 +61,9 @@ pub enum ErrorCode {
     IntegratorConfig,
     /// `FA-E0403`: a state or acceleration slice has the wrong length.
     IntegratorDimension,
+    /// `FA-E0404`: an integrator round-off diagnostic fit (`integrators::diagnostics`) is
+    /// ill-posed. Distinct from `FA-E0601`, the precession-estimator fit.
+    DiagnosticFitDegenerate,
     /// `FA-E0500`: a force model was built with invalid parameters.
     ForceModelInvalid,
     /// `FA-E0501`: a force model met a singular configuration (e.g. two coincident bodies).
@@ -81,7 +86,7 @@ pub enum ErrorCode {
 
 impl ErrorCode {
     /// Every code, in numeric order (used to prove codes are unique).
-    pub const ALL: [ErrorCode; 28] = [
+    pub const ALL: [ErrorCode; 30] = [
         ErrorCode::NonFinite,
         ErrorCode::OutOfRange,
         ErrorCode::VectorIo,
@@ -90,6 +95,7 @@ impl ErrorCode {
         ErrorCode::VectorUnknownId,
         ErrorCode::VectorDuplicateId,
         ErrorCode::ToleranceExceeded,
+        ErrorCode::VectorOverrideRefused,
         ErrorCode::DataFetch,
         ErrorCode::DataChecksum,
         ErrorCode::DataManifest,
@@ -101,6 +107,7 @@ impl ErrorCode {
         ErrorCode::IntegratorStepUnderflow,
         ErrorCode::IntegratorConfig,
         ErrorCode::IntegratorDimension,
+        ErrorCode::DiagnosticFitDegenerate,
         ErrorCode::ForceModelInvalid,
         ErrorCode::ForceModelSingular,
         ErrorCode::OrbitDomain,
@@ -124,6 +131,7 @@ impl ErrorCode {
             ErrorCode::VectorUnknownId => "FA-E0103",
             ErrorCode::VectorDuplicateId => "FA-E0104",
             ErrorCode::ToleranceExceeded => "FA-E0105",
+            ErrorCode::VectorOverrideRefused => "FA-E0106",
             ErrorCode::DataFetch => "FA-E0200",
             ErrorCode::DataChecksum => "FA-E0201",
             ErrorCode::DataManifest => "FA-E0202",
@@ -135,6 +143,7 @@ impl ErrorCode {
             ErrorCode::IntegratorStepUnderflow => "FA-E0401",
             ErrorCode::IntegratorConfig => "FA-E0402",
             ErrorCode::IntegratorDimension => "FA-E0403",
+            ErrorCode::DiagnosticFitDegenerate => "FA-E0404",
             ErrorCode::ForceModelInvalid => "FA-E0500",
             ErrorCode::ForceModelSingular => "FA-E0501",
             ErrorCode::OrbitDomain => "FA-E0600",
