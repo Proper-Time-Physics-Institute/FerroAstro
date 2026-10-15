@@ -59,12 +59,21 @@ fn norm(a: [f64; 3], b: [f64; 3]) -> f64 {
     (a[0] - b[0]).hypot(a[1] - b[1]).hypot(a[2] - b[2])
 }
 
+fn sub(a: [f64; 3], b: [f64; 3]) -> [f64; 3] {
+    [a[0] - b[0], a[1] - b[1], a[2] - b[2]]
+}
+
 /// Compare every row of `golden` with the FerroAstro state at the same time and body. The run's
 /// samples and its final state are both candidates; the epochs must be bitwise equal.
 ///
+/// The golden's origin is its `center_naif` header line (absent: 0, the solar-system
+/// barycentre). For a heliocentric golden (`center_naif: 10`, the tools that integrate relative
+/// to the Sun) the FerroAstro states are taken relative to the same body before differencing,
+/// which also removes the uniform drift of a body subset's barycentre.
+///
 /// # Errors
-/// `FA-E1503` if the epochs differ or a golden time or body has no FerroAstro counterpart,
-/// `FA-E1502` if the golden lacks its epoch.
+/// `FA-E1503` if the epochs differ or a golden time or body (or the centre) has no FerroAstro
+/// counterpart, `FA-E1502` if the golden lacks its epoch or has an invalid centre.
 pub fn compare_states(
     golden: &GoldenStates,
     run: &RunOutput,
@@ -78,6 +87,7 @@ pub fn compare_states(
             problem: format!("epochs differ: golden JD {epoch}, run JD {run_epoch}"),
         });
     }
+    let center = golden.center_naif()?;
     let records: Vec<&StateRecord> = run.states.iter().chain(run.final_state.as_ref()).collect();
     let mut bodies: Vec<BodyDifference> = Vec::new();
     for g in &golden.rows {
@@ -89,20 +99,27 @@ pub fn compare_states(
                 what: what(),
                 problem: format!("no FerroAstro state at t = {} d", g.t_days),
             })?;
-        let (p, v) = rec
-            .bodies
-            .iter()
-            .zip(rec.positions.iter().zip(&rec.velocities))
-            .find_map(|(b, pv)| (*b == g.naif).then_some(pv))
-            .ok_or_else(|| OracleError::Comparison {
-                what: what(),
-                problem: format!(
-                    "NAIF {} not in the FerroAstro state at t = {} d",
-                    g.naif, g.t_days
-                ),
-            })?;
-        let dr = norm(p.map(val), g.position_km);
-        let dv = norm(v.map(val), g.velocity_km_s);
+        let state_of = |naif: i32| {
+            rec.bodies
+                .iter()
+                .zip(rec.positions.iter().zip(&rec.velocities))
+                .find_map(|(b, (p, v))| (*b == naif).then(|| (p.map(val), v.map(val))))
+                .ok_or_else(|| OracleError::Comparison {
+                    what: what(),
+                    problem: format!(
+                        "NAIF {naif} not in the FerroAstro state at t = {} d",
+                        g.t_days
+                    ),
+                })
+        };
+        let (mut p, mut v) = state_of(g.naif)?;
+        if center != 0 {
+            let (pc, vc) = state_of(center)?;
+            p = sub(p, pc);
+            v = sub(v, vc);
+        }
+        let dr = norm(p, g.position_km);
+        let dv = norm(v, g.velocity_km_s);
         match bodies.iter_mut().find(|b| b.naif == g.naif) {
             Some(b) => {
                 if dr > b.max_dr_km {

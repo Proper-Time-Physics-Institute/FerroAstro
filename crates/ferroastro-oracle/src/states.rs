@@ -4,7 +4,8 @@
 //!
 //! Format: `#`-prefixed `key: value` header lines (engine, `header_sha256`, `epoch_jd_tdb`,
 //! `au_km`, units), then the column line [`STATE_COLUMNS`], then one row per body and output
-//! time: TDB days since the epoch, NAIF id, SSB-centred ICRF position (km) and velocity (km/s).
+//! time: TDB days since the epoch, NAIF id, ICRF position (km) and velocity (km/s) relative to
+//! the `center_naif` body (0, the solar-system barycentre, when the line is absent).
 //! Numbers are shortest round-trip decimals, so parsing recovers the oracle's binary64 values.
 
 use crate::OracleError;
@@ -20,7 +21,7 @@ pub struct GoldenState {
     pub t_days: f64,
     /// NAIF id.
     pub naif: i32,
-    /// Position (km), SSB-centred, ICRF axes.
+    /// Position (km), ICRF axes, relative to the golden's centre.
     pub position_km: [f64; 3],
     /// Velocity (km/s).
     pub velocity_km_s: [f64; 3],
@@ -117,6 +118,20 @@ impl GoldenStates {
                 file: self.file.clone(),
                 problem: format!("header line `# {key}: <number>` missing or invalid"),
             })
+    }
+
+    /// The origin of the states: the `center_naif` header line, or 0 (the solar-system
+    /// barycentre) when it is absent (the WP16 stage A golden predates the line).
+    ///
+    /// # Errors
+    /// `FA-E1502` if the line is present but not an integer.
+    pub fn center_naif(&self) -> Result<i32, OracleError> {
+        self.meta.get("center_naif").map_or(Ok(0), |v| {
+            v.parse::<i32>().map_err(|e| OracleError::Golden {
+                file: self.file.clone(),
+                problem: format!("header line `# center_naif: {v}`: {e}"),
+            })
+        })
     }
 
     /// The distinct output times (days), in file order.

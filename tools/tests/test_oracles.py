@@ -1,6 +1,6 @@
 # SPDX-FileCopyrightText: 2026 Proper-Time Physics Institute
 # SPDX-License-Identifier: Apache-2.0
-"""Oracle runners and images without starting a container (WP16).
+"""Oracle runners and images without starting a container (WP16, WP17).
 
 The refusal paths run before any engine is imported, so they are tested here with no REBOUND,
 pyerfa or jplephem installed. The real container runs are recorded in IMPLEMENTATION-NOTES WP16.
@@ -15,7 +15,15 @@ from pathlib import Path
 
 import pytest
 
-from oracles import common, compare_goldens, erfa_runner, rebound_runner
+from oracles import (
+    common,
+    compare_goldens,
+    erfa_runner,
+    mercury6_runner,
+    nbody_io,
+    rebound_runner,
+    swiftest_runner,
+)
 from oracles.header440 import Header440
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -23,7 +31,20 @@ CANARIES = ROOT / "ci" / "oracles" / "canaries"
 PC_TOLERANCE = 1e-16  # lint: allow-literal(any IAS15 threshold: the runner refuses the key)
 # Round-off bound of the synthetic-header arithmetic (a few ulp).
 REL = 1e-14  # lint: allow-literal(round-off bound, synthetic header)
-STAGE_A = ROOT / "ci" / "scenarios" / "stage-a-sun-8planets-newton-100yr.toml"
+# Arithmetic probes (not physics): a power-of-two step count, a step that does not divide 1 d,
+# and binary64 values for the Fortran D-notation round trip.
+STEPS_PER_DAY = 128
+ODD_STEP = 0.3  # lint: allow-literal(arithmetic probe: does not divide 1 d)
+ROUND_TRIP_PROBES = (0.1, -1.3e-300, 123456789.0, 1.0)  # lint: allow-literal(binary64 probes)
+SCENARIOS = ROOT / "ci" / "scenarios"
+STAGE_A = SCENARIOS / "stage-a-sun-8planets-newton-100yr.toml"
+CLITE_GR = SCENARIOS / "oracle-clite-sun-mercury-tp-gr1pn-252yr.toml"
+PADD_VENUS = SCENARIOS / "oracle-padd-sun-mercury-venus-2000yr.toml"
+
+
+def _settings(tool: str, scenario: Path) -> dict[str, object]:
+    s = common.load_scenario(scenario)
+    return nbody_io.load_settings(ROOT / "ci" / "oracles" / tool / "settings.toml", str(s["name"]))
 
 
 # Verifies: REF-011
@@ -194,7 +215,7 @@ def test_compare_goldens_ignores_only_comment_lines(tmp_path: Path) -> None:
 
 def _dockerfiles() -> list[Path]:
     paths = sorted((ROOT / "ci" / "oracles").glob("*/Dockerfile"))
-    assert {p.parent.name for p in paths} >= {"rebound", "erfa", "jpl"}
+    assert {p.parent.name for p in paths} >= {"rebound", "erfa", "jpl", "swiftest", "mercury6"}
     return paths
 
 
@@ -211,6 +232,10 @@ def test_oracle_images_are_fully_pinned() -> None:
                 if not word.startswith("-") and word != "\\":
                     assert "=" in word, (dockerfile, word)
         assert "--require-hashes" in text or "pip install" not in text, dockerfile
+        # Downloaded sources (Mercury6) are pinned by checksum.
+        for add in re.findall(r"^ADD\s[^\n]*(?:\\\n[^\n]*)*", text, re.MULTILINE):
+            if "http" in add:
+                assert re.search(r"--checksum=sha256:[0-9a-f]{64}", add), (dockerfile, add)
         for req in sorted(dockerfile.parent.glob("requirements*.txt")):
             lines = [
                 ln
@@ -252,3 +277,88 @@ def test_tools_project_never_depends_on_a_gpl_oracle() -> None:
     assert not [d for d in deps if gpl.match(d)]
     lock = (ROOT / "tools" / "uv.lock").read_text(encoding="utf-8")
     assert not re.search(r'^name = "(rebound|reboundx|assist|swiftest)"$', lock, re.MULTILINE)
+
+
+# Verifies: REF-011, REF-007
+def test_swiftest_runner_runs_its_stages_and_refuses_the_rest() -> None:
+    """Stage A, C-lite (GR in test-particle mode) and P-add pass the check; GR in n-body mode,
+    every other switch, double-double and the IAS15-only threshold are refused by name."""
+    for sc in (STAGE_A, CLITE_GR, PADD_VENUS):
+        swiftest_runner.check(common.load_scenario(sc), _settings("swiftest", sc))
+    base = common.load_scenario(STAGE_A)
+    settings = _settings("swiftest", STAGE_A)
+    values: dict[str, object] = {"ppn": {"beta": 1.0, "gamma": 1.0}, "asteroids": 1}
+    for switch in ["sun_j2", "gr_eih", "ppn", "lense_thirring", "asteroids", "kbos", "kbo_ring"]:
+        s = json.loads(json.dumps(base))
+        s["forces"][switch] = values.get(switch, True)
+        with pytest.raises(common.Refusal) as exc:
+            swiftest_runner.check(s, settings)
+        assert f"`{switch}`" in str(exc.value)
+    s = json.loads(json.dumps(base))
+    s["forces"]["gr_1pn_central"] = True
+    with pytest.raises(common.Refusal) as exc:
+        swiftest_runner.check(s, settings)
+    assert "`forces.gr_1pn_central`" in str(exc.value)
+    for item, table, key, value in [
+        ("integrator.precision", "integrator", "precision", "dd"),
+        ("span.years", "span", "years", -1.0),
+        ("output.cadence_days", "output", "cadence_days", ODD_STEP),
+        ("output.perihelion", "output", "perihelion", ["Mercury"]),
+    ]:
+        s = json.loads(json.dumps(base))
+        s[table][key] = value
+        with pytest.raises(common.Refusal) as exc:
+            swiftest_runner.check(s, settings)
+        assert f"`{item}`" in str(exc.value), item
+
+
+# Verifies: REF-011, REF-008
+def test_mercury6_runner_refuses_every_gr_switch(capsys: pytest.CaptureFixture[str]) -> None:
+    """REF-008: no scenario with a GR switch reaches Mercury6; the canary exits 3 by name."""
+    status = mercury6_runner.main(
+        [
+            "--scenario",
+            str(CANARIES / "canary-ppn-gr-eih.toml"),
+            "--header",
+            "/nonexistent/header.440",
+            "--out-dir",
+            "/nonexistent/out",
+            "--settings",
+            str(ROOT / "ci" / "oracles" / "mercury6" / "settings.toml"),
+        ]
+    )
+    err = capsys.readouterr().err
+    assert status == common.REFUSAL_EXIT
+    assert "`gr_eih`" in err
+    assert "`ppn`" in err
+    for sc in (STAGE_A, PADD_VENUS):
+        mercury6_runner.check(common.load_scenario(sc))
+    base = common.load_scenario(STAGE_A)
+    for switch in ["gr_1pn_central", "gr_eih", "ppn"]:
+        s = json.loads(json.dumps(base))
+        s["forces"][switch] = {"beta": 1.0, "gamma": 1.0} if switch == "ppn" else True
+        with pytest.raises(common.Refusal) as exc:
+            mercury6_runner.check(s)
+        assert f"`{switch}`" in str(exc.value)
+        assert "REF-008" in str(exc.value)
+    with pytest.raises(common.Refusal) as exc:
+        mercury6_runner.check(common.load_scenario(CLITE_GR))
+    assert "`gr_1pn_central`" in str(exc.value)
+
+
+# Verifies: CI-002
+def test_mercury6_inputs_round_trip_binary64() -> None:
+    """Fortran D-notation keeps every binary64 exactly; names fit the manual's 8 characters."""
+    for x in ROUND_TRIP_PROBES:
+        assert float(mercury6_runner.fortran(x).replace("D", "e")) == x
+    assert mercury6_runner.mercury_name("Neptune") == "NEPTUNE"
+    assert len(mercury6_runner.mercury_name("Jupiter_long")) <= 8
+
+
+# Verifies: CI-002
+def test_steps_per_requires_exact_multiples() -> None:
+    """Output cadences and spans map to whole numbers of fixed steps only."""
+    assert nbody_io.steps_per(1.0, 1.0 / STEPS_PER_DAY) == STEPS_PER_DAY
+    assert nbody_io.steps_per(float(STEPS_PER_DAY) * 3.0, 1.0) == STEPS_PER_DAY * 3
+    assert nbody_io.steps_per(1.0, ODD_STEP) is None
+    assert nbody_io.steps_per(0.0, 1.0) is None

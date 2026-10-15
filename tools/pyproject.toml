@@ -83,3 +83,9 @@ ignore_missing_imports = true
 # L4/L12): never a dependency of tools/, so mypy cannot see them.
 module = ["rebound", "rebound.*", "reboundx", "reboundx.*"]
 ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+# Swiftest (GPL-3.0-or-later) exists only inside the ci/oracles/swiftest image (LIC-001, red-team
+# L4/L12): never a dependency of tools/, so mypy cannot see it.
+module = ["swiftest", "swiftest.*"]
+ignore_missing_imports = true

@@ -4,8 +4,9 @@
 #
 # Host driver for the oracle containers (CI-001, CI-003, REF-005, REF-009, REF-001; LIC-001/002).
 #
-#   tools/oracles/run_oracles.sh build   <rebound|erfa|jpl>
-#   tools/oracles/run_oracles.sh rebound <scenario.toml> <out-dir>
+#   tools/oracles/run_oracles.sh build   <rebound|swiftest|mercury6|orekit|erfa|jpl>
+#   tools/oracles/run_oracles.sh <rebound|swiftest|mercury6> <scenario.toml> <out-dir>
+#   tools/oracles/run_oracles.sh orekit  <scenario.toml> <out-dir>
 #   tools/oracles/run_oracles.sh erfa    <out-dir>
 #   tools/oracles/run_oracles.sh jpl     <out-dir>
 #
@@ -27,7 +28,7 @@ root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 cd "$root"
 data="${FA_DATA_DIR:-$root/target/fa-data}"
 
-usage() { sed -n '6,10p' "${BASH_SOURCE[0]}" | sed 's/^# *//' >&2; exit 2; }
+usage() { sed -n '6,11p' "${BASH_SOURCE[0]}" | sed 's/^# *//' >&2; exit 2; }
 
 runner_sha() {
   local sha
@@ -81,15 +82,15 @@ case "$cmd" in
     [[ $# == 1 ]] || usage
     build "$1"
     ;;
-  rebound)
+  rebound|swiftest|mercury6)
     [[ $# == 2 ]] || usage
     scenario="$(realpath "$1")"; out="$2"
     mkdir -p "$out"; out="$(realpath "$out")"
-    run_container rebound --network none \
+    run_container "$cmd" --network none \
       -v "$scenario:/in/$(basename "$scenario"):ro" \
       -v "$data/header.440:/in/header.440:ro" \
       -v "$out:/out" \
-      "$(image_tag rebound)" \
+      "$(image_tag "$cmd")" \
       --scenario "/in/$(basename "$scenario")" --header /in/header.440 --out-dir /out
     ;;
   erfa)

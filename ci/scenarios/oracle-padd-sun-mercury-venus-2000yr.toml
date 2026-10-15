@@ -1,0 +1,33 @@
+# SPDX-FileCopyrightText: 2026 Proper-Time Physics Institute
+# SPDX-License-Identifier: Apache-2.0
+# Oracle P-add (WP17, CI-009, PHY-012 primary protocol): the Venus configuration (base + Venus). Forward from the
+# header.440 ICs at JDEPOC for 2000 Julian years (730500 d, a whole number of 1/128-d steps and of
+# daily outputs, so the fixed-step tools can run it); Mercury and the Sun sampled daily for the
+# Park2017 estimator, which FerroAstro's tooling applies to every tool's series.
+# Schema: scenario.schema.json (CI-002).
+schema_version = 1
+name = "oracle-padd-sun-mercury-venus-2000yr"
+description = "Oracle P-add Venus: Sun + Mercury + Venus, Newtonian, header.440 ICs, 2000 yr forward, daily samples"
+mode = "n-body"
+bodies = ["Sun", "Mercury", "Venus"]
+central_body = "Sun"
+
+[initial_conditions]
+source = "de440-header"
+
+[constants]
+gm_set = "de440"
+
+[forces]
+newton = true
+
+[integrator]
+name = "ias15"
+precision = "f64"
+
+[span]
+years = 2000.0
+
+[output]
+cadence_days = 1.0
+sample_bodies = ["Sun", "Mercury"]
