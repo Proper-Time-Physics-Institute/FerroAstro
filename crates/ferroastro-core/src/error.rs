@@ -9,6 +9,7 @@
 //! | `FA-E0001`–`FA-E0099` | quantities, frames, time scales (`ferroastro-core`) |
 //! | `FA-E0100`–`FA-E0199` | test-vector loading and checking (`ferroastro-vectors`) |
 //! | `FA-E0200`–`FA-E0299` | external data products (`ferroastro-testdata`) |
+//! | `FA-E0300`–`FA-E0399` | ephemeris constants and `header.440` parsing (`ferroastro-constants`) |
 
 use std::fmt;
 
@@ -38,11 +39,17 @@ pub enum ErrorCode {
     DataChecksum,
     /// `FA-E0202`: the data manifest is missing or malformed.
     DataManifest,
+    /// `FA-E0300`: a JPL `header.440` file is malformed.
+    HeaderParse,
+    /// `FA-E0301`: a requested ephemeris constant is not in the table or header.
+    ConstantMissing,
+    /// `FA-E0302`: the committed constants table is malformed or inconsistent.
+    ConstantsTable,
 }
 
 impl ErrorCode {
     /// Every code, in numeric order (used to prove codes are unique).
-    pub const ALL: [ErrorCode; 11] = [
+    pub const ALL: [ErrorCode; 14] = [
         ErrorCode::NonFinite,
         ErrorCode::OutOfRange,
         ErrorCode::VectorIo,
@@ -54,6 +61,9 @@ impl ErrorCode {
         ErrorCode::DataFetch,
         ErrorCode::DataChecksum,
         ErrorCode::DataManifest,
+        ErrorCode::HeaderParse,
+        ErrorCode::ConstantMissing,
+        ErrorCode::ConstantsTable,
     ];
 
     /// The stable textual code, e.g. `"FA-E0001"`.
@@ -71,6 +81,9 @@ impl ErrorCode {
             ErrorCode::DataFetch => "FA-E0200",
             ErrorCode::DataChecksum => "FA-E0201",
             ErrorCode::DataManifest => "FA-E0202",
+            ErrorCode::HeaderParse => "FA-E0300",
+            ErrorCode::ConstantMissing => "FA-E0301",
+            ErrorCode::ConstantsTable => "FA-E0302",
         }
     }
 }

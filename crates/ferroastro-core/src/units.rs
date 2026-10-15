@@ -1,10 +1,11 @@
 // SPDX-FileCopyrightText: 2026 Proper-Time Physics Institute
 // SPDX-License-Identifier: Apache-2.0
 //! Quantity newtypes (ADR-0001). Each type stores one canonical SI-derived unit (km, s, km/s,
-//! km³/s², rad), so conversions happen only at construction and read-out.
+//! km³/s², rad, rad/s), so conversions happen only at construction and read-out.
 //!
 //! Only dimensionally meaningful arithmetic is implemented: same-type `+`/`-`, scaling by a
-//! dimensionless `f64`, same-type ratio (dimensionless) and `Length / TimeSpan = Velocity`.
+//! dimensionless `f64`, same-type ratio (dimensionless), `Length / TimeSpan = Velocity` and
+//! `Angle / TimeSpan = AngularRate`.
 //! `Length + Velocity` therefore does not compile.
 
 use crate::error::{Error, require_finite};
@@ -110,6 +111,18 @@ quantity!(
     Angle, "rad", from_radians, radians, "angle"
 );
 
+quantity!(
+    /// An angular rate (e.g. a rotation rate), stored in rad/s.
+    AngularRate, "rad/s", from_rad_per_s, rad_per_s, "angular rate"
+);
+
+impl Div<TimeSpan> for Angle {
+    type Output = AngularRate;
+    fn div(self, rhs: TimeSpan) -> AngularRate {
+        AngularRate(self.0 / rhs.0)
+    }
+}
+
 impl Div<TimeSpan> for Length {
     type Output = Velocity;
     fn div(self, rhs: TimeSpan) -> Velocity {
@@ -155,6 +168,7 @@ mod tests {
         assert!(Velocity::from_km_per_s(f64::NEG_INFINITY).is_err());
         assert!(GravParam::from_km3_per_s2(f64::NAN).is_err());
         assert!(Angle::from_arcsec(f64::NAN).is_err());
+        assert!(AngularRate::from_rad_per_s(f64::NAN).is_err());
     }
 
     /// Verifies: API-001
@@ -168,6 +182,8 @@ mod tests {
         assert!(((d + d - d).km() - d.km()).abs() < f64::EPSILON);
         assert!((d / d - 1.0).abs() < f64::EPSILON);
         assert!(((-d).abs().km() - d.km()).abs() < f64::EPSILON);
+        let w = Angle::from_radians(6.0)? / t;
+        assert!((w.rad_per_s() - 2.0).abs() < f64::EPSILON);
         Ok(())
     }
 

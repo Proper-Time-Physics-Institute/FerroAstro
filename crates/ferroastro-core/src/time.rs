@@ -13,7 +13,7 @@ use std::marker::PhantomData;
 use std::ops::{Add, Sub};
 
 /// Seconds per day in the Julian-date convention (exactly 86 400 SI seconds by definition).
-const SECONDS_PER_DAY: f64 = 86_400.0;
+pub const SECONDS_PER_DAY: f64 = 86_400.0;
 
 mod sealed {
     pub trait Sealed {}

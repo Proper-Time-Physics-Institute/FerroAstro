@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 //! FerroAstro foundation types (ADR-0001, API-001, API-002).
 //!
-//! * [`units`]: quantity newtypes (`Length`, `Velocity`, `TimeSpan`, `GravParam`, `Angle`) whose
+//! * [`units`]: quantity newtypes (`Length`, `Velocity`, `TimeSpan`, `GravParam`, `Angle`, `AngularRate`) whose
 //!   arithmetic only combines dimensionally compatible values.
 //! * [`frames`]: reference-frame and centre markers, and frame/centre-tagged positions.
 //! * [`time`]: time-scale markers and the two-part Julian date [`time::Epoch`].
