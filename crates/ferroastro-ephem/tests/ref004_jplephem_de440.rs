@@ -16,6 +16,7 @@ mod common;
 
 use common::{Max, cached_product, check, load, vectors};
 use ferroastro_core::frames::{Barycentric, Heliocentric};
+use ferroastro_core::time::{Epoch, Tdb};
 use ferroastro_ephem::{Ephemeris, NaifId, Segment, Spk, SpkType};
 use ferroastro_real::{DoubleDouble, Real};
 use std::collections::BTreeMap;
@@ -197,4 +198,68 @@ fn typed_states_chain_segments_to_the_barycentre_and_the_sun() {
         let b = f.position().components()[k].km();
         assert!((a - b).abs() <= 4.0 * f64::EPSILON * b.abs(), "{a} vs {b}");
     }
+}
+
+/// The record search must not depend on how the Julian date is split. With the day part at noon
+/// (`x.0`) and the fraction pushing past a record boundary, the three-step `divmod` carries a
+/// whole record from the summed remainders; the golden table (day part always at 0h, fraction
+/// < 1) never exercises that carry. Fractions are multiples of 1/16 day (5400 s), so every split
+/// gives the same TDB seconds exactly and the states must be bit-identical.
+///
+/// Verifies: DEP-011, REF-004
+#[test]
+fn state_is_independent_of_the_two_part_date_split() {
+    let bytes = cached_product("de440-bsp");
+    let spk = Spk::parse(&bytes).unwrap();
+    let day = ferroastro_ephem::SECONDS_PER_DAY;
+    let sixteenths = 16.0; // lint: allow-literal(dyadic step of the day fraction, not physics)
+    let mut carried = 0usize;
+    for seg in spk.segments() {
+        let l = seg.layout.unwrap();
+        // Records 1, n/2 and n-1: their starting 0h date, then epochs just either side of the end.
+        for record in [1, l.n / 2, l.n - 1] {
+            let start_jd = ferroastro_ephem::J2000_JD
+                + l.intlen
+                    .mul_add(f64::from(u32::try_from(record).unwrap()), l.init)
+                    / day;
+            let end_jd = start_jd + l.intlen / day;
+            for k in -24_i32..=8 {
+                // Reference: day part at the 0h date before the epoch, fraction in [0, 1).
+                let jd = end_jd + f64::from(k) / sixteenths;
+                let d0 = (jd - 0.5).floor() + 0.5;
+                let reference = Epoch::<Tdb>::from_jd_parts(d0, jd - d0).unwrap();
+                if !seg.covers(reference) {
+                    continue;
+                }
+                let want = seg.state(reference).unwrap();
+                // Same epoch with the day part at noon before, and at the 0h date one day before.
+                for d in [d0 - 0.5, d0 - 1.0] {
+                    let e = Epoch::<Tdb>::from_jd_parts(d, jd - d).unwrap();
+                    let got = seg.state(e).unwrap();
+                    let (r0, _) = seg.locate(reference).unwrap();
+                    let (r1, _) = seg.locate(e).unwrap();
+                    assert_eq!(r0, r1, "seg {} jd {d}+{}", seg.index, jd - d);
+                    // The carry happens when the day part's remainder plus the fraction reaches INTLEN.
+                    let o1 = (d - ferroastro_ephem::J2000_JD)
+                        .mul_add(day, -l.init)
+                        .rem_euclid(l.intlen);
+                    if (jd - d).mul_add(day, o1) >= l.intlen {
+                        carried += 1;
+                    }
+                    for c in 0..3 {
+                        assert_eq!(
+                            got.position[c].to_bits(),
+                            want.position[c].to_bits(),
+                            "seg {} jd {d}+{}",
+                            seg.index,
+                            jd - d
+                        );
+                        assert_eq!(got.velocity[c].to_bits(), want.velocity[c].to_bits());
+                    }
+                }
+            }
+        }
+    }
+    println!("split-invariance: {carried} evaluations needed the divmod carry");
+    assert!(carried > 0, "no evaluation exercised the carry");
 }
