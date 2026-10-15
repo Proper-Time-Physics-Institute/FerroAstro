@@ -16,6 +16,7 @@ ferroastro-integrators.workspace = true
 thiserror.workspace = true
 
 [dev-dependencies]
+criterion.workspace = true
 ferroastro-constants.workspace = true
 ferroastro-forces.workspace = true
 ferroastro-testdata.workspace = true
@@ -24,3 +25,7 @@ serde_json.workspace = true
 
 [lints]
 workspace = true
+
+[[bench]]
+name = "two_body"
+harness = false
