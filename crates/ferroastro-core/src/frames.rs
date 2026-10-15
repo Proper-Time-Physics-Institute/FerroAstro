@@ -4,8 +4,9 @@
 //!
 //! A [`Position<F, C>`] is tagged with its frame `F` and centre `C`. Subtracting two positions
 //! yields a centre-free [`Displacement<F>`], and only when frame **and** centre agree; mixing
-//! them is a compile error. Frame/centre conversions will be explicit functions citing their
-//! source routine (ARCHITECTURE design rule 2); none exist in M0.
+//! them is a compile error. Frame conversions are explicit, typed rotations in
+//! `ferroastro-frames`, each citing its definition (ARCHITECTURE design rule 2); ICRF is the
+//! default output frame (NUM-014).
 
 use crate::units::{Length, Velocity};
 use ferroastro_real::Real;
@@ -40,6 +41,20 @@ pub struct EclipticJ2000;
 /// equator. The IAU solar pole has no precession term, so "of date" equals fixed axes.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub struct SunEquatorIau;
+/// IAU 2006 mean ecliptic and equinox **of date** (ERFA `ecm06`). The date is not part of the
+/// type: a value in this frame is only meaningful together with the epoch of the rotation that
+/// produced it. For PHY-017 historical comparisons and NUM-014 only.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub struct EclipticOfDate;
+/// Mercury's mean-orbit frame (Park et al. 2017 §4): z along the mean orbital pole, y = z × `x̂_ICRF`
+/// (normalised), x = y × z. Fixed axes.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub struct MercuryMeanOrbit;
+/// A solar-equator frame with a **configurable** pole (PHY-010): z along the pole, x along the
+/// ascending node of the solar equator on the ICRF equator. The pole travels with the rotation
+/// as metadata; [`SunEquatorIau`] is the special case of the IAU (WGCCRE) pole.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub struct SolarEquator;
 /// Solar-system barycentre.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub struct Barycentric;
@@ -50,6 +65,9 @@ pub struct Heliocentric;
 impl sealed::Sealed for Icrf {}
 impl sealed::Sealed for EclipticJ2000 {}
 impl sealed::Sealed for SunEquatorIau {}
+impl sealed::Sealed for EclipticOfDate {}
+impl sealed::Sealed for MercuryMeanOrbit {}
+impl sealed::Sealed for SolarEquator {}
 impl sealed::Sealed for Barycentric {}
 impl sealed::Sealed for Heliocentric {}
 
@@ -61,6 +79,15 @@ impl Frame for EclipticJ2000 {
 }
 impl Frame for SunEquatorIau {
     const NAME: &'static str = "IAU_SUN";
+}
+impl Frame for EclipticOfDate {
+    const NAME: &'static str = "ECLIPDATE-IAU2006";
+}
+impl Frame for MercuryMeanOrbit {
+    const NAME: &'static str = "MERCURY-MEAN-ORBIT";
+}
+impl Frame for SolarEquator {
+    const NAME: &'static str = "SOLAR-EQUATOR";
 }
 impl Center for Barycentric {
     const NAME: &'static str = "SSB";

@@ -288,6 +288,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "ferroastro-frames"
+version = "0.0.0"
+dependencies = [
+ "ferroastro-core",
+ "ferroastro-erfa",
+ "ferroastro-real",
+ "ferroastro-testdata",
+ "ferroastro-time",
+ "ferroastro-vectors",
+ "sha2",
+ "thiserror",
+ "trybuild",
+]
+
+[[package]]
 name = "ferroastro-integrators"
 version = "0.0.0"
 dependencies = [

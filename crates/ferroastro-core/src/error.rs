@@ -15,6 +15,7 @@
 //! | `FA-E0600`–`FA-E0699` | shared by two crates: `FA-E0600` orbital elements and analytic oracles (`ferroastro-analytic`); `FA-E0601`–`FA-E0603` precession estimators and rate reports (`ferroastro-precession`) |
 //! | `FA-E0700`–`FA-E0799` | ladder rungs, scenarios and the CLI (`ferroastro-ladder`, `ferroastro-cli`) |
 //! | `FA-E0800`–`FA-E0899` | calendar and time-scale conversions: `FA-E0800`–`FA-E0803` ERFA statuses (`ferroastro-erfa`, which cannot depend on this crate and mirrors the strings); `FA-E0804`–`FA-E0805` UTC and conversion results (`ferroastro-time`) |
+//! | `FA-E0900`–`FA-E0999` | reference-frame rotations (`ferroastro-frames`) |
 
 use std::fmt;
 
@@ -96,11 +97,16 @@ pub enum ErrorCode {
     UtcUnavailable,
     /// `FA-E0805`: a time-scale conversion produced a non-finite or unrepresentable date.
     TimeConversion,
+    /// `FA-E0900`: a frame definition is degenerate (e.g. a pole along the reference axis, or a
+    /// matrix that is not a rotation).
+    FrameDefinition,
+    /// `FA-E0901`: a frame rotation produced a non-finite component.
+    FrameTransform,
 }
 
 impl ErrorCode {
     /// Every code, in numeric order (used to prove codes are unique).
-    pub const ALL: [ErrorCode; 36] = [
+    pub const ALL: [ErrorCode; 38] = [
         ErrorCode::NonFinite,
         ErrorCode::OutOfRange,
         ErrorCode::VectorIo,
@@ -137,6 +143,8 @@ impl ErrorCode {
         ErrorCode::JulianDateRange,
         ErrorCode::UtcUnavailable,
         ErrorCode::TimeConversion,
+        ErrorCode::FrameDefinition,
+        ErrorCode::FrameTransform,
     ];
 
     /// The stable textual code, e.g. `"FA-E0001"`.
@@ -179,6 +187,8 @@ impl ErrorCode {
             ErrorCode::JulianDateRange => "FA-E0803",
             ErrorCode::UtcUnavailable => "FA-E0804",
             ErrorCode::TimeConversion => "FA-E0805",
+            ErrorCode::FrameDefinition => "FA-E0900",
+            ErrorCode::FrameTransform => "FA-E0901",
         }
     }
 }

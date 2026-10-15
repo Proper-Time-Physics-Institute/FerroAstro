@@ -20,6 +20,7 @@ repository = "https://github.com/Proper-Time-Physics-Institute/FerroAstro"
 ferroastro-real = { path = "crates/ferroastro-real", version = "0.0.0", default-features = false, features = ["std"] }
 ferroastro-core = { path = "crates/ferroastro-core", version = "0.0.0" }
 ferroastro-erfa = { path = "crates/ferroastro-erfa", version = "0.0.0" }
+ferroastro-frames = { path = "crates/ferroastro-frames", version = "0.0.0" }
 ferroastro-time = { path = "crates/ferroastro-time", version = "0.0.0" }
 ferroastro-vectors = { path = "crates/ferroastro-vectors", version = "0.0.0" }
 ferroastro-testdata = { path = "crates/ferroastro-testdata", version = "0.0.0" }
