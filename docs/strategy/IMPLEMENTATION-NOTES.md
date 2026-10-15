@@ -2985,3 +2985,60 @@ WP13 brief's 1000-yr/500-yr test: **pass in f64 and DD.** The f64 and DD runs ta
 | wasm32 build of `ferroastro-scenario`, `ferroastro-propagate` | pass |
 | data tier (`tools/run_long_local.sh --data-only`, log `target/long-local/20261015T125000Z-da94f9e49f04.log`, clean tree) | **24/24 pass** (23 earlier + WP13 check 5); all products cache hits, SHA-256 re-verified; check 5 numbers unchanged |
 | nightly 2b | 2/2 pass (above) |
+
+## WP14 — [M3] `ferroastro-diffrun` + per-planet Newtonian contributions vs Park 2017 Table 3
+
+Builder agent, 2026-10-15. Branch `m3-newtonian-nbody`, stacked on `m0-foundation`, draft PR #13.
+
+### Plan and pre-registered checks (written 2026-10-15, before any WP14 run)
+**Disclosure first.** Before writing this plan I re-read Park et al. 2017 (AJ 153, 121; the
+iopscience PDF, sha256 `24fb2153…2433380b`, the copy WP5 read, re-downloaded to the scratchpad and
+not committed) for the Table 3 rows and §4. Its text describes how the rows were made (quoted under
+"NEEDS HUMAN REVIEW" below). That text does **not** change the protocol here: the maintainer
+decision in force fixes it, and OI-38 stays for a maintainer to close. No FerroAstro differential
+run had been made when this was written.
+
+**Protocol (fixed now; never tuned afterwards).**
+- *Primary, P-add:* contribution(X) = ϖ̇(Sun + Mercury + X) − ϖ̇(Sun + Mercury). The Earth/Moon
+  row toggles Earth and Moon together, as two bodies with the DE geocentric-Moon variables (no
+  N-MOON rung, OI-10).
+- *Informational, P-remove:* ϖ̇(full) − ϖ̇(full without X), full = Sun, Mercury, Venus, Earth, Moon,
+  Mars, Jupiter, Saturn, Uranus, Neptune and Pluto (all DE440 Major bodies of header.440; no
+  asteroids, which are WP15).
+- *Cross terms (P-add, informational):* x(X, Y) = ϖ̇(S+M+X+Y) − ϖ̇(S+M+X) − ϖ̇(S+M+Y) + ϖ̇(S+M), for
+  the six planet pairs of Park17 Table 3: V+E/M, V+J, E/M+Ma, Ma+J, J+S, S+U. The Me+V row (−0.0053)
+  involves Mercury's own mass and has no P-add analogue; it is not computed. The "Mercury" row
+  (0.0050, OI-09) is never an oracle.
+- *Dynamics:* Newtonian point masses only (`forces = { newton = true }`; no solar J2, no GR), DE440
+  GMs, f64, IAS15 with the default settings (ε = 1e-9 PC tolerance and safety as WP13).
+- *Initial conditions:* header.440 at JDEPOC (JD 2440400.5 TDB, 1969-06-28), the same records
+  for every configuration. Each configuration is two legs from JDEPOC, backwards to
+  J2000 − 1000 Julian yr and forwards to J2000 + 1000 Julian yr, each 30 d beyond the window.
+- *Estimator (one id for every run, CI-009):* the Park2017 estimator exactly as WP5's DE441 test
+  (b): heliocentric Mercury states (Mercury − Sun) sampled every 1.0 d from IAS15 dense output,
+  passages by the Lagrange interpolant (`PassageConfig::default()`), longitude projected onto the
+  Park17 mean-orbit plane (α 280.9876°, δ 61.4481°), fit `B + ϖ̇t + Qt² + 14 Table-2 terms` (SW92
+  Table 2a mean motions), t from J2000.0 TDB, 20 jack-knife blocks, window J2000 ± 1000 Julian yr.
+  The same fit on the passages located by IAS15 dense output (NUM-010 events) is reported for
+  every run as a passage-location cross-check (not asserted).
+- *Identical ICs (NUM-013, CI-009):* for every body, its IC record (GM, position, velocity as
+  exact binary64 parts) is bitwise the same in every configuration that contains it, and the IC
+  hash over the base bodies (Sun, Mercury) is the same for every run. A violation is `FA-E1401`.
+- *Long runs checkpoint (CI-010):* legs run in 50-yr segments through `run_until`/`resume_until`
+  and, when a store directory is given, each segment's checkpoint and the track so far are written
+  to disk, so an interrupted nightly resumes from the last segment. A completed leg's store file is
+  deleted (results are never cached across runs).
+
+**Checks** (margin = |Δ| / tolerance; tolerances fixed here).
+| # | check | tier | oracle | tolerance | gating |
+|---|---|---|---|---|---|
+| 1 | harness mechanics on header.440, Sun + Mercury (+ Venus, + Jupiter), ±10 yr legs: per-body IC records identical and shared IC hash equal; a run with different ICs (double-double precision) refused with `FA-E1401`; plan errors `FA-E1400` | PR | — | exact | yes |
+| 2 | a leg run in segments through an on-disk store, interrupted after 2 segments and resumed by a new harness call, equals the leg run in one piece | PR | the one-piece run | bitwise (every sample and passage) | yes |
+| 3 | combination arithmetic (P-add, P-remove, cross terms) from the per-run rates | PR | the definitions | exact (bitwise sums) | yes |
+| 4 | PHY-012 / NUM-013(b), P-add: Venus 277.4176, E/M 90.8881, Mars 2.4814, Jupiter 153.9899, Saturn 7.3227, Uranus 0.1425, Neptune 0.0424 | nightly (local) | Park17 Table 3 | ±0.005 ″/cy | **no**: vectors carry `blocked_by = "OI-38"`; the test reports and passes while OI-38 is open in OPEN-ITEMS.md, and asserts once a maintainer ticks it |
+| 5 | P-remove rows and the six cross terms vs Park17 | nightly | Park17 Table 3 | reported only | no |
+| 6 | NUM-013(a) through the harness: Sun + Mercury test particle from header.440, 1001 passages; toggles `gr_1pn_central`, `sun_j2` (DE440 J2, WGCCRE pole, real inclination), `lense_thirring`; identical IC hash; Δ(Park2017 estimator on the passages) − analytic rate of the same osculating orbit | PR | `schwarzschild_advance`, `j2_inclined_rate`, `lense_thirring_rate` | 1e-4 ″/cy (NUM-013(a)) | yes |
+
+The WP6 test `num013_isolation` (J2 at 2.25e-7, equatorial geometry, μ = GM☉) is unchanged and
+still carries the 2.25e-7 clause; check 6 adds the scenario path with DE440 constants and the real
+geometry, under a new vector id.
