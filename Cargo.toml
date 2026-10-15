@@ -4,7 +4,7 @@
 
 [workspace]
 resolver = "3"
-members = ["crates/ferroastro-core"]
+members = ["crates/ferroastro-core", "crates/ferroastro-vectors"]
 
 [workspace.package]
 version = "0.0.0"

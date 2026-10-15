@@ -33,3 +33,19 @@ Branch `m0-foundation`, stacked on PR #2 (`1-scientific-computing-strategy`). Ag
   only inside `#[test]` / `#[cfg(test)]` (`allow-*-in-tests`), so library code keeps `unwrap_used = deny`.
 - `float_cmp_const` is accepted by clippy 1.95 without an unknown-lint warning (OPEN-ITEMS note on group
   membership: it compiles; whether it is a separate restriction lint was not re-checked).
+
+### Test-vector schema (ADR-0004)
+- File layout: `schema_version = 1` plus `[[vector]]` tables. Field names follow ADR-0004 (`tolerance_rationale`,
+  not `rationale`). Required: id, requirement, quantity, value, unit, kind, source, citation, retrieved, tolerance,
+  tolerance_rationale, verified_by. `generated_by` (`path@sha`) and `engine {name, version, settings}` are
+  required for `computed-reference` (TST-003). Optional: `notes`. Unknown fields are rejected (typo guard).
+- `value` may be a float, an integer (|i| ≤ 2^53) or a **decimal string**, kept verbatim so that M5's
+  double-double path can parse more digits than f64 holds (e.g. GM☉ = 132712440041.279419 km³/s²).
+- Tolerance semantics: pass iff `|x − v| ≤ max(abs, rel·|v|)`. `abs` therefore doubles as the absolute floor
+  that the red-team review asks for on NUM-015's tiny effects (LT, J2).
+- Machine guard for PHY-018 / rule 8: a vector whose `source` or `citation` contains `UNVERIFIED` or `[S]` is
+  rejected. This catches honest labelling only; it is not a proof of verification (red-team H5).
+- The same schema exists twice: Rust (`ferroastro-vectors`, used by tests) and JSON Schema
+  (`tests/vectors/schema.json`, used by `tools/trace.py --check`). Both are exercised in CI.
+- First vectors: `CONST-CLIGHT-SI` (SI 2019) and `CONST-AU-IAU2012` (IAU 2012 B2), kind `defined`. They are
+  ephemeris-independent oracles for the header.440 `CLIGHT`/`AU` entries (REF-002). OI-05 qualifies the au.

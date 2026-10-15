@@ -1,0 +1,34 @@
+# SPDX-FileCopyrightText: 2026 Proper-Time Physics Institute
+# SPDX-License-Identifier: Apache-2.0
+# Constants that are exact by definition. They are independent of any ephemeris, so they can serve as
+# oracles for the DE440 header.440 entries of the same name (REF-002, PHY-002). Schema: ADR-0004.
+schema_version = 1
+
+[[vector]]
+id = "CONST-CLIGHT-SI"
+requirement = ["PHY-002", "REF-002"]
+quantity = "speed of light in vacuum c (DE440 header name CLIGHT)"
+value = 299792.458
+unit = "km/s"
+kind = "defined"
+source = "SI definition of the metre: c = 299 792 458 m/s exactly"
+citation = "BIPM, The International System of Units (SI), 9th edition (2019), section 2.2 and Table 1"
+retrieved = "2026-10-14"
+tolerance = { abs = 0.0 }
+tolerance_rationale = "Exact by definition. The header stores the value as a decimal with 3 decimals in km/s, which round-trips through f64 to the same double as this literal, so equality is required."
+verified_by = "WP1 agent, 2026-10-14: value is the SI defining constant; cross-checked against JPL DE440 header.440 CLIGHT by the `data` test de440_header_defined_constants"
+
+[[vector]]
+id = "CONST-AU-IAU2012"
+requirement = ["PHY-002", "REF-002"]
+quantity = "astronomical unit au (DE440 header name AU)"
+value = 149597870.700
+unit = "km"
+kind = "defined"
+source = "IAU 2012 Resolution B2: the au is a conventional unit of length equal to 149 597 870 700 m exactly"
+citation = "IAU 2012 General Assembly, Resolution B2 (re-definition of the astronomical unit of length)"
+retrieved = "2026-10-14"
+tolerance = { abs = 0.0 }
+tolerance_rationale = "Exact by definition; an integer number of metres, representable exactly in km as an f64 to well below 1 ulp."
+verified_by = "WP1 agent, 2026-10-14: value reproduced in DE440 header.440 (AU) and checked by the `data` test de440_header_defined_constants. OI-05 (Resolution text not re-opened) qualifies but does not block PHY-002."
+notes = "OI-05 tracks re-reading the Resolution B2 text itself."
