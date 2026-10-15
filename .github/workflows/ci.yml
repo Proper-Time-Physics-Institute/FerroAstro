@@ -38,6 +38,8 @@ jobs:
     if: github.event_name != 'schedule'
     runs-on: ubuntu-24.04
     timeout-minutes: 30
+    env:
+      FA_DATA_DIR: ${{ github.workspace }}/.fa-data
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -45,6 +47,16 @@ jobs:
       - name: Install pinned toolchain (rust-toolchain.toml)
         run: rustup show active-toolchain || rustup toolchain install
       - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+      # CI-005 PR-fast cache: the pinned de440.bsp, testpo.440 and header.440 that the
+      # non-ignored ephemeris tests read (REF-001, REF-004). Keyed on the manifest pins; on a miss
+      # fetch_jpl.py downloads and verifies them. Nothing is committed (LIC-003).
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ github.workspace }}/.fa-data
+          key: fa-data-${{ hashFiles('tests/data/MANIFEST.toml') }}
+      - uses: astral-sh/setup-uv@1c37ad07a6a961277cf70c0d37d6f313000f5884 # v10.3.0
+      - name: Fetch the PR-fast JPL products (verifies SHA-256; cache hit = no download)
+        run: cd tools && uv run python fetch_jpl.py
       - uses: taiki-e/install-action@1168f6810a3cb30a3514bf5756a3b7f0422c6df8 # v2.87.28
         with:
           tool: cargo-nextest@0.9.148,cargo-deny@0.19.8
@@ -66,10 +78,22 @@ jobs:
     if: github.event_name != 'schedule'
     runs-on: ubuntu-24.04
     timeout-minutes: 30
+    env:
+      FA_DATA_DIR: ${{ github.workspace }}/.fa-data
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+      # CI-005 PR-fast cache: the pinned de440.bsp, testpo.440 and header.440 that the
+      # non-ignored ephemeris tests read (REF-001, REF-004). Keyed on the manifest pins; on a miss
+      # fetch_jpl.py downloads and verifies them. Nothing is committed (LIC-003).
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ github.workspace }}/.fa-data
+          key: fa-data-${{ hashFiles('tests/data/MANIFEST.toml') }}
+      - uses: astral-sh/setup-uv@1c37ad07a6a961277cf70c0d37d6f313000f5884 # v10.3.0
+      - name: Fetch the PR-fast JPL products (verifies SHA-256; cache hit = no download)
+        run: cd tools && uv run python fetch_jpl.py
       - name: Install MSRV toolchain
         run: rustup toolchain install 1.85.0 --profile minimal
       - uses: taiki-e/install-action@1168f6810a3cb30a3514bf5756a3b7f0422c6df8 # v2.87.28
@@ -81,7 +105,7 @@ jobs:
         run: cargo +1.85.0 nextest run --workspace -E 'not binary(compile_fail)'
 
   wasm32:
-    name: wasm32 (real, core, erfa, time, integrators, forces, analytic, frames)
+    name: wasm32 (real, core, erfa, time, integrators, forces, analytic, frames, ephem)
     if: github.event_name != 'schedule'
     runs-on: ubuntu-24.04
     timeout-minutes: 20
@@ -95,7 +119,7 @@ jobs:
       # CRATE-PLAN: the foundation and dynamics crates build for wasm32-unknown-unknown (DEP-006);
       # ferroastro-real also as no_std with the pure-Rust libm (no default features).
       - name: Build for wasm32-unknown-unknown
-        run: cargo build -p ferroastro-real -p ferroastro-core -p ferroastro-erfa -p ferroastro-time -p ferroastro-integrators -p ferroastro-forces -p ferroastro-analytic -p ferroastro-frames --target wasm32-unknown-unknown
+        run: cargo build -p ferroastro-real -p ferroastro-core -p ferroastro-erfa -p ferroastro-time -p ferroastro-integrators -p ferroastro-forces -p ferroastro-analytic -p ferroastro-frames -p ferroastro-ephem --target wasm32-unknown-unknown
       - name: Build ferroastro-real and ferroastro-erfa no_std (libm) for wasm32-unknown-unknown
         run: cargo build -p ferroastro-real -p ferroastro-erfa --no-default-features --features libm --target wasm32-unknown-unknown
       # DEP-010 / WP8: the optional hifitime (UTC) feature must build for wasm32 too.
