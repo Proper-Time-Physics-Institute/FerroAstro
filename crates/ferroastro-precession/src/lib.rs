@@ -10,17 +10,23 @@
 //!   single-body oracles of NUM-015 (SR exact, PPN scaling, J2 planar/inclined, Lense–Thirring).
 //! * [`passages`]: perihelion passages (`r·v = 0`) and the per-orbit advance fitted from them.
 //! * [`report`]: [`report::RateReport`], a rate that cannot exist without its metadata (PHY-015).
+//! * [`park2017`]: the canonical Park-2017 estimator (NUM-011, ADR-0011) for **sampled**
+//!   trajectories such as a JPL ephemeris: perihelion passages, mean-orbit frame, quadratic +
+//!   periodic least-squares fit, formal and jack-knife σ.
+//! * [`lsq`], [`spectral`]: Householder least squares and a radix-2 FFT used by the fit.
 //!
-//! M0 scope: the Park-2017 estimator (perihelion passages, mean-orbit frame, quadratic +
-//! periodic fit; ADR-0011) is not implemented yet. The LRL estimator here is exact for
-//! two-body runs, where the eccentricity vector is a constant of motion.
+//! The LRL estimator is exact for two-body runs, where the eccentricity vector is a constant of
+//! motion.
 
 pub mod analytic;
 mod error;
 pub mod fit;
 pub mod kepler;
 pub mod lrl;
+pub mod lsq;
+pub mod park2017;
 pub mod passages;
 pub mod report;
+pub mod spectral;
 
 pub use error::PrecessionError;

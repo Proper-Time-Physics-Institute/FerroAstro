@@ -32,6 +32,12 @@ pub enum PrecessionError {
         /// The missing field.
         field: &'static str,
     },
+    /// Sampled input to an estimator is unusable.
+    #[error(
+        "FA-E0603: estimator input unusable: {0}; fix: supply strictly increasing, finite samples \
+         dense enough to resolve every orbit (see the estimator's documentation)"
+    )]
+    EstimatorInput(String),
 }
 
 impl PrecessionError {
@@ -42,6 +48,7 @@ impl PrecessionError {
             PrecessionError::Domain { .. } => ErrorCode::OrbitDomain,
             PrecessionError::Fit(_) => ErrorCode::FitDegenerate,
             PrecessionError::MissingMetadata { .. } => ErrorCode::ReportMetadataMissing,
+            PrecessionError::EstimatorInput(_) => ErrorCode::EstimatorInput,
         }
     }
 }
