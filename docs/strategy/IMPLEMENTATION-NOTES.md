@@ -1920,3 +1920,127 @@ force says: do not add anise as any dependency (dev or otherwise). This WP there
 anise, not even the Python package, and validates against Horizons and the ASCII products
 (checks 6 and 7). DEP-011's acceptance ("CI comparison against ANISE passes") stays **unmet**:
 **NEEDS HUMAN REVIEW**.
+
+**Amendment to check 5, made while writing the test (before any FerroAstro truncation run).** The
+plan said "every truncation gives `Err`". That cannot hold: the synthetic file ends with zero padding
+up to a whole record, and removing only padding leaves a valid file. The test asserts instead that
+every truncation that cuts into the file record, the summary or name record, or a segment's array
+gives FA-E1000/FA-E1001, and that a padding-only truncation parses and evaluates.
+
+### What was built
+- **`ferroastro-ephem` (L4, new; `std`, builds for wasm32).**
+  - `Daf`: the file record (both byte orders, `NAIF/DAF` files by `ND` inference), the FTP string
+    check, the summary-record chain with a loop guard, and the name records. Every read is checked.
+  - `Spk`: `ND = 2`, `NI = 6`. Every segment's word addresses and, for types 2 and 3, its directory
+    (`INIT`, `INTLEN > 0`, `RSIZE = 2 + k·(deg+1)`, `N·RSIZE + 4` = array length, coverage inside the
+    record grid) are validated at open, so evaluation cannot read outside the file. Other SPK types
+    open but return FA-E1002 when evaluated.
+  - Chebyshev types 2 and 3 by Clenshaw, generic over `Real`, in jplephem's operation order (no FMA).
+    The two-part TDB date is split with jplephem's three-step `divmod`. The final epoch of the last
+    record belongs to that record. `Segment::locate` returns the record and `s`.
+  - Segment chaining through the lowest common ancestor (Moon − Earth goes via the EMB, not the SSB),
+    NAIF data precedence (last covering segment wins), a frame-consistency check, and
+    `Ephemeris::state::<C, R>` returning `State<Icrf, C, R>` for `C = Barycentric | Heliocentric`
+    (NAIF frame 1 is read as the ICRF-aligned DE frame; anything else is FA-E1004).
+  - `parse_testpo` and the testeph code → NAIF id map.
+  - New codes FA-E1000…FA-E1006 (range FA-E10xx added to the core table) and FA-E0204.
+- **`ferroastro-testdata`:** `locate_product` (offline lookup plus SHA-256 re-verification; the
+  PR tier uses it so it never touches the network).
+- **`tools/fetch_jpl.py`** (5 pytest cases, ruff, mypy strict): downloads manifest products with
+  retries on network errors only, verifies the pin, writes the same provenance sidecar as the Rust
+  crate. `--verify-only` checks the cache offline. The pytest also scans `git ls-files` for `.bsp`,
+  DE ASCII, SOFA and NOVAS files (LIC-003, REF-001, DEP-017): none.
+- **`tools/goldens/jplephem_de440.py`** writes three goldens at `78f6045`:
+  `jplephem-de440.csv` (784 rows), `jplephem-synthetic.csv` (64 rows), `jplephem-sb441.csv` (156 rows).
+- **CI (CI-005):** the `rust` and `msrv` jobs restore `.fa-data` with `actions/cache` (v6.1.0,
+  pinned by SHA, key = hash of `MANIFEST.toml`) and run `fetch_jpl.py` (a cache hit downloads
+  nothing). The wasm32 job also builds `ferroastro-ephem`. The PR tier therefore needs the cache;
+  locally, run `(cd tools && uv run python fetch_jpl.py)` once. A missing file fails loudly with
+  FA-E0204 and that command.
+
+### WP10 results (PR tier, 2026-10-15, toolchain 1.95.0)
+| check | measured | tolerance | margin |
+|---|---|---|---|
+| 1 (REF-004) 14 segments × 56 epochs vs jplephem, f64 | position **0** km, velocity **0** km/s at all 784 epochs (bit-identical) | 1e-6 km, 1e-9 km/s | 0 |
+| 2 (REF-001) testpo.440: 11 354 body points (1 847 nutation/libration points skipped, none else) | max DEL **7.105e-15** (line 2733, 1777-01-01, Neptune wrt Moon, x) | 1e-13 | 0.071 |
+| 3 (DEP-007) f64 vs double-double, 784 golden epochs | ρ = **0.428** | 2 | 0.21 |
+| 3, nightly: every record of every segment, 3 points each (1 205 382 evaluations, release, 2.6 s) | ρ = **0.650** | 2 | 0.33 |
+| 4 synthetic type 2 + type 3, LTL and BIG (Rust bytes SHA-256-identical to the Python file) | **0** / **0** | 1e-6 km, 1e-9 km/s | 0 |
+| 5 (API-002) every truncation (2 × 5120 lengths): 4304 per byte order cut into records/data → FA-E1000/E1001; 816 padding-only truncations parse; 2000 proptest corruptions (1672 still parse and evaluate, 328 rejected at parse); 500 garbage inputs | no panic | — | — |
+| report only: double-double vs jplephem | 1.19e-7 km (Jupiter barycentre at 2650) | — | — |
+
+The 1 mm risk stated before the run did not occur: our f64 evaluation is bit-identical to jplephem
+at every golden epoch, so no ulp at Neptune/Pluto distance was lost.
+
+### WP10 real-data results (data tier, `tools/run_long_local.sh`, log `target/long-local/20261015T092004Z-1cbfa25adcbb.log`, commit `1cbfa25`)
+| check | measured | tolerance | margin |
+|---|---|---|---|
+| 6 DE440 ASCII: 3427 blocks of ascp01550/01950/02550, **1 727 208** coefficients | **0** mismatches (every record's MID and RADIUS also equal) | 0 | exact |
+| 6b geocentric Moon, ASCII series vs SPK (301 wrt 3) − (399 wrt 3) | 1.746e-10 km, 8.88e-16 km/s | 1e-8 km, 1e-12 km/s | 0.017, 0.001 |
+| 7 Horizons DE441 (`signature.version` 1.2, source DE441, frame ICRF; answers `4cbb27f7…`, `2f8b3e85…`, `3402a1aa…`) vs de440, barycentric, 21 epochs 1600–2600 | Mercury 1.49e-8 km; Earth 5.14e-3 km; Moon **0.418 km** (at 1600); velocity ≤ 9.8e-7 km/s | 10 km, 1e-3 km/s (gross) | 0.042, 0.001 |
+| 8 sb441-n373s.bsp (374 segments, internal name `SPKMERGE`): Ceres, Pallas, Vesta × 52 epochs vs jplephem | **0** / **0** (bit-identical) | 1e-6 km, 1e-9 km/s | 0 |
+
+Provenance (all retrieved 2026-10-15, SHA-256 equal to the pins): de440.bsp `a4ce9bf9…fff7c4b5`,
+testpo.440 `45084a7f…6693429f`, header.440 `0f4636b6…6ac3359`, ascp01550 `ed95a8eb…edb6375`,
+ascp01950 `e24f6356…3477286`, ascp02550 `66e1230a…e479c08`, sb441-n373s.bsp `21431132…ca8da10b`.
+
+The DE440 − DE441 differences of check 7 (cm for Mercury, metres for the Earth, 0.4 km for the Moon
+in 1600) are physical differences between the two ephemerides, reported here as information. The
+gross bound was not tuned to them.
+
+The whole data tier: 20 of 21 tests passed in the parallel run. `data_j2_and_lt_rungs_in_real_solar_equator_geometry`
+failed with **FA-E0200, HTTP 503 from Horizons** (curl gave up after 4 attempts; a network error,
+not an assertion). Run again alone, it passed with the WP6–WP9 numbers (J2 0.0284524, LT −0.0020148).
+Every earlier data number is unchanged to the printed digit: Park17 frame 575.309163 (jack-knife
+σ 0.001531), SW92 dog-leg 571.968047, GR from DE441 42.980669 / numerical 42.9800852, NUM-014
++4.431e-4 / +8.424e-7. The nightly tier: 4/4 pass (NUM-023 default 0.526/1.513; the long ensemble
+is still the known failure at 0.629).
+
+### Mutation probes (each reverted with `git checkout`; tree clean afterwards)
+| mutant | result |
+|---|---|
+| two-part date summed before the split (`jd1 + jd2`) | killed (jplephem de440, synthetic, DD ratio) |
+| type-2 velocity factor × (1 + 1e-9) | killed (jplephem velocity, testpo) |
+| segment search first-to-last (precedence) | **survived** the first suite (de440 has no overlapping segments) → added `the_last_overlapping_segment_takes_precedence`, which kills it |
+| FMA in the Clenshaw step | survives: it changes results only at the ulp level, far inside 1 mm. The bit-identity with jplephem is an observation, not an asserted property. |
+
+### Progress-review corrections (status in WP10)
+All were applied in WP7/WP8 and re-checked here: `long` is `workflow_dispatch` only and
+`run_long_local.sh` produced this WP's long-tier log; `IAS15-EQ11-DEADBEAT` carries NEEDS HUMAN
+REVIEW and `NUM012-ESTIMATOR-SPREAD`'s source no longer says "average out"; every new WP10 test loads
+vectors with `load_canonical` (refuses `FA_VECTORS_DIR`); the data profile has `retries = 0` and
+`fetch_jpl.py` retries network errors only; the μ-convention line is printed (−3.57e-6); the core
+range table names `ferroastro-analytic` for 06xx and FA-E0404 exists, and now also lists FA-E10xx;
+the M1 citing tests exist, and **DEP-007's "ephemeris evaluator" clause is now covered** (f64 and DD
+evaluation of every de440 segment); API-003 stays deferred (`doctest_coverage.py`: 0 of 367 public
+functions with a per-function doctest; `ferroastro-ephem` has a crate-level doctest). Every
+human-owned question in correction 8, and the weekly GitHub `data` job question, is left unresolved.
+
+### Deviations and NEEDS HUMAN REVIEW (WP10)
+1. **ANISE (DEP-011).** Not done, by the maintainer decision in force (no anise dependency of any
+   kind). Horizons (gross) and the ASCII products (exact) replace it. DEP-011's acceptance text
+   still names ANISE: a requirement-text change for PR #2.
+2. **Pins.** Seven new `MANIFEST.toml` pins were taken by the agent on first retrieval. The manifest
+   is human-owned; confirm them.
+3. **sb441 file.** `sb441-n373s.bsp` (936.6 MB) is pinned, not the 14.13 GB `sb441-n373.bsp` that
+   the plan names. OI-24 (which file REF-003 uses, what n373 contains) stays open. Observed: 374
+   Sun-centred type-2 segments.
+4. **The PR tier now needs the JPL cache.** `cargo nextest run --workspace` on a fresh clone fails
+   (FA-E0204, with the fetch command) until `fetch_jpl.py` has run once. The plan asks for exactly
+   this ("fail loudly, do not skip"), but it changes the developer contract, and on a cache miss the
+   CI `rust`/`msrv` jobs download ~120 MB from JPL. Decide whether this is acceptable.
+5. **REF-004 bit-identity.** It holds today because the Clenshaw order and the date split copy
+   jplephem's. The asserted tolerance is still REF-004's 1 mm / 1 µm/s.
+6. **`EPHEM-F64-DD-ROUNDOFF-RATIO` is a FerroAstro engineering bound** (ρ ≤ 2 of n·u·Σ|cₖ|), not a
+   published theorem; no literature was opened for it.
+7. **testpo threshold.** testeph's check is strict (`DEL ≥ 1e-13` warns); the vector check is `≤`.
+   They differ only at exactly 1e-13, and the measured maximum is 7.1e-15.
+8. **Frame label.** NAIF frame 1 (`J2000`) in the DE files is mapped to the typed `Icrf`. This is how
+   the DE4xx files are used (and Horizons' ICRF answers agree to < 0.42 km at 1600), but it is an
+   interpretation that frame-bias-level work (≤ 0.02″) must keep in mind.
+9. **Commit `7c47fb8` does not build on its own** (`Segment::locate` arrived in `ece7615`, pushed
+   right after). History was not rewritten. Bisecting across it needs `ece7615`.
+10. **Requirement-text suggestions for PR #2 (not edited here):** DEP-011: replace or qualify the
+    ANISE clause (Horizons + ASCII products), and record the jplephem bit-identity; REF-001: name
+    `fetch_jpl.py`, the manifest and the testeph 1e-13 threshold; CI-005: name the `.fa-data` cache
+    and its cold-cache download; REF-003/OI-24: `n373s` vs `n373`.
