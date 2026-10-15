@@ -44,6 +44,12 @@ slow-timeout = { period = "300s", terminate-after = 6 }
 
 # WP12 1b: the N-body Brouwer ensemble spawns 32 threads and ~1e9 IAS15 steps (45-55 min measured on 2026-10-15; terminated after 90 min); it runs
 # alone so the other nightly ensembles neither slow it nor are slowed by it. Scheduling only.
+# WP15 PHY-013: 10 legs of ~1000 yr with up to 393 bodies (343 Minor + 36 Ring); the first run was terminated
+# at the default 30 min with the full-model legs about 60% done (they resume from their checkpoints). Scheduling only.
+[[profile.nightly.overrides]]
+filter = "test(nightly_phy013_n_sum_and_asteroid_differential)"
+slow-timeout = { period = "600s", terminate-after = 12 }
+
 [[profile.nightly.overrides]]
 filter = "test(nightly_nbody_brouwer_energy_slope_with_solar_j2)"
 threads-required = "num-test-threads"
