@@ -72,3 +72,8 @@ addopts = "-ra --strict-markers"
 # pyerfa ships no type information; it is only installed with the `goldens` group.
 module = ["erfa", "erfa.*"]
 ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+# jplephem (MIT, the REF-004 reference reader) ships no type information.
+module = ["jplephem", "jplephem.*"]
+ignore_missing_imports = true
