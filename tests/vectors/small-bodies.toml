@@ -229,3 +229,17 @@ retrieved = "2026-10-15"
 tolerance = { abs = 1.0 }
 tolerance_rationale = "Agent-set (WP15 plan, check 2b): a one-sided structural bound, ratio < 1. PROVISIONAL."
 verified_by = "WP15 builder agent, 2026-10-15: pre-registered in IMPLEMENTATION-NOTES WP15 before any timing."
+
+[[vector]]
+id = "REF003-KBO-HORIZONS-POS-GROSS"
+requirement = ["REF-003"]
+quantity = "largest |Horizons heliocentric position - sb441-n373s state| at JDEPOC over the identified KBOs (Eris, Orcus, 2002 UX25), queried by MPC number"
+value = 0.0
+unit = "km"
+kind = "measured"
+source = "JPL Horizons API vectors (COMMAND '<number>;', CENTER 500@10, ICRF, TDB) at JDEPOC vs tests/goldens/sb441-n373s-jdepoc-states.csv."
+citation = "JPL Horizons API (ssd.jpl.nasa.gov/api/horizons.api); JPL sb441-n373s.bsp"
+retrieved = "2026-10-15"
+tolerance = { abs = 1.0e6 }
+tolerance_rationale = "Gross bound (WP15 addendum, fixed before the first query): Horizons uses its current small-body orbit solution, not the DE441 perturber file, so the two differ by the orbit-solution change propagated back to 1969; 1e6 km (0.007 au) still separates each TNO from every other of the 30 targets (they are AU apart). The check confirms the NAIF id <-> object mapping of KBO_IDENTIFICATION, not the state."
+verified_by = "WP15 builder agent, 2026-10-15: pre-registered in the WP15 addendum of IMPLEMENTATION-NOTES before the first query."

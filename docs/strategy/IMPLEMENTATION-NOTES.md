@@ -3388,3 +3388,12 @@ full run has neither as a separate effect, and the two cancel to −0.0003, well
 `asteroids = N` (the first N numbered asteroids of header.440 in header order, N ≤ 343),
 `kbos = true` (the identified KBOs) and `kbo_ring = true`. The two new switch names are a
 CI-002 surface change: NEEDS HUMAN REVIEW.
+
+**Addendum to the plan (written 2026-10-15, after the PR-tier checks 1a and 3 had run, before the
+query below).** The NAIF ids of `KBO_IDENTIFICATION` come from MPC numbers I know (Eris 136199,
+Orcus 90482, 2002 UX25 55637). A data-tier check now confirms them against JPL Horizons: query
+each by number (`COMMAND = '<number>;'`, CENTER `500@10`, ICRF, TDB) at JDEPOC, require the
+`Target body name` line to contain the expected name, and bound the position difference to the
+sampled sb441 state by **1e6 km** (`REF003-KBO-HORIZONS-POS-GROSS`; Horizons uses its current
+orbit solution, so this is a gross identity check only). `ferroastro-testdata::horizons` gains the
+parsed target name and the URL encoding of `;`.

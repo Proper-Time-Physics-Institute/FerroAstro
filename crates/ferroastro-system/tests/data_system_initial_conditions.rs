@@ -264,3 +264,55 @@ fn data_ref003_sampled_states_round_trip_through_ferroastro_ephem() {
         &format!("NAIF {}", vel.1),
     );
 }
+
+/// WP15 addendum: the NAIF ids of the identified KBOs name the expected objects in JPL Horizons,
+/// and Horizons' heliocentric positions at JDEPOC agree with the sampled sb441 states to a gross
+/// bound (identity, not accuracy: Horizons uses its current orbit solutions).
+///
+/// Verifies: REF-003
+#[test]
+#[ignore = "data tier: JPL Horizons API"]
+fn data_identified_kbo_ids_name_the_expected_objects_in_horizons() {
+    use ferroastro_system::{ASTEROID_NAIF_BASE, KBO_IDENTIFICATION, SmallBodyStates};
+    let v = VectorSet::load_canonical().unwrap();
+    let path = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("../../tests/goldens/sb441-n373s-jdepoc-states.csv");
+    let file = SmallBodyStates::parse(&std::fs::read_to_string(path).unwrap()).unwrap();
+    let jd = file.jdepoc().unwrap();
+    let mut worst = (0.0_f64, String::new());
+    for k in &KBO_IDENTIFICATION {
+        let number = k.id.0 - ASTEROID_NAIF_BASE;
+        let q = horizons::VectorQuery {
+            command: format!("{number};"),
+            center: "500@10".into(),
+            ref_plane: horizons::RefPlane::Frame,
+            start_jd_tdb: jd,
+            stop_jd_tdb: jd + 1.0,
+            step_days: 1,
+        };
+        let t = horizons::fetch_vectors(&q).unwrap();
+        for c in &t.chunks {
+            println!("{}: {}", k.name, c.line());
+            assert!(
+                c.target_name.contains(k.name) && c.target_name.contains(&number.to_string()),
+                "NAIF {} is {:?} in Horizons, expected {}",
+                k.id.0,
+                c.target_name,
+                k.name
+            );
+        }
+        let r = t.r_km.first().unwrap();
+        let s = file.get(k.id).unwrap();
+        let d = (0..3)
+            .map(|i| (r[i] - s.position_km[i]).abs())
+            .fold(0.0, f64::max);
+        println!(
+            "  {} ({}): |Horizons - sb441| = {d:.1} km at JD {jd}",
+            k.name, k.symbol
+        );
+        if d > worst.0 {
+            worst = (d, k.name.to_owned());
+        }
+    }
+    check(&v, "REF003-KBO-HORIZONS-POS-GROSS", worst.0, &worst.1);
+}
