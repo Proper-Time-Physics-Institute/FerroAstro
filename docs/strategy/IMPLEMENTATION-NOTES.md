@@ -105,3 +105,11 @@ Branch `m0-foundation`, stacked on PR #2 (`1-scientific-computing-strategy`). Ag
 - `cargo deny check` passes with only `license-not-encountered` warnings for allow-list entries unused so far.
 - REUSE: lockfiles, trybuild `.stderr` snapshots, `schema.json` and `.python-version` are annotated in
   `REUSE.toml`; `trace.py` wraps the SPDX lines it emits in `REUSE-IgnoreStart/End`.
+
+### WP1 gate results (2026-10-14, local, toolchain 1.95.0)
+All eight AGENTS.md commands passed locally, with cargo-nextest 0.9.148 and reuse 6.2.0 installed user-level
+(no fallback to `cargo test` was needed). Extras that also passed: `uv run pytest` (13 tests), the MSRV run on
+1.85.0 (16 tests, trybuild excluded), and the `data` profile (1 test, real download). GitHub Actions run
+38675095723 on PR #11 was green for rust, msrv, python, reuse and dco. The `data` job was skipped as designed.
+It cannot be dispatched by hand until `ci.yml` exists on the default branch, because `workflow_dispatch` reads
+the workflow from there.
