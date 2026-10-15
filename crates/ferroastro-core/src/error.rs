@@ -16,6 +16,7 @@
 //! | `FA-E0700`–`FA-E0799` | ladder rungs, scenarios and the CLI (`ferroastro-ladder`, `ferroastro-cli`) |
 //! | `FA-E0800`–`FA-E0899` | calendar and time-scale conversions: `FA-E0800`–`FA-E0803` ERFA statuses (`ferroastro-erfa`, which cannot depend on this crate and mirrors the strings); `FA-E0804`–`FA-E0805` UTC and conversion results (`ferroastro-time`) |
 //! | `FA-E0900`–`FA-E0999` | reference-frame rotations (`ferroastro-frames`) |
+//! | `FA-E1000`–`FA-E1099` | DAF/SPK ephemeris files and `testpo` points (`ferroastro-ephem`) |
 
 use std::fmt;
 
@@ -49,6 +50,8 @@ pub enum ErrorCode {
     DataManifest,
     /// `FA-E0203`: a data service (e.g. JPL Horizons) returned an error or an unparsable answer.
     DataService,
+    /// `FA-E0204`: a pinned data product is not in the local cache (run `tools/fetch_jpl.py`).
+    DataMissing,
     /// `FA-E0300`: a JPL `header.440` file is malformed.
     HeaderParse,
     /// `FA-E0301`: a requested ephemeris constant is not in the table or header.
@@ -102,11 +105,27 @@ pub enum ErrorCode {
     FrameDefinition,
     /// `FA-E0901`: a frame rotation produced a non-finite component.
     FrameTransform,
+    /// `FA-E1000`: a file is not a DAF/SPK file, or its file record is invalid.
+    DafFormat,
+    /// `FA-E1001`: a DAF record, summary or array address lies outside the file (truncated or
+    /// corrupt file).
+    DafBounds,
+    /// `FA-E1002`: an SPK segment is malformed or of an unsupported data type.
+    SpkSegment,
+    /// `FA-E1003`: an epoch lies outside the coverage of the ephemeris segments.
+    EphemCoverage,
+    /// `FA-E1004`: no chain of segments connects the target and the centre (or the chain mixes
+    /// reference frames).
+    EphemNoPath,
+    /// `FA-E1005`: an ephemeris evaluation produced a non-finite component.
+    EphemNonFinite,
+    /// `FA-E1006`: a JPL `testpo` test-point line is malformed.
+    TestpoParse,
 }
 
 impl ErrorCode {
     /// Every code, in numeric order (used to prove codes are unique).
-    pub const ALL: [ErrorCode; 38] = [
+    pub const ALL: [ErrorCode; 46] = [
         ErrorCode::NonFinite,
         ErrorCode::OutOfRange,
         ErrorCode::VectorIo,
@@ -120,6 +139,7 @@ impl ErrorCode {
         ErrorCode::DataChecksum,
         ErrorCode::DataManifest,
         ErrorCode::DataService,
+        ErrorCode::DataMissing,
         ErrorCode::HeaderParse,
         ErrorCode::ConstantMissing,
         ErrorCode::ConstantsTable,
@@ -145,6 +165,13 @@ impl ErrorCode {
         ErrorCode::TimeConversion,
         ErrorCode::FrameDefinition,
         ErrorCode::FrameTransform,
+        ErrorCode::DafFormat,
+        ErrorCode::DafBounds,
+        ErrorCode::SpkSegment,
+        ErrorCode::EphemCoverage,
+        ErrorCode::EphemNoPath,
+        ErrorCode::EphemNonFinite,
+        ErrorCode::TestpoParse,
     ];
 
     /// The stable textual code, e.g. `"FA-E0001"`.
@@ -164,6 +191,7 @@ impl ErrorCode {
             ErrorCode::DataChecksum => "FA-E0201",
             ErrorCode::DataManifest => "FA-E0202",
             ErrorCode::DataService => "FA-E0203",
+            ErrorCode::DataMissing => "FA-E0204",
             ErrorCode::HeaderParse => "FA-E0300",
             ErrorCode::ConstantMissing => "FA-E0301",
             ErrorCode::ConstantsTable => "FA-E0302",
@@ -189,6 +217,13 @@ impl ErrorCode {
             ErrorCode::TimeConversion => "FA-E0805",
             ErrorCode::FrameDefinition => "FA-E0900",
             ErrorCode::FrameTransform => "FA-E0901",
+            ErrorCode::DafFormat => "FA-E1000",
+            ErrorCode::DafBounds => "FA-E1001",
+            ErrorCode::SpkSegment => "FA-E1002",
+            ErrorCode::EphemCoverage => "FA-E1003",
+            ErrorCode::EphemNoPath => "FA-E1004",
+            ErrorCode::EphemNonFinite => "FA-E1005",
+            ErrorCode::TestpoParse => "FA-E1006",
         }
     }
 }
