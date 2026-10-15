@@ -499,6 +499,7 @@ dependencies = [
  "ferroastro-constants",
  "ferroastro-core",
  "ferroastro-ephem",
+ "ferroastro-frames",
  "ferroastro-real",
  "ferroastro-testdata",
  "ferroastro-vectors",

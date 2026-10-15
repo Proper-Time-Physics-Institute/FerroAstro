@@ -9,7 +9,7 @@
 //!
 //! **Transcription status:** written in WP11 from memory of Park et al. 2021 (AJ 161, 105)
 //! Eqs. 1–2; in WP15 compared with the printed Eq. 2 of the published PDF (iopscience, sha256
-//! `96c3945d…e8f0ee0`): m*ᵢ = GMᵢ [1 + vᵢ²/(2c²) − (1/(2c²)) Σⱼ≠ᵢ GMⱼ/rᵢⱼ], vᵢ the barycentric
+//! `96c3945d…e8f0ee0`): `m*ᵢ = GMᵢ [1 + vᵢ²/(2c²) − (1/(2c²)) Σⱼ≠ᵢ GMⱼ/rᵢⱼ]`, vᵢ the barycentric
 //! speed, the same form. A second, human reading is still the NUM-018 sign-off (IMPLEMENTATION-NOTES
 //! WP15).
 //!
