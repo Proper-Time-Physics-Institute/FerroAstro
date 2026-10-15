@@ -241,8 +241,10 @@ def render(report: Report) -> str:
     covered = sum(1 for r in test_reqs if report.tests.get(r.id))
     status_line = ", ".join(f"{s} {by_status[s]}" for s in ENUMS["status"] if by_status[s])
     lines = [
+        # REUSE-IgnoreStart
         "<!-- SPDX-FileCopyrightText: 2026 Proper-Time Physics Institute -->",
         "<!-- SPDX-License-Identifier: Apache-2.0 -->",
+        # REUSE-IgnoreEnd
         "",
         "# Requirement traceability matrix",
         "",

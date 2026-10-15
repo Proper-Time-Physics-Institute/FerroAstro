@@ -87,3 +87,21 @@ Branch `m0-foundation`, stacked on PR #2 (`1-scientific-computing-strategy`). Ag
 - The GROUP 1040/1041 reader in that test is a smoke-test reader only. The full REF-002 loader (JDEPOC, states,
   409 MA entries, J2SUN, …) belongs to `ferroastro-ephem`/`ferroastro-constants` in a later WP and should replace
   it. REF-002/PHY-002 remain blocked on OI-23/OI-04 for the state units and GMSDOT (red-team I5).
+
+### CI (`.github/workflows/ci.yml`)
+- Jobs `rust`, `python`, `reuse` run the AGENTS.md commands verbatim (split across jobs for parallelism);
+  `python` also runs `uv sync --locked` and `pytest`. `msrv` runs nextest on 1.85.0 without the trybuild suite.
+  `dco` checks a `Signed-off-by` trailer on every PR commit (ORG-008; text check only — red-team C4: it cannot
+  prove the human signed). `data` runs only on the weekly cron and `workflow_dispatch`.
+- Top-level `permissions: contents: read`, no `pull_request_target`, checkout with `persist-credentials: false`,
+  and every action pinned by SHA (resolved 2026-10-14 from each repository's latest release tag:
+  checkout v7.0.1, setup-uv v10.3.0, install-action v2.87.28, rust-cache v2.9.2). `lint_workflows.py` enforces
+  the pinning and the trigger/permission rules.
+- **Not done here (NEEDS HUMAN REVIEW):** red-team §2 control 2 asks for required checks to run from the default
+  branch (ruleset "required workflows") so that a PR cannot weaken its own gates (C2). That is a repository
+  setting; this WP may not change settings. Likewise CODEOWNERS for the meta surface (control 1), the TST-004
+  golden-change label check, and the red-team L1 `deny-release.toml` (anise dev-only enforcement) are left for a
+  human-owned PR. OpenSSF Scorecard (STD-012 second half) is not added.
+- `cargo deny check` passes with only `license-not-encountered` warnings for allow-list entries unused so far.
+- REUSE: lockfiles, trybuild `.stderr` snapshots, `schema.json` and `.python-version` are annotated in
+  `REUSE.toml`; `trace.py` wraps the SPDX lines it emits in `REUSE-IgnoreStart/End`.

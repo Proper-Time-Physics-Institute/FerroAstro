@@ -4,3 +4,15 @@ version = 1
 path = ["NOTICE", "LICENSES/**", ".gitignore", "docs/strategy/journal/**"]
 SPDX-FileCopyrightText = "2026 Proper-Time Physics Institute"
 SPDX-License-Identifier = "Apache-2.0"
+
+# Generated or comment-less files: lockfiles, trybuild compiler-output snapshots, JSON schema, version pins.
+[[annotations]]
+path = [
+    "Cargo.lock",
+    "tools/uv.lock",
+    "tools/.python-version",
+    "crates/*/tests/ui/*.stderr",
+    "tests/vectors/schema.json",
+]
+SPDX-FileCopyrightText = "2026 Proper-Time Physics Institute"
+SPDX-License-Identifier = "Apache-2.0"
