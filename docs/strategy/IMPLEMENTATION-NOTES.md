@@ -492,3 +492,12 @@ Extras: `uv run pytest` (13 passed), MSRV 1.85.0 nextest (52 passed), `data` pro
 - The J2 rung in the real geometry gives 0.028452, i.e. Park17's 0.0286 is matched to 0.13σ only because the
   real 3.38° inclination is included (the planar value 0.028601 would be +0.0000 vs Park17; both are inside 1σ,
   which is the J2 uncertainty). With DE440's own J2 the real-geometry value would be ≈ 0.02777 (not asserted).
+
+### WP4 gate results (2026-10-15, local, toolchain 1.95.0)
+All eight AGENTS.md commands passed: fmt; clippy `-D warnings`; `cargo nextest run --workspace` (79 passed,
+12 skipped = the `data_*`/`nightly_*` tiers) and the doctests; `cargo deny check` (only the existing
+`license-not-encountered` warnings); rustdoc `-D warnings`; ruff check/format + mypy strict (8 files);
+`reuse lint` (169/169 files); `trace.py --check` (119 requirements, 152 citing tests). Extras: `uv run pytest`
+(15 passed, including the sympy derivation), MSRV 1.85.0 nextest (78 passed, trybuild excluded), and the whole
+workspace `data` profile on an empty cache (10 passed: 3 new WP4 tests plus the 7 from WP1–WP3). The `nightly`
+profile was not re-run: no WP4 change touches the integrator or the NUM-023 test.
