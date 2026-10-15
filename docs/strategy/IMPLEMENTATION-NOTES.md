@@ -3278,3 +3278,18 @@ Cross terms (informational). Park17's interaction rows are shown for scale.
    as in WP5. The two differ by about 12 days at the start and 8 days at the end.
 10. **The nightly PHY-012 test runs in about 90 s,** so it fits the nightly profile's default
     timeout. The checkpoint store (50-yr segments) is exercised by the nightly run itself.
+
+### WP14 gate results (2026-10-15, local, toolchain 1.95.0, code tip `dbc8fb6`)
+| command | result |
+|---|---|
+| `cargo fmt --all --check` | pass |
+| `cargo clippy --workspace --all-targets --all-features -- -D warnings` | pass |
+| `cargo nextest run --workspace` + `cargo test --doc --workspace` | **229 passed, 33 skipped**; 15 doctests pass |
+| `cargo deny check` | advisories, bans, licenses, sources ok |
+| `RUSTDOCFLAGS="-D warnings" cargo doc --no-deps --workspace` | pass |
+| ruff check / ruff format --check / mypy strict / pytest | pass / pass / pass / 37 passed |
+| `reuse lint` | compliant |
+| `trace.py --check` | pass: 119 requirements, 457 citing tests. PHY-012 and CI-009 are cited for the first time. |
+| `check_layers.py`, `lint_literals.py`, `lint_workflows.py` | 19 crates, 97 edges, 0 errors; 0 findings; 0 findings |
+| wasm32 build of `ferroastro-diffrun` | pass |
+| `tools/run_long_local.sh`, log `target/long-local/20261015T133311Z-dbc8fb6c6a44.log`, clean tree, JPL products from the pinned cache (all cache hits, SHA-256 re-verified) | nightly **8/8 pass**. Known-failure guards unchanged: NUM-023 long ensemble 0.629 / 1.590; WP12 1b slope 0.050. PHY-012 numbers identical to the runs above. Data tier **25/25 pass**, including the new WP14 test (Δ −1.92e-8). |
