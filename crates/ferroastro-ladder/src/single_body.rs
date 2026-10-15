@@ -201,10 +201,20 @@ pub fn rung_set(name: &str, scn: &Scenario, de: &De440) -> Result<Vec<Rung>, Lad
     }
 }
 
+/// The μ convention of every analytic rate in ″/cy (review F5, PHY-004 acceptance text): the
+/// per-orbit advance is that of the integrated dynamics (test particle, μ = GM☉), and it is
+/// converted to a rate with the mean motion `n = √((GM☉ + GM☿)/a³)` of the initial osculating
+/// `a`, the same `mu_period` that every `ferroastro_analytic::advance::schwarzschild_advance`
+/// caller passes. Printed in every rung's report metadata.
+pub const RATE_CONVENTION: &str = "analytic rate = analytic per-orbit advance (test particle, mu = GM_sun) x n, n = sqrt((GM_sun + GM_Mercury)/a^3) (PHY-004 convention, review F5)";
+
 /// The set-up shared by all single-body rungs: initial state, constants and run settings.
 #[derive(Debug, Clone)]
 pub struct SingleBody<F: Frame> {
     mu: GravParam,
+    /// `GM☉ + GM☿`: the μ of the mean motion that converts an analytic per-orbit advance to a
+    /// rate ([`RATE_CONVENTION`], review F5).
+    mu_rate: GravParam,
     c: Velocity,
     gamma: f64,
     radius: Length,
@@ -278,8 +288,16 @@ impl<F: Frame> SingleBody<F> {
         let mu = de.gm_sun();
         // Validates that the orbit is elliptic and non-degenerate.
         Elements::from_vectors(r0, v0, mu.km3_per_s2())?;
+        let mu_rate = GravParam::from_km3_per_s2(
+            mu.km3_per_s2() + de.gm(ferroastro_constants::Body::Mercury).km3_per_s2(),
+        )
+        .map_err(|e| LadderError::Scenario {
+            name: "DE440".into(),
+            problem: e.to_string(),
+        })?;
         Ok(Self {
             mu,
+            mu_rate,
             c: de.speed_of_light(),
             gamma: de.ppn_gamma(),
             radius: de.sun_radius(),
@@ -553,10 +571,13 @@ impl<F: Frame> SingleBody<F> {
         let lrl = fit_line(&run.lrl_times, &run.lrl_longitudes)?;
         let lrl_rate = AngularRate::from_rad_per_s(lrl.slope).unwrap_or(AngularRate::ZERO);
         let analytic = self.analytic_per_orbit(rung)?;
-        let analytic_rate = analytic / period;
+        // F5: the analytic ″/cy rate uses n from GM☉ + GM☿ (RATE_CONVENTION); the per-orbit
+        // advance itself (the NUM-015 oracle) is that of the integrated test particle (μ = GM☉).
+        let rate_period = keplerian_period(self.mu_rate, el.a)?;
+        let analytic_rate = analytic / rate_period;
         let gauge = model.gauge();
         let cfg = self.ias15;
-        let mut constants = self.constants.clone();
+        let mut constants = format!("{}; {RATE_CONVENTION}", self.constants);
         if !rung.extra_constants.is_empty() {
             constants.push_str("; ");
             constants.push_str(&rung.extra_constants);
@@ -720,9 +741,10 @@ pub struct RungResult {
     pub fit: PerOrbitFit,
     /// Analytic per-orbit advance (NUM-015 oracle).
     pub analytic_per_orbit: Angle,
-    /// Analytic rate: analytic per-orbit advance / Keplerian period of the initial orbit.
+    /// Analytic rate: analytic per-orbit advance / Keplerian period of the initial orbit with
+    /// `μ = GM☉ + GM☿` ([`RATE_CONVENTION`]).
     pub analytic_rate: AngularRate,
-    /// Keplerian period of the initial osculating orbit.
+    /// Keplerian period of the initial osculating orbit of the integrated dynamics (`μ = GM☉`).
     pub kepler_period: TimeSpan,
     /// Cross-check: rate of the LRL eccentricity-vector longitude (all steps, OLS).
     pub lrl_rate: AngularRate,
@@ -747,7 +769,7 @@ impl RungResult {
         self.report.arcsec_per_century()
     }
 
-    /// Analytic rate in ″/cy (analytic per-orbit advance / Keplerian period).
+    /// Analytic rate in ″/cy (analytic per-orbit advance / Keplerian period, [`RATE_CONVENTION`]).
     #[must_use]
     pub fn analytic_arcsec_per_century(&self) -> f64 {
         rate_arcsec_per_century(self.analytic_rate)
