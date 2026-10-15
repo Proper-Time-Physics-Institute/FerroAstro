@@ -3612,3 +3612,173 @@ ensemble, plus the whole data tier). Every WP15 test of those tiers was run indi
 - NEEDS HUMAN REVIEW (unchanged from the builder's list): the NUM-009 2× bound fails by 28× with
   Newtonian Majors; the reviewer agrees the cost is pair-count-dominated (16·338 Minor vs 120
   Major pair evaluations) and that only an O(N³) EIH Major tier could bring the ratio near 2.
+
+## 📈 Progress review: after WP15
+
+I am the independent progress reviewer (an agent, not the builder). I audited `m3-newtonian-nbody` at `0db40d2` (WP11–WP15), stacked on `m0-foundation` (merge base `e23c9ef`). The previous review stopped at `ba357d8`. I ran everything below myself on 2026-10-15 UTC, on the local machine with toolchain 1.95.0 (MSRV check with 1.85.0). I loosened nothing and committed no mutation: mutants ran in a scratch clone, and the worktree stayed clean.
+
+### Overall health: 🟡 YELLOW
+- **Green:**
+  - All eight AGENTS.md gates pass locally on `0db40d2`.
+  - The data tier passes **27/27 on the first pass**. Horizons answered live (35 cache misses, 0 HTTP 503), so the F4 serial test group works under real load.
+  - The nightly subset I ran passes 7/7 (§1).
+  - Every data and nightly number equals the builders' reports to the printed digit.
+  - Four key numbers reproduce in independent Python. One of them is a **new independent N-body run**: Venus P-add = 277.394857 ″/cy, against FerroAstro's 277.394894 (Δ 3.7e-5). So the 0.0227 miss against Park17 is the protocol (OI-38), not a code error.
+  - No golden value or tolerance was moved or widened. There is no `#[ignore]` creep (27 `data_*` + 10 `nightly_*`, all run), and the layer check is green.
+- **Not green:**
+  - **GitHub CI on PR #13 has been red for 15 consecutive pushes**, from `a8d49a0` (WP13) to the tip. `ferroastro-scenario` uses let-chains (stable only from Rust 1.88), and the workspace declares `rust-version = "1.85"`. The `msrv` job fails every time. Every WP13–WP15 gate table says "pass" because the AGENTS.md list has no MSRV step, and no builder or reviewer looked at the GitHub run. **F8, high.**
+  - **Doubling every asteroid/KBO GM survives every gating tier.** The momentum test cannot see a consistent rescaling, PHY-013's ±0.01 cannot see N-AST, and the N-AST row is non-gating (OI-38). **F9, medium.**
+  - Three more mutants survive the PR tier (§3; F10–F12).
+  - Unchanged from earlier reviews: NUM-023 / NUM-001 are not met (the known-failure guards still hold at 0.629 / 1.590), and WP12's N-body energy slope (0.050) is a known-failure guard.
+  - Most of the M3 physics is non-gating while OI-38, OI-24 and OI-42 are open.
+
+### 1. Commands (tip `0db40d2`)
+| command | result |
+|---|---|
+| `cargo fmt --all --check` | pass |
+| `cargo clippy --workspace --all-targets --all-features -- -D warnings` | pass |
+| `cargo nextest run --workspace` + `cargo test --doc --workspace` | **236 passed, 37 skipped**: the skips are 27 `data_*` and 10 `nightly_*`, which are the only `#[ignore]`s. 15 doctests pass. |
+| `cargo deny check` | advisories, bans, licenses, sources ok |
+| `RUSTDOCFLAGS="-D warnings" cargo doc --no-deps --workspace` | pass |
+| `ruff check`, `ruff format --check`, `mypy` (strict) | pass |
+| `reuse lint` | 383/383 compliant |
+| `trace.py --check` | pass: 119 requirements, 485 citing tests, 0 errors. `check_layers`: 19 crates, 99 edges, 0 errors. |
+| **GitHub CI on `0db40d2`** (run 38779138654) | **FAIL: `msrv (rust-version 1.85)`.** rust, wasm32, python, reuse and dco pass. The `msrv` job has failed on every push since `a8d49a0`. The `python` job also failed on 7 intermediate commits (`e12ba0e`…`d67dfa3`) and passes at the tip. |
+| `cargo +1.85.0 check --workspace --all-targets` (scratch clone) | **4 × E0658** "`let` expressions in this position are unstable" at `crates/ferroastro-scenario/src/spec.rs:417, 418, 522, 548`. The crates that depend on `scenario` (propagate, diffrun, ladder, cli) were never compiled on 1.85, so more MSRV breaks may be hidden behind it. |
+| data tier: `tools/run_long_local.sh --data-only`, fresh `FA_DATA_DIR` | **27/27 pass on the first pass** (74.8 s).<br>• The large JPL products were symlinked from the pinned cache. The small products were re-fetched and SHA-verified.<br>• The Horizons cache was empty: 35 live answers, all `signature.version` 1.2, source DE441, no 503.<br>• Log: `target/long-local/20261015T174131Z-0db40d20d6bf.log`. |
+| nightly tier (release), excluding three tests | **7/7 pass**: NUM-023 default ensemble 0.526 / 1.513. Long ensemble known failure 0.629 / 1.590 (guard holds). Reversibility 4.50e-12. DE440 DD vs f64 every record. f64 1000-yr checkpoint/resume bitwise. PHY-012 plan (every number identical to WP14). PHY-013 (below).<br>I did not re-run three tests to stay within about 1 h: the WP12 N-body Brouwer ensemble (55 min, run twice in WP12), the DD 1000-yr checkpoint (11 min, WP13) and the NUM-009 timing (noisy, non-gating; re-run by the WP15 reviewer). |
+
+### 2. Real-data and benchmark results
+Provenance (each SHA-256 equals its manifest pin; re-verified on load; retrieved 2026-10-15):
+- header.440: `0f4636b6…6ac3359`
+- de440.bsp: `a4ce9bf9…fff7c4b5`
+- sb441-n373s.bsp: `21431132…ca8da10b`
+- testpo.440: `45084a7f…6693429f`
+- ascp01550/01950/02550: as in the WP10 review
+- pck00011: `3dff7b1d…e28bb1`
+- IERS: `6cb6f5d4…e268d7`
+
+Margin = |Δ| / tolerance.
+
+| test (tier) | measured | oracle (source) | tolerance | margin |
+|---|---|---|---|---|
+| WP11 header.440 ICs vs de440.bsp at JDEPOC (PR), f64 / DD | 4.768e-7 / 5.663e-7 km; 7.1e-15 / 5.7e-15 km/s | de440.bsp (independent JPL product) | 1e-3 km, 1e-9 km/s | 4.8e-4 |
+| WP11 `data_horizons_de441_initial_conditions_vs_header` (live) | 9.537e-7 km (Neptune), 1.066e-14 km/s | Horizons DE441 | 10 km gross | ~0 ⚠ gross by design |
+| GM_E + GM_M vs GMB (PR) | 1 ulp | header | 2 ulp | 0.5 |
+| WP12 check 4: Newtonian + J2 vs de440.bsp, 10 yr, outer planets (PR) | Jupiter **32.386 km**, Saturn 6.794, Uranus 11.470, Neptune 6.394 | de440.bsp | ≤ 100 km (pre-registered) | 0.32 |
+| WP12 1a momentum, 100 yr (PR) | 0.010 ε√N | round-off bound | 64 ε√N | 1.6e-4 |
+| REF-001 testpo.440 (PR) | max DEL 7.105e-15 | JPL testpo | 1e-13 | 0.071 |
+| WP13 check 5: scenario GR-SCHW = direct API (data) | 42.980085159575 (f64), …160105 (DD), bitwise equal | PHY-005 42.980 ± 0.001 | ±1e-3 | 0.085 |
+| WP14 IC-source agreement, P-add Venus ±20 yr (data) | −1.922e-8 ″/cy | header vs de440.bsp | 1e-6 (PROVISIONAL, agent-set) | 0.019 |
+| WP14 NUM-013(a) via harness (PR): GR / J2 / LT | −1.233e-5 / +3.6e-8 / −2.7e-9 | analytic, same orbit | 1e-4 | 0.12 |
+| **PHY-012 P-add (nightly, non-gating OI-38)**: V / E+M / Ma / J / S / U / N | 277.394894 / 90.869103 / 2.479384 / 154.028732 / 7.365749 / 0.139602 / 0.042068 | Park17 Table 3 | ±0.005 | **4.5 / 3.8** / 0.40 / **7.8 / 8.6** / 0.58 / 0.07: 4 of 7 OUTSIDE |
+| PHY-012 P-remove (informational) | max \|Δ\| 0.000695 (Earth/Moon) | Park17 Table 3 | ±0.005 | ≤ 0.14, 7/7 within |
+| ↳ **independent Python, Venus P-add** (mine) | **277.394857** | FerroAstro 277.394894 | — | Δ −3.7e-5 |
+| WP15 REF-003 round trip, sb441 via `ferroastro-ephem` vs jplephem CSV (data) | 0 km, 0 km/s (373 targets) | jplephem 2.24 | 1e-6 km, 1e-9 km/s | 0 |
+| WP15 KBO ids via Horizons (live) | Eris / Orcus / 55637 Uni (2002 UX25) named; \|Δr\| ≤ 1.295e5 km | Horizons | 1e6 km gross | 0.13 ⚠ identity check only |
+| WP15 SSB of full placed set (PR, non-gating OI-24) | 8.260077 km (μ*), 8.260081 (Newtonian) | 0, bound B | 90 km (B = 89.73 km) | 0.092 |
+| ↳ independent Python (mine) | 122.689122 → 122.649622 → **8.260081 km** | FerroAstro, same | — | 0 |
+| **PHY-013 N-SUM (nightly, gating)** | **532.304907 (3251 s wall, uninterrupted; shared IC hash `6d875b67…`)** | 532.30 (Park17 rows summed: 532.3035) | ±0.01 | 0.49 |
+| N-AST P-add (nightly, non-gating OI-38) | 0.001242 | Park17 0.0012 | ±0.0003 (agent-set, PROVISIONAL) | 0.14 (within) |
+| N-AST P-remove / KBOs + ring increment | 0.001245 / +0.000019 | 0.0012 / ring estimate 1.85e-5 (mine) | reported | — |
+| NUM-009 2a / 2b (WP15 builder and reviewer; not re-run) | 28.2× / 0.117 | < 2 (non-gating OI-42) / < 1 | — | 14 OUTSIDE (non-gating) / pass |
+| Earlier rungs (data tier, all unchanged) | Park17 DE441 575.309163 (jk 0.001531); SW92 dog-leg 571.968047; GR from DE441 42.9806442; J2 0.0284524; LT −0.0020148; NUM-014 +4.431e-4; testpo 7.1e-15; D5 Δ −5.30e-10 | as in the WP10 review | — | unchanged |
+
+**Independent recomputation.** Python/numpy/scipy only, with no FerroAstro code. I parsed header.440 myself and checked its SHA-256 against the pin. Scripts are in the local scratchpad.
+1. **PHY-004 GR rate.** SW92 J2000 elements of Mercury, with GMS and CLIGHT from header.440 and n from GMS + GM1:
+   - 5.0186604e-7 rad/orbit, 415.200918 orbits/cy, **42.980479 ″/cy**. This equals `PHY004-GR-RATE` (42.9805 ± 0.0001) and the F5 "after" value 42.980478977.
+   - With n from GMS alone, the rate is 42.980475, which reproduces the F5 shift of 3.6e-6.
+2. **Park17 ladder sums.** The 16 Table 3 rows sum to **532.3035**, which is the basis of `PHY013-N-SUM`.
+   - PHY-014 shift: 0.0286·(J2SUN/2.25e-7 − 1) = −0.000685, giving **575.309315**. This confirms the maintainer's 575.3093 a second time.
+   - The P-remove arithmetic from the configuration table holds: full − (full − Venus) = 532.303644 − 254.885502 = 277.418142.
+3. **SSB offset (WP15 check 3).** Header bodies in EMB form, plus the 343 asteroids from the committed REF-003 CSV + the header Sun, plus MA8001/8007/8009 at the Eris/Orcus/2002 UX25 rows. The steps give 122.689122, 122.649622 and **8.260081 km**: identical to FerroAstro's Newtonian numbers.
+   - The 27 unplaced KBO GMs sum to 1150.2 km³/s², matching WP15 deviation 1.
+   - Ring tidal estimate: (3/4)·n·(M_ring/M☉)·(a/44 au)³ = **1.85e-5 ″/cy**. FerroAstro measures +1.9e-5 for KBOs + ring.
+4. **Benchmark reproduction: Venus P-add with my own N-body run.**
+   - Setup: Sun + Mercury (+ Venus) from header.440 at JDEPOC, scipy DOP853 (rtol 1e-13). Legs ran backward to J2000 − 1000 yr − 30 d and forward to J2000 + 1000 yr + 30 d.
+   - Estimator: the osculating LRL direction (μ = GMS + GM1), sampled every 2 d and projected on the Park17 mean-orbit plane (α 280.9876°, δ 61.4481°, y = z × X). The fit is B + ϖ̇t + Qt² + the 14 Park17 frequencies from SW92 Table 2a, over J2000 ± 1000 yr.
+   - Results: base drift +0.000215 ″/cy (DOP853 truncation); Sun + Mercury + Venus 277.395071; **P-add = 277.394857 ″/cy**. Linear + quadratic only gives 277.395730.
+   - FerroAstro (IAS15, passage-based Park2017 estimator) gets 277.394894. The difference is **3.7e-5 ″/cy**, with a different integrator, estimator and code base.
+   - **So the −0.0227 P-add miss against Park17's 277.4176 is not a FerroAstro bug.** This supports WP14's reading that Park's rows are the P-remove protocol (OI-38, a human decision).
+
+### 3. Drift audit
+- **`git log -p -- tests/vectors tests/goldens tests/data`, `ba357d8..0db40d2`:** 10 commits.
+  - The only removed line is in `schema.json`, in `beb0fe3`: the `notes` property was rewritten when the optional `blocked_by` field was added. That is WP14 deviation 4, NEEDS HUMAN REVIEW.
+  - **No value or tolerance was moved or widened.** New agent-set tolerances are labelled PROVISIONAL with NEEDS HUMAN REVIEW: `DIFFRUN-IC-SOURCE-AGREEMENT` 1e-6, `PARK17-T3-ASTEROIDS` ±0.0003, the WP11 velocity bound 1e-9 km/s (chosen after a disclosed exploration) and the SSB bound B (computed from data before the offset).
+  - The F5 μ change (`9fd3b40`) moved a *computed* analytic reference by +3.567e-6 ″/cy. It is documented with a before/after table and NEEDS HUMAN REVIEW, and no vector changed.
+  - Over the whole stack (`e23c9ef..0db40d2`), the only other removals are the two the WP10 review already cleared.
+- **`#[ignore]`:** 37 (27 `data_*`, 10 `nightly_*`), up from 25. All are named for their tier, I ran all except the three nightly ones listed in §1, and none is gated by `cfg`.
+- **UNVERIFIED values as oracles:** none.
+  - `PHY013-N-SUM` 532.30 contains the OI-09 Mercury self row. Its value is printed in Park17, and only its meaning is UNVERIFIED. It cancels with the Me+V row to −0.0003, which is disclosed in the rationale.
+  - OI-09's 0.0050 is never asserted on its own.
+- **Circular oracles:** none that matter.
+  - REF-003: `ferroastro-ephem` against a jplephem-generated CSV, an independent reader.
+  - SSB: FerroAstro sums against my own sums from the same inputs.
+  - PHY-012/013: Park17. The engineering bounds are disclosed.
+  - `blocked_by` vectors still print and compare, but the tests cannot fail while OI-38, OI-24 or OI-42 is open. So **PHY-012 (all 7 rows), N-AST, the SSB check and NUM-009 2a are all currently tests that cannot fail.** That is by maintainer protocol, but see F9 and F13.
+- **Mutation probes.** One key formula per WP11–15 crate, in a scratch clone at `0db40d2`. I ran the PR tier of the crate and its dependents, then reverted (`git checkout`); the clone was clean afterwards. I chose targets the per-WP probes had not covered.
+
+| crate | mutant | PR-tier result |
+|---|---|---|
+| system | `promote` gives an identified KBO the *next* header KBO's GM (Eris gets MA8002's mass) | **survived** (system + propagate + diffrun: 30/30 pass). The rule test compares symbols and names, the SSB check that would move is non-gating (OI-24), and PHY-013 cannot see it. |
+| forces | `MinorFromMajors` skips the last Major (Pluto) for every Minor body, with the reaction skipped too | killed by `tiers_follow_num009` and `energy_diagnostic_is_consistent_with_the_forces` |
+| scenario | IC hash omits the GM | **survived** (scenario + propagate + diffrun + cli: 26/26). Harmless for NUM-013 today, because `check_identical_ics` compares GM records separately. But the hash is documented as covering GM, and nothing pins that. |
+| propagate | every Minor GM × 2 | **survived** (20/20). It also survives every gating nightly check: PHY-013 shifts by about +0.0012, margin about 0.6. N-AST would read about 0.0025, outside ±0.0003, but that row is non-gating. The WP15-review momentum test is invariant under a consistent GM rescaling. |
+| diffrun | Park2017 fit window ignored on the sampled-state path | **survived the PR tier** (4/4; no PR test sets a window). Its nightly effect was not measured. |
+
+- **Layering:** `check_layers.py` reports 0 errors over 19 crates and 99 edges. The only listed exception is still `cli → vectors`. WP13 deviation 6 (`propagate → precession/analytic/frames`, `cli → propagate/scenario/ephem`) points downward.
+- **Lib hygiene:** `unsafe_code = "forbid"` and `unwrap_used = "deny"` are inherited by every crate, and no `unsafe` appears outside comments.
+
+**Findings (new in this review):**
+- **F8 (high): GitHub CI has been red since WP13 (MSRV).** Let-chains in `ferroastro-scenario/src/spec.rs` (lines 417/418, 522, 548) break `rust-version = "1.85"`. Fifteen pushes went red, and the WP13–WP15 gate tables and reviews reported only local results.
+- **F9 (medium): no gating test pins the small-body GMs used in the dynamics.**
+  - The ×2 mutant survives everything gating.
+  - N-AST is the only observable, and it is blocked by OI-38, although the protocol ambiguity is negligible for asteroids: P-add 0.001242 against P-remove 0.001245 differ by 3e-6, which is 1% of ±0.0003.
+- **F10 (low): KBO GM identity is unpinned in the PR tier** (system mutant). Only the non-gating SSB check would move.
+- **F11 (low): the IC hash's GM component is unpinned** (scenario mutant).
+- **F12 (low): the diffrun fit window is unpinned in the PR tier** (diffrun mutant).
+- **F13 (info, for humans): ticking OI-38 auto-arms the P-add rows**, through the `blocked_by` rule (WP14 deviation 4), and 4 of 7 rows fail today by up to 8.6× the tolerance. If a maintainer closes OI-38 as "Park = P-remove", the protocol switch and the tick must land in the same PR. Otherwise the nightly turns red, or someone is tempted to tune it.
+- **F14 (info):** `run_long_local.sh` does not run the MSRV check. The AGENTS.md command list has none either, and CI has one.
+
+### 4. Requirement coverage
+`trace.py` reports **54/92** `test` requirements cited (42 at the WP10 review) and 485 citing tests.
+- **M0, uncited (gate-enforced):** STD-001…011, TST-001, DEP-001/002/003/014 and ORG-008. Whether `trace.py` may count gate evidence is still a human question.
+- **M1/M2:** every requirement is cited. Acceptance is still unmet for NUM-001 (the 1e9-step clause) and NUM-023.
+- **M3:**
+  - Newly cited: PHY-012, PHY-013, NUM-008, NUM-009, REF-011, CI-002, CI-005 (WP10-review gap closed) and CI-009.
+  - **Uncited:** REF-005, REF-006, REF-007 (oracle containers, WP16/WP17), CI-003 and CI-006.
+  - Acceptance not met:
+    - PHY-012 under P-add (4 of 7 rows; OI-38);
+    - NUM-009's < 2× (28×; OI-42);
+    - the N-body half of NUM-023 (WP12 1b, known-failure guard);
+    - the M3 exit criterion "per-planet contributions within ±0.005 of Park 2017" (P-add fails it, P-remove meets it).
+- **Not yet due, uncited:**
+  - PHY-014 (WP22);
+  - NUM-002/003/004/005/007/021/025 (M4/M5);
+  - CI-008, REF-010, DEP-005/006/016, AGT-004, ORG-002 and ORG-010.
+
+### 5. Corrections for the next builder (WP16 onwards)
+1. **F8, first:** restore MSRV. Rewrite the four let-chains in `ferroastro-scenario/src/spec.rs` as nested `if let`. Then run `cargo +1.85.0 check --workspace --all-targets` and `cargo +1.85.0 test --workspace --no-run` (1.85.0 is installed locally), and fix whatever the dependent crates hide. Do not raise `rust-version`: that is a policy change for humans. Add `cargo +1.85.0 check --workspace --all-targets` to the pre-push routine, next to `cargo check`. From now on, every WP gate table must quote the GitHub CI run id and its conclusion for the tip, not only local results.
+2. **F9:** add a PR-tier test that every Minor and Ring GM in the propagator's model equals its header.440 `MAnnnn` value bitwise, under the `asteroids = N`, `kbos` and `kbo_ring` switches. It must kill the ×2 mutant and the KBO off-by-one mutant (F10).
+   - Record as NEEDS HUMAN REVIEW: N-AST's protocol dependence is 3e-6 ″/cy, so `PARK17-T3-ASTEROIDS` could be gating independently of OI-38. Only a maintainer may unblock it.
+3. **F11:** add a hash test in which changing one body's GM by one ulp changes `ic_hash`.
+4. **F12:** add a PR-tier diffrun test with `window_jd = Some(..)` that checks the passage count and the span equal the window, so the ignored-window mutant dies.
+5. **F13:** if a maintainer closes OI-38, switch the PHY-012 primary protocol in the same PR as the tick. Never tick OI-38 from an agent PR.
+6. **WP16/WP17 oracle containers** (unchanged from the WP10 review):
+   - GPL images stay local or CI-cache only. FerroAstro is never built inside them.
+   - Use the documented APIs only (clean-room).
+   - Regenerate the WP8/WP9 pyerfa goldens bit-identically.
+   - A cheap extra oracle: an independent integrator in a container can reproduce the Venus P-add value (this review's scipy run gives 277.394857).
+7. **WP22, PHY-014:** use 575.3093 (DE440 J2). This review reproduced 575.309315 again.
+8. **Still for humans (no agent may resolve these):**
+   - OI-38: P-add vs P-remove. The evidence is WP14 plus this review's independent Venus run.
+   - OI-24: the KBO list and the ring geometry.
+   - OI-42: NUM-009 2× with Newtonian Majors.
+   - OI-23 closure.
+   - The F5 μ convention confirmation.
+   - The `blocked_by` schema and its auto-gating rule.
+   - The agent-added `ci/scenarios/*` and the new scenario switches.
+   - The NUM-023 energy diagnostic for N-body runs.
+   - Every earlier item in the WP10 review's correction 10.
+
+Reviewer artefacts are in the local scratchpad, not committed: `gate.log`, `data.log`, `nightly.log`, `mutate.py`, `mutate.log`, `py/recompute.py`, `py/venus_padd.py` and `py/fit.py`.
