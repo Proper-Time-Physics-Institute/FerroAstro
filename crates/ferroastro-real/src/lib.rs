@@ -128,6 +128,9 @@ pub trait Real:
     /// Square root.
     #[must_use]
     fn sqrt(self) -> Self;
+    /// `√(self² + other²)` without undue overflow or underflow.
+    #[must_use]
+    fn hypot(self, other: Self) -> Self;
     /// `1/self`.
     #[must_use]
     fn recip(self) -> Self;

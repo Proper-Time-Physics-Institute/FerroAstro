@@ -183,6 +183,13 @@ impl PartialOrd for DoubleDouble {
     }
 }
 
+/// The unbiased binary exponent of a finite non-zero normal `x` (`x = ±1.m · 2^e`); subnormals
+/// return −1022, which only makes the hypot scaling less tight.
+fn binary_exponent(x: f64) -> i32 {
+    let biased = i32::try_from((x.to_bits() >> 52) & 0x7ff).unwrap_or(1023);
+    biased.max(1) - 1023
+}
+
 /// `x^n` by binary powering (shared by the f64 and double-double backends).
 pub(crate) fn powi_by_squaring<R: Real>(x: R, n: i32) -> R {
     let mut base = x;
@@ -267,6 +274,17 @@ impl Real for DoubleDouble {
         let sl = rho2 / (2.0 * sh);
         let (hi, lo) = fast_two_sum(sh, sl);
         Self { hi, lo }
+    }
+    /// `√(x'² + y'²)·2ᵏ` with `x' = x·2⁻ᵏ`, `y' = y·2⁻ᵏ` scaled exactly so the larger is near 1.
+    fn hypot(self, other: Self) -> Self {
+        let (a, b) = (self.abs(), other.abs());
+        let big = if a > b { a } else { b };
+        if big.hi == 0.0 || !big.is_finite() || b.is_nan() || a.is_nan() {
+            return if a.is_nan() || b.is_nan() { a + b } else { big };
+        }
+        let k = binary_exponent(big.hi);
+        let (x, y) = (a.ldexp(-k), b.ldexp(-k));
+        (x * x + y * y).sqrt().ldexp(k)
     }
     #[inline]
     fn recip(self) -> Self {

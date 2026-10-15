@@ -52,6 +52,10 @@ impl Real for f64 {
         m::sqrt(self)
     }
     #[inline]
+    fn hypot(self, other: Self) -> Self {
+        m::hypot(self, other)
+    }
+    #[inline]
     fn recip(self) -> Self {
         1.0 / self
     }

@@ -8,6 +8,7 @@
 
 use crate::error::{Error, require_finite};
 use crate::units::TimeSpan;
+use ferroastro_real::Real;
 use std::fmt::Debug;
 use std::marker::PhantomData;
 use std::ops::{Add, Sub};
@@ -64,20 +65,33 @@ scale!(
 );
 
 /// An instant on time scale `S`, stored as a two-part Julian date `day + fraction` to keep
-/// sub-microsecond resolution over millennia (the ERFA/SOFA two-part convention).
+/// sub-microsecond resolution over millennia (the ERFA/SOFA two-part convention). Both parts are
+/// in backend `R` (default `f64`).
 #[derive(Debug, Clone, Copy, PartialEq)]
-pub struct Epoch<S: TimeScale> {
-    day: f64,
-    frac: f64,
+pub struct Epoch<S: TimeScale, R: Real = f64> {
+    day: R,
+    frac: R,
     _scale: PhantomData<S>,
 }
 
-impl<S: TimeScale> Epoch<S> {
+impl<S: TimeScale> Epoch<S, f64> {
+    /// The epoch J2000.0 (JD 2451545.0) on this time scale (binary64 parts).
+    #[must_use]
+    pub const fn j2000() -> Self {
+        Self {
+            day: J2000_JD,
+            frac: 0.0,
+            _scale: PhantomData,
+        }
+    }
+}
+
+impl<S: TimeScale, R: Real> Epoch<S, R> {
     /// Build from a two-part Julian date (days). Any split is accepted; `day + frac` is the date.
     ///
     /// # Errors
     /// [`Error::NonFinite`] (`FA-E0001`) if either part is NaN or infinite.
-    pub fn from_jd_parts(day: f64, frac: f64) -> Result<Self, Error> {
+    pub fn from_jd_parts(day: R, frac: R) -> Result<Self, Error> {
         let day = require_finite("Julian date (day part)", day, "d")?;
         let frac = require_finite("Julian date (fraction part)", frac, "d")?;
         Ok(Self {
@@ -87,25 +101,15 @@ impl<S: TimeScale> Epoch<S> {
         })
     }
 
-    /// The epoch J2000.0 (JD 2451545.0) on this time scale.
-    #[must_use]
-    pub const fn j2000() -> Self {
-        Self {
-            day: J2000_JD,
-            frac: 0.0,
-            _scale: PhantomData,
-        }
-    }
-
     /// The two parts `(day, fraction)` as given or as produced by arithmetic.
     #[must_use]
-    pub const fn jd_parts(self) -> (f64, f64) {
+    pub const fn jd_parts(self) -> (R, R) {
         (self.day, self.frac)
     }
 
-    /// The Julian date as a single `f64` (loses resolution; for display only).
+    /// The Julian date as a single number (in f64 this loses resolution; for display only).
     #[must_use]
-    pub fn jd(self) -> f64 {
+    pub fn jd(self) -> R {
         self.day + self.frac
     }
 
@@ -114,22 +118,35 @@ impl<S: TimeScale> Epoch<S> {
     pub const fn scale_name(self) -> &'static str {
         S::NAME
     }
-}
 
-impl<S: TimeScale> Sub for Epoch<S> {
-    type Output = TimeSpan;
-    fn sub(self, rhs: Self) -> TimeSpan {
-        let days = (self.day - rhs.day) + (self.frac - rhs.frac);
-        TimeSpan::from_seconds(days * SECONDS_PER_DAY).unwrap_or(TimeSpan::ZERO)
+    /// The same epoch in another backend (exact when widening).
+    #[must_use]
+    pub fn cast<T: Real>(self) -> Epoch<S, T> {
+        let (dh, dl) = self.day.to_parts();
+        let (fh, fl) = self.frac.to_parts();
+        Epoch {
+            day: T::from_parts(dh, dl),
+            frac: T::from_parts(fh, fl),
+            _scale: PhantomData,
+        }
     }
 }
 
-impl<S: TimeScale> Add<TimeSpan> for Epoch<S> {
+impl<S: TimeScale, R: Real> Sub for Epoch<S, R> {
+    type Output = TimeSpan<R>;
+    fn sub(self, rhs: Self) -> TimeSpan<R> {
+        let days = (self.day - rhs.day) + (self.frac - rhs.frac);
+        TimeSpan::from_seconds(days * R::from_f64(SECONDS_PER_DAY))
+            .unwrap_or_else(|_| TimeSpan::zero())
+    }
+}
+
+impl<S: TimeScale, R: Real> Add<TimeSpan<R>> for Epoch<S, R> {
     type Output = Self;
-    fn add(self, rhs: TimeSpan) -> Self {
+    fn add(self, rhs: TimeSpan<R>) -> Self {
         Self {
             day: self.day,
-            frac: self.frac + rhs.seconds() / SECONDS_PER_DAY,
+            frac: self.frac + rhs.seconds() / R::from_f64(SECONDS_PER_DAY),
             _scale: PhantomData,
         }
     }

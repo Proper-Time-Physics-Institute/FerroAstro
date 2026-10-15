@@ -27,7 +27,9 @@ libm = { workspace = true, optional = true }
 [dev-dependencies]
 astro-float.workspace = true
 proptest.workspace = true
-ferroastro-vectors.workspace = true
+# Not ferroastro-vectors: it depends on ferroastro-core, which depends on this crate (a dev-edge
+# cycle, rejected by tools/check_layers.py). tests/common/bounds.rs reads the vector file itself.
+toml.workspace = true
 
 [lints]
 workspace = true

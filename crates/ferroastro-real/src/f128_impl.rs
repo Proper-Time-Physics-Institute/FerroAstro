@@ -51,6 +51,9 @@ impl Real for f128 {
     fn sqrt(self) -> Self {
         f128::sqrt(self)
     }
+    fn hypot(self, other: Self) -> Self {
+        (self * self + other * other).sqrt()
+    }
     fn recip(self) -> Self {
         1.0 / self
     }

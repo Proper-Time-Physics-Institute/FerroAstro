@@ -8,6 +8,7 @@
 //! source routine (ARCHITECTURE design rule 2); none exist in M0.
 
 use crate::units::{Length, Velocity};
+use ferroastro_real::Real;
 use std::fmt::Debug;
 use std::marker::PhantomData;
 use std::ops::{Add, Sub};
@@ -68,24 +69,24 @@ impl Center for Heliocentric {
     const NAME: &'static str = "SUN";
 }
 
-/// A position vector in frame `F` relative to centre `C`.
+/// A position vector in frame `F` relative to centre `C`, components in backend `R`.
 #[derive(Debug, Clone, Copy, PartialEq)]
-pub struct Position<F: Frame, C: Center> {
-    xyz: [Length; 3],
+pub struct Position<F: Frame, C: Center, R: Real = f64> {
+    xyz: [Length<R>; 3],
     _tag: PhantomData<(F, C)>,
 }
 
-/// A centre-free displacement vector in frame `F`.
+/// A centre-free displacement vector in frame `F`, components in backend `R`.
 #[derive(Debug, Clone, Copy, PartialEq)]
-pub struct Displacement<F: Frame> {
-    xyz: [Length; 3],
+pub struct Displacement<F: Frame, R: Real = f64> {
+    xyz: [Length<R>; 3],
     _tag: PhantomData<F>,
 }
 
-impl<F: Frame, C: Center> Position<F, C> {
+impl<F: Frame, C: Center, R: Real> Position<F, C, R> {
     /// Build a position from its three components.
     #[must_use]
-    pub const fn new(x: Length, y: Length, z: Length) -> Self {
+    pub const fn new(x: Length<R>, y: Length<R>, z: Length<R>) -> Self {
         Self {
             xyz: [x, y, z],
             _tag: PhantomData,
@@ -94,15 +95,22 @@ impl<F: Frame, C: Center> Position<F, C> {
 
     /// The components `[x, y, z]`.
     #[must_use]
-    pub const fn components(&self) -> [Length; 3] {
+    pub const fn components(&self) -> [Length<R>; 3] {
         self.xyz
+    }
+
+    /// The same position in another backend (exact when widening).
+    #[must_use]
+    pub fn cast<S: Real>(&self) -> Position<F, C, S> {
+        let [x, y, z] = self.xyz;
+        Position::new(x.cast(), y.cast(), z.cast())
     }
 }
 
-impl<F: Frame> Displacement<F> {
+impl<F: Frame, R: Real> Displacement<F, R> {
     /// Build a displacement from its three components.
     #[must_use]
-    pub const fn new(x: Length, y: Length, z: Length) -> Self {
+    pub const fn new(x: Length<R>, y: Length<R>, z: Length<R>) -> Self {
         Self {
             xyz: [x, y, z],
             _tag: PhantomData,
@@ -111,62 +119,69 @@ impl<F: Frame> Displacement<F> {
 
     /// The components `[x, y, z]`.
     #[must_use]
-    pub const fn components(&self) -> [Length; 3] {
+    pub const fn components(&self) -> [Length<R>; 3] {
         self.xyz
     }
 
     /// Euclidean norm, computed with `hypot` to avoid overflow.
     #[must_use]
-    pub fn norm(&self) -> Length {
+    pub fn norm(&self) -> Length<R> {
         let [x, y, z] = self.xyz;
         let r = x.km().hypot(y.km()).hypot(z.km());
-        // A hypot of finite values is finite, so this cannot fail; fall back to ZERO defensively.
-        Length::from_km(r).unwrap_or(Length::ZERO)
+        // A hypot of finite values is finite, so this cannot fail; fall back to zero defensively.
+        Length::from_km(r).unwrap_or_else(|_| Length::zero())
     }
 }
 
-impl<F: Frame, C: Center> Sub for Position<F, C> {
-    type Output = Displacement<F>;
-    fn sub(self, rhs: Self) -> Displacement<F> {
+impl<F: Frame, C: Center, R: Real> Sub for Position<F, C, R> {
+    type Output = Displacement<F, R>;
+    fn sub(self, rhs: Self) -> Displacement<F, R> {
         let [a, b, c] = self.xyz;
         let [d, e, f] = rhs.xyz;
         Displacement::new(a - d, b - e, c - f)
     }
 }
 
-impl<F: Frame, C: Center> Add<Displacement<F>> for Position<F, C> {
+impl<F: Frame, C: Center, R: Real> Add<Displacement<F, R>> for Position<F, C, R> {
     type Output = Self;
-    fn add(self, rhs: Displacement<F>) -> Self {
+    fn add(self, rhs: Displacement<F, R>) -> Self {
         let [a, b, c] = self.xyz;
         let [d, e, f] = rhs.xyz;
         Self::new(a + d, b + e, c + f)
     }
 }
 
-/// A position and velocity in frame `F` relative to centre `C` (a Cartesian state vector).
+/// A position and velocity in frame `F` relative to centre `C` (a Cartesian state vector),
+/// components in backend `R`.
 #[derive(Debug, Clone, Copy, PartialEq)]
-pub struct State<F: Frame, C: Center> {
-    position: Position<F, C>,
-    velocity: [Velocity; 3],
+pub struct State<F: Frame, C: Center, R: Real = f64> {
+    position: Position<F, C, R>,
+    velocity: [Velocity<R>; 3],
 }
 
-impl<F: Frame, C: Center> State<F, C> {
+impl<F: Frame, C: Center, R: Real> State<F, C, R> {
     /// Build a state from a position and its velocity components (same frame and centre).
     #[must_use]
-    pub const fn new(position: Position<F, C>, velocity: [Velocity; 3]) -> Self {
+    pub const fn new(position: Position<F, C, R>, velocity: [Velocity<R>; 3]) -> Self {
         Self { position, velocity }
     }
 
     /// The position.
     #[must_use]
-    pub const fn position(&self) -> Position<F, C> {
+    pub const fn position(&self) -> Position<F, C, R> {
         self.position
     }
 
     /// The velocity components `[vx, vy, vz]`.
     #[must_use]
-    pub const fn velocity(&self) -> [Velocity; 3] {
+    pub const fn velocity(&self) -> [Velocity<R>; 3] {
         self.velocity
+    }
+
+    /// The same state in another backend (exact when widening, e.g. f64 → double-double).
+    #[must_use]
+    pub fn cast<S: Real>(&self) -> State<F, C, S> {
+        State::new(self.position.cast(), self.velocity.map(Velocity::cast))
     }
 }
 

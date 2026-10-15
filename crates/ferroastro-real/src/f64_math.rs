@@ -79,6 +79,20 @@ pub fn atan2(y: f64, x: f64) -> f64 {
     }
 }
 
+/// `√(x² + y²)` without undue overflow.
+#[inline]
+#[must_use]
+pub fn hypot(x: f64, y: f64) -> f64 {
+    #[cfg(feature = "std")]
+    {
+        x.hypot(y)
+    }
+    #[cfg(not(feature = "std"))]
+    {
+        libm::hypot(x, y)
+    }
+}
+
 /// `x^y`.
 #[inline]
 #[must_use]

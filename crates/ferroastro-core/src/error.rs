@@ -211,20 +211,21 @@ impl Error {
     }
 }
 
-/// Reject NaN and infinities with [`Error::NonFinite`].
-pub(crate) fn require_finite(
+/// Reject NaN and infinities with [`Error::NonFinite`] (any backend; the error records the
+/// nearest `f64`).
+pub(crate) fn require_finite<R: ferroastro_real::Real>(
     quantity: &'static str,
-    value: f64,
+    value: R,
     unit: &'static str,
-) -> Result<f64, Error> {
+) -> Result<R, Error> {
     if value.is_finite() {
         Ok(value)
     } else {
         Err(Error::NonFinite {
             quantity,
-            value,
+            value: value.to_f64(),
             unit,
-            valid: "any finite f64",
+            valid: "any finite value",
             fix: "check the upstream computation or input file for NaN/inf",
         })
     }

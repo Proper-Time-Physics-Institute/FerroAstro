@@ -355,3 +355,17 @@ retrieved = "2026-10-15"
 tolerance = { abs = 0.5 }
 tolerance_rationale = "Exact property of correctly rounded arithmetic, not a fit. A larger error would mean the f64 backend is not the hardware operation (e.g. a software fma that double-rounds)."
 verified_by = "WP7 builder agent, 2026-10-15: bound copied from the cited theorem (or derived as stated) and written before the first property-test run; measured maxima are reported in IMPLEMENTATION-NOTES WP7."
+
+[[vector]]
+id = "REAL-DD-HYPOT-REL-ERR"
+requirement = ["DEP-012", "NUM-006"]
+quantity = "largest relative error of the double-double hypot(x, y) over the DEP-012 property-test inputs (normalised double-words, |exponent| <= 200)"
+value = 0.0
+unit = "u^2 (2^-106) relative"
+kind = "analytic"
+source = "hypot is sqrt(x'^2 + y'^2) * 2^k with x', y' scaled exactly by a power of two: two DWTimesDW3 squares (<= 5u^2 each, JMP 2017 Thm 5.4), one AccurateDWPlusDW of non-negative terms (<= 3u^2, Thm 3.1, no cancellation) and SQRTDWtoDW (<= 3.125u^2, Lefevre et al. 2023 Thm 3.6). The square root halves the relative error of its argument: (5 + 3)/2 + 3.125 = 7.125 u^2 plus O(u^3)."
+citation = "Joldes, M., Muller, J.-M. & Popescu, V. 2017, ACM TOMS 44(2), 15res, doi:10.1145/3121432; Lefevre, V. et al. 2023, ACM TOMS 49(1), doi:10.1145/3568672"
+retrieved = "2026-10-15"
+tolerance = { abs = 8.0 }
+tolerance_rationale = "Derived from the proved bounds of the three building blocks (7.125 u^2), rounded up to 8 u^2 for the O(u^3) terms. Written in WP7 before the first hypot measurement."
+verified_by = "WP7 builder agent, 2026-10-15: derived from the cited theorems before the first property-test run; measured maxima are reported in IMPLEMENTATION-NOTES WP7."

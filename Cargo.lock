@@ -257,6 +257,7 @@ dependencies = [
 name = "ferroastro-core"
 version = "0.0.0"
 dependencies = [
+ "ferroastro-real",
  "thiserror",
  "trybuild",
 ]
@@ -315,9 +316,9 @@ name = "ferroastro-real"
 version = "0.0.0"
 dependencies = [
  "astro-float",
- "ferroastro-vectors",
  "libm",
  "proptest",
+ "toml 0.8.23",
 ]
 
 [[package]]

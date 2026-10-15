@@ -17,9 +17,10 @@
     reason = "test file: a failed unwrap is a test failure with a clear message"
 )]
 
+mod common;
+
 use astro_float::{BigFloat, Consts, RoundingMode, Sign};
 use ferroastro_real::{DoubleDouble, Real};
-use ferroastro_vectors::VectorSet;
 use proptest::prelude::*;
 use proptest::test_runner::{Config, RngAlgorithm, TestCaseError, TestRng, TestRunner};
 use std::cell::{Cell, RefCell};
@@ -116,9 +117,8 @@ fn check<S: Strategy>(id: &str, cases: u32, strategy: S, err: impl Fn(S::Value) 
 where
     S::Value: std::fmt::Debug,
 {
-    let vs = VectorSet::load_canonical().unwrap();
-    let v = vs.get(id).unwrap();
-    let bound = v.tolerance.allowed(v.value().unwrap());
+    let v = common::Bound::load(id);
+    let bound = v.allowed();
     let cfg = Config {
         cases,
         failure_persistence: None,
@@ -147,7 +147,7 @@ where
         worst.borrow()
     );
     result.unwrap();
-    v.check(max.get()).unwrap();
+    v.check(max.get());
 }
 
 /// The `BigFloat → f64` helper recovers binary64 values (it is used to report every error).
@@ -221,6 +221,16 @@ fn dd_div_recip_sqrt_within_proved_bounds() {
     check("REAL-DD-RECIP-REL-ERR", BASIC_CASES, dd(-200..=200), |a| {
         rel_u2(&big_dd(a.recip()), &big_dd(a).reciprocal(P, RM))
     });
+    check(
+        "REAL-DD-HYPOT-REL-ERR",
+        BASIC_CASES,
+        (dd(-200..=200), dd(-200..=200)),
+        |(a, b)| {
+            let (x, y) = (big_dd(a), big_dd(b));
+            let exact = x.mul(&x, P, RM).add(&y.mul(&y, P, RM), P, RM).sqrt(P, RM);
+            rel_u2(&big_dd(a.hypot(b)), &exact)
+        },
+    );
     check("REAL-DD-SQRT-REL-ERR", BASIC_CASES, dd(-200..=200), |a| {
         let a = a.abs();
         rel_u2(&big_dd(a.sqrt()), &big_dd(a).sqrt(P, RM))
