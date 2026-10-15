@@ -11,8 +11,16 @@
 //! `ln rms = c + p ln t` from 10 orbits on (earlier points sit on the f64 evaluation floor).
 //!
 //! Tier: nightly (`#[ignore]`, `nightly_` prefix; `cargo nextest run --profile nightly
-//! --run-ignored only`). Size: `FA_NUM023_RUNS` runs (default 64) of `FA_NUM023_ORBITS` Mercury
-//! orbits (default 2000), run in parallel threads.
+//! --run-ignored only`). Two pre-registered sizes, run in parallel threads:
+//!
+//! * 64 runs × 2000 orbits (~1e7 steps): asserted against NUM-023's ±0.1;
+//! * 32 runs × 20 000 orbits (~5e7 steps): a **known failure** (WP3 NEEDS HUMAN REVIEW, the
+//!   energy slope is ≈ 0.63). The test passes while the failure reproduces and fails if it
+//!   stops reproducing, so a green nightly never implies that NUM-001's 1e9-step clause holds.
+//!
+//! Diagnosis knobs `FA_NUM023_RUNS`, `FA_NUM023_ORBITS`, `FA_NUM023_EPSILON` and
+//! `FA_NUM023_PC_TOL` are **report-only**: when any is set, the numbers are printed and no
+//! assertion is made (an environment change must never neuter or alter an asserted check).
 
 mod two_body;
 
@@ -30,6 +38,24 @@ const FIRST_ORBIT: f64 = 10.0;
 /// Default ensemble size and run length (fixed before the first run; see IMPLEMENTATION-NOTES).
 const DEFAULT_RUNS: u32 = 64;
 const DEFAULT_ORBITS: u32 = 2000; // lint: allow-literal(run length in orbits, not a physical value)
+/// Long ensemble (pre-registered in WP6 from the WP3 exploratory size; known failure).
+const LONG_RUNS: u32 = 32;
+const LONG_ORBITS: u32 = 20_000; // lint: allow-literal(run length in orbits, not a physical value)
+/// The diagnosis knobs; any of them makes the tests report-only.
+const OVERRIDES: [&str; 4] = [
+    "FA_NUM023_RUNS",
+    "FA_NUM023_ORBITS",
+    "FA_NUM023_EPSILON",
+    "FA_NUM023_PC_TOL",
+];
+
+/// The overrides that are set, as `NAME=value`.
+fn active_overrides() -> Vec<String> {
+    OVERRIDES
+        .iter()
+        .filter_map(|n| std::env::var(n).ok().map(|v| format!("{n}={v}")))
+        .collect()
+}
 /// Number of log-spaced checkpoints.
 const CHECKPOINTS: u32 = 24;
 
@@ -112,16 +138,24 @@ fn run_one(
     (out, ias.stats().steps)
 }
 
-/// Verifies: NUM-023, NUM-001
-#[test]
-#[ignore = "nightly tier: ~1e7 IAS15 steps; run with --profile nightly --run-ignored only"]
-fn nightly_num023_brouwer_slopes_ias15_f64() {
+/// Slopes of one ensemble.
+struct Slopes {
+    energy: f64,
+    phase: f64,
+}
+
+/// Run `runs` × `orbits` and print the table and the slopes.
+#[expect(
+    clippy::unwrap_used,
+    clippy::indexing_slicing,
+    reason = "test helper: failure is a test failure; checkpoint indices are in range by construction"
+)]
+fn ensemble(runs: u32, orbits: u32) -> Slopes {
     let de = De440::load().unwrap();
     let vs = VectorSet::load_workspace().unwrap();
     let (gm_sun, gm_me) = two_body::gms(&de);
     let mu = gm_sun + gm_me;
-    let runs = env_or("FA_NUM023_RUNS", DEFAULT_RUNS);
-    let orbits = f64::from(env_or("FA_NUM023_ORBITS", DEFAULT_ORBITS));
+    let orbits = f64::from(orbits);
     let base = two_body::sw92_elements(&vs, &de);
     let period = TAU * (base.a.km().powi(3) / mu.km3_per_s2()).sqrt();
     let checkpoints: Vec<f64> = (0..CHECKPOINTS)
@@ -131,6 +165,7 @@ fn nightly_num023_brouwer_slopes_ias15_f64() {
         })
         .collect();
     let model = two_body::Model::new(&[gm_sun, gm_me]).unwrap();
+    let c = cfg();
     let started = std::time::Instant::now();
     let results: Vec<(Errors, u64)> = std::thread::scope(|scope| {
         let handles: Vec<_> = (0..runs)
@@ -162,7 +197,9 @@ fn nightly_num023_brouwer_slopes_ias15_f64() {
     };
     let (e_mean, l_mean, p_mean) = (mean(|z| z.0), mean(|z| z.1), mean(|z| z.2));
     println!(
-        "NUM-023 ensemble: {runs} runs x {orbits} orbits, {total_steps} IAS15 steps in total, wall {wall:.1} s"
+        "NUM-023 ensemble: {runs} runs x {orbits} orbits, {total_steps} IAS15 steps in total, wall {wall:.1} s; \
+         IAS15 epsilon = {:e}, safety = {}, pc_tolerance = {:e}",
+        c.epsilon, c.safety, c.pc_tolerance
     );
     println!(
         "  t [orbits]   rms dE/E      rms dL/L      rms d(lambda) [rad]   (ensemble means: dE/E, dL/L, d(lambda))"
@@ -186,13 +223,73 @@ fn nightly_num023_brouwer_slopes_ias15_f64() {
         "  slopes: energy {:.3} +/- {:.3}, angular momentum {:.3} +/- {:.3} (reported), phase {:.3} +/- {:.3} (formal 1-sigma)",
         fe.slope, fe.slope_stderr, fl.slope, fl.slope_stderr, fp.slope, fp.slope_stderr
     );
-    let ve = vs.get("NUM023-ENERGY-SLOPE").unwrap();
-    let vp = vs.get("NUM023-PHASE-SLOPE").unwrap();
-    let re = ve.check(fe.slope);
-    let rp = vp.check(fp.slope);
+    Slopes {
+        energy: fe.slope,
+        phase: fp.slope,
+    }
+}
+
+/// The ensemble at the requested size, or `None` (after printing) when an override is active.
+fn checked_ensemble(runs: u32, orbits: u32) -> Option<Slopes> {
+    let overrides = active_overrides();
+    if overrides.is_empty() {
+        return Some(ensemble(runs, orbits));
+    }
+    let s = ensemble(
+        env_or("FA_NUM023_RUNS", runs),
+        env_or("FA_NUM023_ORBITS", orbits),
+    );
+    println!(
+        "  REPORT ONLY: overrides {overrides:?} are set, so no assertion is made \
+         (energy {:.3}, phase {:.3})",
+        s.energy, s.phase
+    );
+    None
+}
+
+/// Pre-registered default ensemble (64 × 2000 orbits), asserted against NUM-023.
+///
+/// Verifies: NUM-023, NUM-001
+#[test]
+#[ignore = "nightly tier: ~1e7 IAS15 steps; run with --profile nightly --run-ignored only"]
+fn nightly_num023_brouwer_slopes_ias15_f64() {
+    let Some(s) = checked_ensemble(DEFAULT_RUNS, DEFAULT_ORBITS) else {
+        return;
+    };
+    let vs = VectorSet::load_workspace().unwrap();
+    let re = vs.get("NUM023-ENERGY-SLOPE").unwrap().check(s.energy);
+    let rp = vs.get("NUM023-PHASE-SLOPE").unwrap().check(s.phase);
     println!("  energy slope check: {re:?}\n  phase slope check: {rp:?}");
     re.unwrap();
     rp.unwrap();
+}
+
+/// Pre-registered long ensemble (32 × 20 000 orbits, ~5e7 steps): a KNOWN FAILURE of NUM-023
+/// (WP3 NEEDS HUMAN REVIEW: the energy error grows faster than Brouwer's t^½ over 1e4 orbits).
+/// The test passes while the failure reproduces and fails once both slopes meet NUM-023, so the
+/// fix is noticed and this test is turned into an assertion. It verifies nothing.
+#[test]
+#[ignore = "nightly tier: ~5e7 IAS15 steps (~25 s in release on 32 threads)"]
+fn nightly_num023_long_ensemble_known_failure() {
+    let Some(s) = checked_ensemble(LONG_RUNS, LONG_ORBITS) else {
+        return;
+    };
+    let vs = VectorSet::load_workspace().unwrap();
+    let re = vs.get("NUM023-ENERGY-SLOPE").unwrap().check(s.energy);
+    let rp = vs.get("NUM023-PHASE-SLOPE").unwrap().check(s.phase);
+    println!("  energy slope check: {re:?}\n  phase slope check: {rp:?}");
+    assert!(
+        re.is_err() || rp.is_err(),
+        "the known NUM-023 long-ensemble failure no longer reproduces (energy {:.3}, phase {:.3}): \
+         update IMPLEMENTATION-NOTES (WP3/WP6 NEEDS HUMAN REVIEW) and assert here",
+        s.energy,
+        s.phase
+    );
+    println!(
+        "  KNOWN FAILURE (NUM-023 / NUM-001 1e9-step clause NOT met; IMPLEMENTATION-NOTES WP3 \
+         and WP6, NEEDS HUMAN REVIEW): energy {:.3}, phase {:.3} vs Brouwer 0.5 / 1.5 +/- 0.1",
+        s.energy, s.phase
+    );
 }
 
 /// Forward–backward reversibility of one 1000-orbit Sun + Mercury run (NUM-023, reported).
@@ -211,6 +308,7 @@ fn nightly_num023_forward_backward_reversibility() {
     let model = two_body::Model::new(&[gm_sun, gm_me]).unwrap();
     let period = TAU * (el.a.km().powi(3) / mu.km3_per_s2()).sqrt();
     let orbits = f64::from(env_or("FA_NUM023_ORBITS", DEFAULT_ORBITS)) / 2.0;
+    let overrides = active_overrides();
     let mut ias = Ias15::new(
         6,
         0.0,
@@ -231,5 +329,9 @@ fn nightly_num023_forward_backward_reversibility() {
         "NUM-023 reversibility: {orbits} orbits forward ({steps_fwd} steps) and back: |dr| = {dr:.3e} km, |dr|/|r0| = {:.3e} (reported; no acceptance value in NUM-023)",
         dr / norm(r_0)
     );
+    if !overrides.is_empty() {
+        println!("  REPORT ONLY: overrides {overrides:?} are set");
+        return;
+    }
     assert!(dr.is_finite());
 }
