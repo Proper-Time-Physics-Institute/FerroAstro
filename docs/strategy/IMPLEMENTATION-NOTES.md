@@ -2696,3 +2696,39 @@ Decisions for humans:
 | wasm32 build of `ferroastro-forces` | pass |
 | data tier (`--profile data --run-ignored only`) | 23/23 pass (regression; cache hits) |
 | nightly 1b (`nbody_brouwer`) | known-failure guard passes; the pre-registered assertion **fails** (slope 0.050) |
+
+### WP12 adversarial review (2026-10-15)
+Reviewer agent. Re-ran every AGENTS.md command, the data tier and the PR-tier real-data checks
+on `m3-newtonian-nbody` at `f9c97ae`. All pass, and the numbers match the builder's report:
+check 4 Jupiter 32.386 km, Saturn 6.794 km, Uranus 11.470 km, Neptune 6.394 km (≤ 100 km);
+1a 0.010 ε√N; U1 0 differing words; 3a 7.221e-13 km; 3b gain 148.87; 3c 1.001; data tier 23/23.
+The 55-min nightly 1b ensemble was **not** re-run; its two logs in `target/wp12/` were read.
+
+Physics checked by hand: the geocentric-Moon identity `[d F(q) − ρ(1+F)]/d³` with
+`q = ρ·(ρ−2d)/d²`, the binomial recurrence `c_k = −c_{k−1}(2k+1)/(2k)` and the closed form; the
+EMB recombination `f_E a_E + f_M a_M`; the skipped Earth–Moon pair in `NewtonianMutual` (their
+mutual forces cancel in the EMB); the J2 field `−(3μJ₂R²/2r⁵)[(1−5z²/r²) r + 2z k̂]` and its
+reaction `−(μᵢ/μ_Sun) aᵢ`.
+
+Mutation probes, independent of the builder's set and each reverted: View Earth-position sign,
+J2 pole-term factor 2, Moon central GM without the Moon, `q` with ρ·d instead of 2ρ·d, skipping
+every pair member, the sign of the Earth's contribution to Moon − Earth, and the J2 reaction halved
+were all killed. **The sign of the J2 potential survived:** `energy_over_g` (the NUM-023
+diagnostic) had no PR-tier test. Fixed in this review (`29e0715`):
+- `oblateness::tests::j2_field_is_minus_the_gradient_of_j2_potential`: a central-difference check
+  that `j2_field = −∇ j2_potential`;
+- `nbody::tests::energy_diagnostic_is_consistent_with_the_forces`, in double-double: for each term
+  alone (Newtonian, J2 with reaction, Minor with reaction, Ring), the power `Σ μ v·a` balances
+  `−dU/dt`. Measured mismatches are 8.3e-12, 8.1e-11, 9.9e-11 and 3.0e-15, against a budget of
+  1e-9. The geocentric-pair energy also equals the barycentric one.
+
+With these tests, the J2-potential sign, J2 potential 3→2, Ring potential halved and Earth-velocity
+reconstruction sign mutants are all killed.
+
+Observations (not blockers):
+- The ensemble momentum error grows as t^0.81 ± 0.01 (2.4e-13 at 1e5 yr). A pure random walk would
+  be ½, so part of the momentum round-off is systematic. 1a's bound (≤ 64 ε√N, measured 0.010 at
+  100 yr; ≈ 0.19 at 1e5 yr from the log) still holds, but its "random walk" premise is not exactly
+  what the long run shows.
+- WP12 acceptance criterion (1), the energy half, is **not met**. The status of WP12 is therefore
+  *partial* in that one respect; everything else landed and is tested.
