@@ -2,11 +2,6 @@
 // SPDX-License-Identifier: Apache-2.0
 //! The jpl oracle's REF-001 verification golden (CI-005 cached; no container started here).
 
-#![expect(
-    clippy::unwrap_used,
-    reason = "test: a failed unwrap is a test failure"
-)]
-
 use ferroastro_oracle::Manifest;
 use ferroastro_vectors::VectorSet;
 use std::path::PathBuf;
