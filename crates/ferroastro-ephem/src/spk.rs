@@ -244,20 +244,25 @@ impl Segment<'_> {
         Ok((self.coef(record * l.rsize), self.coef(record * l.rsize + 1)))
     }
 
-    /// The state of the target relative to the centre at `epoch`, in the segment's frame,
-    /// evaluated in backend `R` (f64, double-double, …).
+    fn unsupported(&self) -> EphemError {
+        self.seg_err(
+            "data type",
+            self.data_type.code().to_string(),
+            "",
+            "2 (Chebyshev position) or 3 (Chebyshev position and velocity)".into(),
+        )
+    }
+
+    /// The record (0-based) that holds `epoch` and the normalised Chebyshev argument
+    /// `s ∈ [−1, 1]` within it. The two-part date is split like jplephem 2.24; the final epoch of
+    /// the last record belongs to that record.
     ///
     /// # Errors
     /// [`EphemError::Segment`] for an unsupported type, [`EphemError::Coverage`] for an epoch
-    /// outside `[start_et, end_et]`, [`EphemError::NonFinite`] for corrupt coefficients.
-    pub fn state<R: Real>(&self, epoch: Epoch<Tdb, R>) -> Result<StateKm<R>, EphemError> {
-        let (Some(l), Some(nc)) = (self.layout, self.data_type.components()) else {
-            return Err(self.seg_err(
-                "data type",
-                self.data_type.code().to_string(),
-                "",
-                "2 (Chebyshev position) or 3 (Chebyshev position and velocity)".into(),
-            ));
+    /// outside `[start_et, end_et]`.
+    pub fn locate<R: Real>(&self, epoch: Epoch<Tdb, R>) -> Result<(usize, R), EphemError> {
+        let Some(l) = self.layout else {
+            return Err(self.unsupported());
         };
         if !self.covers(epoch) {
             return Err(self.coverage_error(epoch));
@@ -267,14 +272,27 @@ impl Segment<'_> {
         let (index, mut offset) = record_and_offset(jd1, jd2, R::from_f64(l.init), intlen);
         let mut record = f64_to_usize(index.to_f64()).ok_or_else(|| self.coverage_error(epoch))?;
         if record == l.n {
-            // The final epoch of the last record belongs to that record (as in jplephem).
             record = l.n - 1;
             offset += intlen;
         }
         if record >= l.n {
             return Err(self.coverage_error(epoch));
         }
-        let s = R::TWO * offset / intlen - R::ONE;
+        Ok((record, R::TWO * offset / intlen - R::ONE))
+    }
+
+    /// The state of the target relative to the centre at `epoch`, in the segment's frame,
+    /// evaluated in backend `R` (f64, double-double, …).
+    ///
+    /// # Errors
+    /// [`EphemError::Segment`] for an unsupported type, [`EphemError::Coverage`] for an epoch
+    /// outside `[start_et, end_et]`, [`EphemError::NonFinite`] for corrupt coefficients.
+    pub fn state<R: Real>(&self, epoch: Epoch<Tdb, R>) -> Result<StateKm<R>, EphemError> {
+        let (record, s) = self.locate(epoch)?;
+        let (Some(l), Some(nc)) = (self.layout, self.data_type.components()) else {
+            return Err(self.unsupported());
+        };
+        let intlen = R::from_f64(l.intlen);
         let base = record * l.rsize + 2;
         let mut out = StateKm::<R>::zero();
         for comp in 0..nc {
