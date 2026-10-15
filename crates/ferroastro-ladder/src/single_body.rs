@@ -344,7 +344,7 @@ impl<F: Frame> SingleBody<F> {
         let el = self.initial_elements()?;
         let period = keplerian_period(self.mu, el.a)?;
         let passages_wanted = usize::try_from(self.orbits).unwrap_or(usize::MAX) + 1;
-        find_perihelia(
+        Ok(find_perihelia(
             &model,
             self.r0,
             self.v0,
@@ -352,7 +352,7 @@ impl<F: Frame> SingleBody<F> {
             passages_wanted,
             period.seconds() * (f64::from(self.orbits) + 2.0),
             self.ias15,
-        )
+        )?)
     }
 
     /// Hash of the initial conditions: FNV-1a (64 bit) over the IEEE-754 bit patterns of the six

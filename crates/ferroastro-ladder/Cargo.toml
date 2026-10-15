@@ -17,6 +17,7 @@ ferroastro-core.workspace = true
 ferroastro-forces.workspace = true
 ferroastro-integrators.workspace = true
 ferroastro-precession.workspace = true
+ferroastro-propagate.workspace = true
 ferroastro-real.workspace = true
 serde.workspace = true
 thiserror.workspace = true

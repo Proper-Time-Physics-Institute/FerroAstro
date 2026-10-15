@@ -1,0 +1,204 @@
+// SPDX-FileCopyrightText: 2026 Proper-Time Physics Institute
+// SPDX-License-Identifier: Apache-2.0
+//! Test-particle mode: a massless body about a fixed central body (μ = GM of the central body),
+//! with the central terms of `ferroastro-forces` and the perihelion search of [`crate::passages`]
+//! (the code path of the single-body rungs, so a scenario reproduces them bit for bit).
+
+use crate::output::{PassageRecord, RunOutput, StateRecord, parts, parts3};
+use crate::passages::perihelia_until;
+use crate::setup::{
+    DataSources, constants_version, de440_solar_spin, epoch, relative_state, setup,
+};
+use crate::{PropagateError, ias15_config};
+use ferroastro_constants::De440;
+use ferroastro_core::frames::Icrf;
+use ferroastro_core::units::GravParam;
+use ferroastro_forces::{
+    CentralTerm, ForceModel, LenseThirring, Pole, SchwarzschildPpn, SolarJ2, TestParticle,
+};
+use ferroastro_real::Real;
+use ferroastro_scenario::{BodyName, IcRecord, ScenarioError, ScenarioSpec, ic_hash};
+use ferroastro_system::Catalogue;
+
+/// The test particle's force model in backend `R`: Newtonian `−μr/r³` plus the requested
+/// central terms, in the order 1PN, J2, Lense–Thirring. The constants are the binary64 DE440
+/// values converted exactly (as `SingleBody::model_in`).
+fn model<R: Real>(
+    spec: &ScenarioSpec,
+    de: &De440,
+    mu: GravParam,
+) -> Result<TestParticle<Icrf, R>, PropagateError> {
+    let f = &spec.forces;
+    let (mu_r, c) = (mu.cast::<R>(), de.speed_of_light().cast::<R>());
+    let (beta, gamma) = f
+        .ppn
+        .map_or((de.ppn_beta(), de.ppn_gamma()), |p| (p.beta, p.gamma));
+    let sun_only = |switch: &'static str| -> Result<(), PropagateError> {
+        if spec.central_body == BodyName::Sun {
+            Ok(())
+        } else {
+            Err(ScenarioError::Value {
+                name: spec.name.clone(),
+                field: switch,
+                value: "true".into(),
+                problem: "solar terms need central_body = \"Sun\"".into(),
+            }
+            .into())
+        }
+    };
+    let pole = || -> Result<Pole<Icrf, R>, PropagateError> {
+        let k = ferroastro_frames::Pole::<R>::sun_wgccre2015()?.unit_vector();
+        Ok(Pole::from_components(k)?)
+    };
+    let mut terms: Vec<Box<dyn CentralTerm<Icrf, R>>> = Vec::new();
+    if f.gr_1pn_central {
+        terms.push(Box::new(SchwarzschildPpn::new(
+            mu_r,
+            c,
+            R::from_f64(beta),
+            R::from_f64(gamma),
+        )?));
+    }
+    if f.sun_j2 {
+        sun_only("forces.sun_j2")?;
+        terms.push(Box::new(SolarJ2::new(
+            mu_r,
+            R::from_f64(de.sun_j2()),
+            de.sun_radius().cast(),
+            pole()?,
+        )?));
+    }
+    if f.lense_thirring {
+        sun_only("forces.lense_thirring")?;
+        terms.push(Box::new(LenseThirring::new(
+            de440_solar_spin(de, &spec.name)?.cast(),
+            c,
+            R::from_f64(gamma),
+            pole()?,
+        )?));
+    }
+    Ok(TestParticle::new(mu_r, terms)?)
+}
+
+/// Run a test-particle scenario in backend `R`.
+#[expect(
+    clippy::too_many_lines,
+    reason = "one linear run: refusals, ICs, model, passage search, output records"
+)]
+pub(crate) fn run<R: Real>(
+    spec: &ScenarioSpec,
+    data: &DataSources<'_>,
+) -> Result<RunOutput, PropagateError> {
+    let n = spec.name.as_str();
+    if spec.output.cadence_days.is_some() || spec.span.years < 0.0 {
+        return Err(ScenarioError::Unsupported {
+            name: n.to_owned(),
+            switch: if spec.span.years < 0.0 {
+                "span.years < 0 (test-particle mode)".into()
+            } else {
+                "output.cadence_days (test-particle mode)".into()
+            },
+            runner: crate::RUNNER.into(),
+            reason: "test-particle runs integrate forwards and report perihelion passages only"
+                .into(),
+        }
+        .into());
+    }
+    let de = De440::load()?;
+    let (_, jd) = epoch::<f64>(spec, data)?;
+    let (r0, v0, source) = relative_state(spec, data, jd)?;
+    let central = spec.central_body.naif();
+    let particle = spec
+        .bodies
+        .iter()
+        .map(|b| b.naif())
+        .find(|&id| id != central)
+        .ok_or_else(|| setup(n, "no test particle", "list two bodies"))?;
+    let mu = if spec.central_body == BodyName::Sun {
+        de.gm_sun()
+    } else {
+        Catalogue::de440_major(&de).gm(ferroastro_ephem::NaifId(central))?
+    };
+    let model = model::<R>(spec, &de, mu)?;
+    let cfg = ias15_config(spec, false);
+    let wanted = spec
+        .span
+        .stop_after_passages
+        .map(|p| usize::try_from(p).unwrap_or(usize::MAX));
+    let run = perihelia_until(
+        &model,
+        r0.map(R::from_f64),
+        v0.map(R::from_f64),
+        R::from_f64(mu.km3_per_s2()),
+        wanted,
+        R::from_f64(spec.span_seconds()),
+        cfg,
+    )?;
+    if let Some(w) = wanted
+        && run.passages.len() < w
+    {
+        return Err(PropagateError::Run {
+            scenario: n.to_owned(),
+            problem: format!(
+                "only {} of {w} perihelion passages within span.years = {}",
+                run.passages.len(),
+                spec.span.years
+            ),
+        });
+    }
+    let p64 = |z: [f64; 3]| z.map(|c| [c, 0.0]);
+    let zero = [[0.0, 0.0]; 3];
+    let records = [
+        IcRecord {
+            naif: central,
+            gm: parts(mu.km3_per_s2()),
+            position: zero,
+            velocity: zero,
+        },
+        IcRecord {
+            naif: particle,
+            gm: [0.0, 0.0],
+            position: p64(r0),
+            velocity: p64(v0),
+        },
+    ];
+    let constants = constants_version(&de);
+    Ok(RunOutput {
+        scenario: spec.name.clone(),
+        scenario_digest: spec.digest(),
+        ic_hash: ic_hash(&constants, spec.mode.label(), parts(jd), &records),
+        precision: spec.integrator.precision.label().into(),
+        constants,
+        ic_source: source,
+        epoch_jd_tdb: parts(jd),
+        model: format!(
+            "{} [{}]; IAS15 epsilon = {:e}, safety = {}, PC tolerance = {:e}, {}",
+            model.describe(),
+            model.gauge().label(),
+            cfg.epsilon,
+            cfg.safety,
+            cfg.pc_tolerance,
+            R::NAME
+        ),
+        states: vec![StateRecord {
+            t: [0.0, 0.0],
+            bodies: vec![particle],
+            positions: vec![p64(r0)],
+            velocities: vec![p64(v0)],
+        }],
+        passages: run
+            .passages
+            .iter()
+            .map(|p| PassageRecord {
+                body: particle,
+                central,
+                t: [p.t, 0.0],
+                r: parts3(p.r),
+                v: parts3(p.v),
+            })
+            .collect(),
+        final_state: None,
+        stats: run.stats,
+        finished: true,
+    })
+}

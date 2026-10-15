@@ -1,0 +1,280 @@
+// SPDX-FileCopyrightText: 2026 Proper-Time Physics Institute
+// SPDX-License-Identifier: Apache-2.0
+//! # ferroastro-propagate
+//!
+//! The run driver (CRATE-PLAN L8; CI-010, TST-005, NUM-022): from a
+//! [`ScenarioSpec`] it assembles the initial conditions
+//! (`ferroastro-system`), the force model (`ferroastro-forces`) and IAS15
+//! (`ferroastro-integrators`), integrates, and returns states at the output cadence and
+//! perihelion passages (NUM-010) as exact `(hi, lo)` records ([`RunOutput`]).
+//!
+//! * [`run`]: a whole scenario. Scenarios are first checked against what this runner
+//!   implements; anything else is refused with `FA-E1201` naming it (REF-011).
+//! * [`run_until`] / [`resume`]: stop after the first accepted step at or beyond a time, write a
+//!   [`Checkpoint`] (integrator state including the IAS15 predictor coefficients, postcard
+//!   encoded), and continue later, in another process, bit for bit (CI-010).
+//! * [`run_batch`]: independent scenarios on `threads` worker threads (rayon, behind the
+//!   optional `parallel` feature; sequential without it, and on wasm32). Results do not depend
+//!   on the thread count (TST-005).
+//!
+//! Test-particle scenarios use the passage search of the single-body rungs ([`passages`]), so
+//! a scenario reproduces the ladder's direct-API rung bit for bit.
+//!
+//! ```
+//! use ferroastro_propagate::{DataSources, run};
+//! use ferroastro_scenario::ScenarioSpec;
+//! let spec = ScenarioSpec::parse(r#"
+//! schema_version = 1
+//! name = "eih-canary"
+//! description = "a switch this runner does not implement yet"
+//! mode = "n-body"
+//! bodies = ["Sun", "Mercury"]
+//! central_body = "Sun"
+//! initial_conditions = { source = "de440-header" }
+//! constants = { gm_set = "de440" }
+//! forces = { newton = true, gr_eih = true }
+//! integrator = { name = "ias15", precision = "f64" }
+//! span = { years = 1.0 }
+//! "#)?;
+//! let err = run(&spec, &DataSources::none()).unwrap_err();
+//! assert!(err.to_string().starts_with("FA-E1201"));
+//! assert!(err.to_string().contains("forces.gr_eih"));
+//! # Ok::<(), Box<dyn std::error::Error>>(())
+//! ```
+
+mod error;
+mod nbody;
+mod output;
+mod particle;
+pub mod passages;
+mod setup;
+
+pub use error::PropagateError;
+pub use nbody::DEFAULT_DT0_DAYS;
+pub use output::{PassageRecord, RunOutput, StateRecord};
+pub use setup::{
+    DataSources, RUNNER, SuppliedState, constants_version, de440_solar_spin, refuse_unsupported,
+    supports,
+};
+
+use ferroastro_integrators::{Ias15Config, Ias15Snapshot};
+use ferroastro_real::DoubleDouble;
+use ferroastro_scenario::{Mode, Precision, ScenarioSpec};
+use nbody::{DriverState, NBodyRun};
+use serde::{Deserialize, Serialize};
+
+/// Version tag of the checkpoint encoding.
+pub const CHECKPOINT_FORMAT: &str = "ferroastro-checkpoint v1";
+
+/// IAS15 settings of a scenario: the defaults (Rein & Spiegel 2015) with the scenario's
+/// overrides; dense output on for N-body runs (samples and events).
+#[must_use]
+pub fn ias15_config(spec: &ScenarioSpec, dense_output: bool) -> Ias15Config {
+    let d = Ias15Config::default();
+    Ias15Config {
+        epsilon: spec.integrator.epsilon.unwrap_or(d.epsilon),
+        pc_tolerance: spec.integrator.pc_tolerance.unwrap_or(d.pc_tolerance),
+        dense_output,
+        ..d
+    }
+}
+
+/// A resumable state of an N-body run (CI-010): the integrator snapshot, the driver's sample
+/// and passage counters, and what identifies the run.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct Checkpoint {
+    /// [`CHECKPOINT_FORMAT`].
+    pub format: String,
+    /// Scenario name.
+    pub scenario: String,
+    /// [`ScenarioSpec::digest`] of the scenario that produced it.
+    pub scenario_digest: String,
+    /// IC hash of the run.
+    pub ic_hash: String,
+    /// `f64` or `dd`.
+    pub precision: String,
+    /// The integrator state.
+    pub integrator: Ias15Snapshot,
+    /// Index of the next output sample.
+    pub next_sample: u64,
+    /// Passages found so far.
+    pub passages: u64,
+}
+
+impl Checkpoint {
+    /// postcard encoding.
+    ///
+    /// # Errors
+    /// `FA-E1302` if encoding fails.
+    pub fn encode(&self) -> Result<Vec<u8>, PropagateError> {
+        postcard::to_allocvec(self).map_err(|e| PropagateError::Checkpoint {
+            problem: format!("cannot encode: {e}"),
+        })
+    }
+
+    /// Decode [`Checkpoint::encode`]'s bytes.
+    ///
+    /// # Errors
+    /// `FA-E1302` for malformed bytes or another format version.
+    pub fn decode(bytes: &[u8]) -> Result<Self, PropagateError> {
+        let c: Self = postcard::from_bytes(bytes).map_err(|e| PropagateError::Checkpoint {
+            problem: format!("cannot decode: {e}"),
+        })?;
+        if c.format != CHECKPOINT_FORMAT {
+            return Err(PropagateError::Checkpoint {
+                problem: format!("format {:?}, expected {CHECKPOINT_FORMAT:?}", c.format),
+            });
+        }
+        Ok(c)
+    }
+}
+
+fn prepare(spec: &ScenarioSpec) -> Result<(), PropagateError> {
+    spec.validate()?;
+    refuse_unsupported(spec)
+}
+
+fn years_to_seconds(years: f64) -> f64 {
+    years * ferroastro_scenario::DAYS_PER_JULIAN_YEAR * ferroastro_core::time::SECONDS_PER_DAY
+}
+
+/// Run a scenario to the end of its span (or its passage count).
+///
+/// # Errors
+/// `FA-E1201`/`FA-E1203` for a refused or invalid scenario, `FA-E1300` for missing data, and
+/// the errors of the integrator, force model and IC assembly with their own codes.
+pub fn run(spec: &ScenarioSpec, data: &DataSources<'_>) -> Result<RunOutput, PropagateError> {
+    prepare(spec)?;
+    match (spec.mode, spec.integrator.precision) {
+        (Mode::TestParticle, Precision::F64) => particle::run::<f64>(spec, data),
+        (Mode::TestParticle, Precision::Dd) => particle::run::<DoubleDouble>(spec, data),
+        (Mode::NBody, Precision::F64) => NBodyRun::<f64>::new(spec, data, None)?.advance(None),
+        (Mode::NBody, Precision::Dd) => {
+            NBodyRun::<DoubleDouble>::new(spec, data, None)?.advance(None)
+        }
+    }
+}
+
+fn checkpoint_of(
+    spec: &ScenarioSpec,
+    (integrator, driver, ic_hash): (Ias15Snapshot, DriverState, String),
+) -> Checkpoint {
+    Checkpoint {
+        format: CHECKPOINT_FORMAT.into(),
+        scenario: spec.name.clone(),
+        scenario_digest: spec.digest(),
+        ic_hash,
+        precision: spec.integrator.precision.label().into(),
+        integrator,
+        next_sample: driver.next_sample,
+        passages: driver.passages,
+    }
+}
+
+fn not_for_test_particles(spec: &ScenarioSpec) -> Result<(), PropagateError> {
+    if spec.mode == Mode::TestParticle {
+        return Err(PropagateError::Checkpoint {
+            problem: format!(
+                "scenario {} is a test-particle run; checkpointing is implemented for n-body runs",
+                spec.name
+            ),
+        });
+    }
+    Ok(())
+}
+
+/// Run an N-body scenario until the first accepted step at or beyond `stop_years` (Julian years
+/// from the initial epoch) and return the output so far with a [`Checkpoint`], or the complete
+/// output and `None` if the run ends first.
+///
+/// # Errors
+/// As [`run`]; `FA-E1302` for a test-particle scenario.
+pub fn run_until(
+    spec: &ScenarioSpec,
+    data: &DataSources<'_>,
+    stop_years: f64,
+) -> Result<(RunOutput, Option<Checkpoint>), PropagateError> {
+    prepare(spec)?;
+    not_for_test_particles(spec)?;
+    let stop = Some(years_to_seconds(stop_years));
+    let (out, parts) = match spec.integrator.precision {
+        Precision::F64 => {
+            let mut r = NBodyRun::<f64>::new(spec, data, None)?;
+            let out = r.advance(stop)?;
+            (out, r.checkpoint_parts()?)
+        }
+        Precision::Dd => {
+            let mut r = NBodyRun::<DoubleDouble>::new(spec, data, None)?;
+            let out = r.advance(stop)?;
+            (out, r.checkpoint_parts()?)
+        }
+    };
+    let ck = (!out.finished).then(|| checkpoint_of(spec, parts));
+    Ok((out, ck))
+}
+
+/// Continue a run from a checkpoint to the end of its span; the output holds the records after
+/// the checkpoint (join with [`RunOutput::extend_with`]).
+///
+/// # Errors
+/// `FA-E1302` if the checkpoint belongs to another scenario, precision or IC hash; otherwise as
+/// [`run`].
+pub fn resume(
+    spec: &ScenarioSpec,
+    data: &DataSources<'_>,
+    ck: &Checkpoint,
+) -> Result<RunOutput, PropagateError> {
+    prepare(spec)?;
+    not_for_test_particles(spec)?;
+    if ck.scenario_digest != spec.digest() || ck.precision != spec.integrator.precision.label() {
+        return Err(PropagateError::Checkpoint {
+            problem: format!(
+                "checkpoint of scenario {} ({}, digest {}) does not match scenario {} ({}, digest {})",
+                ck.scenario,
+                ck.precision,
+                ck.scenario_digest,
+                spec.name,
+                spec.integrator.precision.label(),
+                spec.digest()
+            ),
+        });
+    }
+    let driver = DriverState {
+        next_sample: ck.next_sample,
+        passages: ck.passages,
+    };
+    let restore = Some((&ck.integrator, &driver, ck.ic_hash.as_str()));
+    match spec.integrator.precision {
+        Precision::F64 => NBodyRun::<f64>::new(spec, data, restore)?.advance(None),
+        Precision::Dd => NBodyRun::<DoubleDouble>::new(spec, data, restore)?.advance(None),
+    }
+}
+
+/// Run independent scenarios, `threads` at a time with the `parallel` feature (rayon), in input
+/// order otherwise. Each run is the deterministic [`run`], so the results do not depend on
+/// `threads` (TST-005, NUM-022).
+///
+/// # Errors
+/// `FA-E1303` if the thread pool cannot be built; each run's own error is returned in its slot.
+pub fn run_batch(
+    specs: &[ScenarioSpec],
+    data: &DataSources<'_>,
+    threads: usize,
+) -> Result<Vec<Result<RunOutput, PropagateError>>, PropagateError> {
+    #[cfg(feature = "parallel")]
+    {
+        use rayon::prelude::*;
+        let pool = rayon::ThreadPoolBuilder::new()
+            .num_threads(threads.max(1))
+            .build()
+            .map_err(|e| PropagateError::Output {
+                problem: format!("cannot build a {threads}-thread pool: {e}"),
+            })?;
+        Ok(pool.install(|| specs.par_iter().map(|s| run(s, data)).collect()))
+    }
+    #[cfg(not(feature = "parallel"))]
+    {
+        let _ = threads;
+        Ok(specs.iter().map(|s| run(s, data)).collect())
+    }
+}
