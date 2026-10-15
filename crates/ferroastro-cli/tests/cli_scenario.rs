@@ -213,7 +213,8 @@ fn cli_refuses_unsupported_and_unknown_switches_by_name() {
         std::fs::read_to_string(scenarios().join("sun-mercury-newton-header440.toml")).unwrap();
     for (switch, line, code) in [
         ("forces.gr_eih", "gr_eih = true", "FA-E1201"),
-        ("forces.asteroids", "asteroids = 343", "FA-E1201"),
+        // asteroids are implemented in N-body mode since WP15; a central-body term is not.
+        ("forces.lense_thirring", "lense_thirring = true", "FA-E1201"),
         ("\"fifth_force\"", "fifth_force = true", "FA-E1202"),
     ] {
         let p = dir.join("refused.toml");
