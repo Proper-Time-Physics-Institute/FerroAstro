@@ -11,7 +11,7 @@
 //!   `exp(x) = 2ᵏ (1 + expm1(r))`.
 //! * `ln(x)`: `x = 2ᵏ m` with `m ∈ [√½, √2)`, `ln x = k ln2 + 2 atanh((m − 1)/(m + 1))`, the
 //!   `atanh` series summed to 22 terms (`|z| ≤ 0.1716`, last term < 10⁻³⁴). `ln_1p(x)` uses the
-//!   same series on `z = x/(2 + x)` for `|x| < ½`.
+//!   same series on `z = x/(2 + x)` for `x ∈ (−0.29, 0.41)` (where `|z| ≤ 0.1716`).
 //! * `sin`, `cos`: reduction by `π/2` (three-word constant) to `|r| ≤ π/4`, Taylor series to
 //!   degree 33/32.
 //! * `atan2(y, x)`: one Newton step from the binary64 `atan2` on `sin`/`cos`
@@ -106,7 +106,8 @@ fn expm1_small(r: Dd) -> Dd {
     s
 }
 
-/// `exp(x)`.
+/// `exp(x)`. Below `x ≈ −634.8` the result is under `2⁻⁹¹⁶`, its trailing word is subnormal and
+/// the double-word format holds fewer than 106 bits (accuracy degrades towards binary64).
 pub(crate) fn exp(x: Dd) -> Dd {
     if x.is_nan() {
         return x;
@@ -184,9 +185,12 @@ pub(crate) fn ln(x: Dd) -> Dd {
     }
 }
 
-/// `ln(1 + x)`.
+/// `ln(1 + x)`. The direct series needs `|x/(2 + x)| ≤ 0.1716` (the range its 22 terms are
+/// sized for), i.e. `x ∈ (−0.29, 0.41)`; outside it `ln(1 + x)` loses nothing, since
+/// `|ln(1 + x)| > 0.34` there. (WP7: a first version used the series up to `|x| < ½`, where
+/// `|z|` reaches ⅓ and the truncated series erred by 274 u²; the DEP-012 test caught it.)
 pub(crate) fn ln_1p(x: Dd) -> Dd {
-    if x.abs().hi() < 0.5 {
+    if x.hi() > -0.29 && x.hi() < 0.41 {
         two_atanh_small(x / (Dd::TWO + x))
     } else {
         ln(Dd::ONE + x)

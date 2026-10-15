@@ -120,7 +120,7 @@ verified_by = "WP7 builder agent, 2026-10-15: bound copied from the cited theore
 [[vector]]
 id = "REAL-DD-EXP-REL-ERR"
 requirement = ["DEP-012", "NUM-006"]
-quantity = "largest relative error of the double-double exp over the DEP-012 property-test inputs, x in [-700, 700]"
+quantity = "largest relative error of the double-double exp over the DEP-012 property-test inputs, x in [-600, 700]"
 value = 0.0
 unit = "u^2 (2^-106) relative"
 kind = "analytic"
@@ -130,6 +130,7 @@ retrieved = "2026-10-15"
 tolerance = { abs = 128.0 }
 tolerance_rationale = "Pre-registered engineering bound (written before any measurement); not a proof. If a measurement exceeds it, the algorithm is fixed, the bound is not widened without a NEEDS HUMAN REVIEW note."
 verified_by = "WP7 builder agent, 2026-10-15: bound copied from the cited theorem (or derived as stated) and written before the first property-test run; measured maxima are reported in IMPLEMENTATION-NOTES WP7."
+notes = "NEEDS HUMAN REVIEW (WP7): domain amended after the first run, bound unchanged. The pre-registered domain [-700, 700] reached results below 2^-916 (x < -634.8), where the trailing word of a double-word is subnormal and the format itself cannot hold 106 bits (the JMP 2017 bounds hold barring underflow). The first run failed at x = -688.2 with 2.3e-17 relative error, i.e. binary64 accuracy. The lower end is now -600, chosen from the format limit, not from the measurement."
 
 [[vector]]
 id = "REAL-DD-EXPM1-REL-ERR"
