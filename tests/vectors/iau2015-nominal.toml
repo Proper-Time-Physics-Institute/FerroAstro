@@ -1,0 +1,65 @@
+# SPDX-FileCopyrightText: 2026 Proper-Time Physics Institute
+# SPDX-License-Identifier: Apache-2.0
+# IAU 2015 Resolution B3 nominal conversion constants (PHY-003, WP2). Schema: ADR-0004.
+# These are conversion values, not best estimates; ladder rungs never use them.
+schema_version = 1
+
+[[vector]]
+id = "IAU2015B3-GM-SUN-N"
+requirement = ["PHY-003"]
+quantity = "nominal solar mass parameter (GM)_Sun^N"
+value = 132712440000.0
+unit = "km^3/s^2"
+kind = "defined"
+source = "IAU 2015 Resolution B3, Table 1: 1 (GM)_Sun^N = 1.3271244e20 m3 s-2 (value here converted to km units, decimal-exact)"
+citation = "Prša, A. et al. 2016, Nominal values for selected solar and planetary quantities: IAU 2015 Resolution B3, AJ 152, 41, doi:10.3847/0004-6256/152/2/41, Table 1"
+retrieved = "2026-10-14"
+tolerance = { abs = 0.0 }
+tolerance_rationale = "Exact by definition (conversion constant). The implementation stores the same decimal, so it parses to the same f64; equality is required."
+verified_by = "WP2 builder agent, 2026-10-14: read in arXiv:1605.09788v1 (sha256 2b7bcd88a5169f3a18caae9326f3c51905721cd3b7c034d1de45f7b85d6f4a99), Table 1."
+notes = "Conversion constant, NOT a best estimate: quarantined in ferroastro_constants::nominal and never a ladder input (PHY-003)."
+
+[[vector]]
+id = "IAU2015B3-R-SUN-N"
+requirement = ["PHY-003"]
+quantity = "nominal solar radius R_Sun^N"
+value = 695700.0
+unit = "km"
+kind = "defined"
+source = "IAU 2015 Resolution B3, Table 1: 1 R_Sun^N = 6.957e8 m (value here converted to km units, decimal-exact)"
+citation = "Prša, A. et al. 2016, Nominal values for selected solar and planetary quantities: IAU 2015 Resolution B3, AJ 152, 41, doi:10.3847/0004-6256/152/2/41, Table 1"
+retrieved = "2026-10-14"
+tolerance = { abs = 0.0 }
+tolerance_rationale = "Exact by definition (conversion constant). The implementation stores the same decimal, so it parses to the same f64; equality is required."
+verified_by = "WP2 builder agent, 2026-10-14: read in arXiv:1605.09788v1 (sha256 2b7bcd88a5169f3a18caae9326f3c51905721cd3b7c034d1de45f7b85d6f4a99), Table 1."
+notes = "Conversion constant, NOT a best estimate: quarantined in ferroastro_constants::nominal and never a ladder input (PHY-003)."
+
+[[vector]]
+id = "IAU2015B3-GM-EARTH-N"
+requirement = ["PHY-003"]
+quantity = "nominal terrestrial mass parameter (GM)_E^N"
+value = 398600.4
+unit = "km^3/s^2"
+kind = "defined"
+source = "IAU 2015 Resolution B3, Table 1: 1 (GM)_E^N = 3.986004e14 m3 s-2 (value here converted to km units, decimal-exact)"
+citation = "Prša, A. et al. 2016, Nominal values for selected solar and planetary quantities: IAU 2015 Resolution B3, AJ 152, 41, doi:10.3847/0004-6256/152/2/41, Table 1"
+retrieved = "2026-10-14"
+tolerance = { abs = 0.0 }
+tolerance_rationale = "Exact by definition (conversion constant). The implementation stores the same decimal, so it parses to the same f64; equality is required."
+verified_by = "WP2 builder agent, 2026-10-14: read in arXiv:1605.09788v1 (sha256 2b7bcd88a5169f3a18caae9326f3c51905721cd3b7c034d1de45f7b85d6f4a99), Table 1."
+notes = "Conversion constant, NOT a best estimate: quarantined in ferroastro_constants::nominal and never a ladder input (PHY-003)."
+
+[[vector]]
+id = "IAU2015B3-GM-JUPITER-N"
+requirement = ["PHY-003"]
+quantity = "nominal jovian mass parameter (GM)_J^N"
+value = 126686530.0
+unit = "km^3/s^2"
+kind = "defined"
+source = "IAU 2015 Resolution B3, Table 1: 1 (GM)_J^N = 1.2668653e17 m3 s-2 (value here converted to km units, decimal-exact)"
+citation = "Prša, A. et al. 2016, Nominal values for selected solar and planetary quantities: IAU 2015 Resolution B3, AJ 152, 41, doi:10.3847/0004-6256/152/2/41, Table 1"
+retrieved = "2026-10-14"
+tolerance = { abs = 0.0 }
+tolerance_rationale = "Exact by definition (conversion constant). The implementation stores the same decimal, so it parses to the same f64; equality is required."
+verified_by = "WP2 builder agent, 2026-10-14: read in arXiv:1605.09788v1 (sha256 2b7bcd88a5169f3a18caae9326f3c51905721cd3b7c034d1de45f7b85d6f4a99), Table 1."
+notes = "Conversion constant, NOT a best estimate: quarantined in ferroastro_constants::nominal and never a ladder input (PHY-003)."

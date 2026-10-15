@@ -7,10 +7,13 @@
 //! * [`table`]: the versioned DE440 constants table, generated from `header.440` with a citation
 //!   on every entry and the header's SHA-256 (PHY-002). It is embedded at build time.
 //! * [`De440`]: the table's constants as typed quantities for the precision rungs.
+//! * [`nominal`]: IAU 2015 B3 nominal conversion constants, quarantined (PHY-003). Ladder code
+//!   must not use them; a test enforces it.
 
 pub mod de440;
 mod error;
 pub mod header440;
+pub mod nominal;
 pub mod table;
 
 pub use de440::{Body, De440};
