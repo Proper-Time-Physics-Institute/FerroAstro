@@ -58,3 +58,31 @@ retrieved = "2026-10-14"
 tolerance = { abs = 1.0e-12 }
 tolerance_rationale = "Horizons prints 16 significant digits (5e-17 relative rounding); the conversion loses a few digits to cancellation in e = |v x h/mu - r_hat| (e ~ 0.2) and in 1/a = 2/r - v^2/mu. 1e-12 relative is far tighter than any physics use and far looser than the few-ulp agreement expected, so a failure means a real formula or frame error."
 verified_by = "WP3 builder agent, 2026-10-14: pre-registered in IMPLEMENTATION-NOTES WP3 before the first Horizons run."
+
+[[vector]]
+id = "IAS15-EQ11-EPS-EXPONENT"
+requirement = ["NUM-001"]
+quantity = "exponent k of the IAS15 step proposal dt_new = dt * (epsilon / b7_ratio)^k, measured as ln(p2/p1)/ln(eps2/eps1) from two first steps of identical length and state that differ only in epsilon"
+value = "0.14285714285714285"
+unit = "1"
+kind = "analytic"
+source = "Rein & Spiegel 2015, Sec. 3.3, Eq. 11: dt_required = dt_done * (epsilon / epsilon_tilde)^(1/7), epsilon_tilde = max|b7| / max|a| (global criterion). The exponent 1/7 follows from the b7 error estimate scaling as dt^7."
+citation = "Rein, H. & Spiegel, D. S. 2015, MNRAS 446, 1424, doi:10.1093/mnras/stu2164, Eq. 11 (arXiv:1409.4779, read for WP3; PDF sha256 8097c8e5...7e69033d)"
+retrieved = "2026-10-15"
+tolerance = { abs = 1.0e-12 }
+tolerance_rationale = "The two runs take the identical first step, so b7 and |a| are bit-identical and only epsilon differs; the measured exponent is exact up to the rounding of powf and of the two logarithms (a few ulp of 1/7, i.e. ~1e-16 relative, amplified by 1/ln 128 ~ 0.2). 1e-12 leaves four orders of margin; the nearest wrong exponents (1/6, 1/8) are 2e-2 away. Pinned in WP6 to kill the 1/7 -> 1/6 mutant that survived every test (progress review after WP5)."
+verified_by = "WP6 builder agent, 2026-10-15: exponent read in R&S 2015 Eq. 11 (WP3 clean-room reading); measured 0.5 = 2^(-7/7) for eps/128 vs 0.44545 = 2^(-7/6) under the mutant."
+
+[[vector]]
+id = "IAS15-EQ11-DEADBEAT"
+requirement = ["NUM-001"]
+quantity = "d ln(dt_next) / d ln(dt_first) of the IAS15 step proposal on a Kepler orbit (e = 0.5, GM = 1, from pericentre, epsilon = 1e-9), measured as log2(p(2h)/p(h)) with h the controller's own step"
+value = 0.0
+unit = "1"
+kind = "analytic"
+source = "Rein & Spiegel 2015, Eq. 11 with b7 proportional to dt^7: dt_next = dt * (epsilon / (C dt^7))^(1/7) = (epsilon / C)^(1/7), independent of the step just taken (a dead-beat controller). An exponent k gives d ln dt_next / d ln dt = 1 - 7k: -1/6 for k = 1/6, +1/8 for k = 1/8."
+citation = "Rein, H. & Spiegel, D. S. 2015, MNRAS 446, 1424, doi:10.1093/mnras/stu2164, Eq. 11 and Sec. 3.3"
+retrieved = "2026-10-15"
+tolerance = { abs = 0.05 }
+tolerance_rationale = "Not blind: chosen after a WP6 probe measured +0.0112 (k = 1/7) and -0.150 (mutant k = 1/6). Justification independent of that number: b7 is not exactly proportional to dt^7 (the Radau fit mixes in O(dt^8) terms, a relative O(omega dt) ~ 1e-2 effect at ~70 steps per orbit), and the band must exclude the nearest plausible wrong exponents, |1 - 7k| = 0.167 (1/6) and 0.125 (1/8). 0.05 is below half of the smaller of these and above the O(1e-2) contamination."
+verified_by = "WP6 builder agent, 2026-10-15: derived from R&S Eq. 11; values measured on the m0-foundation branch, see IMPLEMENTATION-NOTES WP6."

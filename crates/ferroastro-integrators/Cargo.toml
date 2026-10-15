@@ -14,5 +14,8 @@ repository.workspace = true
 ferroastro-core.workspace = true
 thiserror.workspace = true
 
+[dev-dependencies]
+ferroastro-vectors.workspace = true
+
 [lints]
 workspace = true
