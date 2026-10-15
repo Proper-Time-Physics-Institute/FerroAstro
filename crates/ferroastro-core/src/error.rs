@@ -20,6 +20,7 @@
 //! | `FA-E1100`–`FA-E1199` | body catalogues, system states and initial conditions (`ferroastro-system`) |
 //! | `FA-E1200`–`FA-E1299` | scenario files, force switches and initial-condition hashes (`ferroastro-scenario`) |
 //! | `FA-E1300`–`FA-E1399` | run driver, outputs, checkpoints and batches (`ferroastro-propagate`) |
+//! | `FA-E1400`–`FA-E1499` | differential-run plans, initial-condition identity and run stores (`ferroastro-diffrun`) |
 
 use std::fmt;
 
@@ -152,11 +153,19 @@ pub enum ErrorCode {
     PropagateCheckpoint,
     /// `FA-E1303`: a run output or batch could not be encoded, decoded or scheduled.
     PropagateOutput,
+    /// `FA-E1400`: a differential-run plan is inconsistent (unknown or duplicate configuration,
+    /// a toggle outside the body list, an empty combination).
+    DiffrunPlan,
+    /// `FA-E1401`: the runs of a differential plan do not share identical initial conditions
+    /// (NUM-013, CI-009).
+    DiffrunIcMismatch,
+    /// `FA-E1402`: a differential run's checkpoint store cannot be read or written.
+    DiffrunStore,
 }
 
 impl ErrorCode {
     /// Every code, in numeric order (used to prove codes are unique).
-    pub const ALL: [ErrorCode; 58] = [
+    pub const ALL: [ErrorCode; 61] = [
         ErrorCode::NonFinite,
         ErrorCode::OutOfRange,
         ErrorCode::VectorIo,
@@ -215,6 +224,9 @@ impl ErrorCode {
         ErrorCode::PropagateRun,
         ErrorCode::PropagateCheckpoint,
         ErrorCode::PropagateOutput,
+        ErrorCode::DiffrunPlan,
+        ErrorCode::DiffrunIcMismatch,
+        ErrorCode::DiffrunStore,
     ];
 
     /// The stable textual code, e.g. `"FA-E0001"`.
@@ -279,6 +291,9 @@ impl ErrorCode {
             ErrorCode::PropagateRun => "FA-E1301",
             ErrorCode::PropagateCheckpoint => "FA-E1302",
             ErrorCode::PropagateOutput => "FA-E1303",
+            ErrorCode::DiffrunPlan => "FA-E1400",
+            ErrorCode::DiffrunIcMismatch => "FA-E1401",
+            ErrorCode::DiffrunStore => "FA-E1402",
         }
     }
 }

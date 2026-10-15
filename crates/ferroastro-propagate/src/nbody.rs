@@ -130,6 +130,8 @@ pub(crate) struct NBodyRun<R: Real> {
     g_last: Vec<R>,
     driver: DriverState,
     meta: RunOutput,
+    records: Vec<IcRecord>,
+    ic_epoch: ferroastro_scenario::Parts,
 }
 
 impl<R: Real> std::fmt::Debug for NBodyRun<R> {
@@ -171,7 +173,8 @@ impl<R: Real> NBodyRun<R> {
             })
             .collect();
         let constants = constants_version(&de);
-        let hash = ic_hash(&constants, spec.mode.label(), parts(ep.jd()), &records);
+        let ic_epoch = parts(ep.jd());
+        let hash = ic_hash(&constants, spec.mode.label(), ic_epoch, &records);
         let cfg = ias15_config(spec, true);
         let dt0_days = spec.integrator.dt0_days.unwrap_or(DEFAULT_DT0_DAYS);
         let dir = if spec.span.years < 0.0 { -1.0 } else { 1.0 };
@@ -275,7 +278,20 @@ impl<R: Real> NBodyRun<R> {
             g_last,
             driver,
             meta,
+            records,
+            ic_epoch,
         })
+    }
+
+    /// The initial conditions as hashed (constants version, epoch, per-body records, hash).
+    pub(crate) fn initial(&self) -> crate::InitialRecords {
+        crate::InitialRecords {
+            constants: self.meta.constants.clone(),
+            mode: self.spec.mode.label().to_owned(),
+            epoch_jd_tdb: self.ic_epoch,
+            records: self.records.clone(),
+            ic_hash: self.meta.ic_hash.clone(),
+        }
     }
 
     fn record(&self, t: R, x: &[R], v: &[R]) -> Result<StateRecord, PropagateError> {

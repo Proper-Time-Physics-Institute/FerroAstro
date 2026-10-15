@@ -10,9 +10,12 @@
 //!
 //! * [`run`]: a whole scenario. Scenarios are first checked against what this runner
 //!   implements; anything else is refused with `FA-E1201` naming it (REF-011).
-//! * [`run_until`] / [`resume`]: stop after the first accepted step at or beyond a time, write a
-//!   [`Checkpoint`] (integrator state including the IAS15 predictor coefficients, postcard
-//!   encoded), and continue later, in another process, bit for bit (CI-010).
+//! * [`run_until`] / [`resume`] / [`resume_until`]: stop after the first accepted step at or
+//!   beyond a time, write a [`Checkpoint`] (integrator state including the IAS15 predictor
+//!   coefficients, postcard encoded), and continue later, in another process, bit for bit
+//!   (CI-010); a long run can be cut into any number of such segments.
+//! * [`initial_conditions`]: the initial conditions a scenario assembles, per body, exactly as
+//!   hashed, so that differential runs can prove they share them (NUM-013).
 //! * [`run_batch`]: independent scenarios on `threads` worker threads (rayon, behind the
 //!   optional `parallel` feature; sequential without it, and on wasm32). Results do not depend
 //!   on the thread count (TST-005).
@@ -59,7 +62,7 @@ pub use setup::{
 
 use ferroastro_integrators::{Ias15Config, Ias15Snapshot};
 use ferroastro_real::DoubleDouble;
-use ferroastro_scenario::{Mode, Precision, ScenarioSpec};
+use ferroastro_scenario::{IcRecord, Mode, Parts, Precision, ScenarioSpec};
 use nbody::{DriverState, NBodyRun};
 use serde::{Deserialize, Serialize};
 
@@ -126,6 +129,41 @@ impl Checkpoint {
             });
         }
         Ok(c)
+    }
+}
+
+/// The initial conditions of a scenario exactly as [`ferroastro_scenario::ic_hash`] digests
+/// them: one record per body in storage order (`(hi, lo)` parts), the constants version, the mode
+/// and the epoch.
+#[derive(Debug, Clone, PartialEq)]
+pub struct InitialRecords {
+    /// Constants version (DE440 table SHA-256).
+    pub constants: String,
+    /// `n-body` or `test-particle`.
+    pub mode: String,
+    /// Initial epoch, TDB Julian date, as hashed.
+    pub epoch_jd_tdb: Parts,
+    /// Per-body records, in storage order.
+    pub records: Vec<IcRecord>,
+    /// The IC hash of the whole set (equals [`RunOutput::ic_hash`] of a run of the scenario).
+    pub ic_hash: String,
+}
+
+/// Assemble a scenario's initial conditions without integrating.
+///
+/// # Errors
+/// As [`run`] up to the start of the integration.
+pub fn initial_conditions(
+    spec: &ScenarioSpec,
+    data: &DataSources<'_>,
+) -> Result<InitialRecords, PropagateError> {
+    prepare(spec)?;
+    match (spec.mode, spec.integrator.precision) {
+        (Mode::TestParticle, _) => particle::initial(spec, data),
+        (Mode::NBody, Precision::F64) => Ok(NBodyRun::<f64>::new(spec, data, None)?.initial()),
+        (Mode::NBody, Precision::Dd) => {
+            Ok(NBodyRun::<DoubleDouble>::new(spec, data, None)?.initial())
+        }
     }
 }
 
@@ -213,17 +251,10 @@ pub fn run_until(
     Ok((out, ck))
 }
 
-/// Continue a run from a checkpoint to the end of its span; the output holds the records after
-/// the checkpoint (join with [`RunOutput::extend_with`]).
-///
-/// # Errors
-/// `FA-E1302` if the checkpoint belongs to another scenario, precision or IC hash; otherwise as
-/// [`run`].
-pub fn resume(
+fn matching<'c>(
     spec: &ScenarioSpec,
-    data: &DataSources<'_>,
-    ck: &Checkpoint,
-) -> Result<RunOutput, PropagateError> {
+    ck: &'c Checkpoint,
+) -> Result<(DriverState, &'c Ias15Snapshot), PropagateError> {
     prepare(spec)?;
     not_for_test_particles(spec)?;
     if ck.scenario_digest != spec.digest() || ck.precision != spec.integrator.precision.label() {
@@ -239,15 +270,65 @@ pub fn resume(
             ),
         });
     }
-    let driver = DriverState {
-        next_sample: ck.next_sample,
-        passages: ck.passages,
-    };
-    let restore = Some((&ck.integrator, &driver, ck.ic_hash.as_str()));
+    Ok((
+        DriverState {
+            next_sample: ck.next_sample,
+            passages: ck.passages,
+        },
+        &ck.integrator,
+    ))
+}
+
+/// Continue a run from a checkpoint to the end of its span; the output holds the records after
+/// the checkpoint (join with [`RunOutput::extend_with`]).
+///
+/// # Errors
+/// `FA-E1302` if the checkpoint belongs to another scenario, precision or IC hash; otherwise as
+/// [`run`].
+pub fn resume(
+    spec: &ScenarioSpec,
+    data: &DataSources<'_>,
+    ck: &Checkpoint,
+) -> Result<RunOutput, PropagateError> {
+    let (driver, snap) = matching(spec, ck)?;
+    let restore = Some((snap, &driver, ck.ic_hash.as_str()));
     match spec.integrator.precision {
         Precision::F64 => NBodyRun::<f64>::new(spec, data, restore)?.advance(None),
         Precision::Dd => NBodyRun::<DoubleDouble>::new(spec, data, restore)?.advance(None),
     }
+}
+
+/// Continue a run from a checkpoint until the first accepted step at or beyond `stop_years`
+/// (Julian years from the initial epoch, signed as the span), and return that segment with the
+/// next [`Checkpoint`], or the rest of the run and `None` if it ends first. Chaining
+/// [`run_until`] and `resume_until` over any stop times reproduces the uninterrupted run bit for
+/// bit, because no step is ever shortened for a stop (CI-010).
+///
+/// # Errors
+/// As [`resume`].
+pub fn resume_until(
+    spec: &ScenarioSpec,
+    data: &DataSources<'_>,
+    ck: &Checkpoint,
+    stop_years: f64,
+) -> Result<(RunOutput, Option<Checkpoint>), PropagateError> {
+    let (driver, snap) = matching(spec, ck)?;
+    let restore = Some((snap, &driver, ck.ic_hash.as_str()));
+    let stop = Some(years_to_seconds(stop_years));
+    let (out, parts) = match spec.integrator.precision {
+        Precision::F64 => {
+            let mut r = NBodyRun::<f64>::new(spec, data, restore)?;
+            let out = r.advance(stop)?;
+            (out, r.checkpoint_parts()?)
+        }
+        Precision::Dd => {
+            let mut r = NBodyRun::<DoubleDouble>::new(spec, data, restore)?;
+            let out = r.advance(stop)?;
+            (out, r.checkpoint_parts()?)
+        }
+    };
+    let next = (!out.finished).then(|| checkpoint_of(spec, parts));
+    Ok((out, next))
 }
 
 /// Run independent scenarios, `threads` at a time with the `parallel` feature (rayon), in input

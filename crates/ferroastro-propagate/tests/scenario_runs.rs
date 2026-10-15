@@ -30,7 +30,10 @@ use ferroastro_forces::{
     NBodyPropagator, NewtonianMutual, Pole, SolarJ2WithReaction,
 };
 use ferroastro_integrators::Ias15Config;
-use ferroastro_propagate::{Checkpoint, DataSources, RunOutput, resume, run, run_batch, run_until};
+use ferroastro_propagate::{
+    Checkpoint, DataSources, RunOutput, initial_conditions, resume, resume_until, run, run_batch,
+    run_until,
+};
 use ferroastro_scenario::{BodyName, Precision, ScenarioSpec};
 use ferroastro_system::{Catalogue, InitialConditions, Tier};
 use ferroastro_vectors::VectorSet;
@@ -42,6 +45,8 @@ const CHECKPOINT_YEARS_DD: f64 = 6.0; // lint: allow-literal(run length, PR-tier
 const TWICE_YEARS: f64 = 20.0; // lint: allow-literal(run length, PR-tier cost)
 const BATCH_STEP_YEARS: f64 = 5.0; // lint: allow-literal(batch run lengths 5..40 yr)
 const HASH_YEARS: f64 = 0.01; // lint: allow-literal(a few steps: only the IC hash is used)
+const SEGMENT_YEARS: f64 = 4.0; // lint: allow-literal(segment length of the chained checkpoint test)
+const SEGMENTS: u32 = 5; // lint: allow-literal(number of segments, PR-tier cost)
 
 fn header() -> (Header, String) {
     let f = ferroastro_testdata::locate_product("de440-header").expect("cached header.440");
@@ -364,4 +369,46 @@ fn scenario_run_equals_the_direct_api_bitwise() {
     );
     assert_eq!(out.stats.steps, p.stats().steps);
     assert_eq!(differing, 0);
+}
+
+/// CI-010 for long runs cut into many segments: `run_until` + a chain of `resume_until` calls,
+/// forwards and backwards in time, each through an encoded checkpoint, equals the uninterrupted
+/// run bit for bit; and [`initial_conditions`] reports the hash the run reports.
+///
+/// Verifies: CI-010, NUM-013
+#[test]
+fn chained_segments_equal_the_uninterrupted_run_in_both_directions() {
+    let (h, prov) = header();
+    let data = DataSources::none().with_header(&h, &prov);
+    let total = SEGMENT_YEARS * f64::from(SEGMENTS);
+    for sign in [1.0, -1.0] {
+        let mut s = planets(sign * total, Precision::F64);
+        s.output.cadence_days = Some(10.0); // lint: allow-literal(output cadence, days)
+        let full = run(&s, &data).unwrap();
+        let ic = initial_conditions(&s, &data).unwrap();
+        assert_eq!(ic.ic_hash, full.ic_hash);
+        assert_eq!(ic.records.len(), s.bodies.len());
+        let (mut joined, mut ck) = run_until(&s, &data, sign * SEGMENT_YEARS).unwrap();
+        let mut k = 1_u32;
+        while let Some(c) = ck {
+            k += 1;
+            let c = Checkpoint::decode(&c.encode().unwrap()).unwrap();
+            let (seg, next) =
+                resume_until(&s, &data, &c, sign * SEGMENT_YEARS * f64::from(k)).unwrap();
+            joined.extend_with(seg).unwrap();
+            ck = next;
+        }
+        let words = full.differing_words(&joined);
+        println!(
+            "span {} yr in {k} segments: {} states, {} passages, {} steps; differing words {words:?}",
+            s.span.years,
+            full.states.len(),
+            full.passages.len(),
+            full.stats.steps
+        );
+        assert_eq!(k, SEGMENTS);
+        assert_eq!(words, Some(0));
+        assert_eq!(full.stats, joined.stats);
+        assert!(joined.finished);
+    }
 }

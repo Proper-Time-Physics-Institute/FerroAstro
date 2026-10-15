@@ -81,10 +81,88 @@ fn model<R: Real>(
 }
 
 /// Run a test-particle scenario in backend `R`.
-#[expect(
-    clippy::too_many_lines,
-    reason = "one linear run: refusals, ICs, model, passage search, output records"
-)]
+/// The assembled initial conditions of a test-particle scenario.
+pub(crate) struct ParticleIc {
+    de: De440,
+    jd: f64,
+    r0: [f64; 3],
+    v0: [f64; 3],
+    source: String,
+    central: i32,
+    particle: i32,
+    mu: GravParam,
+    records: [IcRecord; 2],
+    constants: String,
+}
+
+/// Initial conditions, as `run` assembles and hashes them (f64, as WP7's D5).
+pub(crate) fn assemble(
+    spec: &ScenarioSpec,
+    data: &DataSources<'_>,
+) -> Result<ParticleIc, PropagateError> {
+    let n = spec.name.as_str();
+    let de = De440::load()?;
+    let (_, jd) = epoch::<f64>(spec, data)?;
+    let (r0, v0, source) = relative_state(spec, data, jd)?;
+    let central = spec.central_body.naif();
+    let particle = spec
+        .bodies
+        .iter()
+        .map(|b| b.naif())
+        .find(|&id| id != central)
+        .ok_or_else(|| setup(n, "no test particle", "list two bodies"))?;
+    let mu = if spec.central_body == BodyName::Sun {
+        de.gm_sun()
+    } else {
+        Catalogue::de440_major(&de).gm(ferroastro_ephem::NaifId(central))?
+    };
+    let p64 = |z: [f64; 3]| z.map(|c| [c, 0.0]);
+    let zero = [[0.0, 0.0]; 3];
+    let records = [
+        IcRecord {
+            naif: central,
+            gm: parts(mu.km3_per_s2()),
+            position: zero,
+            velocity: zero,
+        },
+        IcRecord {
+            naif: particle,
+            gm: [0.0, 0.0],
+            position: p64(r0),
+            velocity: p64(v0),
+        },
+    ];
+    let constants = constants_version(&de);
+    Ok(ParticleIc {
+        de,
+        jd,
+        r0,
+        v0,
+        source,
+        central,
+        particle,
+        mu,
+        records,
+        constants,
+    })
+}
+
+/// The hashed initial conditions of a test-particle scenario.
+pub(crate) fn initial(
+    spec: &ScenarioSpec,
+    data: &DataSources<'_>,
+) -> Result<crate::InitialRecords, PropagateError> {
+    let ic = assemble(spec, data)?;
+    let epoch = parts(ic.jd);
+    Ok(crate::InitialRecords {
+        ic_hash: ic_hash(&ic.constants, spec.mode.label(), epoch, &ic.records),
+        constants: ic.constants,
+        mode: spec.mode.label().to_owned(),
+        epoch_jd_tdb: epoch,
+        records: ic.records.to_vec(),
+    })
+}
+
 pub(crate) fn run<R: Real>(
     spec: &ScenarioSpec,
     data: &DataSources<'_>,
@@ -104,21 +182,18 @@ pub(crate) fn run<R: Real>(
         }
         .into());
     }
-    let de = De440::load()?;
-    let (_, jd) = epoch::<f64>(spec, data)?;
-    let (r0, v0, source) = relative_state(spec, data, jd)?;
-    let central = spec.central_body.naif();
-    let particle = spec
-        .bodies
-        .iter()
-        .map(|b| b.naif())
-        .find(|&id| id != central)
-        .ok_or_else(|| setup(n, "no test particle", "list two bodies"))?;
-    let mu = if spec.central_body == BodyName::Sun {
-        de.gm_sun()
-    } else {
-        Catalogue::de440_major(&de).gm(ferroastro_ephem::NaifId(central))?
-    };
+    let ParticleIc {
+        de,
+        jd,
+        r0,
+        v0,
+        source,
+        central,
+        particle,
+        mu,
+        records,
+        constants,
+    } = assemble(spec, data)?;
     let model = model::<R>(spec, &de, mu)?;
     let cfg = ias15_config(spec, false);
     let wanted = spec
@@ -147,22 +222,6 @@ pub(crate) fn run<R: Real>(
         });
     }
     let p64 = |z: [f64; 3]| z.map(|c| [c, 0.0]);
-    let zero = [[0.0, 0.0]; 3];
-    let records = [
-        IcRecord {
-            naif: central,
-            gm: parts(mu.km3_per_s2()),
-            position: zero,
-            velocity: zero,
-        },
-        IcRecord {
-            naif: particle,
-            gm: [0.0, 0.0],
-            position: p64(r0),
-            velocity: p64(v0),
-        },
-    ];
-    let constants = constants_version(&de);
     Ok(RunOutput {
         scenario: spec.name.clone(),
         scenario_digest: spec.digest(),
