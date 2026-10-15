@@ -693,3 +693,163 @@ not re-run: WP5 does not touch the integrator.
   survives); it can only fire against real answers. Non-blocking.
 - The ±20 ″/cy SW92 band is weak by design (it tests frame and definition only). The −5.75 ″/cy gap
   stays an open question, as the builder recorded.
+
+## 📈 Progress review: M0-M2 after WP5
+
+I am the independent progress reviewer (an agent, not the builder). I audited `m0-foundation` at `9ec1f86` (WP1–WP5), stacked on `1-scientific-computing-strategy` (merge base `216c58e`). I ran everything below myself on 2026-10-15 UTC, on the local machine with toolchain 1.95.0. Nothing was loosened, and no mutation was committed.
+
+### Overall health: 🟡 YELLOW
+- **Green:**
+  - All eight AGENTS.md gates pass.
+  - All 12 real-data tests pass on an empty cache.
+  - Three key results reproduce in independent Python, including the 575.309 ″/cy Park17 rate, which I rebuilt with my own estimator from the raw Horizons rows.
+  - Nobody has moved any golden value or tolerance.
+- **Not green:**
+  - A longer NUM-023 ensemble still fails the Brouwer energy slope, which is a known issue. NUM-001's 1e9-step clause is unmet.
+  - One integrator mutant survives.
+  - The crate layering differs from CRATE-PLAN: estimators run propagation, and the analytic oracles live in `precession`.
+  - Six M1 requirements (the debt crates) and two M2 requirements have no citing test.
+
+### 1. Commands
+| command | result |
+|---|---|
+| `cargo fmt --all --check` | pass |
+| `cargo clippy --workspace --all-targets --all-features -- -D warnings` | pass |
+| `cargo nextest run --workspace` + `cargo test --doc --workspace` | 92 passed, 14 skipped (12 `data_*` + 2 `nightly_*`, the only `#[ignore]`s); doctests pass |
+| `cargo deny check` | pass (only `license-not-encountered` warnings) |
+| `RUSTDOCFLAGS="-D warnings" cargo doc --no-deps --workspace` | pass |
+| `ruff check`, `ruff format --check`, `mypy` (strict) | pass (8 files) |
+| `reuse lint` | pass |
+| `trace.py --check` | pass: 119 requirements, 175 citing tests, 28/92 `test` requirements cited |
+| `data` profile, empty `FA_DATA_DIR`, all downloads fresh | **12/12 pass** (20.2 s) |
+| `nightly` profile (release) | **2/2 pass** (5.2 s) |
+| exploratory nightly, `FA_NUM023_RUNS=32 FA_NUM023_ORBITS=20000` (4.9e7 steps) | **FAIL**: energy slope 0.629 ± 0.018 (needs ±0.1 of 0.5). This reproduces WP3's NEEDS-HUMAN-REVIEW finding exactly. |
+
+GitHub PR checks on `9ec1f86`: dco, msrv, python, reuse and rust pass. `data` and `long` are skipped, because they are schedule-only by design.
+
+### 2. Real-data and benchmark results
+Provenance:
+- **header.440:** https://ssd.jpl.nasa.gov/ftp/eph/planets/ascii/de440/header.440, sha256 `0f4636b6…6ac3359`, 22802 B, Last-Modified 2020-12-22, retrieved 2026-10-15.
+- **SW92:** approx_pos.html, sha256 `9f7b30ca…f9c4d742`.
+- **Horizons:** API `signature.version` 1.2, `{source: DE441}` on every chunk. Answers carry a timestamp, so each download has a new sha256. For example, chunk 1 of (b) this run had sha256 `13bc0b0e…abb0b86`.
+
+Margin = |Δ| / tolerance.
+
+| test | measured | oracle (source) | tolerance | margin |
+|---|---|---|---|---|
+| `data_de440_table_matches_header` | 23/23 entries equal | header.440 (fresh) | exact | 0 |
+| `data_de440_header_ref002_acceptance` | JDEPOC, CLIGHT, BETA, GAMMA, AU, J2SUN, ASUN, GMS, EMRAT: \|Δ\| = 0 | header.440 | exact | 0 |
+| `data_de440_header_defined_constants` | CLIGHT 299792.458, AU 149597870.7 | SI / IAU 2012 B2 | exact | 0 |
+| `data_sw92_table1_mercury` | 6 elements + 12 rates equal | SW92 Tables 1 and 2a (JPL page) | exact | 0 |
+| `data_horizons_osculating_elements_match` | e rel 1.08e-15, a rel 1.29e-16, angles ≤ 2.8e-14° | Horizons ELEMENTS | 1e-12 rel | 0.001 |
+| `data_horizons_n2b_from_de441_state` (PHY-001) | 1.087e-9 ″/cy over 1000 yr | exactly 0 | < 1e-6 | 0.001 |
+| `data_horizons_gr_rate_from_osculating_elements_vs_park17` | 42.980669 ″/cy | Park17 Table 3 GE 42.9799 | ±0.0027 (3σ, pre-registered) | 0.28 |
+| `data_gr_rung_from_horizons_de441_state` (PHY-005) | 42.9806442 ″/cy | Park17 GE 42.9799 / osculating analytic 42.980654 | ±0.0027 / ±0.001 | 0.28 / 0.01 |
+| `data_j2_and_lt_rungs_in_real_solar_equator_geometry`: J2 | 0.0284524 ″/cy (i = 3.381087°) | Park17 Table 3, 0.0286 | ±0.0011 (Park 1σ) | 0.13 |
+| same test: LT | −0.0020148 ″/cy | Park17 Table 3, −0.0020 | ±0.0002 | 0.07 |
+| same test: NUM-015 vs Park17 Eqs. 3 and 2 | 1.3e-7, 7.7e-8 rel | analytic | 1e-6 rel | 0.13, 0.08 |
+| `data_solar_spin_from_fresh_header_440` | G·S = 1.2680765843106158e16 km⁵/s³ | recomputed from header tokens | 8 ulp | 0 |
+| `data_sw92_rate_from_horizons_de441_ecliptic` | dog-leg 571.968047 ″/cy (jk σ 0.147) | SW92 Table 1 577.716804 | ±20 (derived from SW92 15″) | 0.29 ⚠ weak oracle; −5.75 gap is unexplained (open) |
+| `data_park17_rate_from_horizons_de441_mean_orbit` | **575.309163 ″/cy**, jk σ 0.00153, Q −0.0447605 | Park17 total 575.3100 ± 0.0015 | NUM-011 ±0.01; 3·√(σP²+σjk²) = ±0.00643 | 0.08; 0.13 (−0.39σ) |
+| CLI `ferroastro ladder --rungs single-body` (PR tier, release) | SR-a 7.1634124; SR-b 50.1438857 / 35.8170613; GR 42.9804688; J2 0.0286015 / 0.0279168; LT −0.0020184 | PHY-007/008/005/010/011 | ±0.001 / ±0.002 / ±0.001 / ±0.0005 / ±0.0002 | ≤ 0.10 for every rung; LT NUM-015 rel.dev 1.25e-6 passes only via the 1e-7 ″/cy floor (already flagged NEEDS HUMAN REVIEW) |
+| `nightly_num023_brouwer_slopes_ias15_f64` (64×2000 orbits) | energy 0.526, phase 1.513 | Brouwer ½, 3/2 | ±0.1 | 0.26, 0.13 |
+| same, 32×20000 orbits (exploratory) | energy **0.629**, phase 1.590 | ½, 3/2 | ±0.1 | **1.29 FAIL**, 0.90 |
+
+**Independent recomputation** (Python and numpy, no FerroAstro code; inputs are the freshly downloaded header.440 and Horizons rows):
+1. **PHY-004 GR rate**, from GMS·AU³/86400², CLIGHT, and SW92 a, e:
+   - 5.0186604e-7 rad/orbit and 415.200918 orbits/cy give **42.980478977 ″/cy**, identical to FerroAstro to 9 decimals.
+   - From the Horizons osculating a, e it gives 42.980669, identical too.
+2. **Park17 contributions**:
+   - **J2:** 0.0286015 at Park J2, planar. 0.0284523 at i = 3.381087° (FerroAstro measures 0.0284524). With the DE440 J2 it is 0.0279168.
+   - **G·S:** 1.2680765843106158e16 km⁵/s³ from header tokens, so S = 1.8999e41 kg m²/s.
+   - **LT:** −0.0020183 (planar) and −0.0020148 (real geometry).
+   - **Table 3 sum:** 532.3035 + 42.9799 + 0.0286 − 0.0020 = 575.3100.
+   - **PHY-014 oracle shift:** 0.0286·(2.19614/2.25 − 1) = −0.000685, which gives 575.309315. This agrees with the maintainer's 575.3093.
+3. **Reproduced benchmark: the Park17 rate from DE441.** I wrote my own estimator and ran it on the 5 cached Horizons ICRF chunks (365 251 rows):
+   - Passage finding is different from FerroAstro's: a degree-7 Hermite interpolant through 4 samples using both position and velocity, against FerroAstro's 8-point Lagrange on r·v.
+   - Frame: Park17 pole. Fit: quadratic + 14 Table-2 frequencies.
+   - Result: **575.309174 ″/cy** (formal σ 0.00083, Q −0.0447574, rms 0.4376″, 8304 passages), against FerroAstro's 575.309163. Δ = 1.1e-5 ″/cy, which is 0.007 of the jack-knife σ.
+   - Quadratic only: 575.309736 (FerroAstro 575.30973).
+
+### 3. Drift audit
+- **`git log -p -- tests/vectors` since `216c58e`:** 9 commits, 1335 lines added. The only changed lines are 3 metadata edits:
+  - `af7cb63` and `b4d5cad`: `verified_by`/`notes` of CLIGHT and AU.
+  - `c901f86`: the `verified_by` of the Park17 J2 vector.
+  
+  **No value or tolerance was ever moved or widened.**
+- **Agent-closed open item:** `CONST-AU-IAU2012` notes say OI-05 is "resolved" by an agent re-reading, but OI-05 is still unticked in OPEN-ITEMS.md (red-team H5 pattern). I re-downloaded https://syrte.obspm.fr/IAU_resolutions/Res_IAU2012_B2.pdf. Its sha256 is `3489ebb1…afec984` (matches the vector), and the text reads "149 597 870 700 m exactly". The claim holds. **NEEDS HUMAN REVIEW:** a human should tick OI-05 in PR #2.
+- **`#[ignore]`:** 14 in total, all named `data_*` (12) or `nightly_*` (2), and all 14 ran in this review. I found no `cfg` gating or early returns. One exception: `num023_brouwer.rs` reads `FA_NUM023_EPSILON`/`_PC_TOL`/`_RUNS`/`_ORBITS`, so an environment change in CI could alter what the nightly test asserts (red-team H2 route). Low severity.
+- **UNVERIFIED values as oracles:** none found. GMSDOT (OI-04) and CENTER (OI-23) are excluded from the vectors. The Cassini γ is used only as input. The INPOP21a Eq. 1 equivalence (OI-35) is not claimed.
+- **Circular oracles:**
+  - PHY-005, PHY-010 and NUM-015 compare numerical results with analytic formulas in the same crate tree. That would be circular on its own. It is mitigated because the formulas are re-derived independently (red-team §1 and item 2 above) and the data tier checks against Park17 Table 3.
+  - `data_solar_spin_from_fresh_header_440` recomputes G·S from header tokens, independently of `de440_solar_spin`. The mutant below confirms this.
+  - Nothing is circular in a way that matters.
+- **Mutation probes** (local, each one reverted, tree clean afterwards):
+
+| crate | mutant | result |
+|---|---|---|
+| vectors | `allowed = max(abs, rel)` ×10 | killed (2 tests) |
+| core | arcsec/rad 3600 → 3600.1 | killed (PHY-004, NUM-011 synthetic, …) |
+| constants | GM au³/d² → km³/s² scale ×(1+1e-9) | killed (`asserted_de440_constants`, Park21 GMs, PHY-010) |
+| **integrators** | **IAS15 step-control exponent 1/7 → 1/6** | **SURVIVED every PR-tier test** |
+| forces | R3 along-track term ×1.001 | killed (PPN cross-check, PHY-005/006, CLI) |
+| forces | J2 coefficient −1.5 → −1.503 | killed (unit, PHY-010 Eq. 3, CLI) |
+| precession | analytic J2 oracle 3π → 3.003π | killed |
+| precession | Park2017 Lagrange order 8 → 4 | PR tier survived; killed by the data tier (the passage-error budget assertion; ϖ̇ unchanged to 1e-6) |
+| ladder | DE440 solar G·S ×1.01 | killed (PHY-011 offline + `data_solar_spin`) |
+- **Layering** (`cargo metadata`): no cycles and no upward edges. Deviations from CRATE-PLAN:
+  - `ferroastro-precession` has a runtime dependency on `ferroastro-integrators`. `passages.rs` runs IAS15 re-integrations, which breaks "estimators contain no propagation".
+  - Analytic oracles live in `precession::analytic`, not `ferroastro-analytic`.
+  - `ferroastro-forces` depends on `ferroastro-integrators` (the `SecondOrderSystem` trait), an edge CRATE-PLAN does not list.
+  - `tools/check_layers.py` does not exist yet. All four items are already WP6 scope.
+
+### 4. Requirement coverage (trace.py; "cited" = at least one `Verifies:` test)
+- **M0, uncited:**
+  - STD-001…011
+  - TST-001
+  - DEP-001, DEP-002, DEP-003, DEP-014
+  - ORG-008
+  
+  Most of these are enforced by CI jobs (fmt, clippy, deny, MSRV, DCO) rather than by citing tests. **NEEDS HUMAN REVIEW:** should trace.py accept "verified by gate X"? TST-004 and AGT-001 are inspection requirements.
+- **M1, uncited:** DEP-007, DEP-009, DEP-010, NUM-006, NUM-010, REF-009. These are the M1-debt crates `real`, `erfa` and `time`, planned for WP7/WP8.
+- **M1, cited but acceptance unmet:**
+  - NUM-001: the 1e9-step Brouwer clause, and Kozai–Lidov.
+  - NUM-023: fails at 4.9e7 steps.
+- **M2, uncited:**
+  - NUM-019: the single-body J2/LT vs Park17 test exists but does not cite it; the momentum part belongs to M4.
+  - API-003: no doc example per PHY rung.
+- **M2, cited but acceptance partial:**
+  - NUM-017: R5→R3 needs EIH.
+  - PHY-011: INPOP21a Eq. 1 is not demonstrated (OI-35).
+  - NUM-012: there is no documented cross-estimator spread table beyond LRL vs passages.
+- **Trace inflation:**
+  - `data_sw92_table1_mercury` and the pure Kepler-utility unit tests carry `Verifies: PHY-001`. These are supporting tests, not N-2B evidence.
+
+### 5. Corrections for the next builder (WP6)
+1. **Kill the IAS15 step-control mutant.** Add a test that pins Eq. 11. For example, assert that the accepted-step ratio between ε and ε·10⁻⁷ on the same smooth orbit is 10 ± 5 %. Alternatively, pin the step count for Kepler e = 0.5 at ε = 1e-9 to a pre-registered value.
+2. **NUM-023.** Add a pre-registered long-ensemble nightly check (32×20000, 25 s) that is reported as a known failure, linked to the WP3 NEEDS-HUMAN-REVIEW note. Then a green nightly no longer implies that NUM-001's 1e9-step clause holds. Do not widen ±0.1. Investigate:
+   - Everhart's predictor correction
+   - forcing at `x − compensation`
+   - the B₇ stall floor
+3. **Make the NUM-023 env knobs report-only.** If any `FA_NUM023_*` override is set, print the numbers and skip the assertion, so an environment change cannot neuter the test.
+4. **Do the WP6 layering work:**
+   - Move the passage runner (IAS15 use) out of `ferroastro-precession` into ladder/diffrun.
+   - Move the analytic oracles to `ferroastro-analytic`.
+   - Add `tools/check_layers.py` with a test.
+   - Either record the forces→integrators edge in CRATE-PLAN, or move `SecondOrderSystem` down to core.
+5. **Trace hygiene:**
+   - Drop `Verifies: PHY-001` from the table-transcription and Kepler-utility tests.
+   - Add `Verifies: NUM-019` only to the Park17 J2/LT data test (single-body part).
+   - Add API-003 doc examples per rung.
+6. **PHY-001:** name IAS15 and its settings (ε = 1e-9, safety 0.25, PC tolerance 1e-16) in the test output and the vector rationale (red-team §1).
+7. Keep everything in the open-question queue for humans; none of it may be resolved by an agent:
+   - OI-05 tick
+   - NUM-015 floor
+   - NUM-017 areal exemption
+   - PHY-009 "8A" wording
+   - IAS15 rejection rule
+   - SW92 −5.75 ″/cy gap
+   - OI-35 / INPOP21a Eq. 1
+   - Park17 heliocentric vs barycentric passages
+
+Reviewer artefacts are in the local scratchpad, not committed: the gate, data and nightly logs, `recompute.py` and `mutate.py`.
