@@ -1423,3 +1423,40 @@ The NUM-001 1e9-step clause was not tested. These ensembles total about 5e7 step
     - DEP-012 could name the u² unit for double-word bounds.
     - NUM-006 could carry the benchmark band.
 11. **Nightly toolchain:** installed user-level (`~/.rustup`) only to exercise `--features f128`. `rust-toolchain.toml` is unchanged.
+
+### WP7 gate results (2026-10-15, local, toolchain 1.95.0, tip before this notes commit `2ea1523`)
+All eight AGENTS.md commands passed (exit 0):
+- fmt;
+- clippy `-D warnings`;
+- `cargo nextest run --workspace`: 130 passed, 17 skipped (14 `data_*` + 3 `nightly_*`), plus 8 doctests;
+- `cargo deny check`;
+- rustdoc `-D warnings`;
+- ruff check/format and mypy strict (14 files);
+- `reuse lint`;
+- `trace.py --check`: 119 requirements, 234 citing tests, 0 errors, layer check included.
+
+Extras:
+- `uv run pytest`: 24 passed.
+- MSRV 1.85.0 nextest without trybuild: 129 passed.
+- wasm32 builds: both pass.
+- Nightly `+nightly --features f128` tests of `ferroastro-real`: pass.
+
+### WP7 long tiers (`tools/run_long_local.sh`, empty `FA_DATA_DIR`, every download fresh; log `target/long-local/20261015T072402Z-2ea1523247dd.log`)
+- **nightly:** 3/3 pass.
+  - Default NUM-023 ensemble: energy 0.526, phase 1.513.
+  - Long ensemble: 0.629 / 1.590, the known failure as before.
+  - Reversibility \|Δr\|/\|r₀\| = 4.50e-12.
+- **data:** 13/14 passed on the first run. `data_horizons_osculating_elements_match` failed with **FA-E0200**: Horizons answered HTTP 503 to four curl attempts. That is a network error, not an assertion. With test-level retries now 0 (above), it shows as a failure. Run again alone on the same cache, it passed:
+  - e relative diff 1.08e-15;
+  - a relative diff 1.29e-16;
+  - angles ≤ 2.8e-14°.
+- **New D5:** f64 42.980085159575, DD 42.980085160105, difference −5.30e-10 ″/cy.
+  - header.440 sha256 `0f4636b6…6ac3359`, Last-Modified 2020-12-22, retrieved 2026-10-15.
+- **Unchanged from WP6, to every printed digit:**
+  - Park17 frame: 575.309163 (jack-knife σ 0.00153).
+  - SW92 dog-leg: 571.968047.
+  - GR from DE441: 42.9806442.
+  - Real-geometry J2 and LT: 0.0284524 / −0.0020148.
+  - NUM-013(a) and the NUM-012 spread.
+  - Horizons provenance on every answer: `signature.version` 1.2, ephemeris DE441.
+- **New output line:** the Horizons GR-rate test now prints the μ convention: GM☉ in both places gives 42.980665, a shift of −3.57e-6 ″/cy.
