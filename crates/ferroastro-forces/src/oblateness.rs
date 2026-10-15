@@ -136,4 +136,35 @@ mod tests {
         assert!((b[2] - 3.0 / 16.0).abs() < 4.0 * f64::EPSILON); // lint: allow-literal(r = 2: r^4 = 16)
         assert!(SolarJ2::new(gm, f64::NAN, Length::from_km(1.0).unwrap(), pole).is_err());
     }
+
+    /// `j2_potential` is the potential of `j2_field` (`a = −∇V`), checked by central differences
+    /// at an inclined, off-axis point with an inclined pole. The N-body energy diagnostic
+    /// (NUM-023) uses `j2_potential`; a wrong sign or factor there left every PR-tier test green
+    /// (WP12 review mutation probe).
+    ///
+    /// Verifies: NUM-019
+    #[test]
+    fn j2_field_is_minus_the_gradient_of_j2_potential() {
+        let (mu, j2, radius) = (1.0, 1e-3, 1.0); // lint: allow-literal(synthetic structural parameters)
+        let n = 0.12_f64.hypot(0.4).hypot(0.9); // lint: allow-literal(structural pole)
+        let k = [0.12 / n, -0.4 / n, 0.9 / n]; // lint: allow-literal(structural pole)
+        let r = [3.0, -1.5, 2.2]; // lint: allow-literal(structural point)
+        let h = 1e-4; // lint: allow-literal(finite-difference step)
+        let a = j2_field(mu, j2, radius, k, r);
+        let scale = a[0].hypot(a[1]).hypot(a[2]);
+        for c in 0..3 {
+            let (mut rp, mut rm) = (r, r);
+            rp[c] += h;
+            rm[c] -= h;
+            let grad = (j2_potential(mu, j2, radius, k, rp) - j2_potential(mu, j2, radius, k, rm))
+                / (2.0 * h);
+            // Truncation ~ (h/r)^2 ~ 1e-9 and round-off ~ eps |V|/h ~ 1e-12 of the scale.
+            assert!(
+                (a[c] + grad).abs() < 1e-7 * scale, // lint: allow-literal(finite-difference budget)
+                "component {c}: a = {}, -dV/dx = {}",
+                a[c],
+                -grad
+            );
+        }
+    }
 }

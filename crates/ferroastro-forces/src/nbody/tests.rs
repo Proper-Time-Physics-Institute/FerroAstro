@@ -460,3 +460,127 @@ fn pack_and_unpack_round_trip() {
     short.push(NaifId::SUN, &st(0)).unwrap();
     assert!(m.pack(&short, None).is_err());
 }
+
+type Dd = DoubleDouble;
+
+fn dd(a: &[f64]) -> Vec<Dd> {
+    a.iter().copied().map(Dd::from_f64).collect()
+}
+
+fn j2_term_dd() -> SolarJ2WithReaction<Icrf, Dd> {
+    SolarJ2WithReaction::new(
+        Dd::from_f64(1e-3), // lint: allow-literal(same synthetic J2)
+        Length::from_km(Dd::from_f64(7.0e5)).unwrap(), // lint: allow-literal(same synthetic radius)
+        Pole::from_components(pole().unit().map(Dd::from_f64)).unwrap(),
+    )
+    .unwrap()
+}
+
+/// `|Σ μᵢ vᵢ·aᵢ + dU/dt| / Σ |μᵢ vᵢ·aᵢ|` for a barycentric model, all in double-double (the
+/// kinetic energy dwarfs a single term's potential rate, so f64 would measure round-off): the
+/// power of the forces must equal minus the rate of the model's potential (`energy_over_g` with
+/// the velocities held, so the kinetic part cancels), the rate taken by a central difference
+/// along `v`.
+fn power_mismatch(m: &Model<Dd>, x: &[f64], v: &[f64]) -> f64 {
+    let (x, v) = (dd(x), dd(v));
+    let a = accel(m, &x, &v);
+    let n = m.layout().len();
+    let (mut p, mut scale) = (Dd::ZERO, Dd::ZERO);
+    for i in 0..n {
+        let g = m.layout().gm(i);
+        let mut pi = Dd::ZERO;
+        for k in 0..3 {
+            pi += g * v[k * n + i] * a[k * n + i];
+        }
+        p += pi;
+        scale += pi.abs();
+    }
+    let h = Dd::from_f64(10.0); // lint: allow-literal(finite-difference step, s)
+    let shift = |s: Dd| -> Vec<Dd> { x.iter().zip(&v).map(|(&xi, &vi)| xi + s * vi).collect() };
+    let e = |xs: &[Dd]| m.energy_over_g(xs, &v).unwrap();
+    let du = (e(&shift(h)) - e(&shift(-h))) / (Dd::TWO * h);
+    ((p + du).abs() / scale).to_f64()
+}
+
+/// The energy diagnostic (NUM-023) is consistent with the forces of every term: for each term
+/// alone the force power balances the rate of its potential, and the geocentric-pair energy
+/// equals the barycentric one for the same physical state. Before the WP12 review a wrong
+/// sign of the J2 potential, or a Minor/Ring potential inconsistent with its force, left every
+/// PR-tier test green (the energy is only used by the nightly Brouwer ensemble).
+///
+/// Verifies: NUM-023, NUM-019, NUM-009
+#[test]
+fn energy_diagnostic_is_consistent_with_the_forces() {
+    let (bodies, x, v) = fixture();
+    let n = bodies.len();
+    let bodies_dd: Vec<NBody<Dd>> = bodies.iter().map(|b| body(b.id, b.gm, b.tier)).collect();
+    // Central-difference truncation ~ (h |v| / r)^2 ~ 1e-13 (h = 10 s); double-double round-off
+    // is far below.
+    let tol = 1e-9; // lint: allow-literal(finite-difference budget)
+    let one = |t: Box<dyn ForceTerm<Icrf, Dd>>| {
+        Model::<Dd>::new(&bodies_dd, MoonVariables::Barycentric, vec![t]).unwrap()
+    };
+    let newton = power_mismatch(&one(Box::new(NewtonianMutual)), &x, &v);
+    let j2 = power_mismatch(&one(Box::new(j2_term_dd())), &x, &v);
+    // Tiers: Mercury Minor, Venus a Ring mass at rest.
+    let mut tiered = bodies_dd.clone();
+    tiered[1].tier = Tier::Minor;
+    tiered[2].tier = Tier::Ring;
+    let mut vr = v.clone();
+    for k in 0..3 {
+        vr[k * n + 2] = 0.0;
+    }
+    let tier_model = |t: Box<dyn ForceTerm<Icrf, Dd>>| {
+        Model::<Dd>::new(&tiered, MoonVariables::Barycentric, vec![t]).unwrap()
+    };
+    let minor = power_mismatch(
+        &tier_model(Box::new(MinorFromMajors::new(MinorReaction::On))),
+        &x,
+        &vr,
+    );
+    let ring = power_mismatch(&tier_model(Box::new(RingMasses)), &x, &vr);
+    println!(
+        "power balance |P + dU/dt| / sum|P_i| (DD): Newtonian {newton:.3e}, J2 {j2:.3e}, Minor {minor:.3e}, Ring {ring:.3e}"
+    );
+    for (name, r) in [
+        ("Newtonian", newton),
+        ("J2", j2),
+        ("Minor", minor),
+        ("Ring", ring),
+    ] {
+        assert!(r < tol, "{name}: {r:e}");
+    }
+    // Geocentric pair: the same physical state gives the same energy.
+    let emrat = bodies[3].gm / bodies[4].gm;
+    let terms = || -> Vec<Box<dyn ForceTerm<Icrf>>> {
+        vec![
+            Box::new(NewtonianMutual),
+            Box::new(GeocentricMoon::new(MOON_TAYLOR_TERMS_DEFAULT).unwrap()),
+            Box::new(j2_term()),
+        ]
+    };
+    let geo = Model::new(&bodies, MoonVariables::Geocentric { emrat }, terms()).unwrap();
+    let bary = Model::new(
+        &bodies,
+        MoonVariables::Barycentric,
+        vec![Box::new(NewtonianMutual), Box::new(j2_term())],
+    )
+    .unwrap();
+    let (fe, fm) = (emrat / (1.0 + emrat), 1.0 / (1.0 + emrat));
+    let (mut xg, mut vg) = (x.clone(), v.clone());
+    for k in 0..3 {
+        let (pe, pm) = (x[k * n + 3], x[k * n + 4]);
+        xg[k * n + 3] = fe * pe + fm * pm;
+        xg[k * n + 4] = pm - pe;
+        let (we, wm) = (v[k * n + 3], v[k * n + 4]);
+        vg[k * n + 3] = fe * we + fm * wm;
+        vg[k * n + 4] = wm - we;
+    }
+    let (eg, eb) = (
+        geo.energy_over_g(&xg, &vg).unwrap(),
+        bary.energy_over_g(&x, &v).unwrap(),
+    );
+    let rel = (eg - eb).abs() / eb.abs();
+    println!("geocentric vs barycentric energy: relative difference {rel:.3e}");
+    assert!(rel < 1e-12, "{rel:e}"); // lint: allow-literal(round-off budget of the state conversion)
+}
