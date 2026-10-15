@@ -21,7 +21,11 @@ thiserror.workspace = true
 
 [dev-dependencies]
 ferroastro-constants.workspace = true
+ferroastro-diffrun.workspace = true
+ferroastro-ephem.workspace = true
+ferroastro-precession.workspace = true
 ferroastro-scenario.workspace = true
+ferroastro-system.workspace = true
 ferroastro-testdata.workspace = true
 ferroastro-vectors.workspace = true
 

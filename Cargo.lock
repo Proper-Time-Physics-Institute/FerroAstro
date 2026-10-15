@@ -441,8 +441,12 @@ version = "0.0.0"
 dependencies = [
  "ferroastro-constants",
  "ferroastro-core",
+ "ferroastro-diffrun",
+ "ferroastro-ephem",
+ "ferroastro-precession",
  "ferroastro-propagate",
  "ferroastro-scenario",
+ "ferroastro-system",
  "ferroastro-testdata",
  "ferroastro-vectors",
  "serde",

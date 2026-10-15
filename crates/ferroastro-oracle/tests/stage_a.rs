@@ -135,17 +135,13 @@ fn tampered_goldens_and_incomplete_manifests_are_refused() {
     let _ = std::fs::remove_dir_all(&tmp);
 }
 
-/// Stage A: FerroAstro IAS15 runs the committed scenario from header.440 (the pinned file the
-/// golden was made from, checked through the manifest) and its states at the 101 yearly output
-/// times are compared with the REBOUND IAS15 golden. The largest position difference is asserted
-/// against `ORACLE-STAGE-A-REBOUND-MAX-DR` (PROVISIONAL 1 m).
-///
-/// Verifies: CI-005, REF-005, CI-002
-#[test]
-fn stage_a_ferroastro_ias15_matches_the_rebound_ias15_golden() {
-    let dir = golden_dir();
+/// Run FerroAstro IAS15 on the committed stage A scenario from header.440 (the pinned file the
+/// golden was made from, checked through the manifest) and compare its states at the 101 yearly
+/// output times with `tool`'s golden. Returns the comparison after printing it.
+fn stage_a_against(tool: &str) -> ferroastro_oracle::StateComparison {
+    let dir = root().join("ci/golden").join(tool).join(SCENARIO);
     let m = Manifest::verify_dir(&dir).unwrap();
-    let csv = format!("{SCENARIO}.rebound.states.csv");
+    let csv = format!("{SCENARIO}.{tool}.states.csv");
     let entry = m.entry(&csv).unwrap();
     // The golden belongs to this scenario file and this header.440.
     let scenario_path = root().join("ci/scenarios").join(format!("{SCENARIO}.toml"));
@@ -156,7 +152,7 @@ fn stage_a_ferroastro_ias15_matches_the_rebound_ias15_golden() {
             &sha256_hex(scenario_text.as_bytes()),
         )
         .unwrap();
-    let header = ferroastro_testdata::locate_product("de440-header").expect("cached header.440");
+    let header = ferroastro_testdata::locate_product("de440-header").unwrap();
     let pin = ferroastro_testdata::product("de440-header").unwrap().sha256;
     println!("de440-header: {}", header.provenance());
     assert_eq!(header.sha256, pin);
@@ -172,9 +168,10 @@ fn stage_a_ferroastro_ias15_matches_the_rebound_ias15_golden() {
     let out = run(&spec, &DataSources::none().with_header(&h, &prov)).unwrap();
     let golden =
         GoldenStates::parse(&csv, &std::fs::read_to_string(dir.join(&csv)).unwrap()).unwrap();
+    let center = golden.center_naif().unwrap();
     let cmp = compare_states(&golden, &out).unwrap();
     println!(
-        "FerroAstro: {} IAS15 steps, IC hash {}; compared {} rows at {} times",
+        "FerroAstro: {} IAS15 steps, IC hash {}; compared {} rows at {} times (centre NAIF {center})",
         out.stats.steps, out.ic_hash, cmp.rows, cmp.times
     );
     println!("naif  max|dr| (km)       at t (d)   max|dv| (km/s)");
@@ -184,16 +181,59 @@ fn stage_a_ferroastro_ias15_matches_the_rebound_ias15_golden() {
             b.naif, b.max_dr_km, b.t_days_at_max_dr, b.max_dv_km_s
         );
     }
-    assert_eq!(cmp.bodies.len(), spec.bodies.len());
+    // A heliocentric golden has every body but the Sun.
+    let expected_bodies = spec.bodies.len() - usize::from(center != 0);
+    assert_eq!(cmp.bodies.len(), expected_bodies);
     assert_eq!(cmp.times, 101, "yearly outputs 0..=100 yr"); // lint: allow-literal(101 yearly output times)
     let worst = cmp.worst().unwrap();
     println!(
-        "stage A max |dr| = {:.6e} km (NAIF {} at t = {} d)",
+        "stage A {tool}: max |dr| = {:.6e} km (NAIF {} at t = {} d)",
         worst.max_dr_km, worst.naif, worst.t_days_at_max_dr
     );
+    cmp
+}
+
+/// Stage A: FerroAstro IAS15 against the REBOUND IAS15 golden (SSB states). The largest position
+/// difference is asserted against `ORACLE-STAGE-A-REBOUND-MAX-DR` (PROVISIONAL 1 m).
+///
+/// Verifies: CI-005, REF-005, CI-002
+#[test]
+fn stage_a_ferroastro_ias15_matches_the_rebound_ias15_golden() {
+    let cmp = stage_a_against("rebound");
     VectorSet::load_canonical()
         .unwrap()
         .get("ORACLE-STAGE-A-REBOUND-MAX-DR")
+        .unwrap()
+        .check(cmp.max_dr_km())
+        .unwrap();
+}
+
+/// Stage A: FerroAstro IAS15 against the Swiftest 2026.7.1 WHM golden (heliocentric states, the
+/// same scenario file). Asserted against `ORACLE-STAGE-A-SWIFTEST-MAX-DR` (PROVISIONAL 1 km,
+/// WP17 plan: fixed-step symplectic truncation).
+///
+/// Verifies: REF-007, CI-002, CI-005
+#[test]
+fn stage_a_ferroastro_ias15_matches_the_swiftest_whm_golden() {
+    let cmp = stage_a_against("swiftest");
+    VectorSet::load_canonical()
+        .unwrap()
+        .get("ORACLE-STAGE-A-SWIFTEST-MAX-DR")
+        .unwrap()
+        .check(cmp.max_dr_km())
+        .unwrap();
+}
+
+/// Stage A: FerroAstro IAS15 against the Mercury6 RA15 golden (heliocentric states, the same
+/// scenario file). Asserted against `ORACLE-STAGE-A-MERCURY6-MAX-DR` (PROVISIONAL 1 km, WP17 plan).
+///
+/// Verifies: REF-008, CI-002, CI-005
+#[test]
+fn stage_a_ferroastro_ias15_matches_the_mercury6_ra15_golden() {
+    let cmp = stage_a_against("mercury6");
+    VectorSet::load_canonical()
+        .unwrap()
+        .get("ORACLE-STAGE-A-MERCURY6-MAX-DR")
         .unwrap()
         .check(cmp.max_dr_km())
         .unwrap();

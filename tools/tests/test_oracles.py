@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import json
 import re
+import shutil
 import tomllib
 from pathlib import Path
 
@@ -18,9 +19,11 @@ import pytest
 from oracles import (
     common,
     compare_goldens,
+    drift,
     erfa_runner,
     mercury6_runner,
     nbody_io,
+    orekit_runner,
     rebound_runner,
     swiftest_runner,
 )
@@ -34,12 +37,14 @@ REL = 1e-14  # lint: allow-literal(round-off bound, synthetic header)
 # Arithmetic probes (not physics): a power-of-two step count, a step that does not divide 1 d,
 # and binary64 values for the Fortran D-notation round trip.
 STEPS_PER_DAY = 128
+DE_FILE_SPAN_FACTOR = 20  # a span far beyond the DE file's 1550-2650 coverage
 ODD_STEP = 0.3  # lint: allow-literal(arithmetic probe: does not divide 1 d)
 ROUND_TRIP_PROBES = (0.1, -1.3e-300, 123456789.0, 1.0)  # lint: allow-literal(binary64 probes)
 SCENARIOS = ROOT / "ci" / "scenarios"
 STAGE_A = SCENARIOS / "stage-a-sun-8planets-newton-100yr.toml"
 CLITE_GR = SCENARIOS / "oracle-clite-sun-mercury-tp-gr1pn-252yr.toml"
 PADD_VENUS = SCENARIOS / "oracle-padd-sun-mercury-venus-2000yr.toml"
+STAGE_B = SCENARIOS / "oracle-stage-b-mercury-de440-field-100yr.toml"
 
 
 def _settings(tool: str, scenario: Path) -> dict[str, object]:
@@ -215,7 +220,8 @@ def test_compare_goldens_ignores_only_comment_lines(tmp_path: Path) -> None:
 
 def _dockerfiles() -> list[Path]:
     paths = sorted((ROOT / "ci" / "oracles").glob("*/Dockerfile"))
-    assert {p.parent.name for p in paths} >= {"rebound", "erfa", "jpl", "swiftest", "mercury6"}
+    expected = {"rebound", "erfa", "jpl", "swiftest", "mercury6", "orekit"}
+    assert {p.parent.name for p in paths} >= expected
     return paths
 
 
@@ -362,3 +368,71 @@ def test_steps_per_requires_exact_multiples() -> None:
     assert nbody_io.steps_per(float(STEPS_PER_DAY) * 3.0, 1.0) == STEPS_PER_DAY * 3
     assert nbody_io.steps_per(1.0, ODD_STEP) is None
     assert nbody_io.steps_per(0.0, 1.0) is None
+
+
+# Verifies: REF-011, REF-006
+def test_orekit_runner_runs_stage_b_and_refuses_the_rest() -> None:
+    """Stage B passes; GR, J2, LT, other modes and spans outside the DE file are refused."""
+    orekit_runner.check(common.load_scenario(STAGE_B))
+    base = common.load_scenario(STAGE_B)
+    for switch in ["gr_1pn_central", "sun_j2", "lense_thirring", "gr_eih"]:
+        s = json.loads(json.dumps(base))
+        s["forces"][switch] = True
+        with pytest.raises(common.Refusal) as exc:
+            orekit_runner.check(s)
+        assert f"`{switch}`" in str(exc.value)
+    for sc in (STAGE_A, CLITE_GR, PADD_VENUS):
+        with pytest.raises(common.Refusal) as exc:
+            orekit_runner.check(common.load_scenario(sc))
+        assert "`mode`" in str(exc.value)
+    s = json.loads(json.dumps(base))
+    s["span"]["years"] = base["span"]["years"] * DE_FILE_SPAN_FACTOR
+    with pytest.raises(common.Refusal) as exc:
+        orekit_runner.check(s)
+    assert "`initial_conditions.epoch_jd_tdb`" in str(exc.value)
+    for runner in (rebound_runner, mercury6_runner):
+        with pytest.raises(common.Refusal):
+            runner.check(base)
+    with pytest.raises(common.Refusal):
+        swiftest_runner.check(base, _settings("swiftest", STAGE_A))
+
+
+def _golden(root: Path, tool: str, name: str, row: str) -> None:
+    d = root / tool / name
+    d.mkdir(parents=True)
+    (d / f"{name}.csv").write_text(f"# generated: x\nc\n{row}\n", encoding="utf-8")
+
+
+# Verifies: CI-006
+def test_drift_check_flags_changed_missing_and_ignores_run_dates(tmp_path: Path) -> None:
+    """Bit-identical data rows pass; a changed row or a missing candidate is drift (blocking)."""
+    golden, cand, tg = tmp_path / "golden", tmp_path / "cand", tmp_path / "tests-goldens"
+    _golden(golden, "t", "s", "0.1")
+    _golden(cand, "t", "s", "0.1")
+    j = golden / "j" / "p"
+    j.mkdir(parents=True)
+    (j / "v.json").write_text(json.dumps({"date_utc": "a", "x": 1}), encoding="utf-8")
+    jc = cand / "j" / "p"
+    jc.mkdir(parents=True)
+    (jc / "v.json").write_text(json.dumps({"date_utc": "b", "x": 1}), encoding="utf-8")
+    tg.mkdir()
+    erfa = cand / "erfa" / "erfa-goldens"
+    erfa.mkdir(parents=True)
+    for f in drift.ERFA_GOLDENS:
+        (tg / f).write_text("c\n1\n", encoding="utf-8")
+        (erfa / f).write_text("# other header\nc\n1\n", encoding="utf-8")
+    problems = [f.problem for f in drift.check_drift(cand, golden, tg)]
+    # The synthetic candidates have no MANIFEST.json: only that is reported.
+    assert problems
+    assert all(p.startswith("manifest:") for p in problems), problems
+    (cand / "t" / "s" / "s.csv").write_text("# generated: y\nc\n0.10000000000000002\n", "utf-8")
+    (jc / "v.json").write_text(json.dumps({"date_utc": "b", "x": 2}), encoding="utf-8")
+    problems = [f.problem for f in drift.check_drift(cand, golden, tg)]
+    assert any("data rows differ" in p for p in problems)
+    assert any("content differs" in p for p in problems)
+    shutil.rmtree(cand / "t")
+    problems = [f.problem for f in drift.check_drift(cand, golden, tg)]
+    assert any("no candidate" in p for p in problems)
+    report = drift.render(drift.check_drift(cand, golden, tg), [["t", "s", "3", "x"]], cand)
+    assert "DRIFT (blocking)" in report
+    assert "refused (REF-011)" in report

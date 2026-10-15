@@ -79,3 +79,16 @@ sha256 = "2143113282bfc2b2a0b0b4626125d4f84362339b5a8ae7eea40f4120ca8da10b"
 first_retrieved = "2026-10-15"
 publisher = "NASA/JPL Solar System Dynamics, DE441 small-body perturber SPK, 373 bodies (JPL IOM 392R-21-005)"
 terms = "Redistribution terms not yet confirmed; download-only, not committed (LIC-003, DEP-017)"
+
+# WP17 (REF-006, oracle stage B; OI-27). The JPL binary DE440 file that Orekit's
+# JPLEphemeridesLoader reads (it does not read .bsp). Pinned by the WP17 builder agent on first
+# retrieval 2026-10-15; NEEDS HUMAN REVIEW (this manifest is human-owned).
+[[product]]
+name = "de440-linux-binary"
+url = "https://ssd.jpl.nasa.gov/ftp/eph/planets/Linux/de440/linux_p1550p2650.440"
+file = "linux_p1550p2650.440"
+# 102272352 bytes; server Last-Modified: Thu, 04 Mar 2021 19:26:30 GMT.
+sha256 = "29915576d0a6555766b99485ac3056ee415e86df4fce282611c31afb329ad062"
+first_retrieved = "2026-10-15"
+publisher = "NASA/JPL Solar System Dynamics, planetary ephemeris DE440, Linux binary 1550-2650 (Park et al. 2021, AJ 161, 105)"
+terms = "Redistribution terms not yet confirmed; download-only, not committed (LIC-003, DEP-017)"

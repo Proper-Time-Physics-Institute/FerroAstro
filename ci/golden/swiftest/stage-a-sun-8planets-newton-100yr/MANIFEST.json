@@ -1,0 +1,43 @@
+{
+  "entries": [
+    {
+      "command": "python -m oracles.swiftest_runner --scenario /in/stage-a-sun-8planets-newton-100yr.toml --header /in/header.440 --out-dir /out",
+      "cpu": "13th Gen Intel(R) Core(TM) i9-13900 (32 logical CPUs)",
+      "extra": {
+        "attempts": "1",
+        "dt_days": "0.0078125",
+        "frames": "101",
+        "general_relativity": "False",
+        "gmass_bitwise_header": "true",
+        "integrator": "whm",
+        "integrator_mapping": "scenario integrator 'ias15' (f64) mapped to the tool settings [dt_days = 0.0078125, integrator = 'whm']; IAS15-only options not applicable: epsilon = 1e-09, dt0_days = 0.1",
+        "istep_out": "46752",
+        "max_output_time_deviation_days": "0.0",
+        "omp_num_threads": "1",
+        "relative_energy_change": "-5.043150116866754e-10",
+        "swiftest_g_si": "6.6743e-11",
+        "swiftest_version": "2026.7.1",
+        "test_particle_mode": "False"
+      },
+      "file": "stage-a-sun-8planets-newton-100yr.swiftest.states.csv",
+      "frame": "ICRF axes, heliocentric (body minus Sun; center_naif 10)",
+      "generated_utc": "2026-10-15T19:51:25Z",
+      "image_digest": "sha256:d0a2fb44ed473858dcc2df8e536266ed25d0096832c6397ed74b7ee8c330958c",
+      "input_sha256": {
+        "header.440": "0f4636b663e6f00af9efa2b605ef23635489f56b23dd1a5e3821d3acc6ac3359",
+        "settings.toml": "360962d0750184fcbe2a3b44ad1f4bba75438bc1754da8d6ff0d16907a712ce4",
+        "stage-a-sun-8planets-newton-100yr.toml": "c7d044d018bb59ab565c4830101e4bf338af55a55ed6fb07fbf142e1fa4a009c"
+      },
+      "output_sha256": "9b635b39e945aa6b370987e360db0fb7dc65be4a672fcd45dde78a9061d98063",
+      "runner_sha": "8a73faa81fa35673fa65fd146180f1c51a9663d8",
+      "runner_sha256": "55411417bcb9995e0c2ea80105c7d491967d76dcdaaa84640342a49335b45858",
+      "scenario": "stage-a-sun-8planets-newton-100yr",
+      "time_scale": "TDB",
+      "tool": "swiftest",
+      "units": "t_days: TDB days since epoch_jd_tdb; position: km; velocity: km/s",
+      "version": "swiftest 2026.7.1",
+      "wall_clock_s": 17.162
+    }
+  ],
+  "schema_version": 1
+}

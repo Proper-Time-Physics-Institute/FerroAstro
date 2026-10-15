@@ -93,6 +93,17 @@ case "$cmd" in
       "$(image_tag "$cmd")" \
       --scenario "/in/$(basename "$scenario")" --header /in/header.440 --out-dir /out
     ;;
+  orekit)
+    [[ $# == 2 ]] || usage
+    scenario="$(realpath "$1")"; out="$2"
+    mkdir -p "$out"; out="$(realpath "$out")"
+    run_container orekit --network none \
+      -v "$scenario:/in/$(basename "$scenario"):ro" \
+      -v "$data/linux_p1550p2650.440:/jpl/linux_p1550p2650.440:ro" \
+      -v "$out:/out" \
+      "$(image_tag orekit)" \
+      --scenario "/in/$(basename "$scenario")" --jpl-dir /jpl --out-dir /out
+    ;;
   erfa)
     [[ $# == 1 ]] || usage
     out="$1"; mkdir -p "$out"; out="$(realpath "$out")"

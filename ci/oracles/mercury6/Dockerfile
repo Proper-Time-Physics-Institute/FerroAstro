@@ -1,4 +1,3 @@
-# syntax=docker/dockerfile:1.7
 # SPDX-FileCopyrightText: 2026 Proper-Time Physics Institute
 # SPDX-License-Identifier: Apache-2.0
 #
