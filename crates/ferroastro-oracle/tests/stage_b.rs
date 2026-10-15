@@ -35,12 +35,15 @@ fn stage_b_ferroastro_matches_the_orekit_golden_in_the_de440_field() {
     let m = Manifest::verify_dir(&dir).unwrap();
     let csv = format!("{SCENARIO}.orekit.states.csv");
     let entry = m.entry(&csv).unwrap();
-    let text = std::fs::read_to_string(root().join("ci/scenarios").join(format!("{SCENARIO}.toml")))
-        .unwrap();
+    let text =
+        std::fs::read_to_string(root().join("ci/scenarios").join(format!("{SCENARIO}.toml")))
+            .unwrap();
     entry
         .check_input(&format!("{SCENARIO}.toml"), &sha256_hex(text.as_bytes()))
         .unwrap();
-    let pin = ferroastro_testdata::product("de440-linux-binary").unwrap().sha256;
+    let pin = ferroastro_testdata::product("de440-linux-binary")
+        .unwrap()
+        .sha256;
     entry.check_input(JPL_FILE, &pin).unwrap();
     println!(
         "golden: {} ({}), image {}, runner {}, {:?}",
@@ -60,11 +63,20 @@ fn stage_b_ferroastro_matches_the_orekit_golden_in_the_de440_field() {
         let ours = if *b == ferroastro_scenario::BodyName::Sun {
             de.gm_sun().km3_per_s2()
         } else {
-            cat.gm(ferroastro_ephem::NaifId(b.naif())).unwrap().km3_per_s2()
+            cat.gm(ferroastro_ephem::NaifId(b.naif()))
+                .unwrap()
+                .km3_per_s2()
         } * 1e9; // lint: allow-literal(km^3 to m^3)
         let rel = (orekit - ours).abs() / ours;
-        println!("GM {:<8} Orekit {orekit:e} m3/s2, header.440 {ours:e}, rel diff {rel:.2e}", b.label());
-        assert!(rel <= GM_RELATIVE_ULPS * f64::EPSILON, "{}: {rel}", b.label());
+        println!(
+            "GM {:<8} Orekit {orekit:e} m3/s2, header.440 {ours:e}, rel diff {rel:.2e}",
+            b.label()
+        );
+        assert!(
+            rel <= GM_RELATIVE_ULPS * f64::EPSILON,
+            "{}: {rel}",
+            b.label()
+        );
     }
 
     let bsp = ferroastro_testdata::locate_product("de440-bsp").unwrap();

@@ -55,7 +55,10 @@ fn test_particle_cadence_samples_lie_on_the_exact_grid() {
     let span_days = SHORT_YEARS * ferroastro_scenario::DAYS_PER_JULIAN_YEAR;
     let mut k: u32 = 0;
     for rec in &out.states {
-        assert_eq!(rec.t[0].to_bits(), (f64::from(k) * cadence * SECONDS_PER_DAY).to_bits());
+        assert_eq!(
+            rec.t[0].to_bits(),
+            (f64::from(k) * cadence * SECONDS_PER_DAY).to_bits()
+        );
         k += 1;
         assert_eq!(rec.bodies, vec![10, 1]);
         assert!(rec.positions[0].iter().all(|p| p[0] == 0.0 && p[1] == 0.0));
