@@ -1698,3 +1698,152 @@ intersection (node) of the body's equator plane with the fixed ICRF fundamental 
 | 4 | Data tier: our ICRF → `EclipticJ2000` and ICRF → `SunEquatorIau` (NAIF pole) rotations applied to Horizons DE441 Mercury states in `REF_PLANE=FRAME`, compared with Horizons' own `ECLIPTIC` and `BODY EQUATOR` answers at the same epochs (1900–2100) | JPL Horizons | max \|Δr\|/\|r\| and \|Δv\|/\|v\| ≤ 1e-12 | Horizons prints 16 significant digits (≈ 5e-17 relative). Omitting the frame bias, or using ε = 84381.406″, would give ≥ 1e-7. A wrong x-axis convention would give O(1). |
 | 5 | Data tier: the solar pole of `pck00011.tpc` equals the vectors `SUN-POLE-IAU-RA/DEC` | NAIF PCK | exact | transcription check |
 | 6 | compile-fail: a `State<MercuryMeanOrbit, _>` cannot be passed where `State<Icrf, _>` is required | trybuild | — | API-001 / NUM-014 |
+
+### What was built
+- **`ferroastro-erfa` (extended).** Ports of `obl06`, `p06e`, `pfw06`, `fw2m`, `pmat06`, `ecm06`, `eqec06` and `eceq06`. They come with the helpers they call: `ir`, `rx`, `rz`, `rxr`, `tr`, `rxp`, `trxp`, `s2c`, `c2s`, `anp` and `anpm`. All are generic over `Real`.
+  - The WP8 attribution rules apply: per-file SPDX, the ERFA copyright, and the verbatim licence block at the end of each file. `NOTICE` lists the new routines.
+  - In f64, ERFA's operations run in ERFA's order. In DD, arcseconds→radians is π/648000 to 106 bits. The series coefficients stay binary64, as for `dtdb`.
+- **`ferroastro-frames` (L3, new).** `Rotation<From, To, R>` gives:
+  - checked construction (FA-E0900);
+  - inverse and composition;
+  - application to positions, displacements and states (FA-E0901 for non-finite results);
+  - a definition string for output metadata.
+
+  Constructors:
+  - `icrf_to_ecliptic_j2000`;
+  - `icrf_to_ecliptic_of_date(Epoch<Tt>)`, plus `ecliptic_precession` returning π_A, Π_A and p_A;
+  - `icrf_to_mean_orbit(&Pole)`, with `Pole::park2017_mercury_mean_orbit`;
+  - `icrf_to_solar_equator(&Pole)`, for any pole, with the pole and its source in the definition;
+  - `icrf_to_sun_equator_iau`, from `Pole::sun_wgccre2015`.
+
+  The crate-level doctest builds an `EclipticJ2000` position from an ICRF one. Inertial ICRF stays the default: nothing converts implicitly.
+- **`ferroastro-core`.** New markers `EclipticOfDate`, `MercuryMeanOrbit` and `SolarEquator`, and a new range FA-E09xx with `FrameDefinition` (FA-E0900) and `FrameTransform` (FA-E0901).
+- **Consolidation.** `ferroastro-precession`'s `ReferencePlane::from_pole` and `park2017_mean_orbit` now take their axes from `ferroastro_frames::icrf_to_mean_orbit`, and `PARK2017_POLE_*` are re-exported from there. The Park17 data result is unchanged to every printed digit (575.309163 ″/cy).
+- **`ferroastro-ladder`.**
+  - `SingleBody::with_epoch`, `epoch` and `perihelion_passages`.
+  - The D5 data test now dates its run at JDEPOC. This is metadata only: the single-body dynamics do not depend on the epoch, and the D5 numbers are unchanged.
+- **Tools.**
+  - `tools/goldens/erfa_frames.py` writes `tests/goldens/erfa-frames-pyerfa.csv`: 113 epochs, generated at `b2fbca9`, SHA-256 `5a68408e…60ea13`, pinned in the `PYERFA-*` vectors.
+  - Its pytest is skipped without the `goldens` group.
+- **CI.** The wasm32 job also builds `ferroastro-frames`; the build passes locally.
+
+### WP9 results (offline PR tier, 2026-10-15, toolchain 1.95.0)
+**(1) t_erfa_c (DEP-009), 110 vectors.** All pass in f64 and DD. The worst deviation is 8.9e-16 (`ECEQ06-DR`, `RX-33`, `RXP-1`), 1–2 ulp. `P06E-PA`, `OBL06` and `EQEC06-DL` are exact.
+
+**(2) pyerfa 2.0.1.5 goldens (REF-009), 113 epochs 1550–2650 plus J2000 and JDEPOC; PROVISIONAL bound 1e-12:**
+| vector | f64 | DD |
+|---|---|---|
+| `PYERFA-OBL06-MAX-DIFF` | 0 | 5.6e-17 rad |
+| `PYERFA-P06E-MAX-DIFF` (16 angles + p_A through the typed API) | 0 | 4.4e-16 rad |
+| `PYERFA-PMAT06-MAX-DIFF` | 0 | 2.2e-16 |
+| `PYERFA-ECM06-MAX-DIFF` (via `icrf_to_ecliptic_of_date`) | 0 | 2.2e-16 |
+| `PYERFA-EQEC-ECEQ-MAX-DIFF` | 0 | 1.5e-15 rad |
+| `PYERFA-ECLIPJ2000-MAX-DIFF` | 0 | 0 |
+
+In f64 the port is bitwise identical to pyerfa at every epoch.
+
+**(3c) NUM-014 offline** (scenario SW92 elements rotated ECLIPJ2000→ICRF by the typed inverse rotation, epoch J2000, 831 passages, T = +0.001…+2.000 TT centuries):
+- inertial 42.810612161 ″/cy;
+- ecliptic of date 5073.820048017 ″/cy;
+- difference 5031.009435857 ″/cy;
+- p_A slope 5031.008868363 → **difference − p_A = +5.68e-4 ″/cy** (bound 1e-3);
+- exact-geometry slope 5031.009434993 → **difference − geometry = +8.6e-7 ″/cy** (bound 1e-5).
+
+The residual against p_A is larger than the data-tier one because this span (2000–2200) reaches larger T, where the (π_A²/4) term grows.
+
+**Frame comparison (report only).** The IAU 2006 J2000 ecliptic (`ecm06` at J2000) and ECLIPJ2000 have poles 0.0409″ apart and x-axes 0.0224″ apart.
+
+**Mutation probes (reverted):**
+- p_A linear coefficient changed by +1e-4 ″/cy (5028.796195 → 5028.796295):
+  - killed by t_erfa_c, by both golden tests, and by NUM-014 offline through `NUM014-RATE-DIFF-VS-GEOMETRY` (−9.9e-5 against a 1e-5 bound);
+  - `NUM014-RATE-DIFF-VS-PA` alone would **not** have caught it (+4.7e-4 < 1e-3). That is why check 3b exists.
+- `Pole::iau_sun` was caught by the WP8 iau-prefix scan. It is renamed `sun_wgccre2015`.
+
+### WP9 real-data results (data tier, `tools/run_long_local.sh --data-only`, empty `FA_DATA_DIR`, every download fresh; log `target/long-local/20261015T083449Z-924a5863242f.log`, commit `924a586`)
+**18 data tests.**
+- First pass: 13 passed, and 5 failed with **HTTP 503 from Horizons**. The failing five were:
+  - `data_frame_rotations_reproduce…`;
+  - `data_horizons_osculating_elements_match`;
+  - three `data_single_body` Horizons tests.
+
+  In each, curl gave up after four attempts (FA-E0200 / the WP4 helper's fetch panic). None of the five was an assertion failure.
+- Re-run on the same cache, serially (`--test-threads 1`): **5/5 pass**.
+
+  The data profile runs Horizons tests in parallel, and Horizons answers 503 under that load. **NEEDS HUMAN REVIEW:** run the data profile with `test-threads = 1` for Horizons tests, or add longer back-off in `ferroastro-testdata`. Test-level retries stay at 0, per the WP7 correction.
+
+**New in WP9:**
+- **NUM-014 (header.440 ICs, JDEPOC 2440400.5, 831 passages, T = −0.305…+1.694):**
+  - inertial 42.809284353 ″/cy;
+  - ecliptic of date 5073.142303005 ″/cy;
+  - difference 5030.333018652 ″/cy;
+  - p_A slope 5030.332575517 → **difference − p_A = +4.431e-4 ″/cy** (bound 1e-3; pre-run +4.43e-4);
+  - geometry slope 5030.333017810 → **difference − geometry = +8.42e-7 ″/cy** (bound 1e-5; pre-run 8.4e-7);
+  - header.440 SHA-256 `0f4636b6…6ac3359`, Last-Modified 2020-12-22.
+- **Horizons rotation checks, 74 epochs 1900–2100, DE441, `signature.version` 1.2:**
+  - `HORIZONS-ECLIPJ2000-ROTATION`: max \|Δr\|/\|r\| 2.42e-16, \|Δv\|/\|v\| 3.28e-16.
+  - `HORIZONS-IAU-SUN-ROTATION`: 4.72e-16 and 4.06e-16.
+  - Bound 1e-12.
+  - Horizons' frame lines: "Ecliptic of J2000.0" and "IAU_SUN body equator and node of date".
+  - Answers' SHA-256: FRAME `8b3f5153…ab0c06`, ECLIPTIC `92a30167…439841`, BODY EQUATOR `eb40f1a0…7aae08`.
+  - This confirms both documented definitions:
+    - ECLIPJ2000 is `R_x(84381.448″)` with no frame bias;
+    - `IAU_SUN` is pole (286.13°, 63.87°) with x at the node on the ICRF equator.
+- **NAIF `pck00011.tpc`:** SHA-256 `3dff7b1d…e28bb1`, Last-Modified 2022-12-27, `BODY10_POLE_RA` = 286.13 and `BODY10_POLE_DEC` = 63.87. Both equal the vectors.
+
+**Unchanged to every printed digit:**
+- Park17 frame 575.309163 ″/cy (jack-knife σ 0.00153), after the axis consolidation;
+- SW92 dog-leg 571.968047;
+- GR from DE441 42.9806442;
+- D5 f64 42.980085159575 / DD 42.980085160105;
+- real-geometry J2/LT 0.0284524 / −0.0020148;
+- NUM-012 GR-REAL spread 1.76e-5;
+- μ-convention line −3.57e-6.
+
+### Progress-review corrections (status in WP9)
+WP7 and WP8 applied every item in the list. WP9 re-checked each one:
+- `ci.yml` `long` is `workflow_dispatch` only, and `tools/run_long_local.sh` was used for this WP's data run.
+- The two vector metadata notes are present.
+- `FA_VECTORS_DIR` is refused by `load_canonical`, which all new WP9 tests use.
+- The data profile has `retries = 0`.
+- The μ-convention note is printed.
+- The FA-E06xx row names `ferroastro-analytic`; FA-E0404 exists.
+- WP9 adds the FA-E09xx row.
+- The DEP-007/009/010, NUM-006/010 and REF-009 citing tests exist.
+- NUM-023 was not touched.
+- API-003 stays deferred. `doctest_coverage.py` reports 0 of 334 public functions with a per-function doctest; `ferroastro-frames` has a crate-level doctest.
+- Every human-owned question in correction 8, and the weekly GitHub `data` job question, is left unresolved.
+
+### Interpretations and NEEDS HUMAN REVIEW (WP9)
+1. **NUM-014 "same reference plane".** It is read as follows: both longitudes are measured in one fixed plane, the IAU 2006 J2000 ecliptic. The inertial one is measured from that plane's x-axis; the ecliptic-of-date one is measured from the projected equinox of date, after the state has been rotated into `EclipticOfDate`.
+   - With this reading, the difference is a property of the precession geometry, not of Mercury's orbit. Perihelion longitudes measured *in the moving ecliptic itself* (dog-leg) would differ from p_A by ~tan(i/2)·π̇_A ≈ 2 ″/cy for Mercury, which no 1e-3 tolerance can hold.
+   - The 1e-3 bound passes with a margin of only ~2× (+4.4e-4 / +5.7e-4), because of the second-order projection term. The sharper 1e-5 geometry check carries the discriminating power.
+   - Confirm this reading and the two tolerances. Suggestion for PR #2: state the plane and the tolerance in NUM-014's acceptance.
+2. **Non-blind expected values.** The two NUM-014 expectations (+4.4e-4 and 8.4e-7) were computed with pyerfa before the Rust run. The tolerances come from the brief (1e-3) and from ERFA's documented 1 µas agreement (1e-5), not from the runs.
+3. **`EclipticJ2000` = ECLIPJ2000 without frame bias.** This matches Horizons, NAIF and WP5's use. It is 0.041″ (pole) away from the IAU 2006 J2000 ecliptic. PHY-017 (WP30) must use `EclipticOfDate`, which includes the bias, consistently, and must never mix the two.
+4. **Solar pole source.** The vectors `SUN-POLE-IAU-*` were read from NAIF `pck00011.tpc`, which cites Archinal et al. 2018. The Archinal paper itself was not opened. The kind is `defined` (an adopted IAU model constant).
+5. **`EclipticOfDate` velocities.** These are rotated without the Ṁ·r term, documented in `Rotation::state`. NUM-014 uses positions only.
+6. **Data-profile 503s.** See above; a policy choice for a human.
+7. **Requirement-text suggestions for PR #2 (not edited here):**
+   - NUM-014: name the reference plane and give the tolerance. Record that p_A comes from the `p06e` port verified against pyerfa, which can close OI-02's use for NUM-014: p_A is no longer taken from the snippet.
+   - REF-009: the ICRS↔ecliptic and J2000 goldens now exist; the oracle image is still WP16.
+   - PHY-010: record the default solar pole (IAU WGCCRE 2015, 286.13°/63.87°) and its configurability.
+   - DEP-009/LIC-004: list the WP9 routines.
+
+### WP9 gate results (2026-10-15, local, toolchain 1.95.0, code tip `924a586`)
+All eight AGENTS.md commands pass (exit 0):
+- fmt;
+- clippy `-D warnings`;
+- `cargo nextest run --workspace`: **160 passed, 21 skipped** (18 `data_*` + 3 `nightly_*`), plus **11 doctests**;
+- `cargo deny check`;
+- rustdoc `-D warnings`;
+- ruff check/format and mypy strict (19 files);
+- `reuse lint`;
+- `trace.py --check`: 119 requirements, 305 citing tests, 0 errors. **39/92** `test` requirements are cited, up from 38 with NUM-014.
+
+Extras:
+- `uv run --group goldens pytest`: 29 passed.
+- `check_layers`: 14 crates, 49 edges, 0 errors.
+- MSRV 1.85.0 nextest without trybuild: **158 passed**.
+- wasm32 builds of frames and erfa (std and no_std/libm): pass.
+- Data tier: 18/18 pass after the serial re-run of the five 503 failures (above).
+- The nightly tier was not re-run: WP9 changes no integrator, force or rung code.
