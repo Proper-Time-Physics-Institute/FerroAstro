@@ -18,7 +18,7 @@
 //!   path (TDB → TCB never passes through TT).
 //! * Propagation runs in TDB seconds since J2000.0: [`tdb_seconds_since_j2000`] and
 //!   [`tdb_from_seconds_since_j2000`].
-//! * UTC exists only behind the optional `hifitime` feature ([`utc`]); it is not a uniform scale
+//! * UTC exists only behind the optional `hifitime` feature (module `utc`); it is not a uniform scale
 //!   and never a type marker. `Epoch<Tai>` is its anchor.
 //!
 //! ```
