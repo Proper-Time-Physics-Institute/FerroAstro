@@ -339,6 +339,7 @@ dependencies = [
  "ferroastro-analytic",
  "ferroastro-constants",
  "ferroastro-core",
+ "ferroastro-frames",
  "ferroastro-testdata",
  "ferroastro-vectors",
  "thiserror",

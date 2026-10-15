@@ -42,15 +42,13 @@ use ferroastro_analytic::vector::{cross, dot, norm};
 use ferroastro_core::frames::{Center, Frame, Heliocentric, Icrf, State};
 use ferroastro_core::time::{DAYS_PER_JULIAN_CENTURY, Epoch, J2000_JD, SECONDS_PER_DAY, Tdb};
 use ferroastro_core::units::{Angle, AngularRate, TimeSpan};
+use ferroastro_frames::{Pole, icrf_to_mean_orbit};
 use std::f64::consts::{PI, TAU};
 use std::fmt;
 use std::marker::PhantomData;
 
-/// Right ascension of Mercury's mean-orbit pole, degrees, ICRF (Park et al. 2017 §4: the mean
-/// orbital angular momentum over 1000 January 1 – 3000 January 1).
-pub const PARK2017_POLE_RA_DEG: f64 = 280.9876;
-/// Declination of Mercury's mean-orbit pole, degrees, ICRF (Park et al. 2017 §4).
-pub const PARK2017_POLE_DEC_DEG: f64 = 61.4481;
+/// Mercury's mean-orbit pole (Park et al. 2017 §4), defined once in `ferroastro-frames` (WP9).
+pub use ferroastro_frames::{PARK2017_POLE_DEC_DEG, PARK2017_POLE_RA_DEG};
 
 /// Definition string of this estimator, for reports (NUM-012).
 pub const ESTIMATOR: &str = "Park2017 (NUM-011): heliocentric perihelion passages (r.v = 0 rising, \
@@ -224,16 +222,14 @@ impl ReferencePlane<Icrf> {
     /// # Errors
     /// `FA-E0603` if the pole lies along the ICRF x-axis (y undefined).
     pub fn from_pole(ra: Angle, dec: Angle, label: &str) -> Result<Self, PrecessionError> {
-        let (sa, ca) = ra.radians().sin_cos();
-        let (sd, cd) = dec.radians().sin_cos();
-        let z = [cd * ca, cd * sa, sd];
-        let y_raw = cross(z, [1.0, 0.0, 0.0]);
-        let ny = norm(y_raw);
-        if ny.is_nan() || ny < 1e-12 {
-            return Err(input("pole along the ICRF x-axis: in-plane axes undefined"));
-        }
-        let y = y_raw.map(|c| c / ny);
-        let x = cross(y, z);
+        // The axes are those of `ferroastro_frames::icrf_to_mean_orbit` (one definition, WP9).
+        let pole = Pole {
+            ra,
+            dec,
+            source: label.to_owned(),
+        };
+        let rot = icrf_to_mean_orbit(&pole).map_err(|e| input(e.to_string()))?;
+        let [x, y, z] = *rot.matrix();
         Ok(Self {
             x,
             y,
