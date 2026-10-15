@@ -1652,3 +1652,49 @@ Non-blocking observations, for a maintainer:
 - `tdb_seconds_since_j2000` maps a `TimeSpan::from_seconds` error to `TimeSpan::zero()`. In practice this is unreachable, because the epoch is finite and within ±1e9 d. Still, J2000 is a silently wrong value; returning `Result` or documenting it as infallible would be clearer.
 - The hifitime TT-vs-ours difference (4.96e-10 s) is printed but not asserted.
 - hifitime 4.3.1 declares no `rust-version`. The MSRV evidence is the 1.85 build alone.
+
+## WP9 — [M3] `ferroastro-frames`: ecliptic, mean-orbit, solar-equator and IAU 2006 precession
+
+Builder agent, 2026-10-15. Branch `m3-newtonian-nbody`, stacked on `m0-foundation`, draft PR #13.
+
+### Plan and pre-registered checks (written 2026-10-15, before any golden, NUM-014 or Horizons run)
+The t_erfa_c check (1) was run once, with the ERFA port, before this section was written (as in WP8);
+every other tolerance below was fixed before its first run. Two expected values were estimated
+beforehand with pyerfa (marked "pre-run"), so they are **not blind**; the tolerances were set from
+the stated rationale, not from those runs.
+
+**Sources.** ERFA 2.0.1 (the WP8 tarball, SHA-256 `45111f0a…8c20e4`): `obl06.c`, `p06e.c`, `pfw06.c`,
+`fw2m.c`, `pmat06.c`, `ecm06.c`, `eqec06.c`, `eceq06.c`, the helpers they call, and `t_erfa_c.c`. No SOFA
+file. JPL Horizons manual (<https://ssd.jpl.nasa.gov/horizons/manual.html>, retrieved 2026-10-15, SHA-256
+`5c5100b0…49ddcc`): "[the ecliptic of J2000] is now produced by rotating around the ICRF x-axis by a
+standard fixed obliquity angle (epsilon) of 84381.448 arcseconds", and body frames take "the
+intersection (node) of the body's equator plane with the fixed ICRF fundamental plane" as x. NAIF
+`pck00011.tpc` (SHA-256 `3dff7b1d…e28bb1`): `BODY10_POLE_RA = 286.13`, `BODY10_POLE_DEC = 63.87`
+(Archinal et al. 2018).
+
+**Definitions (documented in the crate).**
+- `EclipticJ2000` = JPL/NAIF `ECLIPJ2000`: `R_x(84381.448″)` applied to ICRF, **no frame bias**. This is
+  the frame of Horizons' `ECLIPTIC` tables that WP5 already feeds into `EclipticJ2000`. The IAU 2006
+  mean ecliptic and equinox of J2000 (`ecm06` at J2000, which includes frame bias and ε₀ = 84381.406″)
+  differs from it by ~0.04″; that offset is reported, not hidden.
+- `EclipticOfDate` = IAU 2006 mean ecliptic and equinox of date, `ecm06` (TT date). Used only for
+  PHY-017 and NUM-014. A rotation into it is built for one epoch; velocities are rotated without the
+  frame-rotation term (≈ 1e-5 relative for Mercury), documented.
+- `MercuryMeanOrbit`: z = Park et al. 2017's pole (α 280.9876°, δ 61.4481°), y = z × x̂_ICRF
+  (normalised), x = y × z (Park17 §4). Consolidates WP5's `ReferencePlane::park2017_mean_orbit`.
+- `SolarEquator`: z = a configurable solar pole, x = node of the solar equator on the ICRF equator
+  (x̂ = ẑ_ICRF × pole, normalised). The pole and its source travel with the rotation as metadata
+  (PHY-010). The IAU/NAIF pole gives Horizons' `IAU_SUN` (`SunEquatorIau`).
+- ICRF stays the default output frame (NUM-014); no API converts implicitly.
+
+**Oracles and tolerances.**
+| # | check | oracle | tolerance (pre-registered) | rationale |
+|---|---|---|---|---|
+| 1 | each newly ported routine, f64 and DD (DEP-009) | ERFA `t_erfa_c.c`, 110 vectors `ERFA-T-*` | ERFA's `dval`, verbatim | as WP8 |
+| 2 | pyerfa 2.0.1.5 goldens at ≥ 50 epochs 1550–2650 (REF-009): `obl06`, `p06e` (all 16 angles, incl. p_A), `pmat06`, `ecm06`, `eqec06`/`eceq06`, f64 and DD | `tools/goldens/erfa_frames.py` | 1e-12 rad (and 1e-12 per matrix element), **PROVISIONAL** as the brief states | Same algorithm; expected residual is binary64 round-off, ~1e-16 rad. |
+| 3 | NUM-014: header.440 Sun+Mercury+GR (Schwarzschild rung), 200 yr from JDEPOC. The same passages are expressed in ICRF (inertial) and in the IAU 2006 ecliptic of date. Both perihelion longitudes are measured in **one plane**, the IAU 2006 J2000 ecliptic: from its fixed x-axis (inertial) and from the projection of the equinox of date (of date). Linear fits are made in TT Julian centuries. | the linear-fit slope of p_A(t) from the ported `p06e` at the same epochs (computed-reference, verified against pyerfa by check 2; never OI-02's snippet value) | 1e-3 ″/cy (the brief's number) | Pre-run with pyerfa at uniform 88-d sampling: difference − ṗ_A = **+4.4e-4 ″/cy**. All of it is the second-order projection term of the moving ecliptic, ≈ (π_A²/4)·sin 2(Π_A + p_A): the same slope computed from `p06e`'s own π_A, Π_A and p_A differs from the `ecm06` result by 8.4e-7 ″/cy. So the 1e-3 tolerance has a margin of only ~2×, and this is stated rather than hidden. |
+| 3b | NUM-014 geometry: the same rate difference vs the slope of the **exact** projected-equinox longitude predicted from `p06e`'s π_A, Π_A and p_A, λ = Π_A − atan2(sin(Π_A+p_A)·cos π_A, cos(Π_A+p_A)) | `p06e` (computed-reference) | 1e-5 ″/cy | ERFA documents that the P03 parameterisations agree at the 1 µas level. The pre-run measured 8.4e-7 ″/cy. 1e-5 leaves a 10× margin. |
+| 3c | the same check offline (PR tier) from the scenario's committed SW92 elements, with the epoch set to J2000 | as 3 and 3b | as 3 and 3b | The geometry does not depend on the initial conditions. |
+| 4 | Data tier: our ICRF → `EclipticJ2000` and ICRF → `SunEquatorIau` (NAIF pole) rotations applied to Horizons DE441 Mercury states in `REF_PLANE=FRAME`, compared with Horizons' own `ECLIPTIC` and `BODY EQUATOR` answers at the same epochs (1900–2100) | JPL Horizons | max \|Δr\|/\|r\| and \|Δv\|/\|v\| ≤ 1e-12 | Horizons prints 16 significant digits (≈ 5e-17 relative). Omitting the frame bias, or using ε = 84381.406″, would give ≥ 1e-7. A wrong x-axis convention would give O(1). |
+| 5 | Data tier: the solar pole of `pck00011.tpc` equals the vectors `SUN-POLE-IAU-RA/DEC` | NAIF PCK | exact | transcription check |
+| 6 | compile-fail: a `State<MercuryMeanOrbit, _>` cannot be passed where `State<Icrf, _>` is required | trybuild | — | API-001 / NUM-014 |
