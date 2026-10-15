@@ -3134,7 +3134,7 @@ Products: header.440 (above), and de440.bsp
 ### WP14 nightly results (checks 4 and 5; release, local)
 Logs:
 - `target/wp14/nightly-phy012-44602b2.log` (first run, 44 legs, 73 s wall);
-- `target/wp14/nightly-phy012-<sha>.log` (with the P-remove cross terms, 56 legs, 86 s wall on 32
+- `target/wp14/nightly-phy012-be202cf.log` (with the P-remove cross terms, 56 legs, 86 s wall on 32
   threads, 23.4 M IAS15 steps).
 
 Every number common to both runs is identical to the last printed digit. Evidence tables were
