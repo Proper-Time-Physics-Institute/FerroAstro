@@ -56,7 +56,13 @@ def unsupported_options(s: Mapping[str, Any]) -> list[tuple[str, bool, str]]:
     out = s.get("output", {})
     known_bodies = set(BODIES) | {"Earth", "Moon"}
     bodies = [str(b) for b in s.get("bodies", [])]
+    forces = s.get("forces", {})
     return [
+        (
+            "forces.newton",
+            forces.get("newton") is True,
+            "REBOUND always applies Newtonian point-mass gravity; newton must be true",
+        ),
         ("mode", s.get("mode") == "n-body", "only n-body mode is implemented"),
         (
             "initial_conditions.source",

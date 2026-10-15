@@ -67,6 +67,7 @@ def test_rebound_runner_refuses_unsupported_options_by_name() -> None:
     base = common.load_scenario(STAGE_A)
     # (refused item, table or "" for the top level, key, value)
     cases: list[tuple[str, str, str, object]] = [
+        ("forces.newton", "forces", "newton", False),
         ("mode", "", "mode", "test-particle"),
         ("integrator.precision", "integrator", "precision", "dd"),
         ("integrator.name", "integrator", "name", "whfast"),
