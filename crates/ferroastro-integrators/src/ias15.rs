@@ -70,6 +70,12 @@ pub struct Ias15Config {
     /// [`Ias15::locate_event`] (NUM-010). Off by default: it copies the step's coefficients after
     /// every step, which the plain propagation does not need.
     pub dense_output: bool,
+    /// EXPERIMENTAL (NUM-023 diagnosis, WP7): after each node update, recompute every
+    /// `Bₘ = Σₖ c[k][m] gₖ` from the Newton coefficients instead of accumulating the increments
+    /// `c[node][m]·Δg` into `B`. In WP7's 32 × 20 000-orbit ensemble this removed the systematic
+    /// energy drift (Brouwer slopes 0.51 / 1.47 instead of 0.63 / 1.59) at ~1.5× the wall time.
+    /// Off by default: adopting it changes every f64 result and is a maintainer decision.
+    pub pc_b_from_g: bool,
 }
 
 impl Default for Ias15Config {
@@ -82,6 +88,7 @@ impl Default for Ias15Config {
             min_dt: 0.0,
             max_rejections: 64,
             dense_output: false,
+            pc_b_from_g: false,
         }
     }
 }
@@ -393,8 +400,18 @@ impl<R: Real> Ias15<R> {
             }
             let delta = gn - self.g[node - 1][i];
             self.g[node - 1][i] = gn;
-            for m in 1..=node {
-                self.b[m - 1][i] = self.rc.c[node][m].mul_add(delta, self.b[m - 1][i]);
+            if self.cfg.pc_b_from_g {
+                for m in 1..=TERMS {
+                    let mut s = R::ZERO;
+                    for k in (m..=TERMS).rev() {
+                        s = self.rc.c[k][m].mul_add(self.g[k - 1][i], s);
+                    }
+                    self.b[m - 1][i] = s;
+                }
+            } else {
+                for m in 1..=node {
+                    self.b[m - 1][i] = self.rc.c[node][m].mul_add(delta, self.b[m - 1][i]);
+                }
             }
         }
     }

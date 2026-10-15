@@ -115,6 +115,8 @@ jobs:
         run: (cd tools && uv run ruff check && uv run ruff format --check && uv run mypy .)
       - name: pytest (STD-009)
         run: (cd tools && uv run pytest)
+      - name: doctest coverage of public fns (API-003; report-only until a maintainer sets a ratio)
+        run: (cd tools && uv run python doctest_coverage.py)
       - name: trace.py --check (AGENTS.md)
         run: (cd tools && uv run python trace.py --check)
 
