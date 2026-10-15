@@ -2044,3 +2044,38 @@ human-owned question in correction 8, and the weekly GitHub `data` job question,
     ANISE clause (Horizons + ASCII products), and record the jplephem bit-identity; REF-001: name
     `fetch_jpl.py`, the manifest and the testeph 1e-13 threshold; CI-005: name the `.fa-data` cache
     and its cold-cache download; REF-003/OI-24: `n373s` vs `n373`.
+
+### WP10 adversarial review (2026-10-15)
+
+The reviewer re-ran every AGENTS.md command, the ephem data tier (Horizons answers fetched live again,
+not from cache) and the nightly record sweep. The numbers match the builder's report: REF-004 is
+bit-identical (0 km and 0 km/s at 784 epochs), testpo DEL is 7.105e-15, ρ is 0.428 at the golden
+epochs and 0.650 in the nightly sweep, the ASCII products show 0 coefficient mismatches out of
+1,727,208, sb441 is bit-identical, and the largest DE440−DE441 difference from Horizons is 0.418 km.
+
+**Mutation probes** (applied locally and reverted, never committed):
+
+| Mutation | Killed by |
+|---|---|
+| Clenshaw derivative `2·b` → `b` | cheb unit tests, synthetic, testpo, REF-004 |
+| Type-2 velocity loses the `×2/INTLEN` factor | synthetic, testpo, REF-004 |
+| Data precedence takes the first segment instead of the last | `the_last_overlapping_segment_takes_precedence` |
+| End-point rule removed | synthetic, REF-004, DD |
+| Big-endian words read as little-endian | synthetic (both tests), API-002 truncation |
+| testpo code 3 mapped to the EMB | testpo unit test and REF-001 |
+| Type-3 velocity scaled by 2 | synthetic |
+| **`divmod` carry `i3` dropped from the record index** | **nothing**, so the mutant survived |
+
+Every golden epoch has its day part at 0h and a fraction below 1, so the remainders never add up
+past INTLEN. `Epoch::from_jd_parts` accepts any split, though, so a caller who passes the day part at
+noon (for example `Epoch::j2000()` plus a fraction) reaches the carry branch. The reviewer added
+`state_is_independent_of_the_two_part_date_split`, which runs at every segment, at three records per
+segment and across dyadic fractions. It checks bit-identity between the 0h, noon and one-day-earlier
+splits, and 464 of its evaluations use the carry. With this test in place the mutant is killed.
+
+**Hardening:** `Daf::record` and `Daf::f64_word` now use checked byte-offset arithmetic. A corrupt
+`NEXT` pointer can be as large as 2⁵³ records. That multiplication overflows a 32-bit `usize` on
+wasm32, and in a debug build the overflow panics, which API-002 forbids. On 64-bit targets there was
+no defect.
+
+No blockers were found. The NEEDS HUMAN REVIEW items 1–10 above still stand.
