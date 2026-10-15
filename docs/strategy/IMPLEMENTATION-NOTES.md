@@ -2079,3 +2079,188 @@ wasm32, and in a debug build the overflow panics, which API-002 forbids. On 64-b
 no defect.
 
 No blockers were found. The NEEDS HUMAN REVIEW items 1–10 above still stand.
+
+## 📈 Progress review: after WP10
+
+I am the independent progress reviewer (an agent, not the builder). I audited `m3-newtonian-nbody` at `ba357d8` (WP7–WP10), stacked on `m0-foundation` (merge base `e23c9ef`, the WP6 review). I ran everything below myself on 2026-10-15 UTC, on the local machine with toolchain 1.95.0. I loosened nothing and committed no mutation; mutants ran in a scratch clone, and the worktree was clean throughout.
+
+### Overall health: 🟡 YELLOW
+- **Green:**
+  - All eight AGENTS.md gates pass locally, and GitHub CI on `ba357d8` is green.
+  - The data tier passes (21/21) on an empty cache, and so does the nightly tier (4/4). Some tests needed a re-run for infrastructure reasons, not assertions (see §1).
+  - Four key numbers reproduce in independent Python, including an SPK reader I wrote from the NAIF Required Reading, checked against testpo.440.
+  - No golden value or tolerance was moved or widened without a NEEDS HUMAN REVIEW note.
+  - The layer check is green, all M1 debt requirements are cited, and every data number from WP5–WP9 is unchanged to the printed digit.
+- **Not green:**
+  - **Two of five new mutants survive the PR tier** (§3). The Park17 mean-orbit axis-sign flip still survives every tier; the WP9 review flagged it and it was not followed up. A disabled SHA-256 re-check in `locate_product` also survives, which is a cache-substitution route.
+  - Infrastructure flakiness is now systematic. For the third WP running, Horizons answered HTTP 503 to the parallel data tier (2 tests this time). `run_long_local.sh` also fails on a fresh cache, because it runs the nightly tier before anything has fetched de440.bsp.
+  - Unchanged from earlier reviews: NUM-001 (1e9 steps) and NUM-023 (≥ 5e7 steps) are unmet in the default configuration. The known-failure guard still holds at energy slope 0.629, and the `pc_b_from_g` fix is waiting on a human decision.
+
+### 1. Commands (tip `ba357d8`)
+| command | result |
+|---|---|
+| `cargo fmt --all --check` | pass |
+| `cargo clippy --workspace --all-targets --all-features -- -D warnings` | pass |
+| `cargo nextest run --workspace` + `cargo test --doc --workspace` | **176 passed, 25 skipped**: the skips are 21 `data_*` and 4 `nightly_*`, which are the only `#[ignore]`s. 12 doctests pass. |
+| `cargo deny check` | pass |
+| `RUSTDOCFLAGS="-D warnings" cargo doc --no-deps --workspace` | pass |
+| `ruff check`, `ruff format --check`, `mypy` (strict) | pass |
+| `reuse lint` | pass |
+| `trace.py --check` | pass: 119 requirements, 345 citing tests, 0 errors. `check_layers`: 15 crates, 55 edges, 0 errors. |
+| `uv run pytest` (tools) | 34 passed |
+| GitHub CI on `ba357d8` (run 38713104902) | rust, msrv, wasm32, python, reuse and dco pass. `data` and `long` were skipped, as expected. |
+| `tools/run_long_local.sh`, empty `FA_DATA_DIR` | **nightly 3/4 on the first pass.** `nightly_de440_double_double_vs_f64_every_record` failed with FA-E0204 (de440.bsp missing) because the script runs the nightly tier before the data tier and never runs `fetch_jpl.py`. It passed once the cache was filled (ρ = 0.650). |
+| same run, data tier | **19/21 on the first pass.** `data_horizons_n2b_from_de441_state` and `data_horizons_osculating_elements_match` failed: Horizons returned HTTP 503 four times. Both passed when re-run with `--test-threads 1`. Neither failure was an assertion. |
+| nightly tier (release) | 4/4. NUM-023 default ensemble: 0.526 / 1.513. The long ensemble is the known failure at 0.629 ± 0.018 / 1.590. Reversibility is 4.50e-12. |
+
+### 2. Real-data and benchmark results
+Provenance (every file was fetched fresh, retrieved 2026-10-15, and its SHA-256 equals the manifest pin):
+- header.440: `0f4636b6…6ac3359`
+- de440.bsp: `a4ce9bf9…fff7c4b5`, 119 799 808 B
+- testpo.440: `45084a7f…6693429f`
+- ascp01550: `ed95a8eb…edb6375`
+- ascp01950: `e24f6356…3477286`
+- ascp02550: `66e1230a…e479c08`
+- sb441-n373s.bsp: `21431132…ca8da10b`
+- pck00011.tpc: `3dff7b1d…e28bb1`
+- IERS Leap_Second.dat: `6cb6f5d4…e268d7`
+- IANA leap-seconds.list: `db5a895f…bc3433`
+- SW92: `9f7b30ca…f9c4d742`
+
+Every Horizons answer carried `signature.version` 1.2 and source DE441.
+
+Margin = |Δ| / tolerance.
+
+| test (tier) | measured | oracle (source) | tolerance | margin |
+|---|---|---|---|---|
+| REF-004 `ref004_jplephem_de440` (PR) | 0 km, 0 km/s at 784 epochs (bit-identical) | jplephem 2.24 goldens | 1e-6 km, 1e-9 km/s | 0 |
+| REF-001 testpo.440 (PR) | max DEL **7.105e-15** (11 354 points; 1 847 nutation/libration points skipped) | JPL testpo.440, testeph threshold | 1e-13 | 0.071 |
+| ↳ independent Python reader (mine) | max DEL 1.42e-14, same 11 354 and 1 847 counts | same | 1e-13 | 0.14 |
+| DEP-007 f64 vs DD Clenshaw ρ (PR / nightly) | 0.428 / 0.650 | FerroAstro bound n·u·Σ\|c\| (engineering) | 2 | 0.21 / 0.33 |
+| synthetic type 2 + 3, LTL and BIG (PR) | 0 / 0 | jplephem 2.24 | 1e-6 km, 1e-9 km/s | 0 |
+| `data_de440_ascii_coefficients_equal_the_spk` | 0 mismatches in 1 727 208 coefficients | DE440 ASCII ascp01550/01950/02550 | exact | 0 |
+| same test: geocentric Moon | 1.746e-10 km, 8.88e-16 km/s | ASCII series | 1e-8 km, 1e-12 km/s | 0.017, 0.001 |
+| `data_horizons_de441_barycentric_states_vs_de440_gross_bound` | Mercury 1.49e-8 km, Earth 5.14e-3 km, Moon **0.418 km** (1600) | Horizons DE441 (gross bound) | 10 km, 1e-3 km/s | 0.042 ⚠ weak oracle by design |
+| `data_sb441_asteroids_match_jplephem` | 0 / 0 (Ceres, Pallas, Vesta × 52) | jplephem goldens | 1e-6 km, 1e-9 km/s | 0 |
+| DEP-009 / REF-009 pyerfa time goldens (PR), f64 | TT-TDB 9.59e-12 s; all others 0 | pyerfa 2.0.1.5 | 1 ns (PROVISIONAL) | 0.0096 |
+| same, double-double | worst 8.92e-12 s (TDB-TCB) | pyerfa | 1 ns | 0.0089 |
+| DEP-010 round trips, f64 | worst 9.59e-12 s | identity | 2e-10 s | 0.048 |
+| hifitime TDB − ERFA TDB (PR) | 1.957e-4 s (year 2600) | analytic bound | 4.0e-4 s | 0.49 |
+| `data_leap_seconds_match_iers_and_iana` | 55 instants, \|Δ\| 0 s | IERS + IANA | exact | 0 |
+| pyerfa frame goldens (PR) | f64 0 everywhere; DD ≤ 1.49e-15 rad | pyerfa 2.0.1.5 | 1e-12 (PROVISIONAL) | 0.0015 |
+| `data_frame_rotations_reproduce_horizons…` | ECLIPJ2000 2.42e-16 / 3.28e-16; IAU_SUN 4.72e-16 / 4.06e-16 | Horizons ECLIPTIC, BODY EQUATOR | 1e-12 rel | ≤ 0.0005 |
+| `data_naif_pck_solar_pole` | 286.13 / 63.87 | NAIF pck00011 | exact | 0 |
+| NUM-014 `data_num014_…` | difference − p_A **+4.431e-4**; − geometry +8.424e-7 ″/cy | p06e port (computed reference) | 1e-3 / 1e-5 | **0.44** / 0.084 |
+| D5 `data_gr_schw_f64_and_double_double…` | f64 42.980085159575, DD 42.980085160105 (Δ −5.30e-10) | PHY-005 42.980 ± 0.001; f64 = DD to 1e-6 | ±1e-3; 1e-6 | 0.085; 0.0005 |
+| `data_horizons_n2b_from_de441_state` (PHY-001) | 1.087e-9 ″/cy | 0 | 1e-6 | 0.001 |
+| `data_horizons_osculating_elements_match` | e 1.08e-15 rel, a 1.29e-16 rel, angles ≤ 2.84e-14° | Horizons ELEMENTS | 1e-12 rel | 0.001 |
+| `data_horizons_gr_rate_…_vs_park17` | 42.980669 | Park17 GE 42.9799 | ±0.0027 | 0.28 |
+| `data_gr_rung_from_horizons_de441_state` | 42.9806442 | analytic 42.980651 / Park17 42.9799 | ±1e-3 / ±0.0027 | 0.010 / 0.28 |
+| real-geometry J2 / LT | 0.0284524 / −0.0020148 | Park17 0.0286 / −0.0020 | ±0.0011 / ±0.0002 | 0.13 / 0.074 |
+| NUM-013(a) isolation | GR −6.6e-6, J2 4.8e-9, LT 1.3e-9 | 0 | 1e-4 | 0.066 |
+| NUM-012 spread | GR 1.76e-5, J2 3.4e-8, LT 5.2e-8 | 0 | 1e-4 | 0.18 |
+| `data_park17_rate_from_horizons_de441_mean_orbit` | **575.309163** (jk σ 0.00153), Q −0.0447605 | Park17 575.3100 ± 0.0015 | NUM-011 ±0.01; 3σ ±0.00643 | 0.084; 0.13 |
+| `data_sw92_rate_from_horizons_de441_ecliptic` | 571.968047 | SW92 T1 577.716804 | ±20 | 0.29 ⚠ weak oracle; the −5.75 gap is open (human) |
+| NUM-023 default / long ensemble (nightly) | 0.526 / 1.513; **0.629** / 1.590 | Brouwer ½, 3/2 | ±0.1 | 0.26 / 0.13; **1.29 FAIL (known)** |
+
+Every number above equals the builders' WP7–WP10 reports, and the WP5/WP6 numbers, to every printed digit.
+
+**Independent recomputation.** Python/numpy only, with no FerroAstro, jplephem or ERFA code; scripts are in the local scratchpad.
+1. **REF-001 with my own SPK reader.** I wrote a type-2 DAF/SPK reader from the NAIF DAF/SPK Required Reading: summary chain, Chebyshev with derivative, and EMB/Earth/Moon chaining. I evaluated de440.bsp at every testpo.440 body point.
+   - Point counts: 11 354 evaluated and 1 847 skipped, the same as FerroAstro.
+   - Max DEL is **1.42e-14** (Neptune wrt Pluto, 1594). FerroAstro gets 7.1e-15.
+   - My reader collapses the date into one binary64 TDB-seconds value, which costs about one ulp. Both readers are below 1e-13 by about 7–14×. The testpo threshold therefore does not depend on FerroAstro sharing code with jplephem.
+2. **NUM-014 p_A slope.** I fitted the IAU 2006 p_A series (Capitaine et al. 2003; IERS Conventions 2010 eq. 5.39) by OLS at the 831 perihelion epochs. I computed those epochs from header.440's Mercury − Sun state at JDEPOC: Kepler's equation for the first passage, then the Keplerian period.
+   - Result: **5030.332574 ″/cy**, against FerroAstro's `p06e` slope of 5030.332575517. Δ = 1.5e-6.
+   - Caveat: the 5028.796195 linear coefficient I typed is the OI-02 value. This check therefore confirms the port's arithmetic and the passage sampling, not the coefficient. The coefficient is checked by `t_erfa_c` and pyerfa, which take it from ERFA's `p06e.c`.
+3. **GR rate from the header.440 state.** Mercury − Sun at JDEPOC, with μ = GM☉ for the elements, gives a = 0.38709935 au and e = 0.2056166109. Both are identical to FerroAstro's.
+   - 6πGM☉/(c²a(1−e²)), with n from GM☉ + GM☿, gives **42.980101000 ″/cy**. FerroAstro's D5 "analytic (same osculating orbit)" prints 42.980097432.
+   - The −3.57e-6 difference is exactly the μ-in-n convention: the single-body `analytic_per_orbit` uses GM☉ in the period, while the Horizons GR helper uses GM☉ + GM☿. See finding F5.
+   - The numerical D5 rate, 42.980085160, is 1.6e-5 below the analytic value. That is the anomalistic-vs-Keplerian period effect already reported, inside PHY-005's ±1e-3.
+4. **PHY-014 shift.** 0.0286·(J2SUN/2.25e-7 − 1), with J2SUN = 2.196139151652982e-7 from the fresh header, is −0.000685. That gives **575.309315**, confirming the maintainer's oracle of 575.3093.
+
+### 3. Drift audit
+- **`git log -p -- tests/vectors`, `e23c9ef..ba357d8`:** 13 commits. Only two of them remove any line:
+  - `eed1741`: the `NUM012-ESTIMATOR-SPREAD` `source` text. This was requested by the WP6 review; the value and tolerance are unchanged, and it carries NEEDS HUMAN REVIEW.
+  - `37808e5`: the `REAL-DD-EXP-REL-ERR` test domain changed from [−700, 700] to [−600, 700] after its first run failed at x = −688.2. The bound is unchanged, and the change is justified by the subnormal trailing word, a format limit. The NEEDS HUMAN REVIEW note is in the vector and in WP7.
+
+  **No value or tolerance was moved or widened.** Disclosed non-blind items carry NEEDS HUMAN REVIEW: `TIME-TDB-SECONDS-DD-ROUNDTRIP`, the NUM-014 pre-runs, the PROVISIONAL 1 ns / 1e-12 pyerfa bands, and `NUM006-F64-BENCH-RATIO` 2 %.
+- **`#[ignore]`:** 25, up from 16. All are named `data_*` (21) or `nightly_*` (4), and I ran all of them. There is no `cfg` gating. The early `return`s in `num023_brouwer.rs` fire only when report-only env knobs are set, as before.
+- **UNVERIFIED values as oracles:** none.
+  - OI-02's p_A is not a vector value. NUM-014 uses the `p06e` port, which `t_erfa_c` and pyerfa check (WP9 proposes that this closes OI-02's use; that is a human decision).
+  - GMSDOT (OI-04) is deliberately absent.
+- **Circular oracles:** none that matter.
+  - REF-004 and sb441 compare against jplephem, an independent MIT reader.
+  - The bit-identity with jplephem holds because FerroAstro copies its Clenshaw order and `divmod`. That is shared *algorithm*, not shared code, and recomputation 1 shows the testpo pass does not depend on it.
+  - NUM-014 compares two ERFA parameterisations: `ecm06`, which is Fukushima–Williams, against `p06e` angles. It exercises frames, not dynamics, as the WP9 review noted.
+  - `EPHEM-F64-DD-ROUNDOFF-RATIO` is a FerroAstro engineering bound (disclosed).
+- **Mutation probes.** I mutated one key formula per new crate in a scratch clone at `ba357d8`, ran the PR tier, and reverted each one. Earlier per-WP reviews already probed `erfa` (p_A coefficient, split order), `frames` (p_A, solar node) and `ephem` (Clenshaw, divmod carry, precedence), so I chose new targets:
+
+| crate | mutant | PR-tier result |
+|---|---|---|
+| real | DD `mul` drops the `lo·hi` cross term (`cl3 = cl1 + tl1`) | killed by 10 tests (DEP-012, forces DD, analytic DD, time DD) |
+| time | `tdb_minus_tt` topocentric, u = 6378 km (≤ 2 µs effect) | killed (pyerfa goldens f64 and DD) |
+| frames | Park17 mean-orbit y = X × z instead of z × X (a 180° turn about the pole) | **survived the PR tier.** The WP9 review showed it also survives the data tier, since rates do not depend on it. This is the second review to flag it, and it is not fixed. |
+| ephem | `Heliocentric` NAIF centre = SSB instead of the Sun | killed (`typed_states_chain_segments_to_the_barycentre_and_the_sun`) |
+| testdata | `locate_product` SHA-256 re-check disabled | **survived.** No test feeds a tampered cache file. A swapped de440.bsp or testpo.440 in `FA_DATA_DIR` would be used silently by the PR tier, which is an oracle-substitution route (red-team H2 pattern). |
+
+- **Layering** (`cargo metadata`, checked by hand): no cycles and no upward edges.
+  - `ephem` depends on core and real only.
+  - `frames` depends on core, erfa and real. The unused `time` edge was removed in WP9.
+  - The only listed exception is still `cli → vectors`.
+
+**Findings (new in this review):**
+- **F1 (medium): the Park17 axis sign is unpinned.** See the frames mutant above.
+- **F2 (medium): no negative test for `locate_product`'s SHA-256 check.** See the testdata mutant above.
+- **F3 (low): `run_long_local.sh` fails on a fresh cache.** It never runs `fetch_jpl.py`, and it runs nightly before data, so the nightly ephem test hits FA-E0204.
+- **F4 (low, recurring): parallel Horizons requests get HTTP 503.** This is the third WP in a row. It is a test-infrastructure problem, not a physics one, but it makes every long-tier log need a manual serial re-run.
+- **F5 (low): the μ-in-n convention differs between helpers.** `SingleBody::analytic_per_orbit` uses μ = GM☉ in the period, while `schwarzschild_advance`'s documented convention uses GM☉ + GM☿. The difference is 3.6e-6 ″/cy, so it is harmless now, but NUM-013(b) differences will need one convention.
+- **F6 (info): the weekly GitHub `data` job now downloads about 1.2 GB per run** (de440.bsp, three ascp files and the 982 MB sb441), and it runs the Horizons tests in parallel on a shared runner IP. That adds to the open maintainer question about the weekly job.
+- **F7 (info): `7c47fb8` does not build on its own** (disclosed in WP10). Anyone bisecting needs to skip it.
+
+### 4. Requirement coverage
+`trace.py` reports **42/92** `test` requirements cited (31 at the WP6 review) and 345 citing tests.
+- **M0, uncited:** STD-001…011, TST-001, DEP-001/002/003/014 and ORG-008. These are gate-enforced. Whether `trace.py` may count gate evidence is still a human question.
+- **M1:** every requirement is now cited. Acceptance is still unmet for NUM-001 (the 1e9-step clause and Kozai) and NUM-023 (≥ 5e7 steps, default configuration).
+- **M2:** every requirement is cited. The partial items are unchanged: NUM-017, PHY-011/OI-35, NUM-012 and NUM-013(b). The API-003 per-function doctest clause is deferred, with 0 of 367 public functions covered.
+- **M3, uncited (WP11–WP18 still to come):** PHY-012, PHY-013, NUM-008, NUM-009, REF-005, REF-006, REF-007, REF-011, CI-002, CI-003, CI-005 and CI-006.
+  - **CI-005 has a delivered mechanism (WP10's `.fa-data` cache and `fetch_jpl.py`) but no citing test.**
+  - Cited: NUM-011, NUM-013(a), NUM-014, PHY-015, REF-004 and LIC-003.
+- **M5 items started early:** DEP-011 (cited; the ANISE clause is unmet by maintainer decision) and REF-001 (cited). REF-003 is uncited (OI-24).
+
+### 5. Corrections for the next builder (WP11 onwards)
+1. **F1:** add offline assertions that pin the sign of each axis of every `ferroastro-frames` rotation.
+   - Park17 mean orbit: assert that ŷ·(ẑ × X̂_ICRF) > 0 and that x̂ = ŷ × ẑ.
+   - Solar equator: x̂ = node on the ICRF equator, with ẑ_ICRF × pole as the ascending direction.
+   - Write each expected component into a vector derived from the definition, not from a run. Confirm that the y-flip mutant dies in the PR tier.
+2. **F2:** add a `ferroastro-testdata` unit test that writes a wrong-content file under a temporary `FA_DATA_DIR` and asserts that `locate_product` returns the mismatch error code. Add a pytest for `fetch_jpl.py --verify-only` that does the same. Cite CI-005 and REF-002, which closes CI-005's missing citation.
+3. **F3:** in `tools/run_long_local.sh`, run `(cd tools && uv run python fetch_jpl.py)` before the nightly tier, or run data before nightly. Log the fetch provenance.
+4. **F4:** serialise the Horizons tests with a nextest test group (`[test-groups] horizons = { max-threads = 1 }` plus a `[[profile.data.overrides]]` filter on the Horizons tests). This changes scheduling only, not assertions or retries: test-level `retries` stays 0. Record it in IMPLEMENTATION-NOTES.
+5. **F5:** choose one μ convention for the analytic rate (GM☉ in 6πGM/c², and GM☉ + GM☿ or GM☉ in n) and use it in `analytic_per_orbit` and in `schwarzschild_advance`. Document it in the rung metadata. This must happen before WP14's NUM-013(b) differential runs. It is a computed-reference change, so record the before and after values (shift 3.57e-6 ″/cy).
+6. **WP14, PHY-012:** implement exactly the maintainer protocol: contribution = (Sun + Mercury + planet) − (Sun + Mercury), with identical initial conditions and the same estimator, and cross terms reported separately (provisional, OI-38).
+   - Do not tune the protocol to hit ±0.005; report the misses.
+   - Carry the red-team M3 note that Park's protocol is UNVERIFIED.
+   - Add the N-AST differential assertion (±0.0003, red team) once WP15 lands. Do not use OI-09's Mercury self-row (0.0050) as an oracle.
+7. **WP12/WP22, PHY-014:** use 575.3093 ″/cy (DE440 J2) as the oracle. This review reproduced 575.309315 independently.
+   - The vector rationale must carry the derivation: 0.0286·(J2_DE440/2.25e-7 − 1) = −0.000685.
+   - State that missing-LT and missing-asteroid errors are caught by the differential rungs, not by PHY-014.
+8. **WP16/WP17 oracle containers:**
+   - GPL images stay local or CI-cache only. FerroAstro is never built inside them.
+   - Use the documented APIs only (clean-room).
+   - WP16 must regenerate the WP8/WP9 pyerfa goldens bit-identically (all non-header lines), as WP8 item 5 requires.
+9. **Bisectability:** run `cargo check --workspace` on each commit before pushing (F7).
+10. **Still for humans (unchanged; no agent may resolve these):**
+    - adopting `pc_b_from_g`, which would clear NUM-023 and the known-failure guard;
+    - the weekly GitHub `data` job, now about 1.2 GB per run (F6);
+    - the PR tier depending on the JPL cache;
+    - the seven agent-taken MANIFEST pins;
+    - ANISE / DEP-011;
+    - OI-24 (n373s vs n373);
+    - the PROVISIONAL pyerfa bands;
+    - the NUM-014 reading and its 2× margin;
+    - the API-003 doctest threshold;
+    - the hifitime #417 workaround;
+    - every item in the WP6 review's correction 8.
+
+Reviewer artefacts are in the local scratchpad, not committed: `gates.log`, `long.log`, `rerun.log`, `mutate.log`, `mutate.sh`, `py/testpo_indep.py` and `py/recompute.py`.
+
