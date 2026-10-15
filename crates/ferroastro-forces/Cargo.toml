@@ -13,6 +13,7 @@ repository.workspace = true
 [dependencies]
 ferroastro-core.workspace = true
 ferroastro-integrators.workspace = true
+ferroastro-real.workspace = true
 thiserror.workspace = true
 
 [lints]

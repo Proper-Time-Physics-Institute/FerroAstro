@@ -28,26 +28,27 @@ use crate::central::{CentralTerm, Pole, cross, dot};
 use crate::{ForceError, Gauge};
 use ferroastro_core::frames::Frame;
 use ferroastro_core::units::{GravParam, SpinGm, Velocity};
+use ferroastro_real::Real;
 
-fn positive(name: &'static str, value: f64) -> Result<f64, ForceError> {
-    if value.is_finite() && value > 0.0 {
+fn positive<R: Real>(name: &'static str, value: R) -> Result<R, ForceError> {
+    if value.is_finite() && value > R::ZERO {
         Ok(value)
     } else {
         Err(ForceError::Invalid {
             name,
-            value,
+            value: value.to_f64(),
             valid: "finite and > 0",
         })
     }
 }
 
-fn finite(name: &'static str, value: f64) -> Result<f64, ForceError> {
+fn finite<R: Real>(name: &'static str, value: R) -> Result<R, ForceError> {
     if value.is_finite() {
         Ok(value)
     } else {
         Err(ForceError::Invalid {
             name,
-            value,
+            value: value.to_f64(),
             valid: "finite",
         })
     }
@@ -61,17 +62,17 @@ fn finite(name: &'static str, value: f64) -> Result<f64, ForceError> {
 /// Mondragon, arXiv:1012.5438), so the SR share of the advance is model dependent. For speeds
 /// `v ≥ c` the acceleration is NaN and the integrator stops with `FA-E0400`.
 #[derive(Debug, Clone, Copy, PartialEq)]
-pub struct SrKepler {
-    mu: f64,
-    c2: f64,
+pub struct SrKepler<R: Real = f64> {
+    mu: R,
+    c2: R,
 }
 
-impl SrKepler {
+impl<R: Real> SrKepler<R> {
     /// Build with the central `μ` and the speed of light.
     ///
     /// # Errors
     /// `FA-E0500` if `μ` or `c` is not positive and finite.
-    pub fn new(mu: GravParam, c: Velocity) -> Result<Self, ForceError> {
+    pub fn new(mu: GravParam<R>, c: Velocity<R>) -> Result<Self, ForceError> {
         let cc = positive("c (km/s)", c.km_per_s())?;
         Ok(Self {
             mu: positive("GM (km^3/s^2)", mu.km3_per_s2())?,
@@ -80,11 +81,11 @@ impl SrKepler {
     }
 }
 
-impl<F: Frame> CentralTerm<F> for SrKepler {
-    fn add_acceleration(&self, r: [f64; 3], v: [f64; 3], a: &mut [f64; 3]) {
+impl<F: Frame, R: Real> CentralTerm<F, R> for SrKepler<R> {
+    fn add_acceleration(&self, r: [R; 3], v: [R; 3], a: &mut [R; 3]) {
         let b2 = dot(v, v) / self.c2;
-        let inv_gamma = (1.0 - b2).sqrt();
-        let one_minus_inv_gamma = b2 / (1.0 + inv_gamma);
+        let inv_gamma = (R::ONE - b2).sqrt();
+        let one_minus_inv_gamma = b2 / (R::ONE + inv_gamma);
         let r2 = dot(r, r);
         let k = self.mu / (r2 * r2.sqrt());
         let kv = k * dot(r, v) * inv_gamma / self.c2;
@@ -103,19 +104,19 @@ impl<F: Frame> CentralTerm<F> for SrKepler {
 /// Rung GR-SCHW / PPN: the 1PN Schwarzschild field with PPN β, γ in isotropic/harmonic gauge
 /// (Journal #4 R3).
 #[derive(Debug, Clone, Copy, PartialEq)]
-pub struct SchwarzschildPpn {
-    mu: f64,
-    c2: f64,
-    beta: f64,
-    gamma: f64,
+pub struct SchwarzschildPpn<R: Real = f64> {
+    mu: R,
+    c2: R,
+    beta: R,
+    gamma: R,
 }
 
-impl SchwarzschildPpn {
+impl<R: Real> SchwarzschildPpn<R> {
     /// Build with the central `μ`, the speed of light and the PPN parameters.
     ///
     /// # Errors
     /// `FA-E0500` if `μ` or `c` is not positive and finite, or β, γ are not finite.
-    pub fn new(mu: GravParam, c: Velocity, beta: f64, gamma: f64) -> Result<Self, ForceError> {
+    pub fn new(mu: GravParam<R>, c: Velocity<R>, beta: R, gamma: R) -> Result<Self, ForceError> {
         let cc = positive("c (km/s)", c.km_per_s())?;
         Ok(Self {
             mu: positive("GM (km^3/s^2)", mu.km3_per_s2())?,
@@ -126,14 +127,14 @@ impl SchwarzschildPpn {
     }
 }
 
-impl<F: Frame> CentralTerm<F> for SchwarzschildPpn {
-    fn add_acceleration(&self, r: [f64; 3], v: [f64; 3], a: &mut [f64; 3]) {
+impl<F: Frame, R: Real> CentralTerm<F, R> for SchwarzschildPpn<R> {
+    fn add_acceleration(&self, r: [R; 3], v: [R; 3], a: &mut [R; 3]) {
         let r2 = dot(r, r);
         let rn = r2.sqrt();
         let k = self.mu / (self.c2 * r2 * rn);
         let radial =
-            (2.0 * (self.beta + self.gamma)).mul_add(self.mu / rn, -self.gamma * dot(v, v));
-        let along = 2.0 * (1.0 + self.gamma) * dot(r, v);
+            (R::TWO * (self.beta + self.gamma)).mul_add(self.mu / rn, -self.gamma * dot(v, v));
+        let along = R::TWO * (R::ONE + self.gamma) * dot(r, v);
         for ((ai, ri), vi) in a.iter_mut().zip(r).zip(v) {
             *ai += k * radial.mul_add(ri, along * vi);
         }
@@ -144,7 +145,8 @@ impl<F: Frame> CentralTerm<F> for SchwarzschildPpn {
     fn describe(&self) -> String {
         format!(
             "1PN Schwarzschild PPN (Journal #4 R3), beta = {}, gamma = {}",
-            self.beta, self.gamma
+            self.beta.to_f64(),
+            self.gamma.to_f64()
         )
     }
 }
@@ -204,18 +206,20 @@ impl PnCoefficients {
 
 /// The general 1PN test-particle Lagrangian (PHY-009), reduced to first order in `1/c²`.
 #[derive(Debug, Clone, Copy, PartialEq)]
-pub struct PnLagrangian {
-    mu: f64,
-    inv_c2: f64,
+pub struct PnLagrangian<R: Real = f64> {
+    mu: R,
+    inv_c2: R,
     k: PnCoefficients,
+    /// `A, B, C, D` in backend `R` (exact conversions of the binary64 coefficients).
+    kr: [R; 4],
     gauge: Gauge,
     label: &'static str,
 }
 
-impl PnLagrangian {
+impl<R: Real> PnLagrangian<R> {
     fn build(
-        mu: GravParam,
-        c: Velocity,
+        mu: GravParam<R>,
+        c: Velocity<R>,
         k: PnCoefficients,
         gauge: Gauge,
         label: &'static str,
@@ -231,8 +235,9 @@ impl PnLagrangian {
         }
         Ok(Self {
             mu: positive("GM (km^3/s^2)", mu.km3_per_s2())?,
-            inv_c2: 1.0 / (cc * cc),
+            inv_c2: R::ONE / (cc * cc),
             k,
+            kr: [k.a, k.b, k.c, k.d].map(R::from_f64),
             gauge,
             label,
         })
@@ -242,7 +247,12 @@ impl PnLagrangian {
     ///
     /// # Errors
     /// `FA-E0500` for invalid `μ`, `c`, β or γ.
-    pub fn ppn(mu: GravParam, c: Velocity, beta: f64, gamma: f64) -> Result<Self, ForceError> {
+    pub fn ppn(
+        mu: GravParam<R>,
+        c: Velocity<R>,
+        beta: f64,
+        gamma: f64,
+    ) -> Result<Self, ForceError> {
         Self::build(
             mu,
             c,
@@ -258,7 +268,7 @@ impl PnLagrangian {
     ///
     /// # Errors
     /// `FA-E0500` for invalid `μ` or `c`.
-    pub fn sr_b_harmonic(mu: GravParam, c: Velocity) -> Result<Self, ForceError> {
+    pub fn sr_b_harmonic(mu: GravParam<R>, c: Velocity<R>) -> Result<Self, ForceError> {
         Self::build(
             mu,
             c,
@@ -273,7 +283,7 @@ impl PnLagrangian {
     ///
     /// # Errors
     /// `FA-E0500` for invalid `μ` or `c`.
-    pub fn sr_b_areal(mu: GravParam, c: Velocity) -> Result<Self, ForceError> {
+    pub fn sr_b_areal(mu: GravParam<R>, c: Velocity<R>) -> Result<Self, ForceError> {
         Self::build(
             mu,
             c,
@@ -287,7 +297,7 @@ impl PnLagrangian {
     ///
     /// # Errors
     /// `FA-E0500` for invalid `μ` or `c`.
-    pub fn schwarzschild_areal(mu: GravParam, c: Velocity) -> Result<Self, ForceError> {
+    pub fn schwarzschild_areal(mu: GravParam<R>, c: Velocity<R>) -> Result<Self, ForceError> {
         Self::build(
             mu,
             c,
@@ -302,7 +312,11 @@ impl PnLagrangian {
     ///
     /// # Errors
     /// `FA-E0500` for invalid `μ`, `c` or a non-finite coefficient.
-    pub fn generic(mu: GravParam, c: Velocity, k: PnCoefficients) -> Result<Self, ForceError> {
+    pub fn generic(
+        mu: GravParam<R>,
+        c: Velocity<R>,
+        k: PnCoefficients,
+    ) -> Result<Self, ForceError> {
         Self::build(
             mu,
             c,
@@ -319,18 +333,20 @@ impl PnLagrangian {
     }
 }
 
-impl<F: Frame> CentralTerm<F> for PnLagrangian {
-    fn add_acceleration(&self, r: [f64; 3], v: [f64; 3], a: &mut [f64; 3]) {
-        let PnCoefficients { a: ca, b, c, d } = self.k;
+impl<F: Frame, R: Real> CentralTerm<F, R> for PnLagrangian<R> {
+    fn add_acceleration(&self, r: [R; 3], v: [R; 3], a: &mut [R; 3]) {
+        let [ca, b, c, d] = self.kr;
         let r2 = dot(r, r);
         let rn = r2.sqrt();
         let rdot = dot(r, v) / rn;
         let u = self.mu / rn;
-        let radial = 2.0f64.mul_add(-d, 4.0f64.mul_add(ca, -b)).mul_add(
+        let (two, three, four, eight) =
+            (R::TWO, R::from_f64(3.0), R::from_f64(4.0), R::from_f64(8.0));
+        let radial = two.mul_add(-d, four.mul_add(ca, -b)).mul_add(
             dot(v, v),
-            (2.0 * (b - c + d)).mul_add(u, 3.0 * d * rdot * rdot),
+            (two * (b - c + d)).mul_add(u, three * d * rdot * rdot),
         );
-        let along = 8.0f64.mul_add(ca, 2.0 * b) * rdot;
+        let along = eight.mul_add(ca, two * b) * rdot;
         let k = self.inv_c2 * self.mu / r2;
         for ((ai, ri), vi) in a.iter_mut().zip(r).zip(v) {
             *ai += k * radial.mul_add(ri / rn, along * vi);
@@ -350,24 +366,29 @@ impl<F: Frame> CentralTerm<F> for PnLagrangian {
 
 /// Rung LT: the central body's gravitomagnetic (Lense–Thirring) field (Journal #4 R3b).
 #[derive(Debug, Clone, Copy, PartialEq)]
-pub struct LenseThirring<F: Frame> {
-    gs: f64,
-    c2: f64,
-    gamma: f64,
-    pole: Pole<F>,
+pub struct LenseThirring<F: Frame, R: Real = f64> {
+    gs: R,
+    c2: R,
+    gamma: R,
+    pole: Pole<F, R>,
 }
 
-impl<F: Frame> LenseThirring<F> {
+impl<F: Frame, R: Real> LenseThirring<F, R> {
     /// Build from `G·S`, the speed of light, PPN γ and the spin axis.
     ///
     /// # Errors
     /// `FA-E0500` if `G·S` is negative or not finite, `c` is not positive, or γ is not finite.
-    pub fn new(gs: SpinGm, c: Velocity, gamma: f64, pole: Pole<F>) -> Result<Self, ForceError> {
+    pub fn new(
+        gs: SpinGm<R>,
+        c: Velocity<R>,
+        gamma: R,
+        pole: Pole<F, R>,
+    ) -> Result<Self, ForceError> {
         let g = gs.km5_per_s3();
-        if !(g.is_finite() && g >= 0.0) {
+        if !(g.is_finite() && g >= R::ZERO) {
             return Err(ForceError::Invalid {
                 name: "G S (km^5/s^3)",
-                value: g,
+                value: g.to_f64(),
                 valid: "finite and >= 0",
             });
         }
@@ -381,14 +402,14 @@ impl<F: Frame> LenseThirring<F> {
     }
 }
 
-impl<F: Frame> CentralTerm<F> for LenseThirring<F> {
-    fn add_acceleration(&self, r: [f64; 3], v: [f64; 3], a: &mut [f64; 3]) {
+impl<F: Frame, R: Real> CentralTerm<F, R> for LenseThirring<F, R> {
+    fn add_acceleration(&self, r: [R; 3], v: [R; 3], a: &mut [R; 3]) {
         let s = self.pole.unit();
         let r2 = dot(r, r);
-        let k = (1.0 + self.gamma) * self.gs / (self.c2 * r2 * r2.sqrt());
+        let k = (R::ONE + self.gamma) * self.gs / (self.c2 * r2 * r2.sqrt());
         let h = cross(r, v);
         let vxs = cross(v, s);
-        let w = 3.0 * dot(r, s) / r2;
+        let w = R::from_f64(3.0) * dot(r, s) / r2;
         for ((ai, hi), wi) in a.iter_mut().zip(h).zip(vxs) {
             *ai += k * w.mul_add(hi, wi);
         }
@@ -397,10 +418,14 @@ impl<F: Frame> CentralTerm<F> for LenseThirring<F> {
         Gauge::PpnIsotropicHarmonic
     }
     fn describe(&self) -> String {
-        let s = self.pole.unit();
+        let s = self.pole.unit().map(Real::to_f64);
         format!(
             "Lense-Thirring (Journal #4 R3b), G S = {:e} km^5/s^3, gamma = {}, spin axis [{}, {}, {}]",
-            self.gs, self.gamma, s[0], s[1], s[2]
+            self.gs.to_f64(),
+            self.gamma.to_f64(),
+            s[0],
+            s[1],
+            s[2]
         )
     }
 }
@@ -537,6 +562,98 @@ mod tests {
             <PnLagrangian as CentralTerm<Icrf>>::gauge(&sr_b),
             Gauge::SchwarzschildAreal
         );
+    }
+
+    /// Every term evaluates in double-double (DEP-007): the DD acceleration rounds to the f64 one
+    /// within f64 round-off, and the two independent 1PN forms (R3 and the PPN Lagrangian) agree
+    /// to double-double round-off, ~10¹⁶ times tighter than in f64.
+    ///
+    /// Verifies: DEP-007, NUM-006, NUM-017
+    #[test]
+    fn double_double_terms_match_f64_and_each_other() {
+        use crate::{SolarJ2, central::Pole};
+        use ferroastro_core::units::Length;
+        use ferroastro_real::{DoubleDouble as Dd, Real};
+        fn acc<R: Real, T: CentralTerm<Icrf, R>>(t: &T, r: [R; 3], v: [R; 3]) -> [R; 3] {
+            let mut a = [R::ZERO; 3];
+            t.add_acceleration(r, v, &mut a);
+            a
+        }
+        let d = Dd::from_f64;
+        let c = 7.0; // lint: allow-literal(dimensionless test speed of light, as samples())
+        let (mu, cc) = (gm(1.0), speed(c));
+        let (mu_d, c_d) = (
+            GravParam::from_km3_per_s2(d(1.0)).unwrap(),
+            Velocity::from_km_per_s(d(c)).unwrap(),
+        );
+        let pole = Pole::<Icrf>::from_components([0.1, 0.2, 1.0]).unwrap(); // lint: allow-literal(arbitrary pole)
+        let pole_d = Pole::<Icrf, Dd>::from_components(pole.unit().map(d)).unwrap();
+        let gs = SpinGm::from_km5_per_s3(2.0).unwrap();
+        let gs_d = SpinGm::from_km5_per_s3(d(2.0)).unwrap();
+        let j2 = 0.01; // lint: allow-literal(arbitrary dimensionless J2)
+        let one = Length::from_km(1.0).unwrap();
+        let one_d = Length::from_km(d(1.0)).unwrap();
+        let close =
+            |x: f64, y: f64, scale: f64, eps: f64| (x - y).abs() <= 64.0 * eps * scale.max(1e-3); // lint: allow-literal(round-off bound in ulps and a floor)
+        for (r, v) in samples() {
+            let (rd, vd) = (r.map(d), v.map(d));
+            let pairs: [([f64; 3], [Dd; 3]); 5] = [
+                (
+                    acc(&SrKepler::new(mu, cc).unwrap(), r, v),
+                    acc(&SrKepler::new(mu_d, c_d).unwrap(), rd, vd),
+                ),
+                (
+                    acc(&SchwarzschildPpn::new(mu, cc, 1.0, 1.0).unwrap(), r, v),
+                    acc(
+                        &SchwarzschildPpn::new(mu_d, c_d, d(1.0), d(1.0)).unwrap(),
+                        rd,
+                        vd,
+                    ),
+                ),
+                (
+                    acc(&PnLagrangian::schwarzschild_areal(mu, cc).unwrap(), r, v),
+                    acc(
+                        &PnLagrangian::schwarzschild_areal(mu_d, c_d).unwrap(),
+                        rd,
+                        vd,
+                    ),
+                ),
+                (
+                    acc(&LenseThirring::new(gs, cc, 1.0, pole).unwrap(), r, v),
+                    acc(
+                        &LenseThirring::new(gs_d, c_d, d(1.0), pole_d).unwrap(),
+                        rd,
+                        vd,
+                    ),
+                ),
+                (
+                    acc(&SolarJ2::new(mu, j2, one, pole).unwrap(), r, v),
+                    acc(&SolarJ2::new(mu_d, d(j2), one_d, pole_d).unwrap(), rd, vd),
+                ),
+            ];
+            for (k, (f, dd)) in pairs.iter().enumerate() {
+                for i in 0..3 {
+                    assert!(
+                        close(dd[i].to_f64(), f[i], f[i].abs(), f64::EPSILON),
+                        "term {k}: {f:?} vs {dd:?}"
+                    );
+                }
+            }
+            // Two independent 1PN forms agree to double-double round-off.
+            let lag = acc(&PnLagrangian::ppn(mu_d, c_d, 1.0, 1.0).unwrap(), rd, vd);
+            let r3 = acc(
+                &SchwarzschildPpn::new(mu_d, c_d, d(1.0), d(1.0)).unwrap(),
+                rd,
+                vd,
+            );
+            for i in 0..3 {
+                let scale = r3[i].abs().to_f64();
+                assert!(
+                    close((lag[i] - r3[i]).to_f64(), 0.0, scale, Dd::EPSILON.to_f64()),
+                    "{lag:?} vs {r3:?}"
+                );
+            }
+        }
     }
 
     /// In the equatorial plane the LT acceleration is in-plane and along `v × ŝ`.

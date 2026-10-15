@@ -9,29 +9,35 @@ use crate::central::{CentralTerm, Pole, dot};
 use crate::{ForceError, Gauge};
 use ferroastro_core::frames::Frame;
 use ferroastro_core::units::{GravParam, Length};
+use ferroastro_real::Real;
 
-/// Solar (central-body) J2 with a configurable pole.
+/// Solar (central-body) J2 with a configurable pole, in backend `R` (default `f64`).
 #[derive(Debug, Clone, Copy, PartialEq)]
-pub struct SolarJ2<F: Frame> {
-    mu: f64,
-    j2: f64,
-    radius: f64,
-    pole: Pole<F>,
+pub struct SolarJ2<F: Frame, R: Real = f64> {
+    mu: R,
+    j2: R,
+    radius: R,
+    pole: Pole<F, R>,
 }
 
-impl<F: Frame> SolarJ2<F> {
+impl<F: Frame, R: Real> SolarJ2<F, R> {
     /// Build from the central `μ`, the unnormalised `J₂`, the reference radius and the pole.
     ///
     /// # Errors
     /// `FA-E0500` if `μ` or the radius is not positive, or `J₂` is not finite.
-    pub fn new(mu: GravParam, j2: f64, radius: Length, pole: Pole<F>) -> Result<Self, ForceError> {
-        let check = |name: &'static str, v: f64, ok: bool| {
+    pub fn new(
+        mu: GravParam<R>,
+        j2: R,
+        radius: Length<R>,
+        pole: Pole<F, R>,
+    ) -> Result<Self, ForceError> {
+        let check = |name: &'static str, v: R, ok: bool| {
             if ok {
                 Ok(v)
             } else {
                 Err(ForceError::Invalid {
                     name,
-                    value: v,
+                    value: v.to_f64(),
                     valid: "finite (and > 0 for GM and radius)",
                 })
             }
@@ -39,40 +45,44 @@ impl<F: Frame> SolarJ2<F> {
         let m = mu.km3_per_s2();
         let r = radius.km();
         Ok(Self {
-            mu: check("GM (km^3/s^2)", m, m.is_finite() && m > 0.0)?,
+            mu: check("GM (km^3/s^2)", m, m.is_finite() && m > R::ZERO)?,
             j2: check("J2", j2, j2.is_finite())?,
-            radius: check("reference radius (km)", r, r.is_finite() && r > 0.0)?,
+            radius: check("reference radius (km)", r, r.is_finite() && r > R::ZERO)?,
             pole,
         })
     }
 
     /// The pole.
     #[must_use]
-    pub const fn pole(&self) -> Pole<F> {
+    pub const fn pole(&self) -> Pole<F, R> {
         self.pole
     }
 }
 
-impl<F: Frame> CentralTerm<F> for SolarJ2<F> {
-    fn add_acceleration(&self, r: [f64; 3], _v: [f64; 3], a: &mut [f64; 3]) {
+impl<F: Frame, R: Real> CentralTerm<F, R> for SolarJ2<F, R> {
+    fn add_acceleration(&self, r: [R; 3], _v: [R; 3], a: &mut [R; 3]) {
         let k_hat = self.pole.unit();
         let r2 = dot(r, r);
         let z = dot(r, k_hat);
         let r5 = r2 * r2 * r2.sqrt();
-        let k = -1.5 * self.mu * self.j2 * self.radius * self.radius / r5;
-        let radial = 1.0 - 5.0 * z * z / r2;
+        let k = R::from_f64(-1.5) * self.mu * self.j2 * self.radius * self.radius / r5;
+        let radial = R::ONE - R::from_f64(5.0) * z * z / r2;
         for ((ai, ri), ki) in a.iter_mut().zip(r).zip(k_hat) {
-            *ai += k * radial.mul_add(ri, 2.0 * z * ki);
+            *ai += k * radial.mul_add(ri, R::TWO * z * ki);
         }
     }
     fn gauge(&self) -> Gauge {
         Gauge::Newtonian
     }
     fn describe(&self) -> String {
-        let p = self.pole.unit();
+        let p = self.pole.unit().map(Real::to_f64);
         format!(
             "central-body J2 (Journal #4 R1), J2 = {:e}, R = {} km, pole [{}, {}, {}]",
-            self.j2, self.radius, p[0], p[1], p[2]
+            self.j2.to_f64(),
+            self.radius.to_f64(),
+            p[0],
+            p[1],
+            p[2]
         )
     }
 }

@@ -17,8 +17,10 @@
 //!
 //! Internal units: positions in km, velocities in km/s, time in TDB seconds, GM in km³/s². The
 //! typed constructors and [`NewtonianPointMasses::pack`] / [`NewtonianPointMasses::unpack`]
-//! convert from and to the [`ferroastro_core`] newtypes, so raw `f64` only appears inside the
-//! integration loop.
+//! convert from and to the [`ferroastro_core`] newtypes, so raw scalars only appear inside the
+//! integration loop. Every model and term is generic over the scalar backend
+//! `R: ferroastro_real::Real` with `R = f64` by default (DEP-007): `TestParticle<F>` is the f64
+//! model, `TestParticle<F, DoubleDouble>` the same physics in double-double.
 
 mod central;
 mod error;
@@ -83,8 +85,9 @@ impl Gauge {
     }
 }
 
-/// A force model: a second-order system that declares its gauge and a stable name.
-pub trait ForceModel: SecondOrderSystem {
+/// A force model: a second-order system (in backend `R`, default `f64`) that declares its gauge
+/// and a stable name.
+pub trait ForceModel<R: ferroastro_real::Real = f64>: SecondOrderSystem<R> {
     /// The model's gauge.
     fn gauge(&self) -> Gauge;
     /// A short stable name for reports, e.g. `"newtonian-point-masses"`.
