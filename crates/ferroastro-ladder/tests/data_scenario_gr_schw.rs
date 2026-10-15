@@ -15,7 +15,6 @@
 
 #![expect(
     clippy::unwrap_used,
-    clippy::expect_used,
     reason = "test: a failed unwrap is a test failure"
 )]
 
