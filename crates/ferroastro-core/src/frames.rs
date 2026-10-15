@@ -34,6 +34,11 @@ pub struct Icrf;
 /// Mean ecliptic and equinox of J2000 axes.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub struct EclipticJ2000;
+/// The Sun's IAU (WGCCRE) body-equator frame as JPL Horizons realises it (`IAU_SUN`): z along
+/// the IAU solar north pole, x along the ascending node of the solar equator on the ICRF
+/// equator. The IAU solar pole has no precession term, so "of date" equals fixed axes.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub struct SunEquatorIau;
 /// Solar-system barycentre.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub struct Barycentric;
@@ -43,6 +48,7 @@ pub struct Heliocentric;
 
 impl sealed::Sealed for Icrf {}
 impl sealed::Sealed for EclipticJ2000 {}
+impl sealed::Sealed for SunEquatorIau {}
 impl sealed::Sealed for Barycentric {}
 impl sealed::Sealed for Heliocentric {}
 
@@ -51,6 +57,9 @@ impl Frame for Icrf {
 }
 impl Frame for EclipticJ2000 {
     const NAME: &'static str = "ECLIPJ2000";
+}
+impl Frame for SunEquatorIau {
+    const NAME: &'static str = "IAU_SUN";
 }
 impl Center for Barycentric {
     const NAME: &'static str = "SSB";
