@@ -28,3 +28,6 @@ rustc-ice-*.txt
 .mypy_cache/
 __pycache__/
 .venv/
+
+# Downloaded external data products (JPL DE/Horizons); never committed (licence terms are an open item)
+fa-data/

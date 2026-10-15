@@ -1,0 +1,8 @@
+error[E0308]: mismatched types
+  --> tests/ui/centre_mismatch.rs:10:17
+   |
+10 |     let _ = a - b;
+   |                 ^ expected `Position<Icrf, Barycentric>`, found `Position<Icrf, Heliocentric>`
+   |
+   = note: expected struct `Position<Icrf, Barycentric>`
+              found struct `Position<Icrf, Heliocentric>`
