@@ -2732,3 +2732,86 @@ Observations (not blockers):
   what the long run shows.
 - WP12 acceptance criterion (1), the energy half, is **not met**. The status of WP12 is therefore
   *partial* in that one respect; everything else landed and is tested.
+
+## WP13 — [M3] `ferroastro-scenario` + `ferroastro-propagate`: scenario spec, run driver, checkpoint/resume
+
+Builder agent, 2026-10-15. Branch `m3-newtonian-nbody`, stacked on `m0-foundation`, draft PR #13.
+
+### Review correction F5 (applied first, commit `9fd3b40`)
+One μ convention for every analytic rate: the per-orbit advance is that of the integrated
+dynamics (test particle, μ = GM☉; the NUM-015 oracle, unchanged), and the ″/cy rate converts it
+with n = √((GM☉ + GM☿)/a³), the PHY-004 acceptance convention that every
+`schwarzschild_advance` caller already passes as `mu_period`. `SingleBody` now does the same
+(`RATE_CONVENTION`, printed in each rung's `constants` metadata). Before → after (offline PR tier,
+1000 orbits, SW92 elements):
+
+| rung | analytic rate before | after | Δ | numerical − analytic after (tolerance) |
+|---|---|---|---|---|
+| GR-SCHW | 42.980475410 | **42.980478977** (= PHY-004 analytic) | +3.567e-6 | −1.020e-5 (NUM-013(a) 1e-4) |
+| SR-a | 7.163412595 (est.) | 7.163413185 | +5.9e-7 | −7.5e-7 |
+| J2 (Park17, inclined) | 0.028601476 | 0.028601479 | +2.4e-9 | +8e-10 (5e-4) |
+| LT | −0.002018349 | −0.002018349 | −1.7e-10 | −2e-9 |
+
+`kepler_period` (reported "Keplerian period") stays the period of the integrated dynamics
+(μ = GM☉), so the N-2B line still prints equal anomalistic and Keplerian periods. All 30 ladder
+PR-tier tests pass unchanged. The trade-off (the analytic rate of a test particle now uses a
+mean motion 8.3e-8 faster than its own) is the reason the earlier builders asked humans for a
+rule instead; the review asked for one value, and the PHY-004 text fixes which one.
+**NEEDS HUMAN REVIEW** only as a confirmation.
+
+### Plan and pre-registered checks (written 2026-10-15, before any WP13 code or run)
+**Scenario spec (CI-002), `ferroastro-scenario` (L5).** TOML, `schema_version = 1`: `name`,
+`description`, `mode` (`n-body` | `test-particle`), `bodies` (names from a fixed registry mapped
+to NAIF ids: Sun, Mercury, Venus, Earth, Moon, EMB, Mars, Jupiter, Saturn, Uranus, Neptune, Pluto;
+planets beyond Venus are system barycentres as in DE440), `central_body`,
+`[initial_conditions] source = "de440-header" | "de440-bsp" | "horizons"` with `epoch_jd_tdb`
+(required for the last two), `[constants] gm_set = "de440"`, `[forces]` with exactly the CI-002
+switches `newton`, `sun_j2`, `gr_1pn_central`, `gr_eih`, `ppn = {beta, gamma}`, `lense_thirring`,
+`asteroids` (N), `[integrator]` (`name = "ias15"`, `precision = "f64" | "dd"`, optional IAS15
+settings), `[span]` (`years`, Julian years of 365.25 d, sign = direction; optional
+`stop_after_passages`) and `[output]` (`cadence_days`, `perihelion = [bodies]`). The JSON Schema
+is generated with schemars and committed as `ci/scenarios/scenario.schema.json`; a Rust test
+fails if it drifts, and `tools/validate_scenarios.py` validates every `ci/scenarios/*.toml` with
+it (`jsonschema`, already a tools dependency). Codes: `FA-E1200` malformed scenario,
+`FA-E1201` a switch known to CI-002 but not implemented by this runner (message names the
+switch), `FA-E1202` an unknown switch (named), `FA-E1203` an invalid value.
+**Canonical IC hash:** SHA-256 over a canonical text: a version line, the constants version
+(DE440 table/header SHA-256), the epoch (TDB JD, hex of the two binary64 parts), then per body in
+scenario order the NAIF id, GM and the six state components as hex of their (hi, lo) binary64
+parts. f64 and double-double ICs therefore hash differently, as they should.
+
+**Run driver, `ferroastro-propagate` (L8).** Builds ICs, the force model and IAS15 from a
+scenario. Test-particle mode reuses `TestParticle` + the central terms and the passage search of
+the single-body rungs, which **moves** from `ferroastro-ladder::passage_run` to
+`ferroastro-propagate::passages` (re-exported by the ladder, so its API is unchanged). N-body
+mode uses WP12's `NBodyModel` (Newtonian mutual, solar J2 with reaction, geocentric Moon when
+both Earth and Moon are listed). States are sampled at the output cadence from IAS15 dense output
+(never by shortening steps, so the trajectory does not depend on the cadence) and perihelion
+passages of each listed body relative to `central_body` are located on the dense output
+(NUM-010). Implemented switches: `newton` (must be true), `sun_j2`, `gr_1pn_central` and
+`lense_thirring` (test-particle only), `ppn` (with `gr_1pn_central`). Refused with `FA-E1201`
+naming the switch: `gr_eih` (WP19), `asteroids > 0` (WP15), `lense_thirring` and
+`gr_1pn_central` in N-body mode. IC source `horizons` needs caller-supplied states (the driver does
+no network I/O). **Checkpoint/resume:** the IAS15 state that carries across steps — time and its
+compensation, x, v and their compensations, the trial step, the eight `B` coefficient vectors and
+the counters — is exported as (hi, lo) binary64 pairs (`Ias15Snapshot`, new in
+`ferroastro-integrators`), plus the driver state (next output index, last event sign, passages so
+far) and the SHA-256 of the scenario text, encoded with postcard. A resume refuses a checkpoint of
+another scenario (`FA-E1302`). An interrupted run stops after the first accepted step that
+reaches the requested time (it never shortens a step), so the uninterrupted and the interrupted
+runs take the same steps. Batch runs: `run_batch` with an optional rayon `parallel` feature (off
+for wasm32). New third-party crates: schemars (MIT), postcard (MIT OR Apache-2.0), rayon
+(MIT OR Apache-2.0); DEP-015 checklist below once added. The fresh-process tests drive the
+`ferroastro scenario run|resume` CLI subcommands.
+
+**Checks** (margin = |Δ| / tolerance). Tolerances fixed here, before any run.
+| # | check | tier | oracle | tolerance | rationale |
+|---|---|---|---|---|---|
+| 1 | every `ci/scenarios/*.toml` parses and validates in Rust, and validates against the committed JSON Schema in Python; the committed schema equals the generated one | PR | the schema | exact | CI-002 |
+| 2a | Sun + 8 planets (EMB as one body, Newtonian + solar J2) from header.440, 100 yr: an uninterrupted run vs a run stopped at 50 yr and resumed from its checkpoint **in a fresh `ferroastro` process**, f64 and double-double | PR (cached header.440, CI-005) | the uninterrupted run | **bitwise** (every sampled state, every passage, the final state and the step count) | CI-010, ADR-0013 |
+| 2b | the same, 1000 yr interrupted at 500 yr (the WP13 brief), f64 and double-double | nightly | the uninterrupted run | **bitwise** | CI-010 |
+| 3 | TST-005: the 2a scenario run twice in-process and twice in fresh processes; NUM-022: a batch of 8 scenarios run with 1 thread and with N threads | PR | itself | **bitwise** | determinism; batch speed-up reported, not asserted (NUM-022's "linear scaling" needs the fixed runner class, CI-008) |
+| 4 | REF-011 (FerroAstro side): an unknown switch → `FA-E1202` naming it; `gr_eih = true` → `FA-E1201` naming it; the Python validator rejects the unknown switch too | PR | — | exact codes and switch names | REF-011 |
+| 5 | real data: the Sun + Mercury `gr_1pn_central` test-particle scenario from a **fresh download** of header.440, stop after 1001 passages: rate vs PHY-005, and bitwise equal to the direct-API run (`SingleBody::from_state` on the same header, rung GR-SCHW, i.e. WP7's D5), f64 and double-double | data | `PHY005-GR-NUM-RATE` (42.980 ± 0.001); D5 run | ± 0.001 ″/cy; **bitwise** | PHY-005; expected D5 values 42.980085159575 (f64), 42.980085160105 (DD) |
+| 6 | NUM-010 in N-body mode: Sun + Mercury Newtonian from header.440, 100 yr, perihelion events (Mercury − Sun) on dense output vs the analytic two-body times t₀ + kP (μ = GM☉ + GM☿, P and t₀ from the initial relative osculating elements) | PR (cached header.440) | analytic Kepler | **≤ 1e-4 s** (PROVISIONAL) | NUM-010 asks ≤ 1e-6 s *location* and round-off agreement on a Kepler orbit; the accumulated phase round-off over 415 orbits (~3e9 s × few e-16 ≈ 1e-6 s) is bounded generously, and the location bracket is checked separately (≤ 1e-6 s) |
+| 7 | IC hash: identical for two assemblies of the same scenario; changes when one IC bit, the constants version or the precision changes | PR | — | exact | CI-002 / NUM-013 identity of differential runs |
