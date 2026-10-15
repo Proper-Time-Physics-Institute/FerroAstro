@@ -36,6 +36,13 @@ use ferroastro_system::{Catalogue, InitialConditions, Tier};
 use ferroastro_vectors::VectorSet;
 use std::path::PathBuf;
 
+// Run lengths in Julian years: run controls chosen for PR-tier cost, not physical values.
+const CHECKPOINT_YEARS_F64: f64 = 30.0; // lint: allow-literal(run length, PR-tier cost)
+const CHECKPOINT_YEARS_DD: f64 = 6.0; // lint: allow-literal(run length, PR-tier cost)
+const TWICE_YEARS: f64 = 20.0; // lint: allow-literal(run length, PR-tier cost)
+const BATCH_STEP_YEARS: f64 = 5.0; // lint: allow-literal(batch run lengths 5..40 yr)
+const HASH_YEARS: f64 = 0.01; // lint: allow-literal(a few steps: only the IC hash is used)
+
 fn header() -> (Header, String) {
     let f = ferroastro_testdata::locate_product("de440-header").expect("cached header.440");
     let prov = f.provenance();
@@ -70,9 +77,9 @@ fn checkpoint_round_trip_and_mismatch_refusal() {
     for precision in [Precision::F64, Precision::Dd] {
         let s = planets(
             if precision == Precision::F64 {
-                30.0
+                CHECKPOINT_YEARS_F64
             } else {
-                6.0
+                CHECKPOINT_YEARS_DD
             },
             precision,
         );
@@ -110,12 +117,12 @@ fn checkpoint_round_trip_and_mismatch_refusal() {
 fn same_scenario_twice_and_batch_thread_counts_are_bitwise() {
     let (h, prov) = header();
     let data = DataSources::none().with_header(&h, &prov);
-    let s = planets(20.0, Precision::F64);
+    let s = planets(TWICE_YEARS, Precision::F64);
     let (a, b) = (run(&s, &data).unwrap(), run(&s, &data).unwrap());
     assert_eq!(a.differing_words(&b), Some(0));
     assert_eq!(a.stats, b.stats);
     let batch: Vec<ScenarioSpec> = (1..=8_u32)
-        .map(|k| planets(5.0 * f64::from(k), Precision::F64))
+        .map(|k| planets(BATCH_STEP_YEARS * f64::from(k), Precision::F64))
         .collect();
     let timed = |threads: usize| {
         let t = std::time::Instant::now();
@@ -255,14 +262,14 @@ fn nbody_perihelion_events_match_analytic_kepler_times() {
 fn ic_hash_depends_on_the_initial_conditions_only() {
     let (h, prov) = header();
     let data = DataSources::none().with_header(&h, &prov);
-    let short = |s: &mut ScenarioSpec| s.span.years = 0.01;
-    let mut a = planets(0.01, Precision::F64);
-    let mut b = planets(0.01, Precision::F64);
+    let short = |s: &mut ScenarioSpec| s.span.years = HASH_YEARS;
+    let mut a = planets(HASH_YEARS, Precision::F64);
+    let mut b = planets(HASH_YEARS, Precision::F64);
     b.output.cadence_days = None;
     short(&mut a);
-    let mut dd = planets(0.01, Precision::Dd);
+    let mut dd = planets(HASH_YEARS, Precision::Dd);
     short(&mut dd);
-    let mut fewer = planets(0.01, Precision::F64);
+    let mut fewer = planets(HASH_YEARS, Precision::F64);
     fewer.bodies.retain(|x| *x != BodyName::Neptune);
     let hash = |s: &ScenarioSpec| run(s, &data).unwrap().ic_hash;
     let (ha, hb, hd, hf) = (hash(&a), hash(&b), hash(&dd), hash(&fewer));

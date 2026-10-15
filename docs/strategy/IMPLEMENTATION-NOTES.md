@@ -2748,9 +2748,9 @@ with n = √((GM☉ + GM☿)/a³), the PHY-004 acceptance convention that every
 | rung | analytic rate before | after | Δ | numerical − analytic after (tolerance) |
 |---|---|---|---|---|
 | GR-SCHW | 42.980475410 | **42.980478977** (= PHY-004 analytic) | +3.567e-6 | −1.020e-5 (NUM-013(a) 1e-4) |
-| SR-a | 7.163412595 (est.) | 7.163413185 | +5.9e-7 | −7.5e-7 |
-| J2 (Park17, inclined) | 0.028601476 | 0.028601479 | +2.4e-9 | +8e-10 (5e-4) |
-| LT | −0.002018349 | −0.002018349 | −1.7e-10 | −2e-9 |
+| SR-a | 7.163412591 (WP6 NUM-012 table, line "SR-a … analytic") | 7.163413185 | +5.94e-7 | −7.5e-7 |
+| J2 (Park17, inclined) | 0.028601476 | 0.028601479 | +2.4e-9 (derived; printed values differ by 3e-9) | +8.2e-10 (5e-4) |
+| LT | −0.002018349 | −0.002018349 | −1.7e-10 (derived; below the 9 printed decimals) | −2e-9 |
 
 `kepler_period` (reported "Keplerian period") stays the period of the integrated dynamics
 (μ = GM☉), so the N-2B line still prints equal anomalistic and Keplerian periods. All 30 ladder
@@ -2815,3 +2815,111 @@ for wasm32). New third-party crates: schemars (MIT), postcard (MIT OR Apache-2.0
 | 5 | real data: the Sun + Mercury `gr_1pn_central` test-particle scenario from a **fresh download** of header.440, stop after 1001 passages: rate vs PHY-005, and bitwise equal to the direct-API run (`SingleBody::from_state` on the same header, rung GR-SCHW, i.e. WP7's D5), f64 and double-double | data | `PHY005-GR-NUM-RATE` (42.980 ± 0.001); D5 run | ± 0.001 ″/cy; **bitwise** | PHY-005; expected D5 values 42.980085159575 (f64), 42.980085160105 (DD) |
 | 6 | NUM-010 in N-body mode: Sun + Mercury Newtonian from header.440, 100 yr, perihelion events (Mercury − Sun) on dense output vs the analytic two-body times t₀ + kP (μ = GM☉ + GM☿, P and t₀ from the initial relative osculating elements) | PR (cached header.440) | analytic Kepler | **≤ 1e-4 s** (PROVISIONAL) | NUM-010 asks ≤ 1e-6 s *location* and round-off agreement on a Kepler orbit; the accumulated phase round-off over 415 orbits (~3e9 s × few e-16 ≈ 1e-6 s) is bounded generously, and the location bracket is checked separately (≤ 1e-6 s) |
 | 7 | IC hash: identical for two assemblies of the same scenario; changes when one IC bit, the constants version or the precision changes | PR | — | exact | CI-002 / NUM-013 identity of differential runs |
+
+### What was built (WP13)
+- **`ferroastro-scenario` (L5, new; builds for wasm32).** `ScenarioSpec` (serde + schemars):
+  `mode`, `bodies` (12 names → NAIF ids), `central_body`, `[initial_conditions]`,
+  `[constants] gm_set`, `[forces]` (exactly the seven CI-002 switches), `[integrator]`
+  (`ias15 | abm | whfast | irk16`, `f64 | dd`, optional ε, PC tolerance, first step), `[span]`
+  (`years`, optional `stop_after_passages`), `[output]` (`cadence_days`, `perihelion`). Parsing
+  checks unknown `[forces]` keys first (`FA-E1202`, named), then the schema (`FA-E1200`), then 15
+  value/consistency rules (`FA-E1203`, field named). `refuse_unsupported(runner, supports)` turns
+  a runner's capability function into `FA-E1201` naming `forces.<switch>`,
+  `integrator.<name>` and so on (REF-011). `json_schema()` (committed as
+  `ci/scenarios/scenario.schema.json`; the Rust test fails on drift, `FA_REGENERATE_SCHEMA=1`
+  rewrites it). `ic_hash` / `canonical_ic_text` (format in the module docs). `digest()` ties a
+  checkpoint to its scenario.
+- **`ci/scenarios/`** (new): `sun-mercury-gr1pn-header440` (PHY-005, test particle),
+  `sun-8planets-newton-j2-1000yr` and `-dd` (CI-010), `sun-mercury-newton-header440` (NUM-010
+  events), `sun-planets-moon-newton-j2-10yr` (the WP12 check-4 model). `tools/validate_scenarios.py`
+  (ruff, mypy strict) validates them with the committed schema; `tools/tests/test_validate_scenarios.py`.
+- **`ferroastro-integrators`:** `Ias15Snapshot` / `Ias15::snapshot` / `Ias15::restore` (exact
+  `(hi, lo)` pairs; `FA-E0405` for another backend, wrong lengths, non-finite or non-normalised
+  values), optional `serde` feature. New codes `FA-E0405`, `FA-E1200…1203`, `FA-E1300…1303`
+  (core range table extended).
+- **`ferroastro-propagate` (L8, new; builds for wasm32 without `parallel`).** `run`, `run_until`
+  (stop after the first accepted step at or beyond a time, return a `Checkpoint`), `resume`,
+  `run_batch` (rayon behind `parallel`), `DataSources` (header / SPK / supplied states with
+  provenance; no I/O), `supports` (the capability table), `RunOutput` (exact records,
+  postcard), `Checkpoint` (postcard, format tag, scenario digest, IC hash, precision, IAS15
+  snapshot, driver counters). N-body: WP12's model (Newtonian mutual → geocentric Moon when Earth
+  and Moon are both listed → solar J2 with reaction, DE440 J2SUN/ASUN, WGCCRE 2015 pole), IAS15
+  with dense output, states sampled at `k·cadence` from the step polynomials, perihelion events
+  of each listed body relative to `central_body` on dense output (rising `r·v`, either
+  direction of time). Test particle: `TestParticle` + `SchwarzschildPpn` / `SolarJ2` /
+  `LenseThirring`, μ = GM of the central body, ICs assembled in f64 exactly as WP7's D5.
+  `passages` (moved from `ferroastro-ladder::passage_run`, which now re-exports it) gains
+  `perihelia_until` with the same step sequence.
+- **`ferroastro-cli`:** `ferroastro scenario validate|run|resume` (data products by path, each
+  reported with its SHA-256; exit 2 with the FA-E message on refusal).
+- **CI:** the wasm32 job also builds `ferroastro-scenario` and `ferroastro-propagate`.
+- **Vectors:** `tests/vectors/scenario-runs.toml` (the two NUM-010 tolerances of check 6).
+
+### WP13 results (PR tier, cached pinned header.440, 2026-10-15, toolchain 1.95.0)
+Provenance: header.440 `https://ssd.jpl.nasa.gov/ftp/eph/planets/ascii/de440/header.440`, sha256
+`0f4636b6…6ac3359`, retrieved 2026-10-15 (cache hit, re-verified on load).
+
+| check | measured | tolerance | margin |
+|---|---|---|---|
+| 1 Rust: 5 `ci/scenarios/*.toml` parse and validate; committed schema = generated | pass; equal | exact | — |
+| 1 Python: `validate_scenarios.py` on the same files; unknown switch, bad mode, missing `newton` rejected | 5 files, 0 problems; all three rejected | exact | — |
+| 2a f64, Sun + 8 planets (EMB) Newtonian + J2, 100 yr, stopped at 50 yr (step 15 890, t = 1.577993e9 s), resumed in a **new `ferroastro` process** | **0** differing 64-bit words over 11 states, 416 passages and the final state; counters equal (31 765 steps) | bitwise | — |
+| 2a double-double, 20 yr, stopped at 10 yr (step 3 188), resumed in a new process | **0** differing words (3 states, 83 passages); counters equal (6 354 steps) | bitwise | — |
+| 2 in process, encode → decode → resume: f64 30 yr / DD 6 yr; checkpoint 5 063 / 5 071 bytes | 0 / 0 differing words; another scenario's and a truncated checkpoint refused with `FA-E1302` | bitwise | — |
+| 3 TST-005: the 2a runs twice in two processes; 20 yr twice in process | 0 differing words, equal counters | bitwise | — |
+| 3 NUM-022: batch of 8 runs (5…40 yr), 1 vs 8 threads, and vs single runs | 0 differing words; equal to single runs. Wall 4.57 s vs 1.04 s: **speed-up 4.38** (the ideal for this mix of lengths is 180/40 = 4.5) | bitwise; speed-up reported | — |
+| 4 REF-011: `gr_eih`, `asteroids = 343`, `gr_1pn_central` in N-body mode, `integrator = abm` through `run`; `gr_eih`, `asteroids`, unknown `fifth_force` through the CLI | `FA-E1201` naming `forces.gr_eih` / `forces.asteroids` / `forces.gr_1pn_central` / `integrator.abm`; CLI exit 2 with `FA-E1201` / `FA-E1202` naming the switch | exact | — |
+| 6 NUM-010, Newtonian Sun + Mercury N-body, header.440, 100 yr, 416 passages (31 763 steps) vs t_p + kP (μ = GM☉ + GM☿, P = 87.969462 d) | **1.287e-5 s** | 1e-4 s | 0.13 |
+| 6 event location (remaining Newton step at the located time) | **2.38e-7 s** (f64 recomputation floor of r·v) | 1e-6 s | 0.24 |
+| 7 IC hash: same scenario twice, with/without cadence equal; DD and without-Neptune differ | f64 `145ecfd1…`, DD `20894746…`, no Neptune `fbf18f82…` | exact | — |
+| scenario run = WP12 direct API (`NBodyPropagator`), Sun + 8 planets + geocentric Moon + J2, 10 yr | **0** of 60 words differ; 5 172 = 5 172 steps | bitwise | — |
+| moved passage search: every ladder PR-tier number | identical to before the move (only wall times differ) | bitwise | — |
+
+### WP13 real-data result (data tier, check 5; run 2026-10-15, once with an **empty** `FA_DATA_DIR`, i.e. a fresh download, and once from the cache)
+`ci/scenarios/sun-mercury-gr1pn-header440.toml` → `ferroastro-propagate` vs the WP7 D5 direct-API
+run on the same header.440 (url above, sha256 `0f4636b6…6ac3359`, 22 802 bytes,
+Last-Modified "Tue, 22 Dec 2020 00:51:11 GMT"):
+
+| precision | scenario rate (″/cy) | direct API (D5) | bits equal | passages | steps | PHY-005 (42.980 ± 0.001) |
+|---|---|---|---|---|---|---|
+| f64 | **42.980085159575** | 42.980085159575 | yes (all 1001 passages identical, same ICs) | 1001 | 76 505 | |Δ| 8.5e-5, margin 0.085 |
+| double-double | **42.980085160105** | 42.980085160105 | yes | 1001 | 76 505 | margin 0.085 |
+
+Both equal the values pre-registered from WP7 (42.980085159575 / 42.980085160105). IC hash of
+the test-particle run: `05aa1ea2…` (the same for f64 and DD, see deviation 5).
+
+### Mutation probes (WP13; each applied by a script, the named tests run, the file restored; tree clean afterwards)
+| mutant | result |
+|---|---|
+| IAS15 restore drops the predictor coefficients B | killed (integrator checkpoint tests: 342/343 of 600 steps differ) |
+| IAS15 restore drops the time compensation | killed (15 / 209 differing steps) |
+| resume resets the sample index | killed (in-process checkpoint test) |
+| the checkpoint stop shortens the last step instead of stopping after it | killed |
+| falling `r·v` crossings counted as perihelia | killed (check 6) |
+| `gr_eih` silently accepted by `supports` | killed (refusal test) |
+| IC hash ignores the low parts | killed (check 7) |
+| unknown-switch pre-check removed | killed (`FA-E1200` instead of `FA-E1202`) |
+| solar J2 silently dropped from N-body scenarios | killed (scenario = direct API) |
+| test-particle header IC scaled before differencing (`X1·AU − XS·AU`) | killed (check 5, data tier only) |
+
+### Progress-review corrections (status in WP13)
+- **F1–F4:** applied in WP11, unchanged. The new `data_` test makes no Horizons query, so it is
+  not in the `horizons` test group.
+- **F5:** applied (first section above).
+- **`cargo check --workspace` before every push:** done for every WP13 commit. One commit
+  (`a1a8885`) was pushed with a clippy finding in a test (an unfulfilled lint expectation; it
+  built); fixed in the next commit `552a530`.
+- WP14 PHY-012 protocol, PHY-014, WP16/WP17 items, NUM-023 guard and the human-only list:
+  untouched by WP13.
+
+### DEP-015 provenance checklist (new dependencies in Cargo.lock)
+| crate | role | licence (file read) | maintenance | WASM |
+|---|---|---|---|---|
+| `schemars` / `schemars_derive` 1.2.2 | `ferroastro-scenario` (JSON Schema export, derive only) | MIT (`LICENSE` read: "Copyright (c) 2019 Graham Esau") | 1.2.2 released 2026-07-27; locked instead of 1.2.3 (2026-10-12, three days old) | yes (built) |
+| `dyn-clone` 1.0.20, `ref-cast`/`-impl` 1.0.27, `serde_derive_internals` 0.30.0 | transitive (schemars) | MIT OR Apache-2.0 (both files) | dtolnay / serde-rs | yes |
+| `postcard` 1.1.3 | `ferroastro-propagate` checkpoint/output encoding (`alloc` only) | MIT OR Apache-2.0 (both files) | 2025-07-24 | yes (built) |
+| `cobs` 0.3.0 | transitive (postcard) | MIT OR Apache-2.0 (both files) | 0.5.1 exists (2026-03-03); postcard 1.1.3 requires 0.3 | yes |
+| `embedded-io` 0.4.0 / 0.6.1 | in Cargo.lock only (optional postcard features, not compiled) | MIT OR Apache-2.0 (both files) | — | — |
+| `rayon` 1.12.0, `rayon-core` 1.13.0, `crossbeam-deque` 0.8.8, `-epoch` 0.9.21, `-utils` 0.8.23 | optional `parallel` feature of `ferroastro-propagate` (enabled by the native CLI only) | MIT OR Apache-2.0 (both files) | rayon 1.12.0 released 2026-04-14 | not built for wasm32 |
+
+`cargo deny check`: advisories, bans, licenses, sources ok.
