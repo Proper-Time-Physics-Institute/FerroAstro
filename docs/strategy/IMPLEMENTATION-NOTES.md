@@ -2523,3 +2523,176 @@ nightly-feasible.
 Expectations written before running (order of magnitude only, for the reviewer): 1PN mean-motion
 drift over 10 yr ≈ 3·2π·N_orbits·μ/(c²a)·a gives Jupiter ~20 km, Earth ~300 km, Mercury
 ≳ 10³ km. A run with Pluto added is reported as a second row set (not asserted).
+
+### What was built (WP12)
+- **`ferroastro-forces::nbody`** (new deps: `ferroastro-system`, `ferroastro-ephem`; layer check
+  green, wasm32 build green):
+  - `ForceTerm<F, R>` (object-safe): `name`, `gauge`, `parameters`, `tiers`, `bind`,
+    `accumulate`, `potential_over_g`, `supplies_moon_relative`.
+  - Terms: `NewtonianMutual` (Major↔Major, pairs `i < j`), `MinorFromMajors` (`MinorReaction::On`
+    by default), `RingMasses` (fixed masses), `GeocentricMoon` (Taylor differential, 12 terms by
+    default, minimum 4, closed form above |q| = 0.05), `SolarJ2WithReaction` (configurable pole,
+    Majors only). `SolarJ2`'s field moved into a shared `j2_field` without changing its arithmetic.
+  - `Layout` / `View` / `Accelerations`: component-major `SoA` flat vectors, DE Earth–Moon
+    variables (EMB + Moon − Earth), optional Neumaier accumulation (`with_compensation`); ordinary
+    bodies accumulate directly in the integrator's output slice (no allocation unless compensated).
+  - `NBodyModel<F, R>`: `SecondOrderSystem` + `ForceModel`, `pack`/`unpack`/`earth_moon`,
+    `energy_over_g` (kinetic + every term's potential), `momentum_over_g`, `describe`.
+  - `NBodyPropagator<F, R>`: the IAS15 hook (TDB epoch in, typed `SystemState` out).
+  - `examples/nbody_cost.rs`: cost-only timing (used to size 1b).
+- **`ferroastro-integrators`: unchanged.** IAS15 is layout-agnostic, so the hook needed no
+  integrator change.
+- Tests: `src/nbody/tests.rs` (U2, U3, tiers, geocentric vs DD barycentric accelerations,
+  compensation, coded errors, pack/unpack), `tests/nbody_de440.rs` (U1, 1a, 2, 4),
+  `tests/nbody_moon_formulations.rs` (3), `tests/nbody_brouwer.rs` (1b, nightly). Vectors:
+  `tests/vectors/nbody.toml`. The nightly profile runs 1b alone (`threads-required`), which
+  changes scheduling only.
+
+### WP12 results (PR tier, cached pinned JPL products, 2026-10-15, toolchain 1.95.0)
+Provenance: header.440 sha256 `0f4636b6…6ac3359`; de440.bsp sha256 `a4ce9bf9…fff7c4b5`, both
+retrieved 2026-10-15 (cache hit, re-verified on load).
+
+| check | measured | tolerance | margin |
+|---|---|---|---|
+| U1 `NewtonianMutual` vs M0 kernel, 11 header bodies | **0** (0 differing words) | bitwise | — |
+| U2 J2 reaction `|Σμa|/(ε Σμ|a|)` | **0.100** | 8 | 0.013 |
+| U3 Taylor (12 terms) vs DD direct difference, worst of 4 geometries | **0.568 ε** of the tidal term | 4 ε | 0.14 |
+| U3, 4 terms (reported) | 0.45 ε (Sun-like, q = 1.5e-4) … **6.4e6 ε** (Sun aligned with ρ, q = −5.1e-3) | — | — |
+| U3, direct f64 difference (reported) | 15 … 349 ε | — | — |
+| geocentric vs DD-barycentric accelerations (synthetic) | Moon − Earth 1.4e-16 rel., EMB 5.3e-16 | 1e4 ε / 1e3 ε | — |
+| 1a momentum, 100 yr, 51 756 steps | `|ΔP|/Σμ|v|` = 5.2e-16 = **0.010 ε√N** | 64 ε√N | 1.6e-4 |
+| 2 TST-005 f64 (100 yr ×2) / DD (1 yr ×2, 516 steps) | **0 / 0** differing words, equal step counts | exact | — |
+| 3a DD geocentric vs DD barycentric Moon − Earth, 10 yr (ε = 1e-12; 14 066 / 14 047 steps) | **7.2e-13 km** | 1e-6 km | 7e-7 |
+| 3b f64 round-off of Moon − Earth, 10 yr: geocentric / barycentric | 1.47e-7 km / 2.19e-5 km: **gain 148.9** | > 1 | — |
+| 3c f64 geocentric vs f64 barycentric | 2.19e-5 km = **1.001 ×** the barycentric round-off | ≤ 2 × | 0.50 |
+
+**Check 4 (real data): Newtonian + solar J2 vs de440.bsp, 1969-06-28 → +10 yr, 365 samples
+every 10 d, IAS15 default (5 346 steps).** Maximum position residual over the span, km:
+
+| body | barycentric | heliocentric | final (barycentric) | with Pluto added (barycentric, reported) |
+|---|---|---|---|---|
+| Sun | 1.381 | — | 1.281 | 2.362 |
+| Mercury | 3408.9 | 3409.9 | 2059.7 | 3410.7 |
+| Venus | 877.3 | 878.2 | 877.3 | 879.0 |
+| Earth | 527.8 | 526.9 | 505.8 | 529.0 |
+| Moon | 696.1 | 695.1 | 674.9 | 697.1 |
+| Mars system | 387.9 | 389.0 | 370.5 | 387.2 |
+| Jupiter system | **32.39** | 31.91 | 31.83 | 34.52 |
+| Saturn system | **6.79** | 5.55 | 6.79 | 7.49 |
+| Uranus system | **11.47** | 11.00 | 11.47 | 3.87 |
+| Neptune system | **6.39** | 7.12 | 6.39 | 7.20 |
+| Pluto system | — | — | — | 7.13 |
+| Moon − Earth (geocentric) | 177.2 | — | 175.4 | 177.2 |
+
+Asserted (pre-registered): outer planets ≤ 100 km → **32.39 km (Jupiter), margin 0.32. Pass.**
+The inner-planet and Moon residuals have the size the plan expected from the missing 1PN terms
+(Mercury ≳ 10³ km, Earth ~ 300–500 km). This is a sanity check, not a fidelity claim. Pluto's
+absence mostly shows in Uranus (11.5 → 3.9 km).
+
+### Mutation probes (WP12; each reverted with `git checkout`, tree clean afterwards)
+| mutant | result |
+|---|---|
+| J2 reaction on the Sun removed | killed (U2, 1a) |
+| Taylor coefficient sign (`c_k = +c_{k−1}(2k+1)/2k`) | killed (U3, geocentric accelerations, 3) |
+| Newtonian Earth/Moon terms via `add` (double-counted in Moon − Earth) | killed (geocentric accelerations, 3) |
+| EMB mass fractions swapped | killed (geocentric accelerations, 1a, 3, 4) |
+| geocentric Moon term drops the third bodies | killed (geocentric accelerations, 3) |
+| J2 evaluated at `r_Sun − rᵢ` | killed (U2) |
+| `MinorReaction::Off` ignored | killed (tiers) |
+| Ring bodies not frozen in `finish` | **survived: equivalent mutant.** No built-in term ever adds to a Ring body, so the freeze only guards user-written terms. |
+
+### Progress-review corrections (status in WP12)
+- **F1–F4** were applied in WP11 and are unchanged here. F4's test-group filter does not need
+  WP12's tests, which make no Horizons queries.
+- **F5 (μ convention): not applied in WP12.** It changes `ferroastro-ladder`/`ferroastro-analytic`,
+  not this WP's crates. The WP11 analysis still holds: the N-body tests here compute no analytic
+  rate, so no WP12 number depends on the convention. It must be settled before WP14's NUM-013(b)
+  differentials. The natural place is WP13, whose PHY-005 scenario rung is the first consumer.
+  **NEEDS HUMAN REVIEW:** one μ, or the WP11 rule "μ of the Keplerian problem that produced the
+  elements".
+- **`cargo check --workspace` before every push:** done for every WP12 commit.
+- WP14/PHY-014/WP16/WP17 items: not applicable to WP12; nothing in WP12 touches them.
+
+### WP12 1b — N-body Brouwer ensemble with J2 (nightly, release, local; logs `target/wp12/brouwer-20261015T102158Z-6595c61.log` and `target/wp12/brouwer2-*-e12ba0e.log`)
+32 runs × 100 000 yr, **1 010 886 862 IAS15 steps in total**. Wall time was 2 585 s on the first
+run and 3 332 s on the second (the machine was shared). The pre-registered size was estimated at
+~20 min; the real-IC runs took ~45–55 min, so the nightly override allows 60 min.
+
+| quantity (ensemble RMS, fit from 10 Mercury orbits to 1e5 yr) | slope | status |
+|---|---|---|
+| relative energy error, energy evaluated in f64 (**pre-registered**) | **0.050 ± 0.027** | **FAIL** vs 0.5 ± 0.1 |
+| \|ΔP\| / Σμ\|v\| | 0.813 ± 0.014 | reported (final 2.4e-13) |
+| relative \|L\| error | 1.004 ± 0.011 | reported. **Physics, not round-off:** a fixed-pole J2 conserves only L·k̂ |
+| post-hoc: energy of the same f64 states evaluated in double-double | 0.278 ± 0.023 | reported only, added after the failure |
+| post-hoc: (L − L₀)·k̂ / \|L₀\| | 0.102 ± 0.017 | reported only |
+
+The second run reproduced the first bit for bit in every pre-registered column (TST-005
+evidence at 1e9 steps).
+
+**Reading (NEEDS HUMAN REVIEW).** The f64-evaluated relative energy error is 1.0e-15 at 10 Mercury
+orbits and 1.9e-15 at 1e5 yr. It sits on the f64 evaluation floor of the total energy for the
+whole span, so the pre-registered fit measures the floor and not round-off growth. Two things make
+the observable insensitive:
+- Mercury, which sets the global IAS15 step, carries ~1e-5 of the system's energy.
+- Jupiter's energy is integrated with ~10⁴ steps per orbit.
+
+The double-double evaluation removes the evaluation floor. It shows the true energy error staying
+at ~1e-16 for ~800 yr and then growing to 1.3e-15 by 1e5 yr. Fitted by eye over 820 yr → 35 700 yr,
+that segment is roughly t^0.57. This is a **post-hoc window**: it is reported, not claimed.
+Neither diagnostic shows the systematic (slope ≈ 1) drift that WP3/WP6 found for Sun + Mercury.
+
+**What changed in the test.** Following the `nightly_num023_long_ensemble_known_failure`
+precedent, the test is now a **known-failure guard**. It passes while the pre-registered slope
+still fails NUM-023's ±0.1, and it fails if that ever stops reproducing. It cites no requirement.
+The tolerance (±0.1) and expected value (½) are unchanged.
+
+Decisions for humans:
+- whether NUM-023's energy diagnostic for N-body runs should evaluate the energy in double-double;
+- whether it should use a per-body observable (e.g. Mercury's Keplerian energy is not conserved,
+  so this needs thought);
+- or whether it should use a fit window that starts after the floor. Any of these would be a new
+  pre-registration.
+
+**NUM-023 is NOT shown for the N-body model.**
+
+### Deviations and NEEDS HUMAN REVIEW (WP12)
+1. **1b failed as pre-registered** (above). The test is converted to a known-failure guard
+   (precedent: NUM-023 long ensemble). The diagnostics were added post hoc.
+2. **`MinorFromMajors` reaction defaults to on** (Minor bodies attract the Majors). NUM-009's text
+   does not say; the WP11 review asked that the N-AST pull be kept. A requirement-text change
+   for PR #2.
+3. **Solar J2 acts on Majors only** (NUM-009 literal: Minor bodies feel the Majors' Newtonian
+   forces only). Whether DE440 applies J2 to the asteroids was not checked against the paper.
+4. **Solar pole for J2:** the tests use the IAU WGCCRE 2015 pole (`ferroastro-frames`). That DE440
+   uses this pole for its J2 term is **unverified here** (the DE440 paper was not re-opened). The
+   pole is configurable.
+5. **DE440 Eq. 29.** The reaction form `a_Sun = −Σ (μᵢ/μ_Sun) aᵢ` follows NUM-019's citation and
+   the momentum argument; the equation number and its typography were not re-read from the paper
+   (same status as OI-50).
+6. **NUM-008's "four terms suffice in f64".** In this `q` formulation, 4 terms leave a truncation
+   of up to 6.4e6 ε of the tidal term for a Sun-aligned geometry (|q| = 5e-3); 12 terms reach
+   < 1 ε. The default is 12. That 4 terms suffice for the 2 mm/40 yr target in a different
+   expansion (Subbotin et al. 2023) is not contradicted, since periodic errors of that size stay
+   sub-mm. The journal statement needs a source check.
+7. **Ring tier:** Ring bodies are frozen (acceleration 0). The total momentum of the moving bodies is
+   then not conserved (external field). The Ring-freeze mutant is equivalent for the built-in terms.
+8. **TST-005 docs clause** (a float-reproducibility section) is not addressed here.
+9. **Check 4 runs in the PR tier** (pinned JPL cache, CI-005), like WP11's check 1, so WP12 adds no
+   `data_`-tier test. The data tier was re-run as a regression check: 23/23 passed, all cache hits.
+10. **F5** is deferred to WP13 (see above).
+
+### WP12 gate results (2026-10-15, local, toolchain 1.95.0)
+| command | result |
+|---|---|
+| `cargo fmt --all --check` | pass |
+| `cargo clippy --workspace --all-targets --all-features -- -D warnings` | pass |
+| `cargo nextest run --workspace` + `cargo test --doc --workspace` | **203 passed, 28 skipped** (the `data_`/`nightly_` ignores); 13 doctests pass |
+| `cargo deny check` | pass |
+| `RUSTDOCFLAGS="-D warnings" cargo doc --no-deps --workspace` | pass |
+| ruff check / ruff format --check / mypy strict / pytest | pass / pass / pass / 35 passed |
+| `reuse lint` | pass |
+| `trace.py --check` | pass: 119 requirements, 394 citing tests (TRACE.md regenerated) |
+| `check_layers.py`, `lint_literals.py` | 16 crates, 67 edges, 0 errors; 0 findings |
+| wasm32 build of `ferroastro-forces` | pass |
+| data tier (`--profile data --run-ignored only`) | 23/23 pass (regression; cache hits) |
+| nightly 1b (`nbody_brouwer`) | known-failure guard passes; the pre-registered assertion **fails** (slope 0.050) |
