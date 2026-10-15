@@ -3042,3 +3042,239 @@ run had been made when this was written.
 The WP6 test `num013_isolation` (J2 at 2.25e-7, equatorial geometry, μ = GM☉) is unchanged and
 still carries the 2.25e-7 clause; check 6 adds the scenario path with DE440 constants and the real
 geometry, under a new vector id.
+
+### What was built (WP14)
+- **`ferroastro-diffrun` (L9, new; builds for wasm32, sequential there).**
+  - `Plan::bodies(name, template, base, full, toggles, pairs, legs)` builds the configurations
+    `base`, `base + X`, `base + X + Y`, `full`, `full − X` and `full − X − Y`, and their
+    combinations:
+    - P-add (`Protocol::Add`, primary);
+    - the P-add cross term (`CrossTerm`);
+    - P-remove (`Remove`, informational);
+    - the P-remove cross term (`CrossTermRemove`, informational; added after the first nightly
+      run, see below).
+  - `Plan::switches` builds force-switch toggles (NUM-013(a)).
+  - Every configuration is derived from one scenario template by changing only the body list
+    and the span.
+- **IC identity (NUM-013, CI-009).** `check_identical_ics` runs before any integration. It
+  requires:
+  - the same constants version, mode and epoch for every leg;
+  - each body's IC record (GM, position, velocity as exact binary64 parts) bitwise identical in
+    every leg that contains it;
+  - one IC hash over the base bodies (Sun, Mercury), the "shared IC hash", for every leg.
+
+  A violation is `FA-E1401`, naming the two legs and the body.
+- **Legs (CI-010).** `run_leg` runs N-body legs in segments: `run_until`, then a chain of the new
+  `ferroastro-propagate::resume_until`.
+  - With a store directory, the checkpoint and the track so far are written after every segment
+    (postcard, atomic rename). An interrupted run resumes from the last segment.
+  - A foreign store file is refused (`FA-E1402`). A completed leg's file is deleted, so results
+    are never cached across runs.
+  - Legs run on scoped threads; each leg is deterministic.
+- **Track.** Only Mercury − Sun is kept from each segment: daily samples and the dense-output
+  passages. A 2000-yr, 11-body run therefore never holds every body's states.
+- **One estimator (CI-009).** `Estimator` wraps `Park2017<Icrf>`, the passage source, the
+  tracked body and the fit window. Its id string is printed in every table.
+  - Primary: the sampled states (`SampledOrbit::from_states`, the path any tool's state output
+    takes).
+  - Cross-check: the same fit on the passages located on dense output.
+- **Output.** `PlanResult` holds the per-configuration estimates, the rows (value, root-sum-square
+  of the jack-knife σ, cross-check value), markdown and JSON.
+- **`ferroastro-propagate`:**
+  - `resume_until`, and `initial_conditions` (the per-body records exactly as hashed).
+  - **Bug fix:** the output cadence of N-body runs was not signed, so a **backward** run recorded
+    only its initial sample. WP13 had tested backward events but not backward samples. A
+    regression assertion is in `chained_segments_equal_the_uninterrupted_run_in_both_directions`.
+    Forward runs are bitwise unchanged.
+- **`ferroastro-precession`:** `PARK17_TABLE2` (the 14 integer combinations) and
+  `park17_table2_frequencies`.
+- **`ferroastro-vectors`:** optional `blocked_by = "OI-NN"` (schema.json and the Rust parser), and
+  `Vector::blocking_open_item(open_items_md)`. A vector is non-gating while its item is unticked
+  in OPEN-ITEMS.md, or missing from it, and becomes gating as soon as a maintainer ticks it.
+- **Error codes:** `FA-E1400` (plan), `FA-E1401` (IC mismatch), `FA-E1402` (store).
+- **Vectors:**
+  - `tests/vectors/park2017-table3.toml`: the 7 PHY-012 rows and 6 interaction rows, transcribed
+    from the PDF and all `blocked_by = "OI-38"`.
+  - `tests/vectors/diffrun.toml`: `NUM013-ISOLATION-DIFF-SCENARIO` and
+    `DIFFRUN-IC-SOURCE-AGREEMENT`.
+- **Scenario:** `ci/scenarios/phy012-newton-full-header440.toml`, the plan's template.
+- **CI:** the wasm32 job also builds `ferroastro-diffrun`.
+
+### WP14 results (PR tier, cached pinned header.440, 2026-10-15, toolchain 1.95.0)
+Provenance: header.440 `https://ssd.jpl.nasa.gov/ftp/eph/planets/ascii/de440/header.440`, sha256
+`0f4636b6…6ac3359`, 22 802 B, Last-Modified "Tue, 22 Dec 2020 00:51:11 GMT", retrieved 2026-10-15.
+
+| check | measured | tolerance | margin |
+|---|---|---|---|
+| 1. 7-configuration plan (Venus, Jupiter, pair, full), ±10 yr legs | shared IC hash `6d875b67…bada552` in all 14 legs | exact | — |
+| 1. Venus record changed by one ulp in one leg | `FA-E1401` "initial condition of NAIF 2 differs" | exact | — |
+| 1. double-double leg | `FA-E1401` (NAIF 10) | exact | — |
+| 1. malformed plans (toggle of a base body, pair out of range, toggle outside `full`, empty toggle, unknown configuration in a combination) | `FA-E1400` each | exact | — |
+| 2. Sun + Mercury + Venus, 6 yr in 1-yr segments through a store, interrupted after 2, resumed by a new call | **0** differing words over 2 192 samples and 25 passages; 1 908 = 1 908 steps; 4 segments run on resume; store file removed; foreign store `FA-E1402` | bitwise | — |
+| 3. P-add, P-remove and cross-term rows = signed sums of the configuration rates | bitwise equal | exact | — |
+| 6. NUM-013(a) via the harness, GR-SCHW: Δ 42.980085106 vs analytic 42.980097432 (same osculating orbit, n from μ = GM☉) | **−1.233e-5** | 1e-4 | 0.12 |
+| 6. J2 (DE440 J2, i = 3.376784° to the WGCCRE 2015 solar equator): 0.027771082 vs 0.027771046 | +3.6e-8 | 1e-4 | 0.0004 |
+| 6. LT: −0.002014821 vs −0.002014818 | −2.7e-9 | 1e-4 | 0.00003 |
+| 6. IC hash identical for the base and the three toggles | yes | exact | — |
+
+The GR offset (−1.2e-5) is the anomalistic-vs-Keplerian period effect already seen in WP7's D5
+(42.980085159575 there, with the single-body estimator).
+
+### WP14 real-data result (data tier; `data_diffrun_header_and_spk_ics_are_distinct_sources_with_equal_contributions`)
+Products: header.440 (above), and de440.bsp
+`https://ssd.jpl.nasa.gov/ftp/eph/planets/bsp/de440.bsp`, sha256 `a4ce9bf9…fff7c4b5`,
+119 799 808 B, Last-Modified "Tue, 22 Dec 2020 00:56:26 GMT", retrieved 2026-10-15.
+
+| check | measured | tolerance | margin |
+|---|---|---|---|
+| a plan mixing header and SPK legs | refused, `FA-E1401` (NAIF 10) | exact | — |
+| shared IC hash, header vs SPK | `6d875b67…` vs `040c0b78…` (different) | — | — |
+| P-add Venus, JDEPOC ± 20 yr, quadratic fit: header 278.451264339134, SPK 278.451264358356 | **−1.92e-8** ″/cy | 1e-6 (`DIFFRUN-IC-SOURCE-AGREEMENT`, PROVISIONAL) | 0.019 |
+
+### WP14 nightly results (checks 4 and 5; release, local)
+Logs:
+- `target/wp14/nightly-phy012-44602b2.log` (first run, 44 legs, 73 s wall);
+- `target/wp14/nightly-phy012-<sha>.log` (with the P-remove cross terms, 56 legs, 86 s wall on 32
+  threads, 23.4 M IAS15 steps).
+
+Every number common to both runs is identical to the last printed digit. Evidence tables were
+written to `target/diffrun/phy012-*.{md,json}`.
+
+**Setup:**
+- Model: `newtonian-mutual`, IAS15 ε = 1e-9, safety 0.25, PC tolerance 1e-16, dense output, f64.
+- Legs from JDEPOC 2440400.5: −969.570157 yr and +1030.594114 yr.
+- Fit window: JD 2086295 to 2816795, with 8 304 passages per configuration.
+- Shared IC hash: `6d875b67…`.
+- The base (Sun + Mercury) rate is −1.6e-9 ″/cy, which is the estimator floor on a closed
+  ellipse.
+- The sampled-state estimate and the dense-output estimate agree to 6 decimals in every
+  configuration.
+- The jack-knife σ per configuration is ≤ 0.0017 ″/cy.
+
+| row | Park17 Table 3 | **P-add (primary)** | P-add − Park | P-remove (informational) | P-remove − Park |
+|---|---|---|---|---|---|
+| Venus | 277.4176 | 277.394894 | **−0.022706** (margin 4.5, OUTSIDE) | 277.418142 | +0.000542 |
+| Earth/Moon | 90.8881 | 90.869103 | **−0.018997** (3.8, OUTSIDE) | 90.888795 | +0.000695 |
+| Mars | 2.4814 | 2.479384 | −0.002016 (0.40) | 2.481426 | +0.000026 |
+| Jupiter | 153.9899 | 154.028732 | **+0.038832** (7.8, OUTSIDE) | 153.990192 | +0.000292 |
+| Saturn | 7.3227 | 7.365749 | **+0.043049** (8.6, OUTSIDE) | 7.322772 | +0.000072 |
+| Uranus | 0.1425 | 0.139602 | −0.002898 (0.58) | 0.142531 | +0.000031 |
+| Neptune | 0.0424 | 0.042068 | −0.000332 (0.07) | 0.042378 | −0.000022 |
+
+**PHY-012 / NUM-013(b) under the maintainer protocol (P-add): 3 of 7 rows within ±0.005, and 4
+outside (Venus, Earth/Moon, Jupiter, Saturn), by up to 8.6× the tolerance.** The rows are
+non-gating (`blocked_by = "OI-38"`), so the test reports and passes. The misses are reported here
+unaltered: no span, fit term or protocol was changed to approach the Park values.
+
+Cross terms (informational). Park17's interaction rows are shown for scale.
+
+| pair | Park17 | P-add cross term | P-remove cross term |
+|---|---|---|---|
+| Venus+Earth/Moon | −0.0209 | +0.022316 | +0.020782 |
+| Venus+Jupiter | −0.0012 | +0.000743 | +0.001116 |
+| Earth/Moon+Mars | −0.0016 | +0.001744 | +0.001570 |
+| Mars+Jupiter | +0.0002 | −0.000351 | −0.000199 |
+| Jupiter+Saturn | +0.0411 | −0.040937 | −0.041038 |
+| Saturn+Uranus | +0.0004 | −0.000298 | −0.000380 |
+
+**Other checks:**
+- Full Newtonian system (planets with Earth and Moon resolved, plus Pluto, no asteroids):
+  **532.303644** ″/cy. Full − base is the same value.
+- Sum of the seven P-add rows: 532.319533. With the six P-add cross terms: 532.302750. The
+  remainder, +0.000894, is higher-order interactions and Pluto.
+- The full rate is informational for PHY-013, which is WP15's (asteroids). It is not compared
+  with 532.30 here, because the Park17 N-SUM includes asteroids and the Mercury rows.
+
+**Reading (informational; for the humans who own OI-38):**
+1. **P-remove reproduces all seven Park17 rows within 0.0007 ″/cy** (margins ≤ 0.14 of ±0.005).
+   P-add misses by 0.02–0.04 ″/cy, which is the size of the cross terms, as the red team
+   predicted.
+2. **The P-remove cross terms equal Park17's interaction rows with the sign reversed**, within
+   ≤ 1.2e-4 ″/cy for all six pairs. Our cross term is x = ϖ̇(F) − ϖ̇(F−X) − ϖ̇(F−Y) + ϖ̇(F−X−Y).
+   Park's rows therefore match −x = [ϖ̇(F) − ϖ̇(F−X−Y)] − P-remove(X) − P-remove(Y): the joint
+   removal minus the two single removals.
+
+   **This comparison was added after the first nightly run had shown the P-remove rows. It is
+   post hoc and must be read as such.** The P-remove rows themselves were pre-registered as
+   informational before any run.
+3. Park17 §4 says the same in words (PDF, page 5; quoted verbatim):
+
+   > "The effects on the Mercury perihelion precession due to the other planets have been
+   > computed in a similar manner [GM set to zero, difference from the nominal ephemeris]. The
+   > effect for each planet comes from both its direct effect on Mercury and indirect effects due
+   > to the changes in the orbits of the other planets. Table 3 shows both direct and indirect
+   > effects. For example, the Venus row represents the difference in Mercury's precession rate
+   > when the mass of Venus is set to zero, thus the direct effect of Venus. The 'Venus+Earth/Moon'
+   > row represents the change in precession due to the change in the Earth's orbit when the GM
+   > of Venus is set to zero, thus noted as the indirect effect."
+
+   And, for the Mercury row:
+
+   > "The effect of Mercury on its perihelion precession rate was computed by integrating the
+   > planetary ephemeris with the mass parameter (GM) of Mercury set to zero and evaluating the
+   > difference in the perihelion precession rate from the nominal ephemeris."
+
+   This is evidence for OI-38 (and OI-09). It does not close either. Closing them is a maintainer
+   decision, and so is any change of the PHY-012 protocol. WP14 keeps P-add as the primary
+   protocol, as instructed.
+
+### Mutation probes (WP14; each applied by a script, the PR tier of the crate run, the file restored with `git checkout`; tree clean afterwards)
+| mutant | result |
+|---|---|
+| `check_identical_ics` skips the per-body record comparison | first **survived** (the DD leg also changed the base hash). Killed after adding the one-ulp Venus tamper assertion |
+| `evaluate` uses \|coefficient\| | killed (signed-sum test) |
+| `Track::merge` does not sort | killed (the estimator refuses unsorted epochs) |
+| store `load` ignores the scenario digest | killed (foreign-store test) |
+| resume from the store restarts the segment count at 1 | first **survived** (the output is bitwise the same; the mutant only costs extra checkpoints). Killed after pinning `segments_run = 4` |
+| backward cadence unsigned (the WP13 bug reintroduced) | killed (chained-segment test) |
+| `resume_until` ignores its stop | killed (chained-segment test) |
+| `blocking_open_item` inverted | killed (vectors test) |
+| test-particle solar J2 sign flipped | killed (NUM-013(a) scenario test) |
+
+### Progress-review corrections (status in WP14)
+- **F1–F4:** applied in WP11, unchanged. No WP14 test queries Horizons.
+- **F5:** applied in WP13 (`9fd3b40`). The NUM-013(a) scenario check uses the integrated dynamics'
+  own mean motion (μ = GM☉) for its analytic rate, and says so in its vector. The 3.6e-6 ″/cy
+  convention difference is 0.036 of its tolerance.
+- **WP14 PHY-012:**
+  - The maintainer protocol (P-add) is the primary protocol, with identical ICs (asserted) and
+    one estimator.
+  - Cross terms are reported separately. Misses are reported, not tuned.
+  - OI-09's Mercury row is not used.
+  - The N-AST ±0.0003 differential waits for WP15.
+- **PHY-014, WP16/WP17:** not touched by WP14.
+- **`cargo check --workspace` before every push:** done for every WP14 commit.
+- **NUM-023 guard and the human-only list:** untouched.
+
+### Deviations and NEEDS HUMAN REVIEW (WP14)
+1. **PHY-012 under P-add fails 4 of 7 rows by 0.019–0.043 ″/cy. P-remove passes all 7 within
+   0.0007 ″/cy.** Park17's text describes a GM-set-to-zero-from-nominal protocol (quoted above).
+   **NEEDS HUMAN REVIEW (OI-38):**
+   - should the PHY-012 protocol become P-remove, with the interaction rows defined as joint
+     removal minus single removals?
+   - Until a maintainer closes OI-38, the rows stay non-gating.
+   - Requirement text (PHY-012 and NUM-013 notes) belongs to PR #2 and is not edited here.
+2. **OI-09 evidence.** Park17 explains its "Mercury" row as GM☿ set to zero, acting mainly through
+   Venus's orbit, plus Mercury's J2 and C22 (about 0.00036 ″/cy). FerroAstro cannot reproduce
+   that row with point masses and a fixed Mercury IC without a decision on what "GM☿ = 0" keeps
+   fixed. **NEEDS HUMAN REVIEW.**
+3. **NUM-013(a) through scenarios uses DE440 J2 and the real geometry,** under a new vector. The
+   scenario spec has no J2 override (CI-002 constants come from `gm_set`). The 2.25e-7 clause
+   stays asserted by WP6's `num013_isolation`.
+4. **`blocked_by` added to the vector schema** (ADR-0004 surface). It is an optional field, and a
+   blocked vector is still loaded, printed and compared. **NEEDS HUMAN REVIEW:** confirm the
+   schema change, and confirm the rule that ticking the OPEN-ITEMS.md box makes the vector
+   gating automatically.
+5. **`DIFFRUN-IC-SOURCE-AGREEMENT` = 1e-6 ″/cy** is an agent-set engineering bound, fixed before
+   its run (measured 1.9e-8). PROVISIONAL.
+6. **Propagate bug fix:** backward N-body runs recorded no samples after t = 0 (WP13). Forward
+   output is bitwise unchanged. No WP13 result used backward samples.
+7. **Agent-added scenario** `ci/scenarios/phy012-newton-full-header440.toml`. `ci/**` is a
+   human-owned surface (as WP13 deviation 1).
+8. **The jack-knife σ of a row is reported as the root-sum-square over its configurations.** This
+   is an upper bound, because the runs share most of their periodic signal. A paired jack-knife
+   would need common passage times.
+9. **Park17's "1000 January 1 to 3000 January 1"** is implemented as J2000 ± 1000 Julian years,
+   as in WP5. The two differ by about 12 days at the start and 8 days at the end.
+10. **The nightly PHY-012 test runs in about 90 s,** so it fits the nightly profile's default
+    timeout. The checkpoint store (50-yr segments) is exercised by the nightly run itself.
