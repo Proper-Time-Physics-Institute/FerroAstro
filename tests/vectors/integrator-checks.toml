@@ -87,3 +87,17 @@ tolerance = { abs = 0.05 }
 tolerance_rationale = "Not blind: chosen after a WP6 probe measured +0.0112 (k = 1/7) and -0.150 (mutant k = 1/6). Justification independent of that number: b7 is not exactly proportional to dt^7 (the Radau fit mixes in O(dt^8) terms, a relative O(omega dt) ~ 1e-2 effect at ~70 steps per orbit), and the band must exclude the nearest plausible wrong exponents, |1 - 7k| = 0.167 (1/6) and 0.125 (1/8). 0.05 is below half of the smaller of these and above the O(1e-2) contamination."
 verified_by = "WP6 builder agent, 2026-10-15: derived from R&S Eq. 11; values measured on the m0-foundation branch, see IMPLEMENTATION-NOTES WP6."
 notes = "NEEDS HUMAN REVIEW (WP6 progress review, tagged in WP7): non-blind tolerance. The 0.05 band was fixed after the probe values were seen; a maintainer should confirm the band from the rationale alone. Value and tolerance unchanged since WP6."
+
+[[vector]]
+id = "NUM006-F64-BENCH-RATIO"
+requirement = ["NUM-006"]
+quantity = "ratio of the f64 IAS15 Criterion benchmark median (ias15_sun_mercury/propagate_1_julian_year, ~317 steps) after the Real refactor to the non-generic f64 baseline, each the median of 5 alternated runs on one machine"
+value = 1.0
+unit = "1"
+kind = "analytic"
+source = "NUM-006 acceptance: the f64-path benchmark is unchanged relative to a non-generic f64 baseline. Monomorphisation at f64 should emit the same machine code, so the expected ratio is exactly 1; any difference is measurement noise or a real regression."
+citation = "FerroAstro docs/requirements/NUM.md NUM-006; ADR-0002 Confirmation"
+retrieved = "2026-10-15"
+tolerance = { rel = 0.02 }
+tolerance_rationale = "PROVISIONAL (WP7 brief): 2 % on the median of 5 alternated runs. NUM-006 says 'unchanged' without a number; 2 % is above the run-to-run scatter of a median on a shared 32-thread machine and below the 10-30 % that a missed inlining or a boxed scalar would cost. NEEDS HUMAN REVIEW: confirm the band."
+verified_by = "WP7 builder agent, 2026-10-15: written before the first comparison run; tools/bench_num006.py reads the band from this vector."
