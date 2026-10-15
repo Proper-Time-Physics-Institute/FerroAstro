@@ -489,7 +489,14 @@ fn small_body_switches_add_minor_and_ring_bodies_without_touching_the_majors() {
             .iter()
             .all(|s| s.bodies == [NaifId::SUN.0, NaifId::MERCURY_BARYCENTER.0])
     );
-    let fin = out.final_state.as_ref().unwrap();
+    // The final state honours `sample_bodies` too, so the ring is checked on an unrestricted run
+    // (WP15 review: the check above was vacuous with `sample_bodies = [Sun, Mercury]`).
+    let mut unrestricted = full.clone();
+    unrestricted.output.sample_bodies = None;
+    unrestricted.output.cadence_days = None;
+    let all = run(&unrestricted, &data).unwrap();
+    let fin = all.final_state.as_ref().unwrap();
+    let mut ring_checked = 0;
     for (i, id) in fin.bodies.iter().enumerate() {
         if let Some(r) = b.records.iter().find(|r| r.naif == *id)
             && cat.get(NaifId(*id)).is_ok_and(|e| e.tier() == Tier::Ring)
@@ -500,8 +507,10 @@ fn small_body_switches_add_minor_and_ring_bodies_without_touching_the_majors() {
                 "ring point {id} moved"
             );
             assert!(fin.velocities[i].iter().flatten().all(|v| *v == 0.0));
+            ring_checked += 1;
         }
     }
+    assert_eq!(ring_checked, ring, "every ring point is checked");
     let again = run(&full, &data).unwrap();
     assert_eq!(
         format!("{:?}", out.final_state),
@@ -518,4 +527,76 @@ fn small_body_switches_add_minor_and_ring_bodies_without_touching_the_majors() {
     let e = run(&too_many, &data).unwrap_err();
     println!("{e}");
     assert!(e.to_string().contains("forces.asteroids"), "{e}");
+}
+
+/// WP15 review: the Minor bodies enter the dynamics with their header.440 GMs and pull on the
+/// Majors. With `asteroids` and `kbos` (no ring, which is an external field), mutual Newtonian
+/// forces plus the Minor reaction conserve the total GM-weighted momentum `Σ GMᵢ vᵢ` over every
+/// body, to round-off (the WP12 bound). Zeroed small-body GMs in the model, or no reaction,
+/// leave the asteroids' momentum change uncompensated and fail this check. The momentum is taken
+/// from the barycentric final states of a run of a few steps and of a 1-yr run (the IC records
+/// hold the geocentric Moon).
+///
+/// Verifies: NUM-009, REF-003, NUM-019
+#[test]
+fn small_bodies_carry_their_gm_and_conserve_total_momentum() {
+    let (h, prov) = header();
+    let file = small_body_file();
+    let data = DataSources::none()
+        .with_header(&h, &prov)
+        .with_small_bodies(&file);
+    let mut s = spec("phy012-newton-full-header440.toml");
+    s.forces.asteroids = 343; // lint: allow-literal(the DE440 asteroid count, a switch value)
+    s.forces.kbos = true;
+    s.output.cadence_days = None;
+    let ic = initial_conditions(&s, &data).unwrap();
+    let cat = {
+        let mut c = Catalogue::from_header(&h, &prov).unwrap();
+        c.with_identified_kbos().unwrap();
+        c
+    };
+    let val = |p: &ferroastro_scenario::Parts| p[0] + p[1];
+    // (momentum / G, sum GM|v|, Minor share of that sum, IAS15 steps)
+    let momentum = |years: f64| {
+        let mut t = s.clone();
+        t.span.years = years;
+        let out = run(&t, &data).unwrap();
+        let fin = out.final_state.unwrap();
+        let (mut p, mut scale, mut minor) = ([0.0_f64; 3], 0.0_f64, 0.0_f64);
+        for r in &ic.records {
+            let gm = val(&r.gm);
+            let i = fin.bodies.iter().position(|b| *b == r.naif).unwrap();
+            let v = fin.velocities[i].map(|x| val(&x));
+            for k in 0..3 {
+                p[k] += gm * v[k];
+            }
+            let w = gm * v[0].hypot(v[1]).hypot(v[2]);
+            scale += w;
+            if cat
+                .get(NaifId(r.naif))
+                .is_ok_and(|e| e.tier() == Tier::Minor)
+            {
+                minor += w;
+            }
+        }
+        (p, scale, minor / scale, out.stats.steps)
+    };
+    let (p0, scale, minor_share, s0) = momentum(HASH_YEARS);
+    let (p1, _, _, s1) = momentum(SMALL_BODY_YEARS);
+    let dp = (p1[0] - p0[0]).hypot(p1[1] - p0[1]).hypot(p1[2] - p0[2]) / scale;
+    let steps = s0 + s1;
+    #[expect(clippy::cast_precision_loss, reason = "step counts are small")]
+    let ulps = dp / (f64::EPSILON * (steps as f64).sqrt());
+    println!(
+        "{} bodies, {steps} IAS15 steps: |P(1 yr) - P({HASH_YEARS} yr)| / sum GM|v| = {dp:.3e} = \
+         {ulps:.3} eps sqrt(N_steps); Minor share of the momentum scale {minor_share:.3e}",
+        ic.records.len(),
+    );
+    assert!(minor_share > 0.0, "the Minor bodies carry no GM");
+    VectorSet::load_canonical()
+        .unwrap()
+        .get("NBODY-MOMENTUM-ROUNDOFF-ULPS")
+        .unwrap()
+        .check(ulps)
+        .unwrap();
 }
