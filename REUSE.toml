@@ -1,0 +1,6 @@
+version = 1
+
+[[annotations]]
+path = ["NOTICE", "LICENSES/**", ".gitignore", "docs/strategy/journal/**"]
+SPDX-FileCopyrightText = "2026 Proper-Time Physics Institute"
+SPDX-License-Identifier = "Apache-2.0"
