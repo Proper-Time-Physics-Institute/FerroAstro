@@ -346,6 +346,11 @@
           "description": "Exactly two bodies: `central_body` fixed at the origin, the other a massless test\nparticle in its field (the single-body rungs, μ = GM of the central body).",
           "type": "string",
           "const": "test-particle"
+        },
+        {
+          "description": "Oracle stage B (REF-006, WP17): the first body other than `central_body` is a massless\nparticle integrated in the central body's frame (μ = GM of the central body) and pulled by\nevery other listed body, whose positions come from the DE440 SPK (third-body terms with\nthe indirect part; the field bodies are not integrated). Initial conditions `de440-bsp`.",
+          "type": "string",
+          "const": "ephemeris-field"
         }
       ]
     },

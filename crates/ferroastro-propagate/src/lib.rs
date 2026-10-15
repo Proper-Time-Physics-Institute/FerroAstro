@@ -46,6 +46,7 @@
 //! ```
 
 mod error;
+mod field;
 mod nbody;
 mod output;
 mod particle;
@@ -160,6 +161,11 @@ pub fn initial_conditions(
     prepare(spec)?;
     match (spec.mode, spec.integrator.precision) {
         (Mode::TestParticle, _) => particle::initial(spec, data),
+        (Mode::EphemerisField, _) => Err(setup::setup(
+            &spec.name,
+            "ephemeris-field runs have no differential-run IC records",
+            "use run() for oracle stage B",
+        )),
         (Mode::NBody, Precision::F64) => Ok(NBodyRun::<f64>::new(spec, data, None)?.initial()),
         (Mode::NBody, Precision::Dd) => {
             Ok(NBodyRun::<DoubleDouble>::new(spec, data, None)?.initial())
@@ -186,6 +192,8 @@ pub fn run(spec: &ScenarioSpec, data: &DataSources<'_>) -> Result<RunOutput, Pro
     match (spec.mode, spec.integrator.precision) {
         (Mode::TestParticle, Precision::F64) => particle::run::<f64>(spec, data),
         (Mode::TestParticle, Precision::Dd) => particle::run::<DoubleDouble>(spec, data),
+        // `supports` refuses double-double for this mode before we get here.
+        (Mode::EphemerisField, _) => field::run(spec, data),
         (Mode::NBody, Precision::F64) => NBodyRun::<f64>::new(spec, data, None)?.advance(None),
         (Mode::NBody, Precision::Dd) => {
             NBodyRun::<DoubleDouble>::new(spec, data, None)?.advance(None)
@@ -210,11 +218,12 @@ fn checkpoint_of(
 }
 
 fn not_for_test_particles(spec: &ScenarioSpec) -> Result<(), PropagateError> {
-    if spec.mode == Mode::TestParticle {
+    if spec.mode != Mode::NBody {
         return Err(PropagateError::Checkpoint {
             problem: format!(
-                "scenario {} is a test-particle run; checkpointing is implemented for n-body runs",
-                spec.name
+                "scenario {} is a {} run; checkpointing is implemented for n-body runs",
+                spec.name,
+                spec.mode.label()
             ),
         });
     }

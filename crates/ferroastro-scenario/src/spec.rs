@@ -21,6 +21,11 @@ pub enum Mode {
     /// Exactly two bodies: `central_body` fixed at the origin, the other a massless test
     /// particle in its field (the single-body rungs, μ = GM of the central body).
     TestParticle,
+    /// Oracle stage B (REF-006, WP17): the first body other than `central_body` is a massless
+    /// particle integrated in the central body's frame (μ = GM of the central body) and pulled by
+    /// every other listed body, whose positions come from the DE440 SPK (third-body terms with
+    /// the indirect part; the field bodies are not integrated). Initial conditions `de440-bsp`.
+    EphemerisField,
 }
 
 impl Mode {
@@ -30,6 +35,7 @@ impl Mode {
         match self {
             Mode::NBody => "n-body",
             Mode::TestParticle => "test-particle",
+            Mode::EphemerisField => "ephemeris-field",
         }
     }
 }
@@ -483,6 +489,22 @@ impl ScenarioSpec {
                 &self.bodies.len(),
                 "test-particle mode takes exactly two bodies: the central body and the particle",
             );
+        }
+        if self.mode == Mode::EphemerisField {
+            if self.bodies.len() < 3 {
+                return err(
+                    "bodies",
+                    &self.bodies.len(),
+                    "ephemeris-field mode takes the central body, the particle and >= 1 field body",
+                );
+            }
+            if self.initial_conditions.source != IcSource::De440Bsp {
+                return err(
+                    "initial_conditions.source",
+                    &self.initial_conditions.source.label(),
+                    "ephemeris-field mode reads the field and the initial state from de440-bsp",
+                );
+            }
         }
         let ic = self.initial_conditions;
         match (ic.source, ic.epoch_jd_tdb) {

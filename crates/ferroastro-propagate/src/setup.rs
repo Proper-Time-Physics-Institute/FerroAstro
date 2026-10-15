@@ -36,6 +36,11 @@ impl<'a> DataSources<'a> {
         Self::default()
     }
 
+    /// The SPK and its provenance line, if supplied.
+    pub(crate) const fn spk(&self) -> Option<(&'a Spk<'a>, &'a str)> {
+        self.spk
+    }
+
     /// With a parsed `header.440` and its provenance line (URL, SHA-256, retrieval date).
     #[must_use]
     pub const fn with_header(mut self, header: &'a Header, provenance: &'a str) -> Self {
@@ -98,6 +103,23 @@ pub fn supports(item: &str, mode: Mode) -> Result<(), String> {
     ];
     let central_term = matches!(item, "gr_1pn_central" | "lense_thirring");
     let small_bodies = matches!(item, "asteroids" | "kbos" | "kbo_ring");
+    if mode == Mode::EphemerisField {
+        const FIELD: [&str; 4] = [
+            "newton",
+            "integrator.ias15",
+            "integrator.precision.f64",
+            "initial_conditions.source.de440-bsp",
+        ];
+        return if FIELD.contains(&item) {
+            Ok(())
+        } else {
+            Err(
+                "ephemeris-field mode (oracle stage B) implements Newtonian point masses from \
+                 de440-bsp in f64 only"
+                    .into(),
+            )
+        };
+    }
     if ALWAYS.contains(&item)
         || (central_term && mode == Mode::TestParticle)
         || (small_bodies && mode == Mode::NBody)

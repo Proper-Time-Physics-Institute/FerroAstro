@@ -5,7 +5,7 @@
 //! (the code path of the single-body rungs, so a scenario reproduces them bit for bit).
 
 use crate::output::{PassageRecord, RunOutput, StateRecord, parts, parts3};
-use crate::passages::perihelia_until;
+use crate::passages::{grid_samples, perihelia_until, sample_uniform};
 use crate::setup::{
     DataSources, constants_version, de440_solar_spin, epoch, relative_state, setup,
 };
@@ -163,24 +163,44 @@ pub(crate) fn initial(
     })
 }
 
+/// Refuse output requests the test-particle runner does not implement; `Ok(true)` when the
+/// scenario asks for states at a cadence (f64 only, without perihelion output).
+fn check_outputs<R: Real>(spec: &ScenarioSpec) -> Result<bool, PropagateError> {
+    let n = spec.name.as_str();
+    let sampled = spec.output.cadence_days.is_some();
+    let refusal = if spec.span.years < 0.0 {
+        Some("span.years < 0 (test-particle mode)")
+    } else if sampled && R::NAME != f64::NAME {
+        Some("output.cadence_days (test-particle mode, double-double)")
+    } else if sampled
+        && (spec.span.stop_after_passages.is_some() || !spec.output.perihelion.is_empty())
+    {
+        Some("output.cadence_days with perihelion output (test-particle mode)")
+    } else {
+        None
+    };
+    if let Some(switch) = refusal {
+        return Err(ScenarioError::Unsupported {
+            name: n.to_owned(),
+            switch: switch.into(),
+            runner: crate::RUNNER.into(),
+            reason: "test-particle runs integrate forwards and report either perihelion passages \
+                     or, in f64, states at the output cadence"
+                .into(),
+        }
+        .into());
+    }
+    Ok(sampled)
+}
+
 pub(crate) fn run<R: Real>(
     spec: &ScenarioSpec,
     data: &DataSources<'_>,
 ) -> Result<RunOutput, PropagateError> {
     let n = spec.name.as_str();
-    if spec.output.cadence_days.is_some() || spec.span.years < 0.0 {
-        return Err(ScenarioError::Unsupported {
-            name: n.to_owned(),
-            switch: if spec.span.years < 0.0 {
-                "span.years < 0 (test-particle mode)".into()
-            } else {
-                "output.cadence_days (test-particle mode)".into()
-            },
-            runner: crate::RUNNER.into(),
-            reason: "test-particle runs integrate forwards and report perihelion passages only"
-                .into(),
-        }
-        .into());
+    let sampled = check_outputs::<R>(spec)?;
+    if sampled {
+        return run_sampled(spec, data);
     }
     let ParticleIc {
         de,
@@ -259,6 +279,70 @@ pub(crate) fn run<R: Real>(
             .collect(),
         final_state: None,
         stats: run.stats,
+        finished: true,
+    })
+}
+
+/// A test-particle scenario with `output.cadence_days` (f64): the particle's state every cadence
+/// interval from the epoch to the end of the span, each grid time hit exactly
+/// ([`sample_uniform`]); the central body is listed at the origin so that every record holds
+/// both bodies. No passages are searched (the input of sampled-state estimators, CI-009).
+fn run_sampled(spec: &ScenarioSpec, data: &DataSources<'_>) -> Result<RunOutput, PropagateError> {
+    let ParticleIc {
+        de,
+        jd,
+        r0,
+        v0,
+        source,
+        central,
+        particle,
+        mu,
+        records,
+        constants,
+    } = assemble(spec, data)?;
+    let model = model::<f64>(spec, &de, mu)?;
+    let cfg = ias15_config(spec, false);
+    let cadence_s = spec
+        .output
+        .cadence_days
+        .map_or(0.0, |c| c * ferroastro_core::time::SECONDS_PER_DAY);
+    let span_s = spec.span_seconds();
+    let samples = grid_samples(span_s, cadence_s);
+    let (t, r, v) = sample_uniform(&model, r0, v0, cadence_s, samples, cfg)?;
+    let p64 = |z: [f64; 3]| z.map(|c| [c, 0.0]);
+    let zero = [[0.0, 0.0]; 3];
+    let states = t
+        .iter()
+        .zip(r.iter().zip(&v))
+        .map(|(tk, (rk, vk))| StateRecord {
+            t: [*tk, 0.0],
+            bodies: vec![central, particle],
+            positions: vec![zero, p64(*rk)],
+            velocities: vec![zero, p64(*vk)],
+        })
+        .collect();
+    Ok(RunOutput {
+        scenario: spec.name.clone(),
+        scenario_digest: spec.digest(),
+        ic_hash: ic_hash(&constants, spec.mode.label(), parts(jd), &records),
+        precision: spec.integrator.precision.label().into(),
+        constants,
+        ic_source: source,
+        epoch_jd_tdb: parts(jd),
+        model: format!(
+            "{} [{}]; IAS15 epsilon = {:e}, safety = {}, PC tolerance = {:e}, f64, samples every \
+             {} d on an exact grid",
+            model.describe(),
+            model.gauge().label(),
+            cfg.epsilon,
+            cfg.safety,
+            cfg.pc_tolerance,
+            spec.output.cadence_days.unwrap_or(0.0)
+        ),
+        states,
+        passages: Vec::new(),
+        final_state: None,
+        stats: ferroastro_integrators::Ias15Stats::default(),
         finished: true,
     })
 }

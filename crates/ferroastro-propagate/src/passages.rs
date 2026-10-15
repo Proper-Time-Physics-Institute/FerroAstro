@@ -173,6 +173,18 @@ pub fn sample_uniform<S: SecondOrderSystem + ?Sized>(
     Ok((t, r, v))
 }
 
+/// Number of samples on the grid `0, step, 2·step, …` within a span of `span_s` seconds (whole
+/// steps, with a few ulp of slack for spans that are an exact multiple), the initial one included.
+#[must_use]
+pub fn grid_samples(span_s: f64, step_s: f64) -> usize {
+    let limit = span_s * 4.0f64.mul_add(f64::EPSILON, 1.0);
+    let mut intervals: u32 = 0;
+    while step_s > 0.0 && f64::from(intervals + 1) * step_s <= limit {
+        intervals += 1;
+    }
+    usize::try_from(intervals).unwrap_or(usize::MAX) + 1
+}
+
 /// A point of the trajectory: time (s), position (km), velocity (km/s).
 type Point<R> = (R, [R; 3], [R; 3]);
 
