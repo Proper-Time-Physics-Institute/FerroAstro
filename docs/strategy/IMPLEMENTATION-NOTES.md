@@ -315,7 +315,7 @@ miss): sha256 `0f4636b663e6f00af9efa2b605ef23635489f56b23dd1a5e3821d3acc6ac3359`
 | test | measured | oracle / tolerance | result | provenance |
 |---|---|---|---|---|
 | `data_sw92_table1_mercury` | Table 1 Mercury row a, e, I, L, ϖ, Ω | vectors, exact | PASS (all 6 equal) | approx_pos.html sha256 `9f7b30ca…f9c4d742`, Last-Modified 2026-10-06 |
-| `data_horizons_osculating_elements_match` | e rel. diff 1.08e-15, a 1.29e-16; angles ≤ 3e-14° | `HORIZONS-ELEMENTS-AGREEMENT` ≤ 1e-12 | PASS | Horizons API v1.2, DE441, ELEMENTS sha256 `f21a8758…4897a31f91`, VECTORS sha256 `a4557352…44bb5377` |
+| `data_horizons_osculating_elements_match` | e rel. diff 1.08e-15, a 1.29e-16; angles ≤ 3e-14° | `HORIZONS-ELEMENTS-AGREEMENT` ≤ 1e-12 | PASS | Horizons API v1.2, DE441, ELEMENTS sha256 `f21a8758…4897a31f91`, VECTORS sha256 `a4557352…b19efe4` |
 | `data_horizons_gr_rate_from_osculating_elements_vs_park17` | 42.980669 ″/cy (osculating a = 57 909 068.29 km, e = 0.20563029) | Park17 42.9799, ± 0.0027 (3σ, pre-registered) | PASS (+0.00077, 0.85σ) | as above |
 | `data_horizons_n2b_from_de441_state` | 1.09e-9 ″/cy over 1000 yr | `PHY001-NEWTON-RATE` < 1e-6 | PASS | VECTORS sha256 `e04b750d…ebb6357e` |
 - Horizons answers embed a request timestamp, so two downloads of the same query differ in SHA-256 (seen above);
@@ -339,3 +339,10 @@ miss): sha256 `0f4636b663e6f00af9efa2b605ef23635489f56b23dd1a5e3821d3acc6ac3359`
   release mode. AGENTS.md's command list is unchanged (it is a human-owned meta surface).
 - New vectors: `mercury-sw92.toml`, `phy004-gr-analytic.toml`, `integrator-checks.toml`. New defined constants in
   `ferroastro-core::time`: `DAYS_PER_JULIAN_YEAR`, `DAYS_PER_JULIAN_CENTURY`, `J2000_JD`, `Epoch::j2000()`.
+
+### WP3 gate results (2026-10-15, local, toolchain 1.95.0)
+All eight AGENTS.md commands passed: fmt, clippy `-D warnings`, `cargo nextest run --workspace` (53 passed,
+9 skipped = the `data_*`/`nightly_*` tiers) and the doctests, `cargo deny check`, rustdoc `-D warnings`, ruff
+check/format + mypy, `reuse lint` (138/138 files), `trace.py --check` (119 requirements, 91 citing tests).
+Extras: `uv run pytest` (13 passed), MSRV 1.85.0 nextest (52 passed), `data` profile (7 passed, fresh downloads),
+`nightly` profile in release (2 passed).
