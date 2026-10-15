@@ -1490,3 +1490,152 @@ below was fixed before its first run.
 - **TDB→TT** is the exact inverse of ERFA's TT→TDB map `tdb = tt + dtdb(tt)`. It is solved by 3 fixed-point iterations `tt ← tdb − dtdb(tt)`, so round trips close to the backend's precision. ERFA's own `tdbtt` takes a caller-supplied `dtr`. The 6e-13 s difference from pyerfa's one-shot use is inside tolerance 2a.
 - **`dtdb` is geocentric in `ferroastro-time`** (u = v = 0): the TDB of an ephemeris. The ERFA port keeps the topocentric arguments.
 - **UTC exists only through the optional `hifitime` feature** (MPL-2.0, deny.toml exception, unmodified, no_std build). It is never a `TimeScale` marker: `Epoch<Tai>` is the uniform anchor.
+
+### What was built
+- **`ferroastro-erfa` (L1, new; `no_std`, generic over `Real`).**
+  - Ports of `cal2jd`, `jd2cal`, `taitt`, `tttai`, `dtdb` (the full 787-term series plus topocentric terms), `tttdb`, `tdbtt`, `tdbtcb`, `tcbtdb`, `tttcg`, `tcgtt` and the `erfam.h` constants they use.
+  - The function names are ERFA's without the prefix. No `iau…` or `era…` public symbol exists.
+  - The defined decimals (32.184 s, `L_B`, `L_G`, `TDB_0`) are exact to 106 bits in double-double. The f64 backend sees ERFA's binary64 constants bit for bit (tested).
+  - ERFA's non-zero statuses map to `ErfaError` with **FA-E0800–0803**. `ferroastro-core`'s `ErrorCode` lists the same strings, and a test checks that they agree.
+- **Attribution (red-team L8, LIC-004, DEP-009).**
+  - Every ported file carries `Apache-2.0 AND BSD-3-Clause`, `SPDX-FileCopyrightText: 2013-2023 NumFOCUS Foundation`, the ERFA routine and file it came from, and **ends with the ERFA notice, conditions and disclaimer verbatim** (BSD-3 clause 1).
+  - `NOTICE` reproduces them for binary distributions (clause 2). `LICENSES/BSD-3-Clause.txt` was added. `reuse lint` passes.
+  - The crate's `license` is `Apache-2.0 AND BSD-3-Clause`.
+- **`ferroastro-time` (L2, new; generic over `Real`).**
+  - `Convert<T, R>` covers all 20 ordered pairs of {TAI, TT, TDB, TCB, TCG}. Conversions route along the tree TAI–TT–TCG, TT–TDB–TCB.
+  - Helpers: `from_calendar`/`to_calendar`, `tdb_seconds_since_j2000` and its inverse (the propagation variable), `seconds_between`, and `tdb_minus_tt` (geocentric `dtdb`).
+  - `ferroastro-core` gains the `Tai` marker and **FA-E0804** (UTC unavailable) and **FA-E0805** (conversion result).
+- **UTC: optional feature `hifitime` (`=4.3.1`, `default-features = false`, i.e. `no_std` without serde/web-time; MPL-2.0 deny.toml exception, unmodified).**
+  - Module `utc`: `tai_from_utc`, `utc_from_tai` (23:59:60 representable), `tai_minus_utc`, and exact ns conversions `to_hifitime`/`from_hifitime`.
+  - The crate's tests enable the feature through a self dev-dependency. `tools/check_layers.py` now ignores a crate's self dev-edge (pytest added).
+  - The CI wasm32 job builds erfa and time, erfa as `no_std` + `libm`, and time with `hifitime`. All three builds were verified locally.
+- **Tools.**
+  - `tools/erfa_dtdb_table.py` regenerates the Fairhead table and its licence block from ERFA's `dtdb.c`.
+  - `tools/goldens/erfa_time.py` writes the pyerfa goldens. It refuses any pyerfa but 2.0.1.5 and records `generated_by` (path@sha), engine versions and UTC time in the header.
+  - pyerfa lives in a new non-default uv group `goldens`, so PR CI does not install it. The goldens' pytest skips without it.
+- **Goldens:**
+  - `tests/goldens/erfa-time-pyerfa.csv`: 223 epochs, 1550–2650, generated at `6f0dd8c`, SHA-256 `1c6caace…bc10b92`;
+  - `tests/goldens/erfa-dat-pyerfa.csv`: 219 instants, SHA-256 `3fb51aeb…07004`.
+  - Each is pinned by SHA-256 in the `notes` of the vectors that cite it. A regenerated table fails the tests until the vector is updated (golden change).
+
+### WP8 results (offline PR tier, 2026-10-15, toolchain 1.95.0)
+**(1) ERFA t_erfa_c reference values (DEP-009), 23 vectors `ERFA-T-*`, ERFA's own `dval`.** All pass in f64 and DD.
+- Exact (diff 0) for `cal2jd`, `jd2cal` y/m/d, `taitt`, `tttai`, `tttdb` and `tttcg`/`tcgtt`. `tdbtt`, `tdbtcb` and `tcbtdb` differ by 1.1e-16 d (1 ulp; dval 1e-12).
+- `dtdb`: f64 −1.2803680059370025e-3 s, |diff| 3.5e-18 s. DD −1.2803680059369977e-3 s, |diff| 1.3e-18 s (dval 1e-15).
+- `jd2cal` fraction: 2.5e-12 d in both backends (dval 1e-7). The input 50123.9999 is itself a binary64 approximation.
+
+**(2) pyerfa 2.0.1.5 goldens (REF-009), 223 epochs 1550–2650, max |FerroAstro − pyerfa| (pre-registered bound):**
+| vector | f64 | double-double | bound |
+|---|---|---|---|
+| `PYERFA-TT-TAI-MAX-DIFF` | 0 | 1.9e-13 s | 1 ns |
+| `PYERFA-TT-TDB-MAX-DIFF` | 9.6e-12 s | 4.8e-12 s | 1 ns |
+| `PYERFA-TDB-TCB-MAX-DIFF` | 0 | 8.9e-12 s | 1 ns |
+| `PYERFA-TT-TCG-MAX-DIFF` | 0 | 4.8e-12 s | 1 ns |
+| `PYERFA-DTDB-MAX-DIFF` (geocentric and topocentric) | **0 (bitwise)** | 1.1e-15 s | 1e-14 s |
+| `PYERFA-JD2CAL-FD-MAX-DIFF` (y/m/d exact) | 0 | 0 | 1e-15 d |
+
+- In f64 the port is bitwise identical to pyerfa everywhere except TDB→TT. The 9.6e-12 s there (1 ulp of the day fraction) comes from the exact-inverse definition.
+- The DD residuals are DD-versus-binary64 rounding of the same formulas. In DD the decimal constants are exact; in pyerfa they are rounded.
+
+**(3) Round trips A→B→A, all 10 pairs × 2 directions × 223 epochs (DEP-010):**
+- f64 worst **9.6e-12 s** (bound 2e-10 s), on the routes through TCB.
+- DD worst **1.8e-27 s** (bound 1e-20 s; TCG→TCB→TCG, year 2265).
+- TDB-seconds round trip in DD: 1.4e-22 s against `TIME-TDB-SECONDS-DD-ROUNDTRIP` (1e-20 s; non-blind, see below).
+
+**(4) hifitime 4.3.1 cross-checks (DEP-010):**
+- **TAI−UTC through the FerroAstro adapter vs ERFA `dat`, 219 instants, 27 leap steps: max |diff| 0 s (exact).** The independent JD path differs by at most 7.7e-12 s (bound 1 µs).
+- **Second-by-second sweep, 23:59:50 → 00:00:10, around all 27 IERS leap seconds:** UTC→TAI→UTC is the identity, including 23:59:60, and TAI advances exactly 1 s per UTC second.
+- **Finding:** hifitime's *native* UTC handling disagrees with `dat` at **27 of 219** instants: 23:59:59 on the eve of every leap second, e.g. 1972-06-30, hifitime 11 s vs dat 10 s.
+  - hifitime 4.3.1 applies each leap second (old TAI−UTC) seconds early. A direct probe shows it already says 11 s at 1972-06-30T23:59:50 UTC and 37 s at 2016-12-31T23:59:59.
+  - Cause: it compares TAI seconds with the table's NTP-style UTC timestamps.
+  - This is upstream nyx-space/hifitime **#417** (open, 2026-03-23) and **#255** (open, 2024-10-02). The adapter therefore uses only hifitime's table and leap-free calendar, and does the boundary lookup itself.
+- **hifitime TDB − FerroAstro TDB** (seconds since J2000 TDB):
+  - max **1.957e-4 s** (year 2600) over 1550–2650; **3.9e-5 s** over 1950–2050 (23 epochs). Pre-registered analytic bound 4.0e-4 s.
+  - Rationale: hifitime's TDB is the one-term SPICE model, whose frequency is 6282.834 rad/millennium against ERFA's 6283.076. The other Fairhead terms are neglected. The difference grows with distance from J2000.
+  - hifitime TT vs ours: max 5.0e-10 s (hifitime's 1 ns grid).
+
+**Mutation probes (reverted):** each was killed by the PR tier.
+- `TDB_TO_TT_ITERATIONS` 3→1: killed by the DD round trip.
+- Fairhead row 2 phase +1e-9 rad: killed by t_erfa_c f64/DD and the goldens f64/DD.
+- `ELG` last digit: killed by the goldens f64/DD; t_erfa_c's 1e-12 d tolerance does not see it.
+- A planted `pub fn iauTaitt` and `pub const IAU_DJ00`: killed by the iau-prefix scan.
+
+### WP8 real-data results (data tier, `tools/run_long_local.sh --data-only`, empty `FA_DATA_DIR`, every download fresh; log `target/long-local/20261015T080404Z-8100091a0241.log`, commit `8100091`, clean)
+- **15/15 `data_*` pass.**
+- **New `data_leap_seconds_match_iers_and_iana`:**
+  - IERS `Leap_Second.dat`: SHA-256 `6cb6f5d4…e268d7`, 1352 bytes, Last-Modified 2026-07-06, "Updated through IERS Bulletin 72 issued in July 2026", "File expires on 28 June 2027".
+  - IANA `leap-seconds.list`: SHA-256 `db5a895f…bc3433`, 5065 bytes, Last-Modified 2026-09-30, `#@4023129600` (expires 28 June 2027).
+  - Both list 28 entries, the last at MJD 57754 (2017-01-01, 37 s). The two products agree entry for entry.
+  - FerroAstro TAI−UTC at 0 h of each entry and at 23:59:59 before it: **55 instants, max |diff| 0 s** (`LEAPSEC-IERS-IANA-VS-FERROASTRO`, exact). hifitime's table is current.
+  - The IANA file's embedded SHA-1 (`#h` line) is printed, not verified: no SHA-1 implementation in the dependency graph.
+- **Every earlier data result is unchanged to every printed digit:**
+  - Park17 frame 575.309163 ″/cy, jack-knife σ 0.00153;
+  - SW92 dog-leg 571.968047;
+  - GR from DE441 42.9806442;
+  - D5 f64 42.980085159575 / DD 42.980085160105;
+  - Horizons `signature.version` 1.2, DE441 on every answer;
+  - header.440 SHA-256 `0f4636b6…6ac3359`.
+
+### Progress-review corrections (status in WP8)
+WP7 applied every correction in the list: CI tiers, metadata-only vector notes, oracle substitution, data-profile retries, μ convention, error-code ranges and the API-003 report. WP8 adds:
+- **Citing tests and vectors** for DEP-009, DEP-010, REF-009 and LIC-004, plus TST-003 for the goldens. Together with WP7's DEP-007, NUM-006 and NUM-010, all six M1 items in correction 6 are now cited. `trace.py`: 38/92 `test` requirements cited, 271 citing tests.
+- **FA-E08xx range** added to the core `error.rs` table.
+- **NUM-023:** not retried in WP8. WP7's retry found the fix (`pc_b_from_g`, opt-in), and adopting it is a human decision. The known-failure guard and ±0.1 are unchanged.
+- **Human-owned questions** are left unresolved. That covers the full list in correction 8, plus the weekly GitHub `data` job question.
+
+### DEP-015 provenance checklist (new dependencies in Cargo.lock)
+| crate | role | licence (file read) | maintenance | WASM |
+|---|---|---|---|---|
+| `hifitime` 4.3.1 | optional runtime dep of `ferroastro-time` (feature `hifitime`, off by default) | MPL-2.0 (`LICENSE.txt` read: "Mozilla Public License Version 2.0"); deny.toml exception; unmodified | released 2026-08-07 | wasm32-unknown-unknown build verified (no_std config) |
+| `snafu`/`snafu-derive` 0.9.2 | transitive (hifitime) | MIT OR Apache-2.0 (both files) | 2026-07-21 | yes |
+| `lexical-core`/`-parse-float`/`-parse-integer` 1.0.6, `lexical-util` 1.0.7 | transitive (hifitime parsing) | MIT/Apache-2.0 (`LICENSE.md` read). Its Dragonbox Boost/LLVM terms apply only to `write-floats`, which is not compiled here. | 2025-09-21 | yes |
+| `num-traits` 0.2.19 | transitive | MIT OR Apache-2.0 | **2024-05-03 (> 24 months)**: justification below | yes |
+| `heck` 0.5.0 | transitive, build-time only (proc macro of snafu-derive) | MIT OR Apache-2.0 | **2024-03-12 (> 24 months)**: justification below | n/a (host) |
+| `js-sys`, `wasm-bindgen*`, `web-sys`, `bumpalo`, `futures-*`, `slab`, `pin-project-lite`, `rustversion` | in Cargo.lock only: hifitime's emscripten-target dependencies, never built for our targets | MIT and/or Apache-2.0 (`slab`: MIT `LICENSE`) | — | — |
+
+- **Justification for the two > 24-month crates:** `num-traits` is rust-num's stable core trait crate. `heck` is a string-case helper used only at build time.
+- **MSRV:** hifitime declares no `rust-version`. It builds and its tests pass on 1.85.0 (MSRV nextest run below), within ADR-0006 (≤ 1.93).
+- **cargo deny:** passes. Its warnings: `syn` 1 and 2 duplicate (syn 1 via proptest dev, syn 2 via snafu-derive); the anise exception is unused (not a dependency, per the unsettled decision).
+
+### Interpretations and NEEDS HUMAN REVIEW (WP8)
+1. **PROVISIONAL tolerances (red-team C3/H1):** 1 ns for the four `PYERFA-*` time-scale vectors, as the WP8 brief proposes. Measured values are 100× below it. Every other WP8 bound is a round-off or analytic bound written before its run.
+2. **`TIME-TDB-SECONDS-DD-ROUNDTRIP` is non-blind.** It was added after its first run had borrowed `TIME-ROUNDTRIP-DD-MAX` (whose quantity is the scale-pair round trip), with the same 1e-20 s value. Measured 1.4e-22 s.
+3. **TDB→TT definition.** FerroAstro inverts its own TT→TDB exactly (3 fixed-point iterations). ERFA's `tdbtt` takes a caller-supplied TDB−TT, which pyerfa users usually evaluate at the TDB date. The two differ by ≈ 6e-13 s, well inside every tolerance. Choose and document one convention project-wide.
+4. **UTC "only through hifitime".** The adapter takes hifitime's leap-second table, leap-free calendar and ns instant. It does **not** use hifitime's UTC↔TAI boundary logic, which is wrong near every leap second in 4.3.1 (upstream #417, #255). Decide:
+   - whether this reading of ADR-0003/DEP-010 is acceptable;
+   - whether to report the cross-check upstream. No agent comments on external repositories.
+
+   When hifitime is fixed, the report-only native count in `dep010_hifitime` drops to 0.
+5. **REF-009 acceptance is only partly met.**
+   - Met: pyerfa 2.0.1.5 is pinned and produces the TT↔TDB goldens used by PR-fast CI.
+   - Not met: the goldens come from a uv dependency group run locally, not from an "erfa oracle image". The image is WP16, and WP16 must regenerate these goldens identically (compare all non-header lines). The ICRS↔ecliptic and J2000 rotation goldens are WP9.
+6. **DEP-010 "at both f64 and DD".** The ERFA-derived checks run in both backends. The hifitime cross-check is limited to hifitime's integer-nanosecond grid whichever backend is used.
+7. **Topocentric TDB.** `ferroastro-time` converts geocentrically (`dtdb` with u = v = 0), the TDB of a barycentric ephemeris. The topocentric terms (≤ 2 µs) are available through `ferroastro_erfa::dtdb`.
+8. **DEP-007 clause "time arithmetic"** is now covered: `ferroastro-time` and `ferroastro-erfa` are generic over `Real`, and their tests run in f64 and DD. The "ephemeris evaluator" clause remains WP10.
+9. **Tooling change:** `check_layers.py` ignores self dev-dependencies, and a self runtime dependency is still a cycle (pytest). Confirm that this is acceptable layering policy.
+10. **Requirement-text suggestions for PR #2 (not edited here):**
+    - DEP-010: state the tolerances, i.e. 1 ns against the ERFA-derived reference, exact for TAI−UTC, and the hifitime TDB difference as a bound, not an agreement.
+    - DEP-009/LIC-004: record the per-file licence block (red-team L8) and the `era` prefix choice.
+    - REF-009: split the acceptance into WP8 (pinned goldens), WP9 (frames) and WP16 (image).
+    - DEP-002 exception list: hifitime, now in the graph as an optional feature.
+11. **The earlier REUSE failure is fixed.** Commit `1417463` (ERFA port) failed `reuse lint`: the attribution test contained SPDX strings as data. Fixed in `d4a71e6`. The MSRV break (let chains, Rust ≥ 1.88) in the same test was fixed in `8100091`.
+
+### WP8 gate results (2026-10-15, local, toolchain 1.95.0, code tip `8100091`)
+All eight AGENTS.md commands pass (exit 0):
+- fmt;
+- clippy `-D warnings`;
+- `cargo nextest run --workspace`: **148 passed, 18 skipped** (15 `data_*` + 3 `nightly_*`), plus **10 doctests**;
+- `cargo deny check`;
+- rustdoc `-D warnings`, which also passes for `ferroastro-time --features hifitime`;
+- ruff check/format and mypy strict (17 files);
+- `reuse lint`;
+- `trace.py --check`: 119 requirements, 271 citing tests, 0 errors.
+
+Extras:
+- `uv run pytest`: 27 passed. The goldens pytest ran because the `goldens` group was synced locally; CI skips it.
+- `check_layers`: 13 crates, 42 edges, 0 errors.
+- MSRV 1.85.0 nextest without trybuild: **147 passed**.
+- wasm32 builds: all three pass.
+- Data tier: 15/15 pass (above).
+- `doctest_coverage.py` (report-only): 0 of 289 public functions carry a per-function doctest. `ferroastro-erfa` and `ferroastro-time` each have a crate-level doctest. The API-003 clause stays deferred (WP7 item 6).
+- The nightly tier was not re-run: WP8 changes no integrator, force or ladder code.
