@@ -238,3 +238,104 @@ miss): sha256 `0f4636b663e6f00af9efa2b605ef23635489f56b23dd1a5e3821d3acc6ac3359`
     osculating elements carry short-period perturbations, and red-team §1 labels the mean-vs-osculating
     explanation of the 0.0006 gap a hypothesis, so this is not a 1σ test; (c) PHY-001 repeated with the
     Horizons J2000 state as initial condition.
+
+### Clean-room record (DEP-008)
+- Sources used: Everhart 1985 (as described in Rein & Spiegel 2015 §2), and Rein & Spiegel 2015 itself
+  (arXiv:1409.4779 PDF, sha256 `8097c8e5…7e69033d`, read for §2–3: PC loop, δb₆ < 1e-16 and oscillation exit,
+  12-iteration cap, Eq. 11 step control, compensated summation, extended-precision constants). No REBOUND,
+  REBOUNDx, ASSIST or Swiftest source was opened. The Gauss–Radau spacings are **computed** (roots of P₇+P₈ in
+  double-double, rounded once; they equal a 50-digit mpmath evaluation to the last bit), not transcribed.
+
+### Integrator interpretations (`ferroastro-integrators`)
+- **IAS15 shipped, not DOP853.** The full IAS15-class scheme fit in this WP, so no DOP853 fallback was written.
+- Notation: `B₁…B₇` = IAS15's `b₀…b₆`; the step criterion uses `max|B₇|/max|a|` over all coordinates and all
+  node accelerations of the last iteration (R&S "global" estimate, Eq. 8/11), ε = 1e-9, safety 0.25 (reject if
+  the proposed step is < 0.25·Δt, cap growth at 4×). The growth cap and the 0.25 threshold are this WP's reading
+  of the paper ("If dt_trial > dt_required the step is rejected"); R&S reject whenever dt_required < dt_trial.
+  **NEEDS HUMAN REVIEW:** whether to adopt R&S's stricter rejection rule; with ours, steps are rarely rejected.
+- PC loop: Gauss–Seidel order (gₙ updated as soon as aₙ is known); stops when `max|ΔB₇|/max|a| ≤ 1e-16`
+  (at least 2 iterations, because with a zero predictor B₇ can look converged after one pass), when the
+  correction stops decreasing after the 2nd iteration (R&S "begins to oscillate"), or at 12 iterations
+  (counted in `Ias15Stats::unconverged`; 0 in every run reported here). Stalls at the B₇ round-off floor
+  (~1e-12·a, from the divided differences) happen on ~0.06 % of steps and are counted.
+- Predictor for the next step: plain polynomial extrapolation `B'ₖ = qᵏ Σ C(m,k) Bₘ`; Everhart's additional
+  correction term (eₖ) is **not** implemented. Result: ~3 PC iterations/step (R&S report ~2). Rejected steps
+  rescale B by `qᵐ`.
+- **Bug found and fixed by NUM-023:** after a step shortened to land on a requested time, extrapolating that
+  tiny step's polynomial by a huge factor produced garbage predictors and rare energy jumps (up to 3.5e-10 in
+  5 of 32 runs). Fix: restart the predictor from zero when |q| > 1/safety (`Ias15Stats::cold_starts`).
+- `Ias15` is `f64`-only (no `Real` trait yet, as in WP1). It integrates raw slices; typed quantities live at the
+  force-model boundary (`ferroastro-forces` packs/unpacks `State<F, C>`; internal units km, km/s, TDB s).
+- The Kozai–Lidov test of NUM-001's acceptance is **not** implemented (needs a 3-body set-up); only the
+  Kepler test (e = 0.5, 0.9, 100 orbits) plus velocity-dependent damped-oscillator and gyration tests are.
+
+### PHY-001 (rung N-2B)
+- Set-up: barycentric Sun + Mercury, DE440 GM☉ and GM☿, SW92 J2000 mean elements turned into an osculating
+  heliocentric state with μ = GM☉ + GM☿ (caveat C7: documented in the test output), frame "mean ecliptic and
+  equinox of J2000" (SW92). Estimator: LRL eccentricity-vector longitude in the **initial osculating orbit
+  plane** (zero at the initial periapsis), sampled after every accepted step, straight-line OLS fit. This is not
+  the Park-2017 estimator (ADR-0011), which is not needed for an exactly-zero rung.
+- Result (PR tier, 2026-10-15): fitted ϖ̇ = **1.35e-10 ″/cy** over 1000 Julian yr (317 336 steps,
+  6.99e6 force evaluations, 0 rejected, 0 unconverged, 1.96 s at opt-level 1) — 7400× below the 1e-6 bound,
+  which IAS15 therefore reaches; red-team §1's concern applies to DOP853/WH, not to this integrator. The output
+  labels the residual as numerical error. From the Horizons DE441 state (data tier): 1.09e-9 ″/cy.
+- The formal slope error (4.5e-13 ″/cy) understates the uncertainty: round-off residuals are correlated.
+
+### PHY-004 (rung GR-SCHW analytic)
+- `6πGM/(c²a(1−e²))` with GM = GM☉ (statement), period from μ = GM☉ + GM☿ (acceptance), a = 0.38709927 au ×
+  DE440 AU, e = 0.20563593, Julian century 36 525 d × 86 400 s.
+- Result: **42.980478977 ″/cy** (oracle 42.9805 ± 0.0001, |diff| 2.1e-5), 5.0186604e-7 rad/orbit (|diff| 4.4e-14),
+  415.200918 orbits/cy (|diff| 1.8e-5). The C7 alternative (GM☉ + GM☿ in the advance too) gives 42.980486
+  (shift 7.1e-6) and also passes. Minus Park17 Table 3 (42.9799): +0.0006 ″/cy, as journal 01 says.
+- Park17 Table 3 was read in the published PDF (sha256 `24fb2153…2433380b`): GE 42.9799 ± 0.0009.
+
+### NUM-023 (Brouwer-law diagnostics) — NEEDS HUMAN REVIEW
+- Method: ensemble of Sun + Mercury runs differing only in initial mean anomaly; RMS over the ensemble of
+  relative energy error, relative |L| error and mean-longitude error (vs the exact Kepler motion of each run's
+  own initial osculating orbit) at 24 log-spaced checkpoints from 10 orbits; log-log OLS slope. Default size
+  (fixed in code before the first run): 64 runs × 2000 orbits. Nightly tier (`nightly_*`, `#[ignore]`).
+- Default result (release, 9.78e6 steps, 4.5 s on 32 threads): energy slope **0.526**, phase **1.513**,
+  angular momentum 0.479 — both asserted slopes within ± 0.1. PASS.
+- **But longer runs show a bias.** Exploratory 32 runs × 20 000 orbits (4.9e7 steps): energy slope **0.63**
+  (fails ± 0.1), phase 1.59 (passes, barely), and the ensemble *mean* energy error equals its RMS
+  (−4.6e-14 at 2·10⁴ orbits, i.e. a systematic drift of ≈ 3e-20 relative per step), so the late-time growth is
+  linear, not Brouwer. Diagnosis so far: not the clamped-step bug (fixed), not the constants (now correctly
+  rounded; no change), not PC convergence (pc_tolerance = 0 changes nothing: steps reach an exact fixed
+  point). It depends on ε non-monotonically: mean drift at 2·10⁴ orbits is +5.8e-14 (ε 1e-7), −4.6e-14
+  (1e-9), −6.9e-14 (1e-10), −9.4e-15 (1e-11, where both slopes pass: 0.456 / 1.414). NUM-001 asks for Brouwer
+  behaviour over ≥ 1e9 steps; this WP demonstrates it only up to ~1e7 steps per ensemble and **does not meet the
+  1e9-step clause**. The default nightly size was not changed after seeing these results, and no tolerance was
+  touched. Candidate causes to investigate: the missing Everhart predictor correction, the B₇ round-off floor at
+  stalls, and the force evaluated at the rounded `x` instead of `x − compensation`.
+- Forward–backward reversibility (reported only; NUM-023 gives no number): 1000 orbits forward and back,
+  |Δr|/|r₀| = 4.5e-12 (|Δr| = 3.1e-4 km).
+- Exploration knobs (env): `FA_NUM023_RUNS`, `FA_NUM023_ORBITS`, `FA_NUM023_EPSILON`, `FA_NUM023_PC_TOL`.
+
+### Real-data results (data tier, run locally 2026-10-15 UTC with an empty `FA_DATA_DIR`)
+| test | measured | oracle / tolerance | result | provenance |
+|---|---|---|---|---|
+| `data_sw92_table1_mercury` | Table 1 Mercury row a, e, I, L, ϖ, Ω | vectors, exact | PASS (all 6 equal) | approx_pos.html sha256 `9f7b30ca…f9c4d742`, Last-Modified 2026-10-06 |
+| `data_horizons_osculating_elements_match` | e rel. diff 1.08e-15, a 1.29e-16; angles ≤ 3e-14° | `HORIZONS-ELEMENTS-AGREEMENT` ≤ 1e-12 | PASS | Horizons API v1.2, DE441, ELEMENTS sha256 `f21a8758…4897a31f91`, VECTORS sha256 `a4557352…44bb5377` |
+| `data_horizons_gr_rate_from_osculating_elements_vs_park17` | 42.980669 ″/cy (osculating a = 57 909 068.29 km, e = 0.20563029) | Park17 42.9799, ± 0.0027 (3σ, pre-registered) | PASS (+0.00077, 0.85σ) | as above |
+| `data_horizons_n2b_from_de441_state` | 1.09e-9 ″/cy over 1000 yr | `PHY001-NEWTON-RATE` < 1e-6 | PASS | VECTORS sha256 `e04b750d…ebb6357e` |
+- Horizons answers embed a request timestamp, so two downloads of the same query differ in SHA-256 (seen above);
+  the numeric rows are identical. The Keplerian GM Horizons uses is 132 712 462 073.148 km³/s² = GM☉ + GM☿.
+- The +0.00077 ″/cy of the osculating-element rate vs Park17 is larger than the +0.0006 of the mean SW92 elements:
+  single-epoch osculating a, e are not Park's estimator. This neither confirms nor refutes the "mean vs osculating"
+  hypothesis that red-team §1 flags as unverified.
+
+### Benchmark (Criterion, `cargo bench -p ferroastro-precession --bench two_body`, release, 2026-10-15)
+| benchmark | median |
+|---|---|
+| IAS15 Sun + Mercury, 1 Julian yr (~317 steps) | 1.97 ms |
+| IAS15 Sun + Mercury, 100 Julian yr | 196 ms |
+| one Newtonian two-body force evaluation | 11.3 ns |
+- ≈ 6 µs per step for 6 coordinates, ~22 force evaluations per step: the cost is the scheme's bookkeeping, not
+  the force. Not optimised. Machine: 32 logical cores, shared with other work (numbers are indicative).
+- `criterion` is 0.5.1 with default features off: 0.8.x needs Rust 1.86, above the 1.85 MSRV.
+
+### CI and tiers
+- New nextest profile `nightly` (filter `nightly_*`) and a scheduled/dispatch-only CI job `long` running it in
+  release mode. AGENTS.md's command list is unchanged (it is a human-owned meta surface).
+- New vectors: `mercury-sw92.toml`, `phy004-gr-analytic.toml`, `integrator-checks.toml`. New defined constants in
+  `ferroastro-core::time`: `DAYS_PER_JULIAN_YEAR`, `DAYS_PER_JULIAN_CENTURY`, `J2000_JD`, `Epoch::j2000()`.
