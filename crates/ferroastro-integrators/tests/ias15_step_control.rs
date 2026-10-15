@@ -22,8 +22,8 @@ use ferroastro_vectors::VectorSet;
 const E: f64 = 0.5;
 /// Arbitrary first trial step from which the controller finds its own step `h`.
 const DT_START: f64 = 0.01; // lint: allow-literal(dimensionless first trial step)
-/// ε ratio of test (a): 2⁻⁷, so the proposal ratio 1/2 stays inside the 0.25–4 acceptance band.
-const EPS_FACTOR: f64 = 1.0 / 128.0;
+/// log₂ of the ε ratio of test (a): 2⁻⁷, so the proposal ratio 1/2 stays inside the 0.25–4 acceptance band.
+const EPS_FACTOR_LOG2: i32 = -7;
 
 /// Planar Kepler problem with GM = 1.
 struct Kepler;
@@ -49,6 +49,10 @@ impl SecondOrderSystem for Kepler {
 
 /// Length of the second accepted step after a first step of exactly `dt0` (i.e. the
 /// controller's proposal after that first step).
+#[expect(
+    clippy::unwrap_used,
+    reason = "test helper: an integrator error is a test failure"
+)]
 fn proposal(dt0: f64, epsilon: f64) -> f64 {
     let x0 = [1.0 - E, 0.0];
     let v0 = [0.0, ((1.0 + E) / (1.0 - E)).sqrt()];
@@ -75,8 +79,8 @@ fn step_proposal_scales_as_epsilon_to_one_seventh() {
     let eps = Ias15Config::default().epsilon;
     let h = proposal(DT_START, eps);
     let p1 = proposal(h, eps);
-    let p2 = proposal(h, eps * EPS_FACTOR);
-    let k = (p2 / p1).ln() / EPS_FACTOR.ln();
+    let p2 = proposal(h, eps * 2.0_f64.powi(EPS_FACTOR_LOG2));
+    let k = (p2 / p1).log2() / f64::from(EPS_FACTOR_LOG2);
     let v = vs.get("IAS15-EQ11-EPS-EXPONENT").unwrap();
     println!(
         "IAS15 Eq. 11 exponent: measured {k:.17} (expected {}; tolerance {:e}); h = {h:e}, \
