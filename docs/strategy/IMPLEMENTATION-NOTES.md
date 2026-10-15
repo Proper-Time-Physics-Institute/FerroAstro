@@ -2923,3 +2923,65 @@ the test-particle run: `05aa1ea2…` (the same for f64 and DD, see deviation 5).
 | `rayon` 1.12.0, `rayon-core` 1.13.0, `crossbeam-deque` 0.8.8, `-epoch` 0.9.21, `-utils` 0.8.23 | optional `parallel` feature of `ferroastro-propagate` (enabled by the native CLI only) | MIT OR Apache-2.0 (both files) | rayon 1.12.0 released 2026-04-14 | not built for wasm32 |
 
 `cargo deny check`: advisories, bans, licenses, sources ok.
+
+### Deviations and NEEDS HUMAN REVIEW (WP13)
+1. **`ci/scenarios/` created by an agent.** The WP16 plan calls `ci/**` a human-owned surface;
+   WP13 needs the scenario files there (CI-002). Five scenarios and the generated schema were
+   added; no workflow or oracle file under `ci/` was touched. **NEEDS HUMAN REVIEW.**
+2. **"Resumed in a new job" (CI-010) is tested as "resumed in a new process"** on the same
+   machine, through `ferroastro scenario run|resume`. Chaining across CI jobs (artifact upload of
+   the checkpoint) is left to the workflow that first needs it (WP14 nightly).
+3. **PR-tier double-double span.** Check 2a runs DD over 20 yr (stop at 10) to keep the PR tier
+   short; the brief's 1000-yr / 500-yr runs, f64 and DD, are the nightly tests
+   `nightly_checkpoint_resume_1000yr_{f64,double_double}` (results below).
+4. **Test-particle mode** supports neither checkpoints (`FA-E1302`) nor state sampling
+   (`FA-E1201` for `output.cadence_days`) nor backward spans: it reuses the single-body passage
+   search unchanged, which is what makes check 5 bitwise.
+5. **IC hash and precision.** Test-particle ICs are assembled in f64 (as D5) and cast exactly, so
+   the f64 and DD runs share one IC hash (`05aa1ea2…`): they are the same ICs. N-body header ICs
+   are assembled in the run's backend (WP11/WP12 practice), so their hashes differ. The plan's
+   "changes when the precision changes" holds for N-body runs only.
+6. **New crate edges beyond CRATE-PLAN's list:** `propagate → precession, analytic, frames`
+   (passage search, solar pole), `ladder → propagate` (planned), `cli → propagate, scenario,
+   ephem` and `sha2`. All point to lower layers (`check_layers.py`: 0 errors). ARCHITECTURE.md is
+   for humans to amend.
+7. **`horizons` IC source** takes caller-supplied states (`DataSources::with_states`); the driver
+   does no network I/O. It is implemented but not yet exercised by a test (the Horizons client
+   lives in test helpers until `ferroastro-horizons` exists).
+8. **Event-location metric** (check 6, 2.4e-7 s) is the f64 recomputation of `r·v` at the
+   located time and sits on that recomputation's round-off floor; the true bracket is ~1e-11 s.
+9. **NUM-022's acceptance (throughput scales linearly)** is not asserted: this machine is shared
+   and CI-008 fixes the runner class for speed claims. The bitwise 1-vs-N-thread identity is
+   asserted; the 4.38× speed-up (ideal 4.5 for the mix) is reported.
+10. **F5** chose the PHY-004 convention (n from GM☉ + GM☿) for every analytic rate; confirmation
+    requested (first section).
+11. **Requirement-text suggestions for PR #2 (not edited here):** CI-002 could name
+    `ci/scenarios/scenario.schema.json` as the schema; REF-011 could say that FerroAstro refuses
+    unimplemented switches too (`FA-E1201`); TST-005's docs clause (float-reproducibility
+    section) is still open.
+
+### WP13 nightly results (2b; release, local; log `target/wp13/nightly-checkpoint-552a530.log`)
+| run | stop | checkpoint | full run | differing 64-bit words (resumed / second run) | wall |
+|---|---|---|---|---|---|
+| f64, `sun-8planets-newton-j2-1000yr` | 500 yr (step 158 807, t = 1.577882e10 s) | 5 067 bytes | 101 states, 4 152 passages, 317 636 steps | **0 / 0**, counters equal | 73 s (4 processes) |
+| double-double, `…-1000yr-dd` | 500 yr (step 158 807) | 5 079 bytes | 101 states, 4 152 passages, 317 636 steps | **0 / 0**, counters equal | 644 s |
+
+CI-010 acceptance (interrupted and resumed in a new process = uninterrupted, bitwise) and the
+WP13 brief's 1000-yr/500-yr test: **pass in f64 and DD.** The f64 and DD runs take the same
+317 636 steps.
+
+### WP13 gate results (2026-10-15, local, toolchain 1.95.0, code tip `da94f9e`)
+| command | result |
+|---|---|
+| `cargo fmt --all --check` | pass |
+| `cargo clippy --workspace --all-targets --all-features -- -D warnings` | pass |
+| `cargo nextest run --workspace` + `cargo test --doc --workspace` | **223 passed, 31 skipped**; 15 doctests pass |
+| `cargo deny check` | advisories, bans, licenses, sources ok |
+| `RUSTDOCFLAGS="-D warnings" cargo doc --no-deps --workspace` | pass |
+| ruff check / ruff format --check / mypy strict / pytest | pass / pass / pass / 37 passed |
+| `reuse lint` | compliant |
+| `trace.py --check` | pass: 119 requirements, 438 citing tests (TRACE.md regenerated) |
+| `check_layers.py`, `lint_literals.py`, `lint_workflows.py` | 18 crates, 87 edges, 0 errors; 0 findings; 0 findings |
+| wasm32 build of `ferroastro-scenario`, `ferroastro-propagate` | pass |
+| data tier (`tools/run_long_local.sh --data-only`, log `target/long-local/20261015T125000Z-da94f9e49f04.log`, clean tree) | **24/24 pass** (23 earlier + WP13 check 5); all products cache hits, SHA-256 re-verified; check 5 numbers unchanged |
+| nightly 2b | 2/2 pass (above) |
