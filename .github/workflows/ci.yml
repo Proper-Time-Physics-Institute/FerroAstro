@@ -3,7 +3,8 @@
 #
 # PR gates: the AGENTS.md command list, verbatim, plus MSRV (STD-005) and DCO (ORG-008).
 # Real-data tier: the `data` job runs the #[ignore]d network tests on a schedule / by hand only,
-# so PR CI never depends on JPL availability.
+# so PR CI never depends on JPL availability. The `long` job runs the #[ignore]d nightly_* tier
+# (testing.md) on the same schedule.
 #
 # Security (STD-012, red-team §2): read-only token, no pull_request_target, every action pinned to a
 # commit SHA (checked by tools/lint_workflows.py), checkout without persisted credentials.
@@ -151,3 +152,20 @@ jobs:
           tool: cargo-nextest@0.9.148
       - name: Run data_* tests (prints URL, retrieval date, SHA-256 per product)
         run: cargo nextest run --workspace --profile data --run-ignored only
+
+  long:
+    name: long runs (nightly_* tier, release build)
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Install pinned toolchain (rust-toolchain.toml)
+        run: rustup show active-toolchain || rustup toolchain install
+      - uses: taiki-e/install-action@1168f6810a3cb30a3514bf5756a3b7f0422c6df8 # v2.87.28
+        with:
+          tool: cargo-nextest@0.9.148
+      - name: Run nightly_* tests (NUM-023 Brouwer ensemble, reversibility)
+        run: cargo nextest run --workspace --cargo-profile release --profile nightly --run-ignored only
