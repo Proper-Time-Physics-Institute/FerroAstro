@@ -49,3 +49,22 @@ Branch `m0-foundation`, stacked on PR #2 (`1-scientific-computing-strategy`). Ag
   (`tests/vectors/schema.json`, used by `tools/trace.py --check`). Both are exercised in CI.
 - First vectors: `CONST-CLIGHT-SI` (SI 2019) and `CONST-AU-IAU2012` (IAU 2012 B2), kind `defined`. They are
   ephemeris-independent oracles for the header.440 `CLIGHT`/`AU` entries (REF-002). OI-05 qualifies the au.
+
+### Traceability and lints (tools/)
+- `tools/trace.py` parses the fenced YAML blocks in `docs/requirements/<PREFIX>.md` (README, OPEN-ITEMS and
+  TRACE are not catalogue files), validates keys/enums/ID format/duplicates/file placement/dangling
+  `parent`/`related`, maps `/// Verifies:` (Rust) and `# Verifies:` (Python) comments to the next `fn`/`def`,
+  joins vector `requirement` lists, and writes TRACE.md. The "last CI run" column of the README is **not**
+  written: it would make TRACE.md non-deterministic and break `--check`. CI evidence is the workflow run.
+- Coverage is enforced from status `approved` onwards (README lifecycle). Every requirement is `draft` today,
+  so the coverage gate is vacuous until a maintainer approves requirements (red-team H4: requirements can stay
+  `draft` to escape coverage; that needs a human/ruleset control, not a script).
+- `trace.py --check` also runs the vector JSON-schema validation, `lint_literals.py` and `lint_workflows.py`,
+  because the AGENTS.md command list (which CI runs verbatim) has no separate entry for them.
+- `lint_literals.py` heuristic: floats other than small integers (|v| ≤ 10) and 0.5/0.25, and integers with
+  |v| > 1000, are flagged in test code; strings and comments are ignored; per-line escape
+  `lint: allow-literal(<reason>)` with a mandatory reason. Rust unit tests are found from the first
+  `#[cfg(test)]` to end of file (convention: test module last). It is a heuristic, not a proof.
+- `trace.py` shadows the stdlib `trace` module; the pytest suite loads it by path for that reason.
+- `tools/.python-version` pins Python 3.12 (uv otherwise picked 3.14 on this machine).
+- `pytest` (STD-009) is not in the AGENTS.md command list; CI runs it as an extra step next to ruff/mypy.

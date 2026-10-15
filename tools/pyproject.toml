@@ -11,7 +11,7 @@ license = "Apache-2.0"
 dependencies = ["numpy", "pyyaml", "jsonschema", "jplephem==2.24"]
 
 [dependency-groups]
-dev = ["ruff", "mypy", "pytest", "pre-commit", "reuse"]
+dev = ["ruff", "mypy", "pytest", "pre-commit", "reuse", "types-PyYAML", "types-jsonschema"]
 
 [tool.ruff]
 line-length = 100
@@ -54,3 +54,8 @@ docstring-code-format = true
 [tool.mypy]
 strict = true
 python_version = "3.11"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+addopts = "-ra --strict-markers"
