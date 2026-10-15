@@ -8,7 +8,7 @@
 //! (`ferroastro_precession::passages`) and compares it with the rung's analytic oracle
 //! (`ferroastro_analytic`, NUM-015). Every result carries a [`RateReport`] (PHY-015).
 
-use crate::passage_run::find_perihelia;
+use crate::passage_run::{find_perihelia, sample_uniform};
 use crate::{LadderError, Scenario};
 use ferroastro_analytic::advance::{
     j2_inclined_rate, keplerian_period, lense_thirring_rate, pn_unit, ppn_scaling,
@@ -18,7 +18,7 @@ use ferroastro_analytic::kepler::Elements;
 use ferroastro_analytic::vector::{cross, dot, norm};
 use ferroastro_constants::De440;
 use ferroastro_core::frames::{EclipticJ2000, Frame, Heliocentric, State};
-use ferroastro_core::time::{Epoch, Tdb};
+use ferroastro_core::time::{Epoch, J2000_JD, SECONDS_PER_DAY, Tdb};
 use ferroastro_core::units::{Angle, AngularRate, GravParam, Length, SpinGm, TimeSpan, Velocity};
 use ferroastro_forces::{
     CentralTerm, ForceModel, Gauge, LenseThirring, PnCoefficients, PnLagrangian, Pole,
@@ -26,6 +26,9 @@ use ferroastro_forces::{
 };
 use ferroastro_integrators::{Ias15Config, Ias15Stats};
 use ferroastro_precession::fit::fit_line;
+use ferroastro_precession::park2017::{
+    FitModel, LongitudeDefinition, Park2017, PassageConfig, ReferencePlane, SampledOrbit,
+};
 use ferroastro_precession::passages::{self, OrbitPlane, PerOrbitFit, fit_per_orbit};
 use ferroastro_precession::report::{RateReport, RateReportBuilder};
 
@@ -297,6 +300,23 @@ impl<F: Frame> SingleBody<F> {
         (self.r0, self.v0)
     }
 
+    /// Hash of the initial conditions: FNV-1a (64 bit) over the IEEE-754 bit patterns of the six
+    /// components of `r0` (km) and `v0` (km/s), as 16 hex digits. Differential runs (PHY-006,
+    /// NUM-013) assert that it is identical for every run they difference.
+    #[must_use]
+    pub fn ic_hash(&self) -> String {
+        const OFFSET: u64 = 0xcbf2_9ce4_8422_2325;
+        const PRIME: u64 = 0x0000_0100_0000_01b3;
+        let mut h = OFFSET;
+        for z in self.r0.iter().chain(&self.v0) {
+            for byte in z.to_bits().to_le_bytes() {
+                h ^= u64::from(byte);
+                h = h.wrapping_mul(PRIME);
+            }
+        }
+        format!("{h:016x}")
+    }
+
     /// The gravitational parameter of every term.
     #[must_use]
     pub const fn mu(&self) -> GravParam {
@@ -484,10 +504,11 @@ impl<F: Frame> SingleBody<F> {
             .gauge(gauge.label())
             .estimator(passages::ESTIMATOR)
             .dynamics(format!(
-                "{}; IAS15 (FerroAstro clean-room) epsilon = {:e}, safety = {}, f64 + compensated summation",
+                "{}; IAS15 (FerroAstro clean-room) epsilon = {:e}, safety = {}, PC tolerance = {:e}, f64 + compensated summation",
                 model.describe(),
                 cfg.epsilon,
-                cfg.safety
+                cfg.safety,
+                cfg.pc_tolerance
             ))
             .build()?;
         Ok(RungResult {
@@ -503,7 +524,119 @@ impl<F: Frame> SingleBody<F> {
             wall_seconds: started.elapsed().as_secs_f64(),
             gauge,
             inclination: self.inclination(rung)?,
+            ic_hash: self.ic_hash(),
         })
+    }
+
+    /// NUM-012 cross-estimator comparison for one rung: the perihelion-passage rate of
+    /// [`SingleBody::run`], its LRL (osculating eccentricity-vector) cross-check, and the
+    /// Park2017 estimator (NUM-011) applied to the same dynamics sampled every `cadence`, in the
+    /// initial osculating orbit plane (x at the initial periapsis), projected longitude, with a
+    /// linear and a quadratic fit and no periodic terms (a single body has none).
+    ///
+    /// # Errors
+    /// Run, sampling and estimator errors.
+    pub fn estimator_spread(
+        &self,
+        rung: &Rung,
+        cadence: TimeSpan,
+    ) -> Result<EstimatorSpread, LadderError> {
+        let base = self.run(rung)?;
+        let model = self.model(rung)?;
+        let step = cadence.seconds();
+        // Cover the passage run's span plus two orbits (passages near the ends need neighbours).
+        let span = 2.0f64.mul_add(base.fit.period.seconds(), base.fit.span.seconds());
+        let mut grid_points: u32 = 2;
+        while f64::from(grid_points - 1) * step < span && grid_points < u32::MAX {
+            grid_points += 1;
+        }
+        let samples = usize::try_from(grid_points).unwrap_or(usize::MAX);
+        let (t, r, v) = sample_uniform(&model, self.r0, self.v0, step, samples, self.ias15)?;
+        let jd: Vec<f64> = t.iter().map(|s| J2000_JD + s / SECONDS_PER_DAY).collect();
+        let orbit = SampledOrbit::<F>::from_raw(&jd, &r, &v)?;
+        let h = cross(self.r0, self.v0);
+        let e = ferroastro_analytic::vector::eccentricity_vector(
+            self.r0,
+            self.v0,
+            self.mu.km3_per_s2(),
+        );
+        let plane = ReferencePlane::<F>::from_normal_and_x(
+            h,
+            e,
+            "initial osculating orbit plane, x at the initial periapsis",
+        )?;
+        let park = |quadratic: bool| -> Result<(f64, f64), LadderError> {
+            let est = Park2017 {
+                plane: plane.clone(),
+                definition: LongitudeDefinition::Projected,
+                passages: PassageConfig::default(),
+                model: FitModel {
+                    quadratic,
+                    frequencies: Vec::new(),
+                },
+                jackknife_blocks: 20,
+            };
+            let res = est.estimate(&orbit)?;
+            Ok((
+                res.fit.arcsec_per_century(),
+                res.fit.jackknife_sigma_arcsec_per_century(),
+            ))
+        };
+        let (park_linear, park_linear_jk) = park(false)?;
+        let (park_quadratic, _) = park(true)?;
+        Ok(EstimatorSpread {
+            rung: rung.id.clone(),
+            ic_hash: self.ic_hash(),
+            passages: base.numerical_arcsec_per_century(),
+            lrl: base.lrl_arcsec_per_century(),
+            park_linear,
+            park_linear_jackknife: park_linear_jk,
+            park_quadratic,
+            analytic: base.analytic_arcsec_per_century(),
+            cadence_days: step / SECONDS_PER_DAY,
+            samples,
+        })
+    }
+}
+
+/// Rates of one rung from the NUM-012 estimators (all ″/cy).
+#[derive(Debug, Clone, PartialEq)]
+pub struct EstimatorSpread {
+    /// Rung id.
+    pub rung: String,
+    /// Initial-condition hash shared by the runs.
+    pub ic_hash: String,
+    /// Perihelion passages: per-orbit advance / anomalistic period.
+    pub passages: f64,
+    /// LRL (osculating eccentricity-vector) longitude, OLS over every accepted step.
+    pub lrl: f64,
+    /// Park2017 on uniform samples, linear fit.
+    pub park_linear: f64,
+    /// Jack-knife σ of [`EstimatorSpread::park_linear`] (20 blocks).
+    pub park_linear_jackknife: f64,
+    /// Park2017 on uniform samples, quadratic fit (ϖ̇ at J2000.0).
+    pub park_quadratic: f64,
+    /// Analytic oracle (per-orbit advance / Keplerian period of the initial orbit).
+    pub analytic: f64,
+    /// Sampling cadence of the Park2017 input (days).
+    pub cadence_days: f64,
+    /// Number of samples.
+    pub samples: usize,
+}
+
+impl EstimatorSpread {
+    /// Largest minus smallest of the four numerical estimates.
+    #[must_use]
+    pub fn spread(&self) -> f64 {
+        let all = [
+            self.passages,
+            self.lrl,
+            self.park_linear,
+            self.park_quadratic,
+        ];
+        let hi = all.iter().copied().fold(f64::NEG_INFINITY, f64::max);
+        let lo = all.iter().copied().fold(f64::INFINITY, f64::min);
+        hi - lo
     }
 }
 
@@ -534,6 +667,8 @@ pub struct RungResult {
     pub gauge: Gauge,
     /// Inclination of the J2/LT pole to the initial orbit normal.
     pub inclination: Angle,
+    /// [`SingleBody::ic_hash`] of the run's initial conditions.
+    pub ic_hash: String,
 }
 
 impl RungResult {

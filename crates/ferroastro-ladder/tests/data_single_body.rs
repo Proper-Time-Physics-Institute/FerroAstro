@@ -108,7 +108,11 @@ fn iau_sun_setup(c: &common::Ctx) -> (SingleBody<SunEquatorIau>, horizons::Horiz
     (s, h)
 }
 
-/// Verifies: PHY-010, PHY-011, NUM-015
+/// NUM-019: single-body part only (J2 and LT contributions vs Park17 Table 3, LT with its
+/// (1 + γ) dependence and the real solar pole); the momentum-conservation clause needs the
+/// N-body J2 with reaction on the Sun (M4) and is not covered here.
+///
+/// Verifies: PHY-010, PHY-011, NUM-015, NUM-019
 #[test]
 #[ignore = "data: downloads a JPL Horizons DE441 state in the IAU_SUN frame (network); run with --profile data"]
 fn data_j2_and_lt_rungs_in_real_solar_equator_geometry() {

@@ -365,3 +365,34 @@ fn jackknife_sigma_matches_formal_sigma_for_white_noise() {
     println!("jack-knife / formal sigma = {ratio:.4}");
     assert!((0.6..1.6).contains(&ratio), "jack-knife/formal = {ratio}"); // lint: allow-literal(about 3 s.d. of a 20-block estimate)
 }
+
+/// A plane built from a normal and an x direction is orthonormal and right-handed, has x along
+/// the projection of the x direction, and refuses a degenerate normal or x direction.
+///
+/// Verifies: NUM-012
+#[test]
+fn plane_from_normal_and_x_is_orthonormal() {
+    let plane =
+        ReferencePlane::<EclipticJ2000>::from_normal_and_x([0.0, 0.5, 2.0], [1.0, 1.0, 0.0], "t")
+            .unwrap();
+    let z = plane.pole();
+    let (x, y) = plane.axes();
+    let dot = |a: [f64; 3], b: [f64; 3]| a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+    for (a, b) in [(x, y), (y, z), (z, x)] {
+        assert!(dot(a, b).abs() < 1e-15); // lint: allow-literal(orthogonality to round-off)
+    }
+    for a in [x, y, z] {
+        assert!((dot(a, a) - 1.0).abs() < 1e-15); // lint: allow-literal(unit length to round-off)
+    }
+    // x lies in the span of the x direction and z, on the positive side of the x direction.
+    assert!(dot(x, [1.0, 1.0, 0.0]) > 0.0);
+    // The angle of the x direction itself is zero.
+    assert!(plane.projected_angle([1.0, 1.0, 0.0]).abs() < 1e-15); // lint: allow-literal(round-off)
+    assert!(
+        ReferencePlane::<EclipticJ2000>::from_normal_and_x([0.0; 3], [1.0, 0.0, 0.0], "t").is_err()
+    );
+    assert!(
+        ReferencePlane::<EclipticJ2000>::from_normal_and_x([0.0, 0.0, 1.0], [0.0, 0.0, 2.0], "t")
+            .is_err()
+    );
+}

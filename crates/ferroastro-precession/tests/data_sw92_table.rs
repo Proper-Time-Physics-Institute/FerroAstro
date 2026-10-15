@@ -9,7 +9,7 @@ use ferroastro_vectors::VectorSet;
 
 const URL: &str = "https://ssd.jpl.nasa.gov/planets/approx_pos.html";
 
-/// Verifies: PHY-004, PHY-001, NUM-011
+/// Verifies: PHY-004, NUM-011
 #[test]
 #[ignore = "network: data tier (cargo nextest run --profile data --run-ignored only)"]
 fn data_sw92_table1_mercury() {

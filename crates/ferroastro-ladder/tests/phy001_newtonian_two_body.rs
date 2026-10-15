@@ -40,7 +40,7 @@ fn n2b_sun_mercury_has_no_perihelion_precession() {
         epoch: Epoch::<Tdb>::j2000(),
         span: TimeSpan::from_seconds(span).unwrap(),
         dynamics: format!("{} ({}), Sun + Mercury, mu = GM_sun + GM_Mercury", model.name(), model.gauge().label()),
-        integrator: format!("IAS15 (FerroAstro clean-room), epsilon = {:e}, safety = {}, max iterations = {}, f64 + compensated summation", cfg.epsilon, cfg.safety, cfg.max_iterations),
+        integrator: format!("IAS15 (FerroAstro clean-room, Rein & Spiegel 2015), epsilon = {:e}, safety = {}, PC tolerance = {:e}, max iterations = {}, f64 + compensated summation", cfg.epsilon, cfg.safety, cfg.pc_tolerance, cfg.max_iterations),
         constants: format!("DE440 (header.440 sha256 {}); SW92 J2000 mean elements", de.table().source().sha256),
     };
     let est = fit_secular_rate(&run.times, &run.longitudes, meta).unwrap();

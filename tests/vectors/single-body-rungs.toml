@@ -367,3 +367,31 @@ retrieved = "2026-10-15"
 tolerance = { abs = 2.0e-4 }
 tolerance_rationale = "Park17's quoted 1-sigma. Used by the data-tier LT rung (DE440 spin, real IAU_SUN geometry), pre-registered in IMPLEMENTATION-NOTES WP4."
 verified_by = "WP4 builder agent, 2026-10-15: read in the published PDF (iopscience.iop.org/article/10.3847/1538-3881/aa5be2/pdf, sha256 24fb2153f6b78109daa80171cd37006157b73564f8d0ac383532b5c92433380b), re-downloaded 2026-10-15 with the same SHA-256 as WP3."
+
+[[vector]]
+id = "NUM013-ISOLATION-DIFF"
+requirement = ["NUM-013"]
+quantity = "differential single-body rate (rung run minus Newtonian test-particle run from identical initial conditions) minus the analytic rate of the same term (GR-SCHW, J2 at Park17 J2 equatorial, LT equatorial)"
+value = 0.0
+unit = "arcsec/cy"
+kind = "analytic"
+source = "NUM-013 acceptance (a): isolated single-body terms (Sun + Mercury only: GR 42.98, J2 0.0286 at J2 = 2.25e-7, LT -0.0020 arcsec/cy) agree with the analytic formulas within 1e-4 arcsec/cy"
+citation = "FerroAstro docs/requirements/NUM.md NUM-013 (maintainer decision 2026-10-14, Journal #8)"
+retrieved = "2026-10-15"
+tolerance = { abs = 1.0e-4 }
+tolerance_rationale = "NUM-013(a)'s own bound, copied. Comparison basis (documented as NUM-013 requires): heliocentric test particle about a fixed Sun (the Sun + Mercury isolation), mu = GM_sun, the same initial state (asserted by IC hash) for the toggled and the Newtonian run, perihelion-passage estimator, analytic rate = analytic per-orbit advance / Keplerian period of the initial orbit. Pre-registered in WP6 before the test was written or run."
+verified_by = "WP6 builder agent, 2026-10-15: bound copied from NUM-013(a)."
+
+[[vector]]
+id = "NUM012-ESTIMATOR-SPREAD"
+requirement = ["NUM-012"]
+quantity = "spread (max - min) of the single-body rung rate over four estimators on the same dynamics and initial state: perihelion passages, LRL eccentricity-vector longitude, Park2017 linear and Park2017 quadratic on 2-day samples in the initial orbit plane"
+value = 0.0
+unit = "arcsec/cy"
+kind = "analytic"
+source = "For a single body the estimators measure the same secular advance; their definitions differ only by periodic terms (1PN periodic terms of the osculating LRL vector, sampling and interpolation of passages), which average out over 1000 orbits. NUM-012 acceptance asks the docs to report the spread."
+citation = "FerroAstro docs/requirements/NUM.md NUM-012 and NUM-013; Park et al. 2017, AJ 153, 121, Sec. 4 (estimator)"
+retrieved = "2026-10-15"
+tolerance = { abs = 1.0e-4 }
+tolerance_rationale = "Pre-registered in WP6 before the first run: the spread must stay below the NUM-013(a) isolation tolerance (1e-4 arcsec/cy), otherwise the NUM-013(a) comparison would depend on the choice of estimator. Known inputs: WP4 measured passages vs LRL at 4e-7 relative for GR (1.7e-5 arcsec/cy); WP5 measured a 2-day passage-direction error of ~3e-6 arcsec per passage."
+verified_by = "WP6 builder agent, 2026-10-15: bound derived from NUM-013(a); spread is reported per rung in IMPLEMENTATION-NOTES WP6."

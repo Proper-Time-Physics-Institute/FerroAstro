@@ -280,6 +280,43 @@ impl<F: Frame> ReferencePlane<F> {
         }
     }
 
+    /// The plane with normal `normal` and in-plane x-axis along the projection of `x_dir`, both
+    /// in frame `F` (e.g. the initial osculating orbit plane of a single-body run, with x at the
+    /// initial periapsis). `y = z × x`.
+    ///
+    /// # Errors
+    /// `FA-E0603` for a zero or non-finite normal, or an `x_dir` (nearly) parallel to it.
+    pub fn from_normal_and_x(
+        normal: [f64; 3],
+        x_dir: [f64; 3],
+        label: &str,
+    ) -> Result<Self, PrecessionError> {
+        let nz = norm(normal);
+        if nz.is_nan() || nz <= 0.0 || !nz.is_finite() {
+            return Err(input("reference-plane normal is zero or not finite"));
+        }
+        let z = normal.map(|c| c / nz);
+        let along = dot(x_dir, z);
+        let x_raw = [
+            (-along).mul_add(z[0], x_dir[0]),
+            (-along).mul_add(z[1], x_dir[1]),
+            (-along).mul_add(z[2], x_dir[2]),
+        ];
+        let nx = norm(x_raw);
+        if nx.is_nan() || nx <= 1e-12 * norm(x_dir) {
+            return Err(input("x direction parallel to the plane normal"));
+        }
+        let x = x_raw.map(|c| c / nx);
+        let y = cross(z, x);
+        Ok(Self {
+            x,
+            y,
+            z,
+            label: format!("{label} (axes in {})", F::NAME),
+            _frame: PhantomData,
+        })
+    }
+
     /// Description for reports.
     #[must_use]
     pub fn label(&self) -> &str {

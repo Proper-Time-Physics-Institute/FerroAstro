@@ -2,7 +2,8 @@
 // SPDX-License-Identifier: Apache-2.0
 //! Rung PPN (PHY-006): differential runs from identical initial conditions. The asserted quantity
 //! is the ratio rate(β, γ)/rate(1, 1) against (2 + 2γ − β)/3 (red-team §1 correction), plus the
-//! two example shifts of the requirement.
+//! two example shifts of the requirement. Every run asserts the same initial-condition hash as the
+//! β = γ = 1 run, so the ratios are differential by construction.
 
 mod common;
 
@@ -14,6 +15,12 @@ fn rate(c: &common::Ctx, beta: f64, gamma: f64) -> f64 {
     let rung = Rung::custom("PPN", "PPN study", Model::Schwarzschild { beta, gamma });
     let r = c.setup.run(&rung).unwrap();
     c.check_num015(&r);
+    assert_eq!(
+        r.ic_hash,
+        c.setup.ic_hash(),
+        "PHY-006 runs must share identical initial conditions"
+    );
+    println!("  beta = {beta}, gamma = {gamma}: IC hash {}", r.ic_hash);
     r.numerical_arcsec_per_century()
 }
 

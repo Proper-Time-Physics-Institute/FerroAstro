@@ -96,6 +96,49 @@ fn to3(x: &[f64]) -> Result<[f64; 3], LadderError> {
     })
 }
 
+/// States on a uniform time grid: times (s from the start), positions (km), velocities (km/s).
+pub type UniformSamples = (Vec<f64>, Vec<[f64; 3]>, Vec<[f64; 3]>);
+
+/// Integrate `sys` from `(r0, v0)` at `t = 0` and record the state every `step_s` seconds,
+/// `samples` states in all (the first is the initial state). The input of sampled-data
+/// estimators such as Park2017 (NUM-011/NUM-012). Every grid time is hit exactly
+/// ([`Ias15::integrate_to`] shortens the step that would overshoot it), so this trajectory
+/// differs from [`find_perihelia`]'s at round-off level.
+///
+/// # Errors
+/// Integrator and force-model errors; `FA-E0601` for a non-positive step or fewer than 2 samples.
+pub fn sample_uniform<S: SecondOrderSystem + ?Sized>(
+    sys: &S,
+    r0: [f64; 3],
+    v0: [f64; 3],
+    step_s: f64,
+    samples: usize,
+    cfg: Ias15Config,
+) -> Result<UniformSamples, LadderError> {
+    if !(step_s.is_finite() && step_s > 0.0) || samples < 2 {
+        return Err(LadderError::from(PrecessionError::Fit(format!(
+            "uniform sampling needs step > 0 and >= 2 samples (step {step_s} s, {samples} samples)"
+        ))));
+    }
+    let mut ias = Ias15::new(3, 0.0, &r0, &v0, norm(r0) / norm(v0) / 16.0, cfg)?;
+    let (mut t, mut r, mut v) = (
+        Vec::with_capacity(samples),
+        Vec::with_capacity(samples),
+        Vec::with_capacity(samples),
+    );
+    t.push(0.0);
+    r.push(r0);
+    v.push(v0);
+    for k in 1..samples {
+        let tk = step_s * f64::from(u32::try_from(k).unwrap_or(u32::MAX));
+        ias.integrate_to(sys, tk, |_, _| Ok(()))?;
+        t.push(tk);
+        r.push(to3(ias.positions())?);
+        v.push(to3(ias.velocities())?);
+    }
+    Ok((t, r, v))
+}
+
 /// Locate the root of `r·v` in `(t0, t1]`, starting from the state at `t0`.
 fn refine<S: SecondOrderSystem + ?Sized>(
     sys: &S,

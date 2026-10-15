@@ -243,7 +243,10 @@ fn data_horizons_n2b_from_de441_state() {
         epoch: ferroastro_core::time::Epoch::j2000(),
         span: ferroastro_core::units::TimeSpan::from_seconds(span).unwrap(),
         dynamics: "newtonian-point-masses, Sun + Mercury, mu = GM_sun + GM_Mercury (DE440)".into(),
-        integrator: format!("IAS15 defaults (epsilon {:e})", cfg.epsilon),
+        integrator: format!(
+            "IAS15 (FerroAstro clean-room, Rein & Spiegel 2015), epsilon = {:e}, safety = {}, PC tolerance = {:e}, f64 + compensated summation",
+            cfg.epsilon, cfg.safety, cfg.pc_tolerance
+        ),
         constants: format!("DE440 GMs; initial state from Horizons ({}) {}", vecs.source, vecs.fetched.sha256),
     };
     let est = fit_secular_rate(&run.times, &run.longitudes, meta).unwrap();

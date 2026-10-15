@@ -14,8 +14,8 @@ source = "Closed Kepler ellipse: the eccentricity (LRL) vector of the Newtonian 
 citation = "Goldstein, Poole & Safko 2002, Classical Mechanics, 3rd ed., ch. 3 (Laplace-Runge-Lenz vector); FerroAstro docs/requirements/PHY.md PHY-001"
 retrieved = "2026-10-14"
 tolerance = { abs = 1.0e-6 }
-tolerance_rationale = "PHY-001's own bound. 1e-6 arcsec/cy is 1.2e-14 rad/orbit, i.e. about 100 ulp of the eccentricity-vector direction per orbit; red-team section 1 notes the bound is integrator-specific, so the test names IAS15 with Rein & Spiegel default settings. Any non-zero fitted rate is integrator error."
-verified_by = "WP3 builder agent, 2026-10-14: analytic (LRL conservation); bound copied from PHY-001."
+tolerance_rationale = "PHY-001's own bound. 1e-6 arcsec/cy is 1.2e-14 rad/orbit, i.e. about 100 ulp of the eccentricity-vector direction per orbit. Red-team section 1: the bound is integrator-specific (a Kepler-drift propagator passes trivially, a DOP853 at rtol 1e-12 may not), so it applies to the integrator the test names: FerroAstro's clean-room IAS15 (Rein & Spiegel 2015) with epsilon = 1e-9, safety = 0.25 (reject below 0.25 dt, growth capped at 4x), predictor-corrector tolerance 1e-16 (max 12 iterations), f64 with compensated summation; the test output prints these settings. The bound is far below the smallest asserted rung (LT 0.0020, PHY-011 tolerance 2e-4 arcsec/cy). Any non-zero fitted rate is integrator error."
+verified_by = "WP3 builder agent, 2026-10-14: analytic (LRL conservation); bound copied from PHY-001. WP6 builder agent, 2026-10-15: rationale names the IAS15 settings (red-team section 1); value and tolerance unchanged."
 
 [[vector]]
 id = "NUM023-ENERGY-SLOPE"
