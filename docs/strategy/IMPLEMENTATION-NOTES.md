@@ -3590,3 +3590,25 @@ Readings:
 
 Not run in this WP: the full `tools/run_long_local.sh` (nightly tier ≈ 2 h with the WP12 Brouwer
 ensemble, plus the whole data tier). Every WP15 test of those tiers was run individually above.
+
+### WP15 adversarial review (2026-10-15, reviewer agent, code tip `381ad84`)
+- **Re-run independently:** all AGENTS.md commands pass (235 passed / 37 skipped before the
+  review test, 15 doctests; deny, doc, ruff/mypy/pytest 41, reuse, trace, layers, literals,
+  workflows). Data tier `ferroastro-system`: 4/4 (round trip 0 km / 0 km/s; Horizons KBO ids
+  Eris/Orcus/Uni (2002 UX25), max 1.295e5 km; SSB report as recorded). PHY-013 nightly from an
+  empty checkpoint store, uninterrupted: 2920 s, every rate identical to the builder's to 1e-6
+  (N-SUM 532.304907, P-add 0.001242, P-remove 0.001245, KBOs+ring +0.000019, planets 532.303644,
+  IC hash `6d875b67…`). NUM-009 nightly: A 0.472 s, B 13.464 s, C 119.1 s (spread 89–137 s):
+  2a 28.5× (non-gating, OI-42), 2b 0.113 (pass).
+- **Gap found and fixed (`381ad84`):** zeroing every small-body GM in the propagator model, or
+  `MinorReaction::Off`, passed the whole PR tier (the M2 probe was "killed" only by a check of the
+  model's self-description string), and also passes every gating nightly check: PHY-013's ±0.01
+  cannot see N-AST (red-team §1, PHY-014 finding) and the N-AST row is non-gating (OI-38). A new
+  PR-tier test checks total GM-weighted momentum of Majors + 346 Minor bodies over 1 yr against
+  `NBODY-MOMENTUM-ROUNDOFF-ULPS` (0.006 measured; both mutants ≈ 6e7, killed).
+- **Vacuous assertion fixed (`381ad84`):** the "ring stays at rest" loop ran over a final state
+  filtered by `sample_bodies = [Sun, Mercury]`, so it never asserted. It now runs on an
+  unrestricted run and asserts all 36 points were checked.
+- NEEDS HUMAN REVIEW (unchanged from the builder's list): the NUM-009 2× bound fails by 28× with
+  Newtonian Majors; the reviewer agrees the cost is pair-count-dominated (16·338 Minor vs 120
+  Major pair evaluations) and that only an O(N³) EIH Major tier could bring the ratio near 2.
