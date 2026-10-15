@@ -2462,3 +2462,53 @@ Two changes came out of the review:
 Noted only: the WP15 plan text already names MA8201–MA8236 as the 36-point KBO ring. That makes
 MA8001–MA8030 plausibly the 30 KBOs (30 + 36 = 66). Item 3 above stays open until OI-24 is read
 from IOM 392R-21-005.
+
+## WP12 — [M3] `ferroastro-forces`: Newtonian N-body kernels, geocentric Moon, J2 with reaction
+
+Builder agent, 2026-10-15. Branch `m3-newtonian-nbody`, stacked on `m0-foundation`, draft PR #13.
+
+### Plan and pre-registered checks (written 2026-10-15, before any WP12 code or run)
+**Clean room (DEP-008).** The N-body equations are the textbook Newtonian point-mass sums. The
+solar-J2 field and its reaction on the Sun follow the DE440 description (Park et al. 2021, the
+form cited by NUM-019 as Eq. 29) through the existing `SolarJ2` term (Journal #4 R1); the reaction
+is `a_Sun = −Σᵢ (μᵢ/μ_Sun) aᵢ`, which is the momentum balance of a potential that depends on
+`rᵢ − r_Sun` only. The geocentric-Moon differential acceleration is the classical third-body
+expansion (Battin-type `q` form): with `d = r_j − r_E`, `ρ = r_M − r_E`,
+`q = ρ·(ρ − 2d)/d²`, `(d − ρ)/|d − ρ|³ − d/d³ = [d F(q) − ρ (1 + F(q))]/d³`, and
+`F(q) = (1 + q)^{−3/2} − 1 = Σ_{k≥1} c_k q^k`, `c_k = c_{k−1}·(−(2k+1)/(2k))`, `c_0 = 1`. I wrote it
+from this derivation, not from any code. No REBOUND/REBOUNDx/ASSIST/Swiftest/Mercury6 source is
+read; IAS15 is the existing WP3 clean-room integrator (Rein & Spiegel 2015).
+
+**Design (to be built).**
+* `ForceTerm<R>` (object-safe): `name`, `gauge`, `parameters` (name, value, unit), `tiers` (the
+  tiers it acts on), `bind` (resolve body indices once) and `accumulate` (add accelerations in a
+  fixed order). Terms: `NewtonianMutual` (Major↔Major, pairs `i < j` in storage order),
+  `MinorFromMajors` (Minor feels the Majors; the reaction on the Majors is **on by default**,
+  configurable, NEEDS HUMAN REVIEW for NUM-009's text, see the WP11 review), `RingMasses` (Ring
+  bodies attract every moving body and never move), `GeocentricMoon` (the Moon's geocentric
+  Newtonian acceleration with the Taylor differential, default **12** terms, minimum 4 enforced
+  by NUM-008; the closed form is used when |q| > 0.05, never reached by the planets), and
+  `SolarJ2WithReaction` (configurable pole; acts on the Majors other than the Sun).
+* `NBodyModel<F, R>`: a `SecondOrderSystem<R>` + `ForceModel<R>` whose flat coordinates are
+  **component-major SoA** (`x₀…x_{n−1}, y₀…, z₀…`); IAS15 is layout-agnostic. With the geocentric
+  Moon on, the Earth slot holds the Earth–Moon barycentre and the Moon slot holds Moon − Earth
+  (DE's variables, header `XB`/`XM`). Optional Neumaier accumulation of the accelerations.
+* `NBodyPropagator<F, R>`: IAS15 + the model + a TDB start epoch; typed `SystemState` in and out.
+
+**Checks** (margin = |Δ| / tolerance). Tolerances are fixed here, before any run.
+| # | check | tier | oracle | tolerance | rationale |
+|---|---|---|---|---|---|
+| U1 | barycentric `NewtonianMutual` vs the existing `NewtonianPointMasses` on the 11 header bodies | PR | existing M0 kernel | **bitwise** | same pair order and arithmetic |
+| U2 | `Σ μᵢ aᵢ` of `SolarJ2WithReaction` (J2 = 1e-3 synthetic, 5 bodies) | PR | 0 | ≤ 8 ε Σ μᵢ\|aᵢ\| | reaction makes the sum vanish algebraically |
+| U3 | Taylor differential (12 terms) vs the closed form, and vs a double-double direct difference, Sun/Venus/Jupiter geometries | PR | DD direct difference | ≤ 4 ε × \|tidal term\| (12 terms); 4 terms: reported | truncation of 12 terms is < 1e-20 relative at q ≤ 0.02 |
+| 1a | NUM-019 momentum: Sun + 8 planets + Moon (header.440 ICs, geocentric Moon, J2 on: DE440 J2SUN, ASUN, IAU WGCCRE 2015 pole), 100 yr | PR | 0 | \|P(t) − P(0)\| / Σ μᵢ\|vᵢ\| ≤ **64 ε √N_steps** | random-walk round-off bound with 64 ulp per step |
+| 1b | NUM-023 energy slope with J2 on: ensemble of Sun + 8 planets (EMB as one body) runs differing by 1e-13 relative IC perturbations; fit from 10 Mercury orbits on | nightly | Brouwer ½ (`NUM023-ENERGY-SLOPE`) | ±0.1 | NUM-023; the run length is the longest nightly-feasible one, chosen from a **cost-only** timing run (steps/s, no energy printed) |
+| 2 | TST-005: the 1a run twice (f64) and a 1-yr run twice (double-double) | PR | itself | **bitwise** (states and step counts) | determinism |
+| 3 | geocentric vs barycentric Moon, 10 yr from header.440 ICs, Sun + 8 planets + Moon: (a) the two formulations in double-double at ε = 1e-12 agree on Moon − Earth | PR or nightly (by cost) | each other | ≤ **1e-6 km** (PROVISIONAL) | both are the same ODE; DD truncation at ε = 1e-12 is far below 1 mm |
+|   | (b) round-off error (f64 minus its DD truth) of Moon − Earth, barycentric over geocentric = **gain factor** | same | — | factor > 1 asserted, value reported | NUM-008's rationale (\|ρ\| ≈ \|r\|/400) |
+|   | (c) f64 geocentric vs f64 barycentric Moon − Earth | same | — | ≤ 2 × the barycentric round-off error | "agree to within the round-off gain" |
+| 4 | real data: Newtonian + J2, Sun + 8 planets + Moon from header.440, JDEPOC → +10 yr (1969-06-28 → 1979), vs de440.bsp every 10 d; residual table (barycentric and heliocentric, per body) | PR (cached JPL products, CI-005) | de440.bsp | Jupiter–Neptune barycentric **≤ 100 km** (PROVISIONAL, plan); all others reported | the model omits 1PN (mean-motion terms ~μ/(c²a)), asteroids and the KBO ring; Mercury/Earth/Moon are expected at the 10²–10³ km level and are not asserted |
+
+Expectations written before running (order of magnitude only, for the reviewer): 1PN mean-motion
+drift over 10 yr ≈ 3·2π·N_orbits·μ/(c²a)·a gives Jupiter ~20 km, Earth ~300 km, Mercury
+≳ 10³ km. A run with Pluto added is reported as a second row set (not asserted).
