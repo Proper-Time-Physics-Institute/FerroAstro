@@ -18,6 +18,8 @@ dependencies = [
 
 [dependency-groups]
 dev = ["ruff", "mypy", "pytest", "pre-commit", "reuse", "types-PyYAML", "types-jsonschema"]
+# Computed-reference generators (TST-003, REF-009): pinned oracle engines, run by tools/goldens/*.
+goldens = ["pyerfa==2.0.1.5"]
 
 [tool.ruff]
 line-length = 100
@@ -65,3 +67,8 @@ python_version = "3.11"
 testpaths = ["tests"]
 pythonpath = ["."]
 addopts = "-ra --strict-markers"
+
+[[tool.mypy.overrides]]
+# pyerfa ships no type information; it is only installed with the `goldens` group.
+module = ["erfa", "erfa.*"]
+ignore_missing_imports = true
