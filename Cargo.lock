@@ -371,6 +371,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "ferroastro-system"
+version = "0.0.0"
+dependencies = [
+ "ferroastro-constants",
+ "ferroastro-core",
+ "ferroastro-ephem",
+ "ferroastro-real",
+ "ferroastro-testdata",
+ "ferroastro-vectors",
+ "thiserror",
+ "trybuild",
+]
+
+[[package]]
 name = "ferroastro-testdata"
 version = "0.0.0"
 dependencies = [

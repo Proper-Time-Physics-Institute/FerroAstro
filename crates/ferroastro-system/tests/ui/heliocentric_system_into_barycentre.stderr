@@ -1,0 +1,15 @@
+error[E0308]: mismatched types
+  --> tests/ui/heliocentric_system_into_barycentre.rs:12:30
+   |
+12 |     let _ = barycentre(&cat, &helio, MassModel::Newtonian, de.speed_of_light());
+   |             ----------       ^^^^^^ expected `&SystemState<_, Barycentric, _>`, found `&SystemState<Icrf, Heliocentric>`
+   |             |
+   |             arguments to this function are incorrect
+   |
+   = note: expected reference `&SystemState<_, Barycentric, _>`
+              found reference `&SystemState<Icrf, Heliocentric, f64>`
+note: function defined here
+  --> src/barycentre.rs
+   |
+   | pub fn barycentre<F: Frame, R: Real>(
+   |        ^^^^^^^^^^

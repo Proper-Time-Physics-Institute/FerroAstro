@@ -1,0 +1,26 @@
+# SPDX-FileCopyrightText: 2026 Proper-Time Physics Institute
+# SPDX-License-Identifier: Apache-2.0
+[package]
+name = "ferroastro-system"
+description = "N-body system model: body catalogue with GMs and tiers, SoA states generic over Real, geocentric Moon variables, SSB barycentring and initial-condition assembly"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+authors.workspace = true
+repository.workspace = true
+
+[dependencies]
+ferroastro-core.workspace = true
+ferroastro-real.workspace = true
+ferroastro-constants.workspace = true
+ferroastro-ephem.workspace = true
+thiserror.workspace = true
+
+[dev-dependencies]
+ferroastro-testdata.workspace = true
+ferroastro-vectors.workspace = true
+trybuild.workspace = true
+
+[lints]
+workspace = true
