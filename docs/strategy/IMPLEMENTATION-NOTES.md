@@ -346,3 +346,45 @@ All eight AGENTS.md commands passed: fmt, clippy `-D warnings`, `cargo nextest r
 check/format + mypy, `reuse lint` (138/138 files), `trace.py --check` (119 requirements, 91 citing tests).
 Extras: `uv run pytest` (13 passed), MSRV 1.85.0 nextest (52 passed), `data` profile (7 passed, fresh downloads),
 `nightly` profile in release (2 passed).
+
+## WP4 — Relativistic single-body rungs (PHY-005…011, PHY-015, NUM-015, NUM-017)
+
+### Plan and pre-registered checks (written 2026-10-15, before any WP4 run)
+- Set-up for every single-body rung: a **heliocentric test particle** in the field of a fixed Sun, one
+  gravitational parameter `μ = GM☉` (DE440) for the Newtonian term **and** every correction, initial state from the
+  SW92 J2000 mean elements of Mercury converted with that `μ`. This is the test-particle limit the analytic
+  formulas assume; the O(m☿/M☉) ≈ 1.7e-7 relative two-body corrections are not modelled (they are 400× below the
+  tightest ″/cy tolerance used here). Caveat C7 (which μ) is therefore resolved as "GM☉ everywhere" for these rungs.
+- Estimator (new, `ferroastro-precession::passages`): **perihelion passages**, i.e. the roots of `r·v = 0` with
+  `r·v` rising, refined by Newton iterations on short re-integrations from the last accepted step; the
+  perihelion longitude is the angle of `r` at the passage, measured in the initial osculating orbit plane from the
+  initial periapsis direction. The per-orbit advance is the OLS slope of longitude against passage index; the
+  anomalistic period is the OLS slope of passage time against index; ″/cy = per-orbit × (Julian century /
+  anomalistic period). This is the geometric part of the Park-2017 observable without the mean-orbit frame and
+  periodic terms (not needed for one body). The WP3 LRL estimator is kept and reported as a cross-check.
+- Span: 1000 anomalistic orbits (≈ 241 yr) per run (NUM-015 "averaged over 10³ orbits").
+- Oracles and tolerances, fixed now:
+  | check | oracle | tolerance | source |
+  |---|---|---|---|
+  | PHY-005 numerical GR (β = γ = 1) | 42.980 ″/cy | ± 0.001; and ≤ 0.001 from PHY-004's analytic value | PHY-005 |
+  | PHY-006 ratio rate(β,γ)/rate(1,1) at (β,γ) ∈ {(1±1e-3, 1), (1, 1±1e-3), (1+1e-3, 1−1e-3)} | (2+2γ−β)/3 | 1e-6 relative | PHY-006 as corrected by red-team §1 (differential, identical ICs) |
+  | PHY-006 example shifts | −0.00056 ″/cy at β−1 = 3.9e-5; +0.00066 at γ−1 = 2.3e-5 | ± 5e-6 (half a unit in the printed digit) | PHY-006 statement and notes |
+  | PHY-007 SR-a numerical | 7.1634 ″/cy | ± 0.001; analytic πGM/(c²p) with PHY-004 inputs within the same ± 0.001 | PHY-007 |
+  | NUM-015 R2 exact | 2π[(1−μ²/c²h²)^(−1/2) − 1], h = γ‖r×v‖ (conserved) | per-orbit, 1e-6 relative | NUM-015 |
+  | PHY-008 SR-b | 50.144 (harmonic), 35.817 (areal) ″/cy | ± 0.002 each; output must carry a gauge label | PHY-008 |
+  | PHY-009 per coefficient | 8A, 4B, 2C, 2D × πμ/(c²p) per orbit (A = 1 → 8; A = 1/8 → 1) | 1e-3 relative | PHY-009 as corrected by red-team §1 |
+  | PHY-010 analytic | 0.02860 (J2 = 2.25e-7), 0.02792 (DE440 J2) ″/cy | ± 5e-6 | PHY-010 |
+  | PHY-010 numerical, **equatorial** orbit (pole = orbit normal) | analytic 3πJ₂R☉²/p² per orbit | ± 0.0005 ″/cy (PHY-010) and NUM-015 (below) | PHY-010, red-team §1 |
+  | PHY-010 inclined (pole tilted 3.4°) | Park17 Eq. 3: ϖ̇ = (3/2) n J₂ (R/a)² (1−e²)⁻² (1 − (3/2) sin² i) | NUM-015 (below) | Park17 Eq. 3 (read in the PDF), red-team §1 |
+  | PHY-011 LT, equatorial | −0.0020 ″/cy numerical; analytic −0.00202 | ± 0.0002 numerical; ± 5e-6 analytic | PHY-011; Park17 Eq. 2 |
+  | NUM-015 R1, R2, R3, R3b | analytic per-orbit advance | pass iff ‖Δ‖ ≤ 1e-6 relative **or** ‖Δ‖ ≤ 1.17e-15 rad/orbit (= 1e-7 ″/cy at 415.2 orbits/cy) | NUM-015 with the red-team §1 absolute floor |
+- Real data (data tier, pre-registered):
+  - D1: GR rung from the Horizons DE441 J2000 heliocentric state of Mercury; diagnostic vs Park17 Table 3 GE
+    42.9799 at 3σ (± 0.0027), as WP3 pre-registered for osculating elements; and the numerical rung must agree with
+    the analytic rate from the same osculating elements within PHY-005's 0.001.
+  - D2: J2 rung (Park17 J2 = 2.25e-7) from the Horizons DE441 Mercury state in the **IAU_SUN body-equator frame**
+    (real solar pole, real inclination); numerical in-plane ϖ̇ vs Park17 Table 3 "Solar Oblateness" 0.0286 ±
+    0.0011 (Park's 1σ) and vs Park17 Eq. 3 at the real inclination (NUM-015 tolerance).
+  - D3: LT rung with GS from a freshly downloaded header.440 (GMS·MOISUN·ASUN²·OMGSUN) in the same real geometry;
+    numerical vs Park17 Table 3 "Lense–Thirring" −0.0020 ± 0.0002 (Park's 1σ) and vs Park17 Eq. 2 (NUM-015).
+- If any of these fails, the measured value is reported and nothing is loosened without a NEEDS HUMAN REVIEW note.
