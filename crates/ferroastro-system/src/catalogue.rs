@@ -19,8 +19,10 @@ use ferroastro_ephem::NaifId;
 /// How a body interacts (NUM-009, Subbotin et al. 2023; Folkner et al. 2014).
 ///
 /// * `Major`: attracts and is attracted by every other Major body (EIH in the precision rungs);
-/// * `Minor`: attracted by the Majors only (Newtonian), attracts nothing, and does not interact
-///   with other Minor bodies;
+/// * `Minor`: attracted by the Majors only (Newtonian) and does not interact with other Minor
+///   bodies (NUM-009). NUM-009 does not say whether a Minor body attracts the Majors; the
+///   asteroid row of the ladder (N-AST in PHY-013) is the asteroids' pull on Mercury, so the
+///   force model (WP13/WP15) must keep that reaction. Not decided here (no forces in this crate);
 /// * `Ring`: a fixed point mass (attracts, does not move).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Tier {

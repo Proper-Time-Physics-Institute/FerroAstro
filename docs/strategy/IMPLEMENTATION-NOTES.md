@@ -2436,3 +2436,29 @@ come before WP14's NUM-013(b) differentials as F5 requires:
 8. **F2 code choice.** A substituted cache file is reported as FA-E0204 ("present but has SHA-256
    …"), not FA-E0201, because FA-E0201's fix text ("upstream changed, re-pin") would be wrong for a
    local substitution. The tests assert FA-E0204 plus both digests.
+
+### WP11 adversarial review (2026-10-15)
+The reviewer re-ran every AGENTS.md command plus `check_layers.py`, `pytest`, `lint_literals.py`,
+the wasm32 build and the system data tier. All passed: nextest 191 passed and 27 skipped, 13
+doctests, trace 119 requirements. The Horizons check was re-run **live**, with an empty Horizons
+cache (`FA_DATA_DIR` holding only symlinks to the JPL products): 11 answers with cache=miss,
+signature.version 1.2, DE441. The result is unchanged at 9.537e-7 km and 1.066e-14 km/s. Check 1
+reproduced 4.768e-7 km / 7.1e-15 km/s in f64 and 5.663e-7 km / 5.7e-15 km/s in double-double.
+That level is the header's own 16–17-digit floor at Neptune's distance.
+
+Two changes came out of the review:
+- **The μ* magnitude was not pinned.** Two further mutants survived the whole suite: (a) the
+  relativistic model silently returning the Newtonian weights, and (b) 1/c² in place of 1/(2c²).
+  The virial-bound test now also requires μᵢ*/μᵢ − 1 = (vᵢ² − Uᵢ)/(2c²) for every body, each side
+  computed independently from the raw states, to within 8 ulp of 1. Both mutants are now killed.
+  This pins the implementation to the transcription. Whether the transcription matches Park et al.
+  2021 is still NEEDS HUMAN REVIEW item 2.
+- **The `Tier::Minor` doc said Minor bodies "attract nothing".** NUM-009 does not say that, and
+  PHY-013's N-AST row (0.0012 ″/cy) is the asteroids' pull on Mercury. A force model built from
+  that doc in WP13/WP15 would lose N-AST. The doc now leaves the reaction undecided and states
+  that it must be kept. **NEEDS HUMAN REVIEW:** NUM-009 should say explicitly whether Minor bodies
+  act on the Majors (DE440 practice). This is a requirement-text change for PR #2.
+
+Noted only: the WP15 plan text already names MA8201–MA8236 as the 36-point KBO ring. That makes
+MA8001–MA8030 plausibly the 30 KBOs (30 + 36 = 66). Item 3 above stays open until OI-24 is read
+from IOM 392R-21-005.
