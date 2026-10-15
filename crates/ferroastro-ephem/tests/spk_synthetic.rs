@@ -118,3 +118,22 @@ fn byte_orders_agree_bitwise_and_chain_sums_segments() {
         assert!((x - s2.position[k]).abs() <= f64::EPSILON * s2.position[k].abs());
     }
 }
+
+/// Verifies: DEP-011
+#[test]
+fn the_last_overlapping_segment_takes_precedence() {
+    // Re-label segment 1 (type 3) as a second segment for body A relative to the barycentre:
+    // NAIF data precedence says the later segment in the file wins where both cover the epoch.
+    let mut bytes = synthetic_spk(false);
+    let summary1 = ferroastro_ephem::RECORD_BYTES + 24 + 40;
+    bytes[summary1 + 16..summary1 + 20].copy_from_slice(&SYNTH_A.0.to_le_bytes());
+    bytes[summary1 + 20..summary1 + 24].copy_from_slice(&NaifId::SSB.0.to_le_bytes());
+    let spk = Spk::parse(&bytes).unwrap();
+    let inside = Epoch::<Tdb>::from_jd_parts(ferroastro_ephem::J2000_JD - 2.0, 0.25).unwrap();
+    let only_first = Epoch::<Tdb>::from_jd_parts(ferroastro_ephem::J2000_JD - 7.0, 0.0).unwrap();
+    assert_eq!(spk.segment_for(SYNTH_A.0, inside).unwrap().index, 1);
+    assert_eq!(spk.segment_for(SYNTH_A.0, only_first).unwrap().index, 0);
+    let (s, _) = spk.relative_state_km(SYNTH_A, NaifId::SSB, inside).unwrap();
+    let want = spk.segments()[1].state(inside).unwrap();
+    assert_eq!(s.position[0].to_bits(), want.position[0].to_bits());
+}
