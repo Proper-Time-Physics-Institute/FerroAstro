@@ -853,3 +853,209 @@ Margin = |Δ| / tolerance.
    - Park17 heliocentric vs barycentric passages
 
 Reviewer artefacts are in the local scratchpad, not committed: the gate, data and nightly logs, `recompute.py` and `mutate.py`.
+
+## WP6 — M2 close-out: crate alignment, layer check and red-team test corrections
+
+Builder agent, 2026-10-15. Applies the "Corrections for the next builder" of the progress review above. No golden
+value or tolerance of an existing vector was changed. The `PHY001-NEWTON-RATE` vector has a new
+`tolerance_rationale` and `verified_by` text, with the same value and tolerance.
+
+### Plan and pre-registration
+- Every new oracle has a vector. Four new vectors were written **before** the first run of their tests:
+  `NUM013-ISOLATION-DIFF` (NUM-013(a)'s own 1e-4 ″/cy), `NUM012-ESTIMATOR-SPREAD` (1e-4 ″/cy, the NUM-013(a)
+  bound, so the isolation result cannot depend on the estimator), `IAS15-EQ11-EPS-EXPONENT` (1/7 to 1e-12) and
+  the 32 × 20 000 NUM-023 ensemble size.
+- **Not blind:** the tolerance of `IAS15-EQ11-DEADBEAT` (0 ± 0.05) was chosen after a probe measured +0.0112 for the
+  correct code and −0.150 for the mutant. Its rationale derives the band without these numbers: below half the
+  distance to the nearest plausible wrong exponents (|1 − 7k| = 0.125 for k = 1/8, 0.167 for k = 1/6), and above the
+  O(ω dt) ≈ 1e-2 contamination of b₇ ∝ dt⁷.
+
+### Crate alignment (CRATE-PLAN §1)
+- **New `ferroastro-analytic`** (L4): `kepler` (elements ↔ states, Kepler's equation), `advance` (GR, PPN scaling,
+  1PN unit, exact SR, J2 planar/inclined, LT, Keplerian period, ″/cy conversion) and `vector` (cross, dot, norm,
+  eccentricity vector). All moved from `ferroastro-precession` (git history kept). `AnalyticError::Domain` keeps the
+  stable code FA-E0600, and `PrecessionError` and `LadderError` convert from it.
+- **`ferroastro-precession` contains no propagation.** It no longer depends on `ferroastro-integrators`. It keeps
+  only estimators on sampled data: Park2017, passages fit, LRL tracker and line fits, plus reports. It has its own
+  compensated OLS `fit::fit_line`, about 40 lines that duplicate `integrators::diagnostics::fit_line` on purpose,
+  since the alternative is an estimator → integrator edge.
+- **The IAS15-driven passage run moved to `ferroastro-ladder::passage_run`.** It contains `find_perihelia` and the
+  new `sample_uniform`. `ferroastro-diffrun` does not exist yet: it needs `ferroastro-propagate`, which comes in WP13/14.
+  The propagating tests and the benchmark moved with it: PHY-001, NUM-023, the Horizons N-2B/elements tests and the
+  Criterion bench (`cargo bench -p ferroastro-ladder --bench two_body`). PHY-004 moved to `ferroastro-analytic`.
+- **forces → integrators edge:** `ferroastro-forces` (L6) implements `SecondOrderSystem` from
+  `ferroastro-integrators` (L4). This edge points down, so the layering allows it. It is recorded here and in
+  `tools/check_layers.py` instead of moving the trait to core. CRATE-PLAN is a scratchpad document, not committed,
+  and its "depends on" column omits this edge.
+- **`tools/check_layers.py`** runs `cargo metadata --no-deps` and fails on any of the following:
+  - an unplaced crate;
+  - an upward or same-layer normal or build edge;
+  - an upward dev edge (test-support crates `vectors` and `testdata` are exempt);
+  - a runtime use of a test-support crate;
+  - any cycle, dev edges included.
+  
+  It runs inside `trace.py --check`, so CI runs it from the python job. GitHub run on `cd8a71a` succeeded, which
+  shows cargo is available there. It has 6 pytest cases, one of which checks the real workspace. Current result:
+  10 crates, 29 edges, **0 errors**.
+- **NEEDS HUMAN REVIEW (layering):**
+  1. `ferroastro-cli → ferroastro-vectors` is a runtime edge. The CLI checks rungs against the cited vectors. It is the
+     only listed exception in `check_layers.py`. CRATE-PLAN calls `vectors` dev-only.
+  2. ARCHITECTURE.md (PR #2) still lists "Event location (r·v = 0) … differential harness" under
+     `ferroastro-precession`, and draws forces and integrators as one layer. CRATE-PLAN, and now the code, say
+     otherwise. The document needs an update in the docs PR.
+  3. No requirement covers crate layering, so the layer tests cite none. Consider a requirement, for example in STD.
+
+### Red-team and review corrections applied
+| item | change | result |
+|---|---|---|
+| IAS15 step-control mutant (1/7 → 1/6) | `ias15_step_control.rs`: (a) from an identical first step the proposal scales as ε^k; (b) the proposal does not depend on the step just taken (1 − 7k = 0) | k = 0.14285714285714285 (exact); dead-beat slope +0.0112. Mutant: k = 0.1667 and −0.150, **both tests fail it** (killed). |
+| Review's suggested test (step-count ratio ε vs ε·1e-7 = 10 ± 5 %) | **not used: it cannot kill this mutant.** Every k has the same fixed point (ε/C)^(1/7) when b₇ ∝ dt⁷ | measured ratios 10.66 (k = 1/7) vs 10.56 (k = 1/6), e = 0.5, ε 1e-3 → 1e-10, 20 orbits |
+| NUM-023 env knobs | any `FA_NUM023_*` set ⇒ numbers printed, **no assertion** (all three nightly tests) | checked with `FA_NUM023_RUNS=4 FA_NUM023_ORBITS=50`: "REPORT ONLY" |
+| NUM-023 long ensemble | `nightly_num023_long_ensemble_known_failure`, 32 × 20 000 orbits, strict known failure (passes while the failure reproduces, fails once both slopes pass); cites no requirement | energy **0.629 ± 0.018** (FAIL vs 0.5 ± 0.1), phase 1.590, 4.89e7 steps, 29–41 s release |
+| PHY-001 names IAS15 | test output, rung `dynamics` strings and the `PHY001-NEWTON-RATE` rationale: ε 1e-9, safety 0.25, PC tolerance 1e-16, max 12 iterations | value/tolerance unchanged |
+| PHY-006 identical ICs | `SingleBody::ic_hash` (FNV-1a over the IEEE bits of r₀, v₀); every PHY-006 run asserts the β = γ = 1 hash | hash `6596cdfc5a9ca58d` (SW92 IC) |
+| NUM-013(a) | `num013_isolation`: GR, J2 (Park J2, equatorial), LT (equatorial) minus a Newtonian test particle from the same IC hash, vs analytic | −6.6e-6, +2.7e-9, −6.3e-9 ″/cy (≤ 1e-4) |
+| NUM-012 spread | `num012_estimator_spread`: passages, LRL, Park2017 linear/quadratic (2-d samples, initial-orbit plane) | table below; max spread 1.8e-5 ″/cy (≤ 1e-4) |
+| Trace hygiene | dropped `PHY-001` from the SW92 transcription test, the Kepler-utility tests, the Newtonian force-kernel test and the example runners; added `NUM-019` (single-body part only, comment says so) to the Park17 J2/LT data test | trace: 188 citing tests |
+| API-003 | `crates/ferroastro-ladder/examples/phy{001,004,005,006,007,008,009,010,011}_*.rs` (100-orbit demonstrations citing vector ids); `api003_examples.rs` runs every `main()` in the PR tier and checks that each implemented PHY rung has an example | 10/10 pass |
+| NUM-015 floor, equatorial geometry, PHY-009 per 8A | already done in WP4; unchanged | — |
+
+### NUM-012 cross-estimator spread (single-body rungs, offline, 1000 orbits, ″/cy)
+| rung | passages | LRL (= osculating ϖ in-plane) | Park2017 linear (jk σ) | Park2017 quadratic | analytic | spread |
+|---|---|---|---|---|---|---|
+| SR-a | 7.163412437 | 7.163416199 | 7.163412433 (5.3e-9) | 7.163412464 | 7.163412591 | 3.8e-6 |
+| SR-b/harmonic | 50.143885684 | 50.143898126 | 50.143885682 (6.3e-9) | 50.143885671 | 50.143887978 | 1.2e-5 |
+| GR-SCHW | 42.980468784 | 42.980486530 | 42.980468786 (3.2e-9) | 42.980468768 | 42.980475410 | 1.8e-5 |
+| J2 (Park J2) | 0.028601483 | 0.028601467 | 0.028601479 (4.4e-9) | 0.028601468 | 0.028601476 | 1.6e-8 |
+| LT | −0.002018351 | −0.002018349 | −0.002018345 (4.2e-9) | −0.002018353 | −0.002018349 | 7.9e-9 |
+
+- Passages and Park2017 agree to ≤ 2e-8 ″/cy. **The LRL estimator is the outlier for the 1PN rungs** (+1.8e-5 for GR,
+  4e-7 relative). The Newtonian eccentricity vector carries 1PN periodic terms, and they do not average out under
+  step-time (non-uniform) sampling. This matches NUM-012's note that a 1PN-corrected LRL form is UNVERIFIED.
+- The −6.6e-6 ″/cy of GR passages vs "analytic" is the anomalistic vs Keplerian period (1.5e-7 relative, WP4). It
+  is not an estimator error.
+- **Not delivered:** the "per-orbit mean ellipse" estimator of NUM-012. Osculating Ω + ω equals the LRL longitude in
+  the initial orbit plane, so it is covered by the LRL column (the dog-leg variant is in Park2017, WP5).
+
+### WP6 real-data results (data tier, run locally 2026-10-15 UTC, empty `FA_DATA_DIR`, all downloads fresh)
+The whole `data` profile ran: **12/12 pass** (21.4 s; the numbers equal WP4/WP5 to every printed digit), then the
+new D4 test on a second empty cache:
+
+| test | measured | oracle / tolerance | result | provenance |
+|---|---|---|---|---|
+| `data_isolation_and_estimator_spread_from_horizons_de441_state`: NUM-013(a) | GR −6.6e-6, J2 +4.8e-9, LT +1.3e-9 ″/cy (differential − analytic, inclined Park17 Eqs. 3/2 at i = 3.381087°); IC hash `1e014210d39b5326` | `NUM013-ISOLATION-DIFF` 0 ± 1e-4 | PASS | Horizons API `signature.version` 1.2, DE441, `IAU_SUN body equator and node of date`, sha256 `f8662aaf…06fdeb6` (timestamped answer: sha changes per download) |
+| same test: NUM-012 spread | GR 1.76e-5 (LRL outlier again), J2 3.4e-8, LT 5.2e-8 ″/cy | `NUM012-ESTIMATOR-SPREAD` ≤ 1e-4 | PASS | as above |
+| all 12 earlier data tests (moved files included) | e.g. Park17 rate 575.30916, GR from DE441 42.9806442, J2/LT real 0.0284524/−0.0020148 ″/cy | unchanged vectors | PASS | header.440 sha256 `0f4636b6…6ac3359`; approx_pos.html `9f7b30ca…f9c4d742`; Horizons v1.2/DE441 |
+
+### Offline acceptance of the WP6 brief (unchanged physics, re-run)
+- PHY-004: 42.980478977 ″/cy (42.9805 ± 1e-4).
+- PHY-005: 42.9804688 (42.980 ± 0.001).
+- PHY-007: 7.1634124 (± 0.001).
+- PHY-008: 50.1438857 harmonic and 35.8170613 areal (± 0.002), each with its gauge label.
+- PHY-010: numerical − analytic < 1e-8 for both analytic values, 0.0286015 (J2 = 2.25e-7) and 0.0279168 (DE440 J2).
+  The tolerance is ± 0.0005.
+- PHY-011: −0.0020184 (± 0.0002).
+- NUM-013(a): within 1e-4 (above).
+- Layer check: green.
+
+### NUM-023 investigation (time-boxed; nothing committed to the integrator)
+Each experiment used a scratch patch that was reverted. The long ensemble is 32 × 20 000 orbits, release build.
+| experiment | energy slope | phase slope | ensemble-mean dE/E at 2·10⁴ orbits |
+|---|---|---|---|
+| baseline (as committed) | 0.629 ± 0.018 | 1.590 | −4.6e-14 (WP3; mean ≈ RMS) |
+| start-of-step force `a₀` at the compensated state `x − x_comp, v − v_comp` (node forces already are) | 0.622 ± 0.030 | 1.583 | — |
+| **predictor cold-started (B = 0) on every step** | **0.543 ± 0.019** | **1.489** | **+2.3e-14** (RMS 2.7e-14) |
+| same, default 64 × 2000 ensemble | 0.483 | 1.473 | — |
+- **Finding:** the predictor changes the result, so the claim in WP3 that "steps reach an exact fixed point" is
+  wrong. The PC loop stops at the B₇ round-off floor (by tolerance or by stall), and that floor state keeps a
+  predictor-dependent bias. With a cold start the slopes pass. The drift is still there, with its sign reversed:
+  the mean is 84 % of the RMS. So a cold start is **not** a fix. It only shows that the bias comes from the PC
+  termination, not from the force kernel or the state compensation.
+- Not done: Everhart's predictor correction. Per the above it would change the bias, not necessarily remove it. A
+  candidate real fix is compensated arithmetic in the `g`/`B` updates, or iterating to bitwise B stability. It has
+  not been tried. **NEEDS HUMAN REVIEW** (this extends the WP3 item): NUM-001's 1e9-step clause and NUM-023 at ≥ 5e7
+  steps remain unmet. The known-failure test guards the status.
+
+### Requirement gap table, M0–M2 (trace.py after WP6; tests / vectors citing)
+M0 (ROADMAP row):
+- STD-001…011: 0/0.
+- STD-012: 1/0.
+- TST-001: 0/0.
+- TST-002: 12/0.
+- TST-003: 3/0.
+- TST-004: inspection.
+- TST-005: 2/0.
+- DEP-001/002/003/014: 0/0.
+- ORG-003: 3/0.
+- ORG-004: 3/0.
+- ORG-008: 0/0.
+- PHY-002: 9/20.
+- PHY-003: 4/4.
+- REF-002: 10/11.
+- AGT-001: inspection.
+
+M1:
+- API-001: 8/0.
+- API-002: 10/0.
+- DEP-007/009/010: 0/0.
+- NUM-001: 13/2.
+- NUM-006: 0/0.
+- NUM-010: 0/0.
+- NUM-023: 5/2.
+- REF-009: 0/0.
+- PHY-001: 3/7.
+
+M2:
+- PHY-004: 5/7.
+- PHY-005: 3/2.
+- PHY-006: 2/4.
+- PHY-007: 2/2.
+- PHY-008: 8/2.
+- PHY-009: 6/5.
+- PHY-010: 7/6.
+- PHY-011: 4/3.
+- NUM-011: 12/18.
+- NUM-012: 9/1.
+- NUM-013: 2/1.
+- NUM-015: 13/2.
+- NUM-016: inspection, 2/0.
+- NUM-017: 4/0.
+- NUM-019: 1/0.
+- PHY-015: 6/2.
+- API-003: 10/0.
+
+The gaps, grouped. The uncited list is 22 items, above the 15 at which CRATE-PLAN says to split. Most of the items are
+not WP6 code work, so they are listed rather than split:
+| gap | requirements | status / owner |
+|---|---|---|
+| enforced by a CI gate, no citing test | STD-001…011, TST-001, DEP-001…003, DEP-014, ORG-008 | **NEEDS HUMAN REVIEW:** should `trace.py` accept "verified by CI gate <job/step>" as evidence? Requirement text and trace policy are human-owned, so the agent changed nothing. |
+| M1 debt crates not built | DEP-007, DEP-009, DEP-010, NUM-006, NUM-010, REF-009 | WP7 (`ferroastro-real`), WP8 (`erfa`, `time`) |
+| cited, acceptance unmet | NUM-001 (1e9-step Brouwer clause; Kozai–Lidov), NUM-023 (≥ 5e7 steps) | known failure above; NEEDS HUMAN REVIEW |
+| cited, acceptance partial | NUM-017 (R5 → R3 needs EIH, WP19); PHY-011 (INPOP21a Eq. 1, OI-35); NUM-019 (momentum conservation with N-body J2, WP12/WP20); NUM-012 (no per-orbit mean-ellipse estimator); API-003 (examples per rung done; "every public fn has a doctest" **not** done, and no check exists); NUM-013 (b) (N-body contributions, WP14) | listed WPs |
+
+### Kept for humans (not resolved by any agent)
+The following stay as recorded in WP1–WP5: the OI-05 tick, the NUM-015 absolute floor, the NUM-017 areal
+exemption, the PHY-009 "8A" wording, the IAS15 rejection rule, the SW92 −5.75 ″/cy gap, OI-35 / INPOP21a Eq. 1,
+Park17 heliocentric vs barycentric passages. New in WP6: the CI-gate evidence question, the three layering items
+above, and the NUM-023 predictor finding.
+
+### WP6 gate results (2026-10-15, local, toolchain 1.95.0)
+All eight AGENTS.md commands passed (exit 0):
+- fmt;
+- clippy `-D warnings`;
+- `cargo nextest run --workspace`: 110 passed, 16 skipped (13 `data_*` + 3 `nightly_*`, the only `#[ignore]`s), plus
+  the doctests (including the new `ferroastro-analytic` crate example);
+- `cargo deny check`: advisories, bans, licenses and sources ok;
+- rustdoc `-D warnings`;
+- ruff check/format and mypy strict: 10 files;
+- `reuse lint`: compliant;
+- `trace.py --check`: 119 requirements, 188 citing tests, 0 errors, layer check included.
+
+Extras:
+- `uv run pytest`: 21 passed, 6 of them new layer-check tests.
+- MSRV 1.85.0 nextest: 109 passed, trybuild excluded.
+- `data` profile on an empty cache: 12/12, then D4 1/1 on a second empty cache.
+- `nightly` profile in release: 3/3. The default ensemble gives energy 0.526 and phase 1.513 (PASS). The long
+  ensemble gives energy 0.629, a known failure as expected. Reversibility |Δr|/|r₀| = 4.5e-12.
+- GitHub Actions on the pushed commits: `cd8a71a`, `df95a49` and `eeb09a4` were green (rust, msrv, python, reuse,
+  dco). The intermediate runs were cancelled by newer pushes.
