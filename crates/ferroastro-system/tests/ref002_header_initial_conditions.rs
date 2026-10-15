@@ -265,6 +265,21 @@ fn header_catalogue_equals_the_committed_table_and_tiers_the_asteroids() {
         assert_eq!(cat.get(b.id()).unwrap().tier(), Tier::Major);
     }
     check(&v, "SYSTEM-HEADER-CATALOGUE-VS-TABLE-GM-DIFF", &m);
+    // NAIF numbering of asteroids: 2 000 000 + the asteroid number of the header symbol MAnnnn.
+    for b in cat.bodies().iter().filter(|b| b.tier() == Tier::Minor) {
+        let number: i32 = b.gm_source().trim_start_matches("MA").parse().unwrap();
+        assert_eq!(
+            b.id().0,
+            ferroastro_system::ASTEROID_NAIF_BASE + number,
+            "{}",
+            b.gm_source()
+        );
+        assert_eq!(b.name(), format!("({number})"));
+    }
+    let ceres = cat
+        .get(NaifId(ferroastro_system::ASTEROID_NAIF_BASE + 1))
+        .unwrap();
+    assert_eq!(ceres.gm_source(), "MA0001");
     let minor = cat.ids_in(Tier::Minor).count();
     let unidentified = cat.unidentified_masses().len();
     let gms = de.gm_sun().km3_per_s2();
@@ -365,4 +380,54 @@ fn geocentric_moon_round_trips_through_the_split() {
     );
     // Round-off of a difference of two ~1.5e8 km coordinates: a few ulp of 1.5e8 km.
     assert!(dp <= 8.0 * f64::EPSILON * r_emb, "{dp}");
+}
+
+/// μ* sign and size (NUM-018): for a Keplerian orbit v² − GM/r = GM(1/r − 1/a), so
+/// |v² − U| ≤ e·U < U, and the relativistic mass correction μ*/μ − 1 = (v² − U)/(2c²) must be
+/// smaller in magnitude than U/(2c²) for every planet (U = Σⱼ μⱼ/rᵢⱼ, computed here
+/// independently). A sign error in the potential term gives (v² + U)/(2c²) > U/(2c²).
+///
+/// Verifies: NUM-018
+#[test]
+fn relativistic_mass_correction_is_bounded_by_the_virial_cancellation() {
+    let (h, hprov) = header();
+    let de = De440::load().unwrap();
+    let c = de.speed_of_light().km_per_s();
+    let cat = Catalogue::from_header(&h, &hprov).unwrap();
+    let ic = InitialConditions::<f64>::from_header(&h, &hprov).unwrap();
+    let s = ic.states();
+    let w_n = ferroastro_system::mass_weights(&cat, s, MassModel::Newtonian, de.speed_of_light())
+        .unwrap();
+    let w_r =
+        ferroastro_system::mass_weights(&cat, s, MassModel::RelativisticDe440, de.speed_of_light())
+            .unwrap();
+    let raws: Vec<([f64; 3], [f64; 3])> = s
+        .ids()
+        .iter()
+        .map(|&id| raw(&s.state(id).unwrap()))
+        .collect();
+    for (i, &id) in s.ids().iter().enumerate() {
+        if id == NaifId::SUN || id == NaifId::MOON || id == NaifId::EARTH {
+            // The Sun is not on a heliocentric Kepler orbit; Earth and Moon are a close pair.
+            continue;
+        }
+        let (ri, _) = raws[i];
+        let u: f64 = raws
+            .iter()
+            .zip(&w_n)
+            .enumerate()
+            .filter(|(j, _)| *j != i)
+            .map(|(_, ((rj, _), mu))| {
+                let d = [rj[0] - ri[0], rj[1] - ri[1], rj[2] - ri[2]];
+                mu / d[0].hypot(d[1]).hypot(d[2])
+            })
+            .sum();
+        let corr = w_r[i] / w_n[i] - 1.0;
+        let bound = u / (2.0 * c * c);
+        println!(
+            "NAIF {:>3}: mu*/mu - 1 = {corr:+.6e}, U/(2c^2) = {bound:.6e}",
+            id.0
+        );
+        assert!(corr.abs() < bound, "NAIF {}: |{corr}| >= {bound}", id.0);
+    }
 }
