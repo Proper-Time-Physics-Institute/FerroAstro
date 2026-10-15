@@ -159,19 +159,19 @@ fn non_rotations_and_degenerate_poles_are_rejected_with_codes() {
 
 fn cross3(a: [f64; 3], b: [f64; 3]) -> [f64; 3] {
     [
-        a[1] * b[2] - a[2] * b[1],
-        a[2] * b[0] - a[0] * b[2],
-        a[0] * b[1] - a[1] * b[0],
+        a[1].mul_add(b[2], -a[2] * b[1]),
+        a[2].mul_add(b[0], -a[0] * b[2]),
+        a[0].mul_add(b[1], -a[1] * b[0]),
     ]
 }
 
 /// Componentwise agreement to a few ulp (structural: the expected components below are closed
 /// forms of each frame's definition, evaluated independently of `ferroastro-frames`).
 fn assert_components(what: &str, got: [f64; 3], want: [f64; 3]) {
-    for k in 0..3 {
+    for (g, w) in got.iter().zip(want) {
         assert!(
-            (got[k] - want[k]).abs() <= 8.0 * f64::EPSILON,
-            "{what}[{k}]: got {got:?}, the definition gives {want:?}"
+            (g - w).abs() <= 8.0 * f64::EPSILON,
+            "{what}: got {got:?}, the definition gives {want:?}"
         );
     }
 }
@@ -187,10 +187,10 @@ fn pole_from_degrees(ra_deg: f64, dec_deg: f64) -> [f64; 3] {
 /// pinned by its definition, so a 180° turn about the pole (e.g. y = X̂ × z instead of z × X̂)
 /// fails the PR tier.
 ///
-/// * Park et al. 2017 §4 mean-orbit frame: z = pole p, y = (p × X̂_ICRF)/|·|, x = y × z. With
+/// * Park et al. 2017 §4 mean-orbit frame: z = pole p, y = (p × `X̂_ICRF`)/|·|, x = y × z. With
 ///   p = (cos δ cos α, cos δ sin α, sin δ), p × X̂ = (0, sin δ, −cos δ sin α), so
-///   y = (0, sin δ, −cos δ sin α)/√(sin²δ + cos²δ sin²α); y·(z × X̂) > 0 and x = y × z.
-/// * Solar equator (any pole): x = (Ẑ_ICRF × p)/|·| = (−sin α, cos α, 0), the ascending node of
+///   y = (0, sin δ, −cos δ sin α)/√(sin²δ + cos²δ sin²α); y·(z × X̂) > 0, x = y × z.
+/// * Solar equator (any pole): x = (`Ẑ_ICRF` × p)/|·| = (−sin α, cos α, 0), the ascending node of
 ///   the equator on the ICRF equator; y = z × x; z = p.
 ///
 /// The pole angles are the cited vectors (`PARK17-MEANORBIT-POLE-*`, `SUN-POLE-IAU-*`).
