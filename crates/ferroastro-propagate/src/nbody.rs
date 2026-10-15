@@ -270,10 +270,12 @@ impl<R: Real> NBodyRun<R> {
             ias,
             n,
             t_end: R::from_f64(spec.span_seconds()),
+            // Signed like the span, so a backward run samples at t = 0, −c, −2c, … (WP14 fix:
+            // WP13 sampled only forwards, so a backward run recorded its initial state only).
             cadence: spec
                 .output
                 .cadence_days
-                .map(|d| R::from_f64(d * SECONDS_PER_DAY)),
+                .map(|d| R::from_f64(dir * d * SECONDS_PER_DAY)),
             events,
             g_last,
             driver,

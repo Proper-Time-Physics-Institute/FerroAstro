@@ -105,9 +105,28 @@ pub struct Vector {
     pub engine: Option<Engine>,
     /// Free-form notes.
     pub notes: Option<String>,
+    /// An open item (`OI-NN`) that keeps this oracle non-gating while it is open in
+    /// `docs/requirements/OPEN-ITEMS.md` (e.g. an unverified protocol behind a published value).
+    pub blocked_by: Option<String>,
 }
 
 impl Vector {
+    /// The open item that keeps this vector non-gating, if `blocked_by` names one that
+    /// `open_items_md` (the text of `docs/requirements/OPEN-ITEMS.md`) does not mark closed
+    /// (`- [x] **OI-NN**`). An item missing from the file counts as open.
+    #[must_use]
+    pub fn blocking_open_item(&self, open_items_md: &str) -> Option<&str> {
+        let oi = self.blocked_by.as_deref()?;
+        let tag = format!("**{oi}**");
+        let closed = open_items_md.lines().any(|l| {
+            let l = l.trim_start();
+            (l.starts_with("- [x]") || l.starts_with("- [X]"))
+                && l.get(5..)
+                    .is_some_and(|rest| rest.trim_start().starts_with(&tag))
+        });
+        (!closed).then_some(oi)
+    }
+
     /// The expected value as `f64`.
     ///
     /// # Errors
@@ -181,6 +200,7 @@ struct RawVector {
     generated_by: Option<String>,
     engine: Option<Engine>,
     notes: Option<String>,
+    blocked_by: Option<String>,
 }
 
 struct Ctx<'a> {
@@ -235,6 +255,47 @@ fn valid_date(d: &str) -> bool {
                 c.is_ascii_digit()
             }
         })
+}
+
+fn check_computed_reference(
+    ctx: &Ctx<'_>,
+    kind: Kind,
+    generated_by: Option<&str>,
+    engine: Option<&Engine>,
+) -> Result<(), VectorError> {
+    if kind != Kind::ComputedReference {
+        return Ok(());
+    }
+    if !generated_by.is_some_and(|g| {
+        g.split_once('@')
+            .is_some_and(|(p, sha)| !p.is_empty() && sha.len() >= 7)
+    }) {
+        return Err(ctx.err(
+            "generated_by",
+            "computed-reference needs `path@sha` (TST-003)",
+        ));
+    }
+    if !engine.is_some_and(|e| {
+        [&e.name, &e.version, &e.settings]
+            .iter()
+            .all(|s| !s.trim().is_empty())
+    }) {
+        return Err(ctx.err("engine", "computed-reference needs name, version, settings"));
+    }
+    Ok(())
+}
+
+fn check_blocked_by(ctx: &Ctx<'_>, b: Option<&str>) -> Result<(), VectorError> {
+    match b {
+        Some(b)
+            if !b
+                .strip_prefix("OI-")
+                .is_some_and(|n| !n.is_empty() && n.chars().all(|c| c.is_ascii_digit())) =>
+        {
+            Err(ctx.err("blocked_by", format!("{b:?} is not an OI-NN open-item id")))
+        }
+        _ => Ok(()),
+    }
 }
 
 /// Largest integer that converts to f64 exactly.
@@ -309,26 +370,8 @@ fn validate(path: &Path, raw: RawVector) -> Result<Vector, VectorError> {
 
     let generated_by = raw.generated_by;
     let engine = raw.engine;
-    if kind == Kind::ComputedReference {
-        match &generated_by {
-            Some(g)
-                if g.split_once('@')
-                    .is_some_and(|(p, sha)| !p.is_empty() && sha.len() >= 7) => {}
-            _ => {
-                return Err(ctx.err(
-                    "generated_by",
-                    "computed-reference needs `path@sha` (TST-003)",
-                ));
-            }
-        }
-        match &engine {
-            Some(e)
-                if [&e.name, &e.version, &e.settings]
-                    .iter()
-                    .all(|s| !s.trim().is_empty()) => {}
-            _ => return Err(ctx.err("engine", "computed-reference needs name, version, settings")),
-        }
-    }
+    check_computed_reference(&ctx, kind, generated_by.as_deref(), engine.as_ref())?;
+    check_blocked_by(&ctx, raw.blocked_by.as_deref())?;
 
     Ok(Vector {
         quantity: ctx.text("quantity", raw.quantity)?,
@@ -346,6 +389,7 @@ fn validate(path: &Path, raw: RawVector) -> Result<Vector, VectorError> {
         generated_by,
         engine,
         notes: raw.notes,
+        blocked_by: raw.blocked_by,
     })
 }
 

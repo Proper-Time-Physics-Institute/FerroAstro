@@ -175,3 +175,31 @@ fn workspace_vectors_all_validate() {
         );
     }
 }
+
+/// `blocked_by` names an open item; the vector is non-gating while OPEN-ITEMS.md leaves that item
+/// unticked (or lacks it), and gating once it is ticked.
+///
+/// Verifies: TST-002
+#[test]
+fn blocked_by_follows_the_open_item_checkbox() {
+    let blocked = fixture("verified_by", "blocked_by = \"OI-38\"\nverified_by");
+    let set = load(&blocked).unwrap();
+    let v = set.get("FIXTURE-A").unwrap();
+    assert_eq!(v.blocked_by.as_deref(), Some("OI-38"));
+    let open = "- [ ] **OI-38** Park 2017's protocol.\n- [x] **OI-3** closed.\n";
+    let closed = "- [x] **OI-38** Park 2017's protocol (closed by a maintainer).\n";
+    let other_closed = "- [x] **OI-380** another item.\n";
+    assert_eq!(v.blocking_open_item(open), Some("OI-38"));
+    assert_eq!(v.blocking_open_item(""), Some("OI-38"));
+    assert_eq!(v.blocking_open_item(other_closed), Some("OI-38"));
+    assert_eq!(v.blocking_open_item(closed), None);
+    let unblocked = load(&fixture("", "")).unwrap();
+    assert_eq!(
+        unblocked.get("FIXTURE-A").unwrap().blocking_open_item(open),
+        None
+    );
+    assert!(
+        schema_error(&fixture("verified_by", "blocked_by = \"38\"\nverified_by"))
+            .contains("blocked_by")
+    );
+}

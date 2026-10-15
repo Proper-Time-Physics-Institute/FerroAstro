@@ -59,7 +59,8 @@
             "settings": { "$ref": "#/$defs/text" }
           }
         },
-        "notes": { "type": "string" }
+        "notes": { "type": "string" },
+        "blocked_by": { "type": "string", "pattern": "^OI-[0-9]+$" }
       },
       "if": { "properties": { "kind": { "const": "computed-reference" } } },
       "then": { "required": ["generated_by", "engine"] }

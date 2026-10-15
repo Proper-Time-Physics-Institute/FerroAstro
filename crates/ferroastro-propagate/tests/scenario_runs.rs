@@ -407,6 +407,14 @@ fn chained_segments_equal_the_uninterrupted_run_in_both_directions() {
             full.stats.steps
         );
         assert_eq!(k, SEGMENTS);
+        // Samples every cadence step in the run's direction of time (backward runs included).
+        let cadence_s = 10.0 * SECONDS_PER_DAY; // lint: allow-literal(the cadence set above)
+        assert!(full.states.len() > 700, "{} samples", full.states.len()); // lint: allow-literal(20 yr / 10 d)
+        for (i, st) in full.states.iter().enumerate() {
+            #[expect(clippy::cast_precision_loss, reason = "small sample index")]
+            let expect = (sign * cadence_s).mul_add(i as f64, 0.0); // + 0.0: sample 0 is t = +0
+            assert_eq!(st.t[0].to_bits(), expect.to_bits(), "sample {i}");
+        }
         assert_eq!(words, Some(0));
         assert_eq!(full.stats, joined.stats);
         assert!(joined.finished);

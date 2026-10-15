@@ -581,6 +581,47 @@ pub fn perihelion_longitudes<F: Frame>(
     Ok(out)
 }
 
+/// Park et al. 2017 Table 2: the 14 periodic terms of Mercury's perihelion longitude as integer
+/// combinations `(k_M, k_V, k_E, k_J, k_S)` of the mean motions of Mercury, Venus, Earth, Jupiter
+/// and Saturn, in the table's order, with the table's labels. The integers are the table's
+/// definitions; the mean motions are inputs ([`park17_table2_frequencies`]).
+pub const PARK17_TABLE2: [([i32; 5], &str); 14] = [
+    ([0, 2, 0, 0, 0], "0nM + 2nV"),
+    ([0, 1, 0, 0, 0], "0nM + 1nV"),
+    ([1, -2, 0, 0, 0], "1nM - 2nV"),
+    ([2, -3, 0, 0, 0], "2nM - 3nV"),
+    ([1, -3, 0, 0, 0], "1nM - 3nV"),
+    ([2, -4, 0, 0, 0], "2nM - 4nV"),
+    ([2, -5, 0, 0, 0], "2nM - 5nV"),
+    ([1, 0, -2, 0, 0], "1nM - 2nE"),
+    ([1, 0, -4, 0, 0], "1nM - 4nE"),
+    ([0, 0, 0, 3, 0], "0nM + 3nJ"),
+    ([0, 0, 0, 2, 0], "0nM + 2nJ"),
+    ([0, 0, 0, 1, 0], "0nM + 1nJ"),
+    ([1, 0, 0, -2, 0], "1nM - 2nJ"),
+    ([0, 0, 0, 0, 2], "0nM + 2nS"),
+];
+
+/// The [`PARK17_TABLE2`] frequencies from mean motions `[n_M, n_V, n_E, n_J, n_S]` given as
+/// mean-longitude rates in degrees per Julian century; `source` is appended to each label.
+#[must_use]
+pub fn park17_table2_frequencies(
+    mean_motions_deg_per_cy: [f64; 5],
+    source: &str,
+) -> Vec<Frequency> {
+    let n = mean_motions_deg_per_cy.map(f64::to_radians);
+    PARK17_TABLE2
+        .iter()
+        .map(|(k, label)| Frequency {
+            rad_per_century: k
+                .iter()
+                .zip(n)
+                .fold(0.0, |s, (&ki, ni)| f64::from(ki).mul_add(ni, s)),
+            label: format!("{label} ({source})"),
+        })
+        .collect()
+}
+
 /// A periodic term's angular frequency.
 #[derive(Debug, Clone, PartialEq)]
 pub struct Frequency {

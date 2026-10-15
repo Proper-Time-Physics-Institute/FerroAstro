@@ -327,6 +327,26 @@ dependencies = [
 ]
 
 [[package]]
+name = "ferroastro-diffrun"
+version = "0.0.0"
+dependencies = [
+ "ferroastro-analytic",
+ "ferroastro-constants",
+ "ferroastro-core",
+ "ferroastro-frames",
+ "ferroastro-precession",
+ "ferroastro-propagate",
+ "ferroastro-scenario",
+ "ferroastro-testdata",
+ "ferroastro-vectors",
+ "postcard",
+ "rayon",
+ "serde",
+ "serde_json",
+ "thiserror",
+]
+
+[[package]]
 name = "ferroastro-ephem"
 version = "0.0.0"
 dependencies = [

@@ -17,6 +17,7 @@
 //! | `retrieved` | `YYYY-MM-DD` |
 //! | `tolerance` | table with `abs` and/or `rel`, both finite and ≥ 0 |
 //! | `generated_by`, `engine` | required when `kind = "computed-reference"` (TST-003) |
+//! | `blocked_by` | optional `OI-NN`: the oracle is non-gating while that open item is open ([`Vector::blocking_open_item`]) |
 //!
 //! `source` and `citation` may not contain `UNVERIFIED` or `[S]`: such values cannot be oracles
 //! until closed in `docs/requirements/OPEN-ITEMS.md` (PHY-018).

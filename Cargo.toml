@@ -33,6 +33,7 @@ ferroastro-forces = { path = "crates/ferroastro-forces", version = "0.0.0" }
 ferroastro-precession = { path = "crates/ferroastro-precession", version = "0.0.0" }
 ferroastro-scenario = { path = "crates/ferroastro-scenario", version = "0.0.0" }
 ferroastro-propagate = { path = "crates/ferroastro-propagate", version = "0.0.0" }
+ferroastro-diffrun = { path = "crates/ferroastro-diffrun", version = "0.0.0" }
 ferroastro-ladder = { path = "crates/ferroastro-ladder", version = "0.0.0" }
 ferroastro-cli = { path = "crates/ferroastro-cli", version = "0.0.0" }
 serde = { version = "1.0.219", features = ["derive"] }
@@ -49,7 +50,8 @@ serde_json = "1.0.140"
 schemars = { version = "1.0.4", default-features = false, features = ["derive", "std"] }
 # Checkpoint encoding (CI-010; MIT OR Apache-2.0). alloc only, no heapless/embedded features.
 postcard = { version = "1.1.1", default-features = false, features = ["alloc"] }
-# Run-level parallelism behind ferroastro-propagate's optional `parallel` feature (NUM-022).
+# Run-level parallelism behind the optional `parallel` features of ferroastro-propagate (NUM-022) and
+# ferroastro-diffrun.
 rayon = "1.10.0"
 sha2 = "0.10.9"
 thiserror = "2.0.12"
