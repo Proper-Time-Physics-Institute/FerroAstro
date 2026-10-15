@@ -2,7 +2,9 @@
 // SPDX-License-Identifier: Apache-2.0
 //! API-003: every PHY rung the ladder implements has a runnable program in `examples/`, and every
 //! example runs (here, in the PR tier) and passes its cited test vector. The examples are
-//! compiled into this test with `#[path]`, so `cargo nextest run` executes them.
+//! compiled into this test with `#[path]`, so `cargo nextest run` executes them. The examples
+//! run 100 orbits and only demonstrate the rungs; the PHY-xxx evidence is the rung tests, so these
+//! tests cite API-003 alone.
 
 #![expect(
     clippy::duplicate_mod,
@@ -70,55 +72,55 @@ fn every_implemented_phy_rung_has_an_example() {
     println!("PHY rungs with examples: {wanted:?}");
 }
 
-/// Verifies: API-003, PHY-001
+/// Verifies: API-003
 #[test]
 fn example_phy001_runs() {
     phy001_n2b::main().unwrap();
 }
 
-/// Verifies: API-003, PHY-004
+/// Verifies: API-003
 #[test]
 fn example_phy004_runs() {
     phy004_gr_analytic::main().unwrap();
 }
 
-/// Verifies: API-003, PHY-005
+/// Verifies: API-003
 #[test]
 fn example_phy005_runs() {
     phy005_gr_schw::main().unwrap();
 }
 
-/// Verifies: API-003, PHY-006
+/// Verifies: API-003
 #[test]
 fn example_phy006_runs() {
     phy006_ppn::main().unwrap();
 }
 
-/// Verifies: API-003, PHY-007
+/// Verifies: API-003
 #[test]
 fn example_phy007_runs() {
     phy007_sr_a::main().unwrap();
 }
 
-/// Verifies: API-003, PHY-008
+/// Verifies: API-003
 #[test]
 fn example_phy008_runs() {
     phy008_sr_b::main().unwrap();
 }
 
-/// Verifies: API-003, PHY-009
+/// Verifies: API-003
 #[test]
 fn example_phy009_runs() {
     phy009_coefficients::main().unwrap();
 }
 
-/// Verifies: API-003, PHY-010
+/// Verifies: API-003
 #[test]
 fn example_phy010_runs() {
     phy010_j2::main().unwrap();
 }
 
-/// Verifies: API-003, PHY-011
+/// Verifies: API-003
 #[test]
 fn example_phy011_runs() {
     phy011_lt::main().unwrap();

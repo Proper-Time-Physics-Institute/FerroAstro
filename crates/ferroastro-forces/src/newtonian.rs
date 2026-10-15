@@ -216,8 +216,6 @@ mod tests {
     }
 
     /// Momentum balance: GM-weighted accelerations sum to zero; inverse-square magnitude.
-    ///
-    /// Verifies: PHY-001
     #[test]
     fn pairwise_forces_balance_and_follow_inverse_square() {
         let m = Model::new(&[gm(3.0), gm(1.0)]).unwrap();
