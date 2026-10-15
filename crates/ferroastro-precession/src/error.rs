@@ -23,6 +23,15 @@ pub enum PrecessionError {
     /// A fit could not be made.
     #[error("FA-E0601: precession fit failed: {0}")]
     Fit(String),
+    /// A reported rate lacks a mandatory metadata field (PHY-015).
+    #[error(
+        "FA-E0602: rate report is missing its {field}; fix: every reported perihelion rate must \
+         state frame, epoch, fit span, fit model, constants version, gauge and estimator"
+    )]
+    MissingMetadata {
+        /// The missing field.
+        field: &'static str,
+    },
 }
 
 impl PrecessionError {
@@ -32,6 +41,7 @@ impl PrecessionError {
         match self {
             PrecessionError::Domain { .. } => ErrorCode::OrbitDomain,
             PrecessionError::Fit(_) => ErrorCode::FitDegenerate,
+            PrecessionError::MissingMetadata { .. } => ErrorCode::ReportMetadataMissing,
         }
     }
 }
