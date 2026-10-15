@@ -10,7 +10,9 @@
 
 use crate::EphemError;
 use crate::spk::{Spk, StateKm};
-use ferroastro_core::frames::{Barycentric, Center, Heliocentric, Icrf, Position, State};
+use ferroastro_core::frames::{
+    Barycentric, Center, Geocentric, Heliocentric, Icrf, Position, State,
+};
 use ferroastro_core::time::{Epoch, Tdb};
 use ferroastro_core::units::{Length, Velocity};
 use ferroastro_real::Real;
@@ -69,6 +71,10 @@ impl NaifCenter for Barycentric {
 
 impl NaifCenter for Heliocentric {
     const NAIF: NaifId = NaifId::SUN;
+}
+
+impl NaifCenter for Geocentric {
+    const NAIF: NaifId = NaifId::EARTH;
 }
 
 /// A source of body states (DEP-011): any backend `R`, TDB epochs.

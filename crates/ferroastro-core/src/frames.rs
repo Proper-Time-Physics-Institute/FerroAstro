@@ -61,6 +61,10 @@ pub struct Barycentric;
 /// Centre of the Sun.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub struct Heliocentric;
+/// Centre of the Earth (geocentre). Used for the DE "geocentric Moon" variable, the Moon's state
+/// relative to the Earth.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub struct Geocentric;
 
 impl sealed::Sealed for Icrf {}
 impl sealed::Sealed for EclipticJ2000 {}
@@ -70,6 +74,7 @@ impl sealed::Sealed for MercuryMeanOrbit {}
 impl sealed::Sealed for SolarEquator {}
 impl sealed::Sealed for Barycentric {}
 impl sealed::Sealed for Heliocentric {}
+impl sealed::Sealed for Geocentric {}
 
 impl Frame for Icrf {
     const NAME: &'static str = "ICRF";
@@ -94,6 +99,9 @@ impl Center for Barycentric {
 }
 impl Center for Heliocentric {
     const NAME: &'static str = "SUN";
+}
+impl Center for Geocentric {
+    const NAME: &'static str = "EARTH";
 }
 
 /// A position vector in frame `F` relative to centre `C`, components in backend `R`.

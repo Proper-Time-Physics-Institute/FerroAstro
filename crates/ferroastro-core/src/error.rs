@@ -17,6 +17,7 @@
 //! | `FA-E0800`–`FA-E0899` | calendar and time-scale conversions: `FA-E0800`–`FA-E0803` ERFA statuses (`ferroastro-erfa`, which cannot depend on this crate and mirrors the strings); `FA-E0804`–`FA-E0805` UTC and conversion results (`ferroastro-time`) |
 //! | `FA-E0900`–`FA-E0999` | reference-frame rotations (`ferroastro-frames`) |
 //! | `FA-E1000`–`FA-E1099` | DAF/SPK ephemeris files and `testpo` points (`ferroastro-ephem`) |
+//! | `FA-E1100`–`FA-E1199` | body catalogues, system states and initial conditions (`ferroastro-system`) |
 
 use std::fmt;
 
@@ -121,11 +122,18 @@ pub enum ErrorCode {
     EphemNonFinite,
     /// `FA-E1006`: a JPL `testpo` test-point line is malformed.
     TestpoParse,
+    /// `FA-E1100`: a body is unknown to, or duplicated in, a catalogue or system state.
+    SystemBody,
+    /// `FA-E1101`: initial conditions cannot be assembled (missing or non-finite state, or a
+    /// header whose `CENTER` or units do not match the stated interpretation).
+    SystemInitialConditions,
+    /// `FA-E1102`: barycentring is ill-posed (no mass, coincident bodies, or no Sun to solve for).
+    SystemBarycentre,
 }
 
 impl ErrorCode {
     /// Every code, in numeric order (used to prove codes are unique).
-    pub const ALL: [ErrorCode; 46] = [
+    pub const ALL: [ErrorCode; 49] = [
         ErrorCode::NonFinite,
         ErrorCode::OutOfRange,
         ErrorCode::VectorIo,
@@ -172,6 +180,9 @@ impl ErrorCode {
         ErrorCode::EphemNoPath,
         ErrorCode::EphemNonFinite,
         ErrorCode::TestpoParse,
+        ErrorCode::SystemBody,
+        ErrorCode::SystemInitialConditions,
+        ErrorCode::SystemBarycentre,
     ];
 
     /// The stable textual code, e.g. `"FA-E0001"`.
@@ -224,6 +235,9 @@ impl ErrorCode {
             ErrorCode::EphemNoPath => "FA-E1004",
             ErrorCode::EphemNonFinite => "FA-E1005",
             ErrorCode::TestpoParse => "FA-E1006",
+            ErrorCode::SystemBody => "FA-E1100",
+            ErrorCode::SystemInitialConditions => "FA-E1101",
+            ErrorCode::SystemBarycentre => "FA-E1102",
         }
     }
 }
