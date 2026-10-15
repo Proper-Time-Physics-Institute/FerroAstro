@@ -116,6 +116,13 @@ quantity!(
     AngularRate, "rad/s", from_rad_per_s, rad_per_s, "angular rate"
 );
 
+quantity!(
+    /// The product `G·S` of the gravitational constant and a body's spin angular momentum
+    /// (the Lense–Thirring source strength), stored in km⁵/s³. It equals `GM · C/(MR²) · R² · Ω`,
+    /// so it never needs `G` on its own.
+    SpinGm, "km^5/s^3", from_km5_per_s3, km5_per_s3, "G times spin angular momentum"
+);
+
 impl Div<TimeSpan> for Angle {
     type Output = AngularRate;
     fn div(self, rhs: TimeSpan) -> AngularRate {

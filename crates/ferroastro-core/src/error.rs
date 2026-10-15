@@ -13,6 +13,7 @@
 //! | `FA-E0400`–`FA-E0499` | numerical integrators (`ferroastro-integrators`) |
 //! | `FA-E0500`–`FA-E0599` | force models (`ferroastro-forces`) |
 //! | `FA-E0600`–`FA-E0699` | orbital elements and precession estimators (`ferroastro-precession`) |
+//! | `FA-E0700`–`FA-E0799` | ladder rungs, scenarios and the CLI (`ferroastro-ladder`, `ferroastro-cli`) |
 
 use std::fmt;
 
@@ -64,11 +65,19 @@ pub enum ErrorCode {
     OrbitDomain,
     /// `FA-E0601`: a precession or slope fit is ill-posed (too few or degenerate samples).
     FitDegenerate,
+    /// `FA-E0502`: force-model terms with incompatible coordinate gauges were combined.
+    ForceModelGaugeMismatch,
+    /// `FA-E0602`: a reported precession rate lacks a mandatory metadata field (PHY-015).
+    ReportMetadataMissing,
+    /// `FA-E0700`: an unknown rung, rung set or command-line option was requested.
+    LadderSelection,
+    /// `FA-E0701`: a ladder scenario file is missing or malformed.
+    LadderScenario,
 }
 
 impl ErrorCode {
     /// Every code, in numeric order (used to prove codes are unique).
-    pub const ALL: [ErrorCode; 22] = [
+    pub const ALL: [ErrorCode; 26] = [
         ErrorCode::NonFinite,
         ErrorCode::OutOfRange,
         ErrorCode::VectorIo,
@@ -91,6 +100,10 @@ impl ErrorCode {
         ErrorCode::ForceModelSingular,
         ErrorCode::OrbitDomain,
         ErrorCode::FitDegenerate,
+        ErrorCode::ForceModelGaugeMismatch,
+        ErrorCode::ReportMetadataMissing,
+        ErrorCode::LadderSelection,
+        ErrorCode::LadderScenario,
     ];
 
     /// The stable textual code, e.g. `"FA-E0001"`.
@@ -119,6 +132,10 @@ impl ErrorCode {
             ErrorCode::ForceModelSingular => "FA-E0501",
             ErrorCode::OrbitDomain => "FA-E0600",
             ErrorCode::FitDegenerate => "FA-E0601",
+            ErrorCode::ForceModelGaugeMismatch => "FA-E0502",
+            ErrorCode::ReportMetadataMissing => "FA-E0602",
+            ErrorCode::LadderSelection => "FA-E0700",
+            ErrorCode::LadderScenario => "FA-E0701",
         }
     }
 }

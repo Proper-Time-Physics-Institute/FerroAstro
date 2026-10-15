@@ -32,6 +32,17 @@ pub enum ForceError {
         /// Time (s).
         t: f64,
     },
+    /// Terms with incompatible gauges were combined.
+    #[error(
+        "FA-E0502: cannot combine a {first} term with a {second} term in one model; fix: \
+         all relativistic terms of a model must share one gauge"
+    )]
+    GaugeMismatch {
+        /// Gauge of the first relativistic term.
+        first: &'static str,
+        /// Gauge of the conflicting term.
+        second: &'static str,
+    },
 }
 
 impl ForceError {
@@ -41,6 +52,7 @@ impl ForceError {
         match self {
             ForceError::Invalid { .. } => ErrorCode::ForceModelInvalid,
             ForceError::Singular { .. } => ErrorCode::ForceModelSingular,
+            ForceError::GaugeMismatch { .. } => ErrorCode::ForceModelGaugeMismatch,
         }
     }
 }
