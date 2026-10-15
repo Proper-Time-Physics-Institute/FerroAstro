@@ -8,8 +8,8 @@
 > workflow run; run URLs are not written here so that the file stays deterministic.
 
 - Requirements: **119** (draft 119)
-- `verification: test` requirements cited by at least one test: **12 / 92**
-- Citing tests: **58**; vectors referencing a requirement: **35**
+- `verification: test` requirements cited by at least one test: **14 / 92**
+- Citing tests: **69**; vectors referencing a requirement: **35**
 
 | ID | Status | Crit. | Verification | Tests | Vectors |
 |---|---|---|---|---|---|
@@ -53,7 +53,7 @@
 | [PHY-016](PHY.md) | draft | medium | test | — | — |
 | [PHY-017](PHY.md) | draft | medium | inspection | — | — |
 | [PHY-018](PHY.md) | draft | high | inspection | `crates/ferroastro-vectors/tests/schema.rs::bad_values_are_rejected` | — |
-| [NUM-001](NUM.md) | draft | high | test | — | — |
+| [NUM-001](NUM.md) | draft | high | test | `crates/ferroastro-integrators/src/compensated.rs::compensated_sum_keeps_low_order_bits`<br>`crates/ferroastro-integrators/src/radau.rs::newton_and_monomial_forms_agree`<br>`crates/ferroastro-integrators/src/radau.rs::spacings_are_radau_roots_in_order`<br>`crates/ferroastro-integrators/tests/ias15_analytic.rs::damped_oscillator_matches_closed_form`<br>`crates/ferroastro-integrators/tests/ias15_analytic.rs::gyration_conserves_speed_and_is_reversible`<br>`crates/ferroastro-integrators/tests/ias15_analytic.rs::invalid_inputs_are_coded_errors`<br>`crates/ferroastro-integrators/tests/ias15_analytic.rs::kepler_orbits_match_analytic_solution` | — |
 | [NUM-002](NUM.md) | draft | high | test | — | — |
 | [NUM-003](NUM.md) | draft | medium | test | — | — |
 | [NUM-004](NUM.md) | draft | medium | test | — | — |
@@ -75,7 +75,7 @@
 | [NUM-020](NUM.md) | draft | high | inspection | — | — |
 | [NUM-021](NUM.md) | draft | medium | test | — | — |
 | [NUM-022](NUM.md) | draft | low | test | — | — |
-| [NUM-023](NUM.md) | draft | medium | test | — | — |
+| [NUM-023](NUM.md) | draft | medium | test | `crates/ferroastro-integrators/src/diagnostics.rs::degenerate_inputs_are_errors`<br>`crates/ferroastro-integrators/src/diagnostics.rs::exact_line_and_power_law_are_recovered`<br>`crates/ferroastro-integrators/tests/ias15_analytic.rs::gyration_conserves_speed_and_is_reversible` | — |
 | [NUM-024](NUM.md) | draft | medium | demonstration | — | — |
 | [NUM-025](NUM.md) | draft | low | test | — | — |
 | [TST-001](TST.md) | draft | high | test | — | — |
@@ -84,7 +84,7 @@
 | [TST-004](TST.md) | draft | high | inspection | — | — |
 | [TST-005](TST.md) | draft | medium | test | `crates/ferroastro-testdata/src/lib.rs::civil_dates`<br>`crates/ferroastro-testdata/src/lib.rs::sha256_of_empty_input` | — |
 | [API-001](API.md) | draft | high | test | `crates/ferroastro-constants/tests/phy002_constants.rs::body_discriminants_follow_all`<br>`crates/ferroastro-core/src/frames.rs::same_frame_and_centre_subtract`<br>`crates/ferroastro-core/src/time.rs::same_scale_difference_is_a_time_span`<br>`crates/ferroastro-core/src/units.rs::arcsec_round_trip`<br>`crates/ferroastro-core/src/units.rs::constructors_reject_non_finite`<br>`crates/ferroastro-core/src/units.rs::dimensional_arithmetic`<br>`crates/ferroastro-core/tests/compile_fail.rs::compile_fail_type_mismatches` | — |
-| [API-002](API.md) | draft | medium | test | `crates/ferroastro-core/src/error.rs::codes_are_unique_and_well_formed`<br>`crates/ferroastro-core/src/error.rs::messages_name_code_quantity_unit_and_range`<br>`crates/ferroastro-core/src/units.rs::constructors_reject_non_finite` | — |
+| [API-002](API.md) | draft | medium | test | `crates/ferroastro-core/src/error.rs::codes_are_unique_and_well_formed`<br>`crates/ferroastro-core/src/error.rs::messages_name_code_quantity_unit_and_range`<br>`crates/ferroastro-core/src/units.rs::constructors_reject_non_finite`<br>`crates/ferroastro-integrators/tests/ias15_analytic.rs::invalid_inputs_are_coded_errors` | — |
 | [API-003](API.md) | draft | low | test | — | — |
 | [AGT-001](AGT.md) | draft | medium | inspection | — | — |
 | [AGT-002](AGT.md) | draft | low | inspection | — | — |
