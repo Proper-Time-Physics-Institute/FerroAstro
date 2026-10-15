@@ -2616,7 +2616,7 @@ absence mostly shows in Uranus (11.5 → 3.9 km).
 ### WP12 1b — N-body Brouwer ensemble with J2 (nightly, release, local; logs `target/wp12/brouwer-20261015T102158Z-6595c61.log` and `target/wp12/brouwer2-*-e12ba0e.log`)
 32 runs × 100 000 yr, **1 010 886 862 IAS15 steps in total**. Wall time was 2 585 s on the first
 run and 3 332 s on the second (the machine was shared). The pre-registered size was estimated at
-~20 min; the real-IC runs took ~45–55 min, so the nightly override allows 60 min.
+~20 min; the real-IC runs took ~45–55 min, so the nightly override terminates it after 90 min (scheduling only).
 
 | quantity (ensemble RMS, fit from 10 Mercury orbits to 1e5 yr) | slope | status |
 |---|---|---|

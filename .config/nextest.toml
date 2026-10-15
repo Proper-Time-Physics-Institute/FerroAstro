@@ -42,9 +42,9 @@ fail-fast = false
 success-output = "immediate"
 slow-timeout = { period = "300s", terminate-after = 6 }
 
-# WP12 1b: the N-body Brouwer ensemble spawns 32 threads and ~1e9 IAS15 steps (~20 min); it runs
+# WP12 1b: the N-body Brouwer ensemble spawns 32 threads and ~1e9 IAS15 steps (45-55 min measured on 2026-10-15; terminated after 90 min); it runs
 # alone so the other nightly ensembles neither slow it nor are slowed by it. Scheduling only.
 [[profile.nightly.overrides]]
 filter = "test(nightly_nbody_brouwer_energy_slope_with_solar_j2)"
 threads-required = "num-test-threads"
-slow-timeout = { period = "600s", terminate-after = 6 }
+slow-timeout = { period = "600s", terminate-after = 9 }
