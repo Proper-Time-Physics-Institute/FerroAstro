@@ -1,0 +1,22 @@
+# SPDX-FileCopyrightText: 2026 Proper-Time Physics Institute
+# SPDX-License-Identifier: Apache-2.0
+# WP16: tolerances of the oracle comparisons (ferroastro-oracle). The goldens themselves live in
+# ci/golden/<tool>/<scenario>/ with MANIFEST.json (CI-003). Derivations and the pre-registration:
+# docs/strategy/IMPLEMENTATION-NOTES.md, WP16.
+schema_version = 1
+
+[[vector]]
+id = "ORACLE-STAGE-A-REBOUND-MAX-DR"
+requirement = ["CI-005", "REF-005"]
+quantity = "largest Euclidean position difference, over the 9 bodies and the 101 yearly output times, between FerroAstro IAS15 (f64) and REBOUND 5.2.2 IAS15 on scenario stage-a-sun-8planets-newton-100yr (Sun + 8 planets with the EMB, Newtonian, header.440 ICs at JDEPOC, 100 Julian years, epsilon 1e-9, first step 0.1 d)"
+value = 0.0
+unit = "km"
+kind = "computed-reference"
+source = "REBOUND 5.2.2 IAS15 run in the local ci/oracles/rebound image on the same scenario file; golden ci/golden/rebound/stage-a-sun-8planets-newton-100yr/ with its MANIFEST.json (image digest, runner commit, input and output SHA-256s)"
+citation = "Rein & Spiegel 2015, MNRAS 446, 1424 (IAS15); REBOUND 5.2.2 (PyPI, GPL-3.0, used as a black box in a separate container, LIC-001); WP16 plan, crate-plan.json"
+retrieved = "2026-10-15"
+tolerance = { abs = 1.0e-3 }
+tolerance_rationale = "PROVISIONAL 1 m (WP16 plan; NEEDS HUMAN REVIEW). Both codes integrate the same ICs and GMs with an IAS15-class 15th-order Gauss-Radau scheme at epsilon 1e-9, so the difference is step-sequence and round-off error only: REBOUND runs in au, day and G = 1 with GM in au^3/d^2 and its own (PRS23) step criterion, FerroAstro in km and s, and FerroAstro reads header.440 with its own parser (identical ICs up to the unit change, ~1e-8 km at t = 0). Along-track errors grow at most linearly with time over 100 yr (~415 Mercury orbits); with per-orbit relative energy errors of ~1e-15 this is far below 1 m for every body. 1 m sits ~4 orders above that expectation and ~5 orders below the WP12 Newtonian-vs-DE440 differences (tens of km), so it detects any model or IC error while tolerating integrator-implementation noise. Pre-registered in WP16 before the first FerroAstro-vs-REBOUND comparison."
+verified_by = "WP16 builder agent, 2026-10-15: tolerance from the WP16 plan, expectation derived above before the comparison was run."
+generated_by = "tools/oracles/rebound_runner.py@be7fa6e"
+engine = { name = "REBOUND", version = "5.2.2 (with REBOUNDx 5.1.0 installed, unused in stage A)", settings = "IAS15, epsilon 1e-9 (read back), adaptive_mode PRS23 (default), min_dt 0, sim.dt = 0.1 d, G = 1, units au/day, gravity basic, exact_finish_time = 1 at each yearly output" }

@@ -30,6 +30,7 @@ from __future__ import annotations
 
 import argparse
 import math
+import os
 import platform
 import subprocess
 from collections.abc import Iterator, Sequence
@@ -85,7 +86,13 @@ DAT_COLUMNS = ("iy", "im", "id", "fd", "dat")
 
 
 def git_head() -> str:
-    """Return ``<sha>`` of HEAD, with ``-dirty`` if this script has uncommitted changes."""
+    """Return ``<sha>`` of HEAD, with ``-dirty`` if this script has uncommitted changes.
+
+    Inside the ERFA oracle image there is no git checkout: the runner passes the commit in
+    ``FA_GENERATOR_SHA`` (the header line changes, the data rows do not).
+    """
+    if env := os.environ.get("FA_GENERATOR_SHA", "").strip():
+        return env
     sha = subprocess.run(  # noqa: S603
         ["git", "-C", str(ROOT), "rev-parse", "HEAD"],  # noqa: S607
         check=True,

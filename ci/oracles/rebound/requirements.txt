@@ -1,0 +1,8 @@
+# SPDX-FileCopyrightText: 2026 Proper-Time Physics Institute
+# SPDX-License-Identifier: Apache-2.0
+# REF-005 / CI-001: exact pins with PyPI SHA-256s (pip --require-hashes). Installed in this order by
+# the Dockerfile; reboundx 5.1.0 is published as an sdist only and is built against the installed
+# rebound (no build isolation, so every build input is hash-pinned here too).
+setuptools==84.0.0 --hash=sha256:51a52592b3b99e102b609654876bd65f19f999935166d1352678931132b0c670
+numpy==2.5.4 --hash=sha256:fbde6962867ee75b48b0ee29b2b9372ec5d617799dbaf38e82dc0596f2f7738a
+rebound==5.2.2 --hash=sha256:cb22124cde0afa02bd731eb6edd33f34f6694d50b94a3946d05effd8c5f5f1be

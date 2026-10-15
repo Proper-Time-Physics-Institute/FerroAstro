@@ -436,6 +436,22 @@ dependencies = [
 ]
 
 [[package]]
+name = "ferroastro-oracle"
+version = "0.0.0"
+dependencies = [
+ "ferroastro-constants",
+ "ferroastro-core",
+ "ferroastro-propagate",
+ "ferroastro-scenario",
+ "ferroastro-testdata",
+ "ferroastro-vectors",
+ "serde",
+ "serde_json",
+ "sha2",
+ "thiserror",
+]
+
+[[package]]
 name = "ferroastro-precession"
 version = "0.0.0"
 dependencies = [

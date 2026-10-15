@@ -21,6 +21,7 @@
 //! | `FA-E1200`–`FA-E1299` | scenario files, force switches and initial-condition hashes (`ferroastro-scenario`) |
 //! | `FA-E1300`–`FA-E1399` | run driver, outputs, checkpoints and batches (`ferroastro-propagate`) |
 //! | `FA-E1400`–`FA-E1499` | differential-run plans, initial-condition identity and run stores (`ferroastro-diffrun`) |
+//! | `FA-E1500`–`FA-E1599` | oracle goldens, `MANIFEST.json` provenance and comparisons (`ferroastro-oracle`) |
 
 use std::fmt;
 
@@ -161,11 +162,20 @@ pub enum ErrorCode {
     DiffrunIcMismatch,
     /// `FA-E1402`: a differential run's checkpoint store cannot be read or written.
     DiffrunStore,
+    /// `FA-E1500`: an oracle `MANIFEST.json` is missing, malformed, or lacks a CI-003 field.
+    OracleManifest,
+    /// `FA-E1501`: a golden file's SHA-256 differs from its manifest entry, or an input's from
+    /// its pin.
+    OracleChecksum,
+    /// `FA-E1502`: a golden output file is malformed or inconsistent with its scenario.
+    OracleGolden,
+    /// `FA-E1503`: a FerroAstro run and a golden cannot be compared (missing time or body).
+    OracleComparison,
 }
 
 impl ErrorCode {
     /// Every code, in numeric order (used to prove codes are unique).
-    pub const ALL: [ErrorCode; 61] = [
+    pub const ALL: [ErrorCode; 65] = [
         ErrorCode::NonFinite,
         ErrorCode::OutOfRange,
         ErrorCode::VectorIo,
@@ -227,6 +237,10 @@ impl ErrorCode {
         ErrorCode::DiffrunPlan,
         ErrorCode::DiffrunIcMismatch,
         ErrorCode::DiffrunStore,
+        ErrorCode::OracleManifest,
+        ErrorCode::OracleChecksum,
+        ErrorCode::OracleGolden,
+        ErrorCode::OracleComparison,
     ];
 
     /// The stable textual code, e.g. `"FA-E0001"`.
@@ -294,6 +308,10 @@ impl ErrorCode {
             ErrorCode::DiffrunPlan => "FA-E1400",
             ErrorCode::DiffrunIcMismatch => "FA-E1401",
             ErrorCode::DiffrunStore => "FA-E1402",
+            ErrorCode::OracleManifest => "FA-E1500",
+            ErrorCode::OracleChecksum => "FA-E1501",
+            ErrorCode::OracleGolden => "FA-E1502",
+            ErrorCode::OracleComparison => "FA-E1503",
         }
     }
 }

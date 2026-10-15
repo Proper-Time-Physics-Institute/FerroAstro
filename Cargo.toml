@@ -35,6 +35,7 @@ ferroastro-scenario = { path = "crates/ferroastro-scenario", version = "0.0.0" }
 ferroastro-propagate = { path = "crates/ferroastro-propagate", version = "0.0.0" }
 ferroastro-diffrun = { path = "crates/ferroastro-diffrun", version = "0.0.0" }
 ferroastro-ladder = { path = "crates/ferroastro-ladder", version = "0.0.0" }
+ferroastro-oracle = { path = "crates/ferroastro-oracle", version = "0.0.0" }
 ferroastro-cli = { path = "crates/ferroastro-cli", version = "0.0.0" }
 serde = { version = "1.0.219", features = ["derive"] }
 # UTC and leap seconds (DEP-010) behind ferroastro-time's optional `hifitime` feature. MPL-2.0 is
