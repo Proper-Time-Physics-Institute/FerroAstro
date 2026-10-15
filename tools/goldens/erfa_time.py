@@ -162,7 +162,7 @@ def dat_rows() -> Iterator[list[str]]:
                 yield [str(y), str(m), str(d), repr(fd), repr(scalar(erfa.dat(y, m, d, fd)))]
 
 
-def header(title: str, columns: Sequence[str], rows: int) -> str:
+def header(title: str, units: str, columns: Sequence[str], rows: int) -> str:
     """Provenance header lines (``#``-prefixed) and the column line."""
     if erfa.__version__ != PYERFA_PIN:
         msg = f"pyerfa {erfa.__version__} != pinned {PYERFA_PIN} (REF-009)"
@@ -177,15 +177,17 @@ def header(title: str, columns: Sequence[str], rows: int) -> str:
         f"Python {platform.python_version()} on {platform.machine()}",
         f"generated_utc: {datetime.now(UTC).strftime('%Y-%m-%dT%H:%M:%SZ')}",
         f"rows: {rows}",
-        "units: two-part Julian dates in days; dtdb in seconds; elong rad; u, v km",
+        f"units: {units}",
     ]
     return "".join(f"# {line}\n" for line in lines) + ",".join(columns) + "\n"
 
 
-def write(path: Path, title: str, columns: Sequence[str], rows: list[list[str]]) -> None:
+def write(
+    path: Path, title: str, units: str, columns: Sequence[str], rows: list[list[str]]
+) -> None:
     """Write one CSV file."""
     body = "".join(",".join(r) + "\n" for r in rows)
-    path.write_text(header(title, columns, len(rows)) + body, encoding="utf-8")
+    path.write_text(header(title, units, columns, len(rows)) + body, encoding="utf-8")
     print(f"wrote {path} ({len(rows)} rows)")
 
 
@@ -198,12 +200,14 @@ def main(argv: list[str] | None = None) -> int:
     write(
         args.out_dir / "erfa-time-pyerfa.csv",
         "pyerfa time-scale goldens: TT -> TAI/TDB/TCB/TCG and back, 1550-2650 (REF-009)",
+        "two-part Julian dates in days; dtdb in seconds; ut fraction of day; elong rad; u, v km",
         TIME_COLUMNS,
         list(time_rows()),
     )
     write(
         args.out_dir / "erfa-dat-pyerfa.csv",
         "pyerfa TAI-UTC (erfa.dat) at the 1972-2026 half-year boundaries (DEP-010)",
+        "UTC calendar date; fd fraction of the UTC day; dat = TAI-UTC in seconds",
         DAT_COLUMNS,
         list(dat_rows()),
     )
