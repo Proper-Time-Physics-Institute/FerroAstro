@@ -41,3 +41,33 @@ fn gr_schw_numerical_reproduces_42_980() {
         num - park
     );
 }
+
+/// GR-SCHW integrated in f64 and in double-double from the same SW92 initial state (DEP-007):
+/// both meet PHY-005 and they agree within the WP7 bound.
+///
+/// Verifies: PHY-005, DEP-007, NUM-006
+#[test]
+fn gr_schw_in_double_double_matches_f64() {
+    use ferroastro_real::DoubleDouble;
+    let c = common::ctx();
+    let rung = c.rung("GR-SCHW");
+    let f = c.setup.run(&rung).unwrap();
+    let d = c.setup.run_in::<DoubleDouble>(&rung).unwrap();
+    let (rf, rd) = (
+        f.numerical_arcsec_per_century(),
+        d.numerical_arcsec_per_century(),
+    );
+    println!(
+        "GR-SCHW f64 {rf:.12} arcsec/cy ({} steps, {:.2} s); double-double {rd:.12} arcsec/cy \
+         ({} steps, {:.2} s); f64 - DD = {:+.3e}; dynamics: {}",
+        f.stats.steps,
+        f.wall_seconds,
+        d.stats.steps,
+        d.wall_seconds,
+        rf - rd,
+        d.report.dynamics
+    );
+    c.check("PHY005-GR-NUM-RATE", rf);
+    c.check("PHY005-GR-NUM-RATE", rd);
+    c.check("PHY005-F64-DD-AGREEMENT", rf - rd);
+}

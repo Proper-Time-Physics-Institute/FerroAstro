@@ -395,3 +395,17 @@ retrieved = "2026-10-15"
 tolerance = { abs = 1.0e-4 }
 tolerance_rationale = "Pre-registered in WP6 before the first run: the spread must stay below the NUM-013(a) isolation tolerance (1e-4 arcsec/cy), otherwise the NUM-013(a) comparison would depend on the choice of estimator. Known inputs: WP4 measured passages vs LRL at 4e-7 relative for GR (1.7e-5 arcsec/cy); WP5 measured a 2-day passage-direction error of ~3e-6 arcsec per passage."
 verified_by = "WP6 builder agent, 2026-10-15: bound derived from NUM-013(a); spread is reported per rung in IMPLEMENTATION-NOTES WP6."
+
+[[vector]]
+id = "PHY005-F64-DD-AGREEMENT"
+requirement = ["PHY-005", "DEP-007", "NUM-006"]
+quantity = "rate(f64) - rate(double-double) of rung GR-SCHW (same initial state, same IAS15 settings, same passage estimator), Sun + Mercury test particle"
+value = 0.0
+unit = "arcsec/cy"
+kind = "analytic"
+source = "The same dynamics integrated in two precisions must give the same secular rate; the difference measures the f64 round-off contribution to the rung. WP7 acceptance (CRATE-PLAN WP7): the f64 and double-double GR-SCHW rates agree within 1e-6 arcsec/cy."
+citation = "FerroAstro docs/requirements/PHY.md PHY-005; docs/requirements/DEP.md DEP-007; docs/requirements/NUM.md NUM-006; ADR-0002"
+retrieved = "2026-10-15"
+tolerance = { abs = 1.0e-6 }
+tolerance_rationale = "The work package's bound (1e-6 arcsec/cy = 2.3e-8 relative), written before the first run. PHY-001 measured the f64 IAS15 drift of a Newtonian rate at 1.35e-10 arcsec/cy over 1000 yr, so round-off should sit far below it; a larger difference would mean the backends do not integrate the same dynamics."
+verified_by = "WP7 builder agent, 2026-10-15: bound copied from the WP7 brief before any double-double rung run; measured values in IMPLEMENTATION-NOTES WP7."

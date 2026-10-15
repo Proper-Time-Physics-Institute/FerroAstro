@@ -294,6 +294,7 @@ dependencies = [
  "ferroastro-forces",
  "ferroastro-integrators",
  "ferroastro-precession",
+ "ferroastro-real",
  "ferroastro-testdata",
  "ferroastro-vectors",
  "serde",

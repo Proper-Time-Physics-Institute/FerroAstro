@@ -19,6 +19,7 @@ use ferroastro_integrators::{Ias15, Ias15Config, Ias15Stats, SecondOrderSystem};
 use ferroastro_precession::PrecessionError;
 use ferroastro_precession::lrl::PerihelionTracker;
 use ferroastro_precession::passages::Passage;
+use ferroastro_real::Real;
 
 /// Output of [`find_perihelia`].
 #[derive(Debug, Clone)]
@@ -36,51 +37,59 @@ pub struct PassageRun {
 }
 
 /// Integrate `sys` (3 coordinates: heliocentric position) from `(r0, v0)` at `t = 0` until
-/// `passages` perihelion passages are found or `max_time_s` is reached.
+/// `passages` perihelion passages are found or `max_time_s` is reached, in backend `R` (the
+/// integration and the passage refinement run in `R`; the passages and the LRL samples handed to
+/// the f64 estimators are rounded to f64 at the end).
 ///
 /// `mu` is the gravitational parameter of the LRL cross-check (km³/s²).
 ///
 /// # Errors
 /// Integrator and force-model errors, `FA-E0600` for a degenerate initial orbit, and
 /// `FA-E0601` if fewer than `passages` passages occur before `max_time_s`.
-pub fn find_perihelia<S: SecondOrderSystem + ?Sized>(
+pub fn find_perihelia<R: Real, S: SecondOrderSystem<R> + ?Sized>(
     sys: &S,
-    r0: [f64; 3],
-    v0: [f64; 3],
-    mu: f64,
+    r0: [R; 3],
+    v0: [R; 3],
+    mu: R,
     passages: usize,
-    max_time_s: f64,
+    max_time_s: R,
     cfg: Ias15Config,
 ) -> Result<PassageRun, LadderError> {
-    let mut tracker = PerihelionTracker::new(r0, v0, mu)?;
-    let dt0 = norm(r0) / norm(v0) / 16.0;
-    let mut ias = Ias15::new(3, 0.0, &r0, &v0, dt0, cfg)?;
+    let f = |x: [R; 3]| x.map(R::to_f64);
+    let mut tracker = PerihelionTracker::new(f(r0), f(v0), mu.to_f64())?;
+    let dt0 = norm(r0) / norm(v0) / R::from_f64(16.0);
+    let mut ias = Ias15::new(3, R::ZERO, &r0, &v0, dt0, cfg)?;
     let mut out = PassageRun {
         passages: Vec::with_capacity(passages),
         stats: Ias15Stats::default(),
         max_residual: 0.0,
         lrl_times: vec![0.0],
-        lrl_longitudes: vec![tracker.longitude(r0, v0)],
+        lrl_longitudes: vec![tracker.longitude(f(r0), f(v0))],
     };
-    let mut prev = (0.0, r0, v0);
+    let mut prev = (R::ZERO, r0, v0);
     while out.passages.len() < passages {
         let rep = ias.step(sys, max_time_s)?;
         let (r, v) = (to3(ias.positions())?, to3(ias.velocities())?);
-        if rep.dt_done != 0.0 {
-            out.lrl_times.push(rep.t);
-            out.lrl_longitudes.push(tracker.longitude(r, v));
-            if dot(prev.1, prev.2) < 0.0 && dot(r, v) >= 0.0 {
-                let p = refine(sys, prev, rep.t, cfg)?;
-                let resid = dot(p.r, p.v).abs() / (norm(p.r) * norm(p.v));
+        if rep.dt_done != R::ZERO {
+            out.lrl_times.push(rep.t.to_f64());
+            out.lrl_longitudes.push(tracker.longitude(f(r), f(v)));
+            if dot(prev.1, prev.2) < R::ZERO && dot(r, v) >= R::ZERO {
+                let (t, pr, pv) = refine(sys, prev, rep.t, cfg)?;
+                let resid = (dot(pr, pv).abs() / (norm(pr) * norm(pv))).to_f64();
                 out.max_residual = out.max_residual.max(resid);
-                out.passages.push(p);
+                out.passages.push(Passage {
+                    t: t.to_f64(),
+                    r: f(pr),
+                    v: f(pv),
+                });
             }
             prev = (rep.t, r, v);
         }
         if rep.reached_limit && out.passages.len() < passages {
             return Err(LadderError::from(PrecessionError::Fit(format!(
-                "only {} of {passages} perihelion passages before t = {max_time_s} s",
-                out.passages.len()
+                "only {} of {passages} perihelion passages before t = {} s",
+                out.passages.len(),
+                max_time_s.to_f64()
             ))));
         }
     }
@@ -88,8 +97,8 @@ pub fn find_perihelia<S: SecondOrderSystem + ?Sized>(
     Ok(out)
 }
 
-fn to3(x: &[f64]) -> Result<[f64; 3], LadderError> {
-    <[f64; 3]>::try_from(x).map_err(|_| {
+fn to3<R: Real>(x: &[R]) -> Result<[R; 3], LadderError> {
+    <[R; 3]>::try_from(x).map_err(|_| {
         LadderError::from(PrecessionError::Fit(
             "perihelion search needs a 3-coordinate system".into(),
         ))
@@ -139,16 +148,19 @@ pub fn sample_uniform<S: SecondOrderSystem + ?Sized>(
     Ok((t, r, v))
 }
 
-/// Locate the root of `r·v` in `(t0, t1]`, starting from the state at `t0`.
-fn refine<S: SecondOrderSystem + ?Sized>(
+/// A point of the trajectory: time (s), position (km), velocity (km/s).
+type Point<R> = (R, [R; 3], [R; 3]);
+
+/// Locate the root of `r·v` in `(t0, t1]`, starting from the state at `t0` (in backend `R`).
+fn refine<R: Real, S: SecondOrderSystem<R> + ?Sized>(
     sys: &S,
-    start: (f64, [f64; 3], [f64; 3]),
-    t1: f64,
+    start: Point<R>,
+    t1: R,
     cfg: Ias15Config,
-) -> Result<Passage, LadderError> {
+) -> Result<Point<R>, LadderError> {
     let (t0, r0, v0) = start;
-    let state_at = |t: f64| -> Result<([f64; 3], [f64; 3]), LadderError> {
-        if (t - t0).abs() <= 0.0 {
+    let state_at = |t: R| -> Result<([R; 3], [R; 3]), LadderError> {
+        if (t - t0).abs() <= R::ZERO {
             return Ok((r0, v0));
         }
         let mut ias = Ias15::new(3, t0, &r0, &v0, t - t0, cfg)?;
@@ -163,23 +175,20 @@ fn refine<S: SecondOrderSystem + ?Sized>(
     } else {
         t1
     };
-    let mut best = Passage {
-        t: t1,
-        r: r1,
-        v: v1,
-    };
+    let mut best = (t1, r1, v1);
+    let four_eps = R::from_f64(4.0) * R::EPSILON;
     for _ in 0..12 {
         let (r, v) = state_at(t)?;
-        best = Passage { t, r, v };
-        let mut a = [0.0; 3];
+        best = (t, r, v);
+        let mut a = [R::ZERO; 3];
         sys.acceleration(t, &r, &v, &mut a)?;
         let f = dot(r, v);
         let fp = dot(v, v) + dot(r, a);
-        if fp.is_nan() || fp <= 0.0 {
+        if fp.is_nan() || fp <= R::ZERO {
             break;
         }
-        let next = (t - f / fp).clamp(t0, t1);
-        if (next - t).abs() <= 4.0 * f64::EPSILON * t.abs().max(t1 - t0) {
+        let next = (t - f / fp).max(t0).min(t1);
+        if (next - t).abs() <= four_eps * t.abs().max(t1 - t0) {
             break;
         }
         t = next;

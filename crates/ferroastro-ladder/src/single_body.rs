@@ -31,6 +31,7 @@ use ferroastro_precession::park2017::{
 };
 use ferroastro_precession::passages::{self, OrbitPlane, PerOrbitFit, fit_per_orbit};
 use ferroastro_precession::report::{RateReport, RateReportBuilder};
+use ferroastro_real::Real;
 
 /// The dynamics of a rung (all add to Newtonian `−μr/r³` about a fixed Sun).
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -336,6 +337,12 @@ impl<F: Frame> SingleBody<F> {
     }
 
     fn pole(&self, spec: PoleSpec) -> Result<Pole<F>, LadderError> {
+        self.pole_in::<f64>(spec)
+    }
+
+    /// The pole in backend `R`: its unnormalised direction is formed in f64 from the initial
+    /// state and normalised in `R`.
+    fn pole_in<R: Real>(&self, spec: PoleSpec) -> Result<Pole<F, R>, LadderError> {
         let v = match spec {
             PoleSpec::Fixed(v) => v,
             PoleSpec::OrbitNormalTilted(t) => {
@@ -355,29 +362,44 @@ impl<F: Frame> SingleBody<F> {
                 ]
             }
         };
-        Ok(Pole::from_components(v)?)
+        Ok(Pole::from_components(v.map(R::from_f64))?)
     }
 
-    /// The force model of a rung.
+    /// The force model of a rung (f64).
     ///
     /// # Errors
     /// Force-model construction errors.
     pub fn model(&self, rung: &Rung) -> Result<TestParticle<F>, LadderError> {
-        let (mu, c) = (self.mu, self.c);
-        let term: Box<dyn CentralTerm<F>> = match rung.model {
+        self.model_in::<f64>(rung)
+    }
+
+    /// The force model of a rung in backend `R` (DEP-007). The constants are the binary64 DE440
+    /// values, converted exactly; the dynamics are then evaluated in `R`.
+    ///
+    /// # Errors
+    /// Force-model construction errors.
+    pub fn model_in<R: Real>(&self, rung: &Rung) -> Result<TestParticle<F, R>, LadderError> {
+        let (mu, c) = (self.mu.cast::<R>(), self.c.cast::<R>());
+        let r = R::from_f64;
+        let term: Box<dyn CentralTerm<F, R>> = match rung.model {
             Model::SrKepler => Box::new(SrKepler::new(mu, c)?),
             Model::SrBHarmonic => Box::new(PnLagrangian::sr_b_harmonic(mu, c)?),
             Model::SrBAreal => Box::new(PnLagrangian::sr_b_areal(mu, c)?),
             Model::Schwarzschild { beta, gamma } => {
-                Box::new(SchwarzschildPpn::new(mu, c, beta, gamma)?)
+                Box::new(SchwarzschildPpn::new(mu, c, r(beta), r(gamma))?)
             }
             Model::Lagrangian(k) => Box::new(PnLagrangian::generic(mu, c, k)?),
-            Model::J2 { j2 } => Box::new(SolarJ2::new(mu, j2, self.radius, self.pole(rung.pole)?)?),
+            Model::J2 { j2 } => Box::new(SolarJ2::new(
+                mu,
+                r(j2),
+                self.radius.cast(),
+                self.pole_in(rung.pole)?,
+            )?),
             Model::LenseThirring => Box::new(LenseThirring::new(
-                self.gs,
+                self.gs.cast(),
                 c,
-                self.gamma,
-                self.pole(rung.pole)?,
+                r(self.gamma),
+                self.pole_in(rung.pole)?,
             )?),
         };
         Ok(TestParticle::new(mu, vec![term])?)
@@ -460,24 +482,34 @@ impl<F: Frame> SingleBody<F> {
         Ok(pn_unit(self.mu, self.c, p)?)
     }
 
-    /// Run a rung.
+    /// Run a rung (f64).
     ///
     /// # Errors
     /// Force-model, integrator, estimator or report errors.
     pub fn run(&self, rung: &Rung) -> Result<RungResult, LadderError> {
+        self.run_in::<f64>(rung)
+    }
+
+    /// Run a rung with the dynamics integrated in backend `R` (DEP-007): force model, IAS15 and
+    /// the passage refinement run in `R`; the passages are rounded to f64 for the estimator,
+    /// whose own round-off (~1e-16 rad per passage) is far below the rung tolerances.
+    ///
+    /// # Errors
+    /// Force-model, integrator, estimator or report errors.
+    pub fn run_in<R: Real>(&self, rung: &Rung) -> Result<RungResult, LadderError> {
         let started = std::time::Instant::now();
-        let model = self.model(rung)?;
+        let model = self.model_in::<R>(rung)?;
         let el = self.initial_elements()?;
         let period = keplerian_period(self.mu, el.a)?;
         let passages_wanted = usize::try_from(self.orbits).unwrap_or(usize::MAX) + 1;
         let max_time = period.seconds() * (f64::from(self.orbits) + 2.0);
         let run = find_perihelia(
             &model,
-            self.r0,
-            self.v0,
-            self.mu.km3_per_s2(),
+            self.r0.map(R::from_f64),
+            self.v0.map(R::from_f64),
+            R::from_f64(self.mu.km3_per_s2()),
             passages_wanted,
-            max_time,
+            R::from_f64(max_time),
             self.ias15,
         )?;
         let plane = OrbitPlane::osculating(self.r0, self.v0, self.mu.km3_per_s2())?;
@@ -504,11 +536,12 @@ impl<F: Frame> SingleBody<F> {
             .gauge(gauge.label())
             .estimator(passages::ESTIMATOR)
             .dynamics(format!(
-                "{}; IAS15 (FerroAstro clean-room) epsilon = {:e}, safety = {}, PC tolerance = {:e}, f64 + compensated summation",
+                "{}; IAS15 (FerroAstro clean-room) epsilon = {:e}, safety = {}, PC tolerance = {:e}, {} + compensated summation",
                 model.describe(),
                 cfg.epsilon,
                 cfg.safety,
-                cfg.pc_tolerance
+                cfg.pc_tolerance,
+                R::NAME
             ))
             .build()?;
         Ok(RungResult {
