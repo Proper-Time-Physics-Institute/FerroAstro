@@ -221,8 +221,15 @@ pub fn fetch_product(name: &str) -> Result<Fetched, DataError> {
 /// [`DataError::Manifest`] for an unknown product, [`DataError::Missing`] if the file is absent
 /// or does not match its pin.
 pub fn locate_product(name: &str) -> Result<Fetched, DataError> {
+    locate_product_in(name, &data_dir())
+}
+
+/// [`locate_product`] in an explicit cache directory `dir` instead of [`data_dir`].
+///
+/// # Errors
+/// As [`locate_product`].
+pub fn locate_product_in(name: &str, dir: &Path) -> Result<Fetched, DataError> {
     let p = product(name)?;
-    let dir = data_dir();
     let path = dir.join(&p.file);
     let missing = |problem: String| DataError::Missing {
         name: name.to_owned(),

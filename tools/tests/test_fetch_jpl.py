@@ -64,6 +64,31 @@ def test_checksum_mismatch_is_refused(tmp_path: Path) -> None:
     assert fetch_jpl.verify(_product(), tmp_path) == "MISSING"
 
 
+# Verifies: CI-005, REF-002
+def test_verify_only_refuses_wrong_content_under_fa_data_dir(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """``--verify-only`` re-hashes ``$FA_DATA_DIR``: substituted bytes fail with exit 1."""
+    cache = tmp_path / "cache"
+    cache.mkdir()
+    m = tmp_path / "MANIFEST.toml"
+    m.write_text(
+        'schema_version = 1\n[[product]]\nname = "toy"\nurl = "https://example.invalid/toy.bin"\n'
+        f'file = "toy.bin"\nsha256 = "{PAYLOAD_SHA}"\n'
+    )
+    monkeypatch.setenv("FA_DATA_DIR", str(cache))
+    assert fetch_jpl.main(["--verify-only", "--manifest", str(m), "toy"]) == 1
+    assert "MISSING" in capsys.readouterr().out
+    (cache / "toy.bin").write_bytes(b"substituted content\n")
+    assert fetch_jpl.main(["--verify-only", "--manifest", str(m), "toy"]) == 1
+    out = capsys.readouterr().out
+    assert "MISMATCH" in out
+    assert str(cache) in out
+    (cache / "toy.bin").write_bytes(PAYLOAD)
+    assert fetch_jpl.main(["--verify-only", "--manifest", str(m), "toy"]) == 0
+    assert " ok " in capsys.readouterr().out
+
+
 # Verifies: LIC-003
 def test_non_https_and_bad_pins_are_rejected(tmp_path: Path) -> None:
     m = tmp_path / "MANIFEST.toml"
