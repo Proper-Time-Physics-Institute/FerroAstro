@@ -8,7 +8,13 @@ name = "ferroastro-tools"
 version = "0.0.0"
 requires-python = ">=3.11"
 license = "Apache-2.0"
-dependencies = ["numpy", "pyyaml", "jsonschema", "jplephem==2.24"]
+dependencies = [
+    "numpy",
+    "pyyaml",
+    "jsonschema",
+    "jplephem==2.24",
+    "sympy>=1.13",
+]
 
 [dependency-groups]
 dev = ["ruff", "mypy", "pytest", "pre-commit", "reuse", "types-PyYAML", "types-jsonschema"]

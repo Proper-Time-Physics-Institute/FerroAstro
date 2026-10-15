@@ -8,8 +8,8 @@
 > workflow run; run URLs are not written here so that the file stays deterministic.
 
 - Requirements: **119** (draft 119)
-- `verification: test` requirements cited by at least one test: **16 / 92**
-- Citing tests: **91**; vectors referencing a requirement: **51**
+- `verification: test` requirements cited by at least one test: **22 / 92**
+- Citing tests: **105**; vectors referencing a requirement: **51**
 
 | ID | Status | Crit. | Verification | Tests | Vectors |
 |---|---|---|---|---|---|
@@ -41,11 +41,11 @@
 | [PHY-004](PHY.md) | draft | high | test | `crates/ferroastro-precession/src/kepler.rs::elements_state_round_trip`<br>`crates/ferroastro-precession/tests/data_horizons_mercury.rs::data_horizons_gr_rate_from_osculating_elements_vs_park17`<br>`crates/ferroastro-precession/tests/data_horizons_mercury.rs::data_horizons_osculating_elements_match`<br>`crates/ferroastro-precession/tests/data_sw92_table.rs::data_sw92_table1_mercury`<br>`crates/ferroastro-precession/tests/phy004_gr_analytic.rs::analytic_rejects_unbound_orbits`<br>`crates/ferroastro-precession/tests/phy004_gr_analytic.rs::gr_schw_analytic_rate_from_de440_and_sw92` | `HORIZONS-ELEMENTS-AGREEMENT`<br>`PARK17-GE-RATE`<br>`PHY004-GR-PER-ORBIT`<br>`PHY004-GR-RATE`<br>`PHY004-ORBITS-PER-CY`<br>`SW92-MERCURY-A`<br>`SW92-MERCURY-E` |
 | [PHY-005](PHY.md) | draft | high | test | — | — |
 | [PHY-006](PHY.md) | draft | high | test | — | — |
-| [PHY-007](PHY.md) | draft | high | test | — | — |
-| [PHY-008](PHY.md) | draft | high | test | — | — |
-| [PHY-009](PHY.md) | draft | high | test | — | — |
-| [PHY-010](PHY.md) | draft | high | test | — | — |
-| [PHY-011](PHY.md) | draft | high | test | — | — |
+| [PHY-007](PHY.md) | draft | high | test | `crates/ferroastro-forces/src/relativity.rs::sr_kepler_matches_closed_form` | — |
+| [PHY-008](PHY.md) | draft | high | test | `crates/ferroastro-forces/src/central.rs::terms_of_different_relativistic_gauges_cannot_be_mixed`<br>`crates/ferroastro-forces/src/relativity.rs::advance_units_of_the_named_coefficient_sets` | — |
+| [PHY-009](PHY.md) | draft | high | test | `crates/ferroastro-forces/src/relativity.rs::advance_units_of_the_named_coefficient_sets`<br>`crates/ferroastro-forces/src/relativity.rs::ppn_lagrangian_equals_schwarzschild_ppn_term`<br>`tools/tests/test_pn_lagrangian.py::test_metric_coefficients_and_reduced_equations`<br>`tools/tests/test_pn_lagrangian.py::test_negative_control_detects_a_wrong_coefficient` | — |
+| [PHY-010](PHY.md) | draft | high | test | `crates/ferroastro-forces/src/oblateness.rs::j2_acceleration_on_equator_and_pole` | — |
+| [PHY-011](PHY.md) | draft | high | test | `crates/ferroastro-forces/src/relativity.rs::lense_thirring_in_equatorial_plane` | — |
 | [PHY-012](PHY.md) | draft | high | test | — | — |
 | [PHY-013](PHY.md) | draft | high | test | — | — |
 | [PHY-014](PHY.md) | draft | high | test | — | — |
@@ -67,9 +67,9 @@
 | [NUM-012](NUM.md) | draft | medium | test | — | — |
 | [NUM-013](NUM.md) | draft | high | test | — | — |
 | [NUM-014](NUM.md) | draft | high | test | — | — |
-| [NUM-015](NUM.md) | draft | high | test | `crates/ferroastro-vectors/tests/schema.rs::tolerance_is_the_wider_of_abs_and_rel` | — |
+| [NUM-015](NUM.md) | draft | high | test | `crates/ferroastro-forces/src/relativity.rs::sr_kepler_matches_closed_form`<br>`crates/ferroastro-vectors/tests/schema.rs::tolerance_is_the_wider_of_abs_and_rel` | — |
 | [NUM-016](NUM.md) | draft | medium | inspection | — | — |
-| [NUM-017](NUM.md) | draft | high | test | — | — |
+| [NUM-017](NUM.md) | draft | high | test | `crates/ferroastro-forces/src/central.rs::terms_of_different_relativistic_gauges_cannot_be_mixed`<br>`crates/ferroastro-forces/src/relativity.rs::ppn_lagrangian_equals_schwarzschild_ppn_term`<br>`tools/tests/test_pn_lagrangian.py::test_metric_coefficients_and_reduced_equations` | — |
 | [NUM-018](NUM.md) | draft | high | test | — | — |
 | [NUM-019](NUM.md) | draft | high | test | — | — |
 | [NUM-020](NUM.md) | draft | high | inspection | — | — |
@@ -84,7 +84,7 @@
 | [TST-004](TST.md) | draft | high | inspection | — | — |
 | [TST-005](TST.md) | draft | medium | test | `crates/ferroastro-testdata/src/lib.rs::civil_dates`<br>`crates/ferroastro-testdata/src/lib.rs::sha256_of_empty_input` | — |
 | [API-001](API.md) | draft | high | test | `crates/ferroastro-constants/tests/phy002_constants.rs::body_discriminants_follow_all`<br>`crates/ferroastro-core/src/frames.rs::same_frame_and_centre_subtract`<br>`crates/ferroastro-core/src/time.rs::same_scale_difference_is_a_time_span`<br>`crates/ferroastro-core/src/units.rs::arcsec_round_trip`<br>`crates/ferroastro-core/src/units.rs::constructors_reject_non_finite`<br>`crates/ferroastro-core/src/units.rs::dimensional_arithmetic`<br>`crates/ferroastro-core/tests/compile_fail.rs::compile_fail_type_mismatches`<br>`crates/ferroastro-forces/src/newtonian.rs::pack_and_unpack_round_trip` | — |
-| [API-002](API.md) | draft | medium | test | `crates/ferroastro-core/src/error.rs::codes_are_unique_and_well_formed`<br>`crates/ferroastro-core/src/error.rs::messages_name_code_quantity_unit_and_range`<br>`crates/ferroastro-core/src/units.rs::constructors_reject_non_finite`<br>`crates/ferroastro-forces/src/newtonian.rs::invalid_and_singular_inputs_are_coded_errors`<br>`crates/ferroastro-integrators/tests/ias15_analytic.rs::invalid_inputs_are_coded_errors`<br>`crates/ferroastro-precession/tests/phy004_gr_analytic.rs::analytic_rejects_unbound_orbits` | — |
+| [API-002](API.md) | draft | medium | test | `crates/ferroastro-core/src/error.rs::codes_are_unique_and_well_formed`<br>`crates/ferroastro-core/src/error.rs::messages_name_code_quantity_unit_and_range`<br>`crates/ferroastro-core/src/units.rs::constructors_reject_non_finite`<br>`crates/ferroastro-forces/src/central.rs::invalid_inputs_are_coded_errors`<br>`crates/ferroastro-forces/src/newtonian.rs::invalid_and_singular_inputs_are_coded_errors`<br>`crates/ferroastro-integrators/tests/ias15_analytic.rs::invalid_inputs_are_coded_errors`<br>`crates/ferroastro-precession/tests/phy004_gr_analytic.rs::analytic_rejects_unbound_orbits` | — |
 | [API-003](API.md) | draft | low | test | — | — |
 | [AGT-001](AGT.md) | draft | medium | inspection | — | — |
 | [AGT-002](AGT.md) | draft | low | inspection | — | — |
