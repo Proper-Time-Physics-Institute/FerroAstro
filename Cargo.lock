@@ -340,7 +340,6 @@ dependencies = [
  "ferroastro-testdata",
  "ferroastro-vectors",
  "postcard",
- "rayon",
  "serde",
  "serde_json",
  "thiserror",

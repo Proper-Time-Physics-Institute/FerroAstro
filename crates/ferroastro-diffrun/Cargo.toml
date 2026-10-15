@@ -16,15 +16,9 @@ ferroastro-precession.workspace = true
 ferroastro-propagate.workspace = true
 ferroastro-scenario.workspace = true
 postcard.workspace = true
-rayon = { workspace = true, optional = true }
 serde.workspace = true
 serde_json.workspace = true
 thiserror.workspace = true
-
-[features]
-default = []
-# Run-level parallelism over the legs of a plan (rayon). Off on wasm32.
-parallel = ["dep:rayon", "ferroastro-propagate/parallel"]
 
 [dev-dependencies]
 ferroastro-analytic.workspace = true

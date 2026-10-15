@@ -26,7 +26,7 @@ pub struct RunOptions {
     /// Directory for per-leg store files (checkpoint and track after every segment); a
     /// completed leg's file is deleted. `None` keeps everything in memory.
     pub store: Option<PathBuf>,
-    /// Worker threads for the legs (with the `parallel` feature; sequential otherwise).
+    /// Worker threads for the legs (scoped threads; sequential on wasm32).
     pub threads: usize,
 }
 
@@ -386,33 +386,53 @@ fn other(source: PassageSource) -> PassageSource {
     }
 }
 
+type LegOutcome = Result<Option<LegResult>, DiffrunError>;
+
 fn run_legs(
     specs: &[&ScenarioSpec],
     data: &DataSources<'_>,
     est: &Estimator,
     opts: &RunOptions,
-) -> Result<Vec<Result<Option<LegResult>, DiffrunError>>, DiffrunError> {
-    #[cfg(feature = "parallel")]
-    {
-        use rayon::prelude::*;
-        let pool = rayon::ThreadPoolBuilder::new()
-            .num_threads(opts.threads.max(1))
-            .build()
-            .map_err(|e| store_err(Path::new("-"), format!("cannot build a thread pool: {e}")))?;
-        Ok(pool.install(|| {
-            specs
-                .par_iter()
-                .map(|s| run_leg(s, data, est, opts, None))
-                .collect()
-        }))
+) -> Vec<LegOutcome> {
+    let one = |s: &ScenarioSpec| run_leg(s, data, est, opts, None);
+    #[cfg(not(target_arch = "wasm32"))]
+    if opts.threads > 1 && specs.len() > 1 {
+        use std::sync::Mutex;
+        use std::sync::atomic::{AtomicUsize, Ordering};
+        // Independent legs on scoped worker threads; each leg is deterministic, so the results do
+        // not depend on the thread count or the scheduling (TST-005).
+        let next = AtomicUsize::new(0);
+        let slots: Vec<Mutex<Option<LegOutcome>>> =
+            specs.iter().map(|_| Mutex::new(None)).collect();
+        std::thread::scope(|scope| {
+            for _ in 0..opts.threads.min(specs.len()) {
+                scope.spawn(|| {
+                    loop {
+                        let i = next.fetch_add(1, Ordering::Relaxed);
+                        let (Some(s), Some(slot)) = (specs.get(i), slots.get(i)) else {
+                            break;
+                        };
+                        let r = one(s);
+                        if let Ok(mut g) = slot.lock() {
+                            *g = Some(r);
+                        }
+                    }
+                });
+            }
+        });
+        return slots
+            .into_iter()
+            .map(|m| {
+                m.into_inner().ok().flatten().unwrap_or_else(|| {
+                    Err(store_err(
+                        Path::new("-"),
+                        "a worker thread did not finish its leg",
+                    ))
+                })
+            })
+            .collect();
     }
-    #[cfg(not(feature = "parallel"))]
-    {
-        Ok(specs
-            .iter()
-            .map(|s| run_leg(s, data, est, opts, None))
-            .collect())
-    }
+    specs.iter().map(|s| one(s)).collect()
 }
 
 /// Evaluate the combinations of `plan` on per-configuration estimates.
@@ -476,7 +496,7 @@ pub fn run_plan(
         .map(|s| Ok((s.name.clone(), initial_conditions(s, data)?)))
         .collect::<Result<Vec<_>, DiffrunError>>()?;
     let shared = check_identical_ics(plan, &initial)?;
-    let mut legs = run_legs(&specs, data, est, opts)?.into_iter();
+    let mut legs = run_legs(&specs, data, est, opts).into_iter();
     let mut configs = Vec::with_capacity(plan.configs.len());
     for c in &plan.configs {
         let mut tracks = Vec::new();
