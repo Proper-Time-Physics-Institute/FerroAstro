@@ -3782,3 +3782,88 @@ Margin = |Δ| / tolerance.
    - Every earlier item in the WP10 review's correction 10.
 
 Reviewer artefacts are in the local scratchpad, not committed: `gate.log`, `data.log`, `nightly.log`, `mutate.py`, `mutate.log`, `py/recompute.py`, `py/venus_padd.py` and `py/fit.py`.
+
+## WP16 — [M3] Oracle framework: scenario-driven REBOUND, ERFA and JPL containers + `ferroastro-oracle`
+
+Builder agent, 2026-10-15. Branch `m3-newtonian-nbody` (PR #13, stacked on `m0-foundation`). Everything below ran on the local machine (i9-13900, 32 logical CPUs, Docker 29.9.0, toolchain 1.95.0; MSRV checks with 1.85.0).
+
+### Progress-review corrections (applied first)
+| item | status |
+|---|---|
+| **F8** MSRV | **Fixed** (`fa16571`). The four let-chains in `ferroastro-scenario/src/spec.rs` became nested `if let`, and so did six more that 1.85 found behind them: `ferroastro-propagate` (`nbody.rs`, `particle.rs`, `setup.rs`, `tests/scenario_runs.rs`) and `ferroastro-diffrun` (`run.rs`, two). `cargo +1.85.0 check --workspace --all-targets` and `cargo +1.85.0 test --workspace --no-run` are clean; `cargo +1.85.0 nextest run --workspace -E 'not binary(compile_fail)'` (as CI) passes 233/233. `rust-version` stays 1.85. New `tools/pre_push.sh` runs the AGENTS.md list plus the 1.85 check and the MSRV nextest run (F14). GitHub CI on `fa16571`: run 38787767843 **success** (all jobs, msrv included). |
+| **F9/F10** small-body GMs | **Done** (`be7fa6e`): `small_body_gms_equal_their_header_values_bitwise` (propagate, PR tier) checks every Minor and Ring GM in the model against header.440 `MAnnnn` bitwise under `asteroids = 16`, `asteroids = 343`, `kbos`, `kbo_ring` and all three (16 / 343 / 3 / 36 / 382 GMs). Expected symbols are read from the header and the REF-003 file, not from the catalogue code. |
+| **F11** IC hash GM | **Done**: `ic_hash_changes_with_a_one_ulp_gm_change` (scenario): ±1 ulp of any body's GM, or a DD low part, changes the hash. |
+| **F12** fit window | **Done**: `fit_window_selects_exactly_the_passages_inside_it` (diffrun, PR tier): over a 10-yr Sun + Mercury leg, the window between passages 5/6 and 30/31 fits exactly 25 of 42 passages on both passage sources, with the first/last passage matching to 1e-6 d. |
+| F13 | Not applicable to WP16; nothing touches OI-38. Restated for humans below. |
+| F9 note | **NEEDS HUMAN REVIEW**: N-AST's protocol dependence is about 3e-6 ″/cy (P-add 0.001242 vs P-remove 0.001245), 1% of ±0.0003, so `PARK17-T3-ASTEROIDS` could gate independently of OI-38. Only a maintainer may unblock it. |
+
+**Mutation probes** (scratch clone at `be7fa6e`; each mutant applied by script, the named crates' PR tier run, the file restored; clone clean afterwards; script `wp16/mutate.py` in the scratchpad):
+
+| mutant (review §3) | result |
+|---|---|
+| A system: identified KBO takes the next header KBO's GM | **killed** by `small_body_gms_equal_their_header_values_bitwise` |
+| C scenario: IC hash omits the GM | **killed** by `ic_hash_changes_with_a_one_ulp_gm_change` |
+| D propagate: every Minor GM × 2 | **killed** by `small_body_gms_equal_their_header_values_bitwise` |
+| E diffrun: window ignored on the sampled-state path | **killed** by `fit_window_selects_exactly_the_passages_inside_it` |
+
+### What was built
+- **`ci/oracles/{rebound,erfa,jpl}/Dockerfile`** (CI-001): `FROM python:3.12-slim-bookworm@sha256:34386ef0…07258` (created 2026-10-06). apt packages are pinned by version (`gcc=4:12.2.0-3`, `libc6-dev=2.36-9+deb12u14`; rebound image only, because reboundx 5.1.0 is an sdist). pip packages are installed with `--require-hashes --no-deps` from `requirements*.txt` with `==` pins and PyPI SHA-256s: rebound 5.2.2 (cp312 manylinux wheel), reboundx 5.1.0 (sdist, built with `--no-build-isolation` against the installed rebound, setuptools 84.0.0 pinned too), pyerfa 2.0.1.5, jplephem 2.24, numpy 2.5.4.
+- **`tools/oracles/`** (ruff, mypy strict; Apache-2.0 FerroAstro code that runs inside the images):
+  - `common.py`: scenario loading, `requested_switches`, `refuse_unsupported` (exit 3, every unsupported switch and option named), SHA-256 helpers, `ManifestEntry` / `write_manifest` / `validate_manifest` (CI-003). A runner refuses to write a manifest without the host-supplied image digest and runner commit (exit 4), so no field can be empty.
+  - `header440.py`: an independent header.440 reader (GROUP 1040/1041; Earth/Moon split from `B` and `M` with `EMRAT`), under the interpretation documented as `HEADER_STATE_INTERPRETATION` (OI-23).
+  - `rebound_runner.py`: stage A only (`newton`, n-body, `de440-header`, IAS15 f64, `epsilon`, `dt0_days`, `cadence_days`, `sample_bodies`). Refuses `ppn` permanently (REBOUNDx `gr_full` has only `c`), `gr_eih`/`gr_1pn_central` until stage C (WP21), `sun_j2`, `lense_thirring`, the small-body switches, unknown switches, and the options `mode`, `initial_conditions.source`, `integrator.name/precision/pc_tolerance`, `output.perihelion` and `span.stop_after_passages`, each by name with a reason. The refusal happens before `rebound` is imported.
+  - `erfa_runner.py`: runs the committed generators `tools/goldens/erfa_{time,frames}.py` unchanged (they now take the commit from `FA_GENERATOR_SHA` when there is no git checkout; header line only). It refuses a `--scenario` argument.
+  - `jpl_runner.py`: fetches the REF-001 trio into a mounted cache at run time (nothing baked into the image, nothing committed), verifies each against `tests/data/MANIFEST.toml`, and cross-checks header.440 ICs against de440.bsp with jplephem.
+  - `compare_goldens.py`: compares data lines (everything but `#` lines) byte for byte.
+  - `run_oracles.sh`: the host driver. It stages a build context holding only `ci/oracles/<tool>/` and `tools/oracles/*.py` (+ the two ERFA generators) and refuses wheels, `.so`, `.rlib`, `Cargo.toml`, `target` or anything named `*ferroastro*` (red-team L4). It tags `fa-oracle-<tool>:local-<date>`, has **no push** (LIC-002, L3), runs as the calling user with read-only inputs and `--network none` (rebound, erfa), and passes the image Id and runner commit for the manifest.
+- **REF-011 canaries** `ci/oracles/canaries/canary-{ppn-gr-eih,sun-j2}.toml` (schema-valid; outside `ci/scenarios/` so no FerroAstro tier runs them).
+- **Scenario** `ci/scenarios/stage-a-sun-8planets-newton-100yr.toml`: Sun + 8 planets (EMB), Newtonian, header.440 ICs, 100 yr, IAS15 f64 with `epsilon = 1e-9` and `dt0_days = 0.1` stated explicitly, yearly samples.
+- **`crates/ferroastro-oracle`** (L11, `publish = false`; deps core, propagate, serde, serde_json, sha2, thiserror; no new crates in Cargo.lock): `Manifest::verify_dir` (CI-003), `ManifestEntry::check_input`, `GoldenStates`, `compare_states`. New codes **FA-E1500…FA-E1503** (manifest, checksum, golden, comparison) in `ferroastro-core` (range 1500–1599).
+- **Goldens** (`ci/golden/<tool>/<name>/` + `MANIFEST.json`; REUSE annotation for the JSON): `rebound/stage-a-sun-8planets-newton-100yr/` (909 rows, 114 KB) and `jpl/ref001-pins/`.
+- **`.github/workflows/oracles.yml`**: `workflow_dispatch` only. Job `oracles` builds the images on the runner and runs stage A, the canaries (asserting exit 3), ERFA and JPL, then uploads the candidate goldens as an artifact. Job `check` (separate job and runner, files only) validates the manifests and diffs the data rows against the committed goldens. Nothing commits; goldens enter `ci/golden/` only through a reviewed PR (CI-004). Not yet run on GitHub (dispatch-only; needs a human trigger).
+- **Tests**: `ferroastro-oracle/tests/stage_a.rs` (CI-003 manifests of every committed golden, tamper refusals, stage A comparison) and `tests/jpl_pins.rs` (REF-001). `tools/tests/test_oracles.py` (12 tests): refusals (REF-011), canaries schema-valid, manifest round trip, identity required, header reader, golden comparison, pinning of every Dockerfile and requirements file (CI-001), no FerroAstro build and no image push anywhere (LIC-001/002), no GPL package in the tools project or its lock (L12).
+
+### WP16 real-data results (local, 2026-10-15; the stage A golden generated from the clean tree at `98ac4bb`, the jpl golden at `f0226de`)
+| check | measured | oracle / bound | result |
+|---|---|---|---|
+| (1) **Stage A**: FerroAstro IAS15 f64 vs REBOUND 5.2.2 IAS15, 9 bodies × 101 yearly times | **max \|Δr\| = 7.132e-4 km** (Mercury, t = 36525 d). Per body (km): Sun 1.67e-7, Mercury 7.13e-4, Venus 2.29e-4, EMB 3.40e-4, Mars 3.96e-4, Jupiter 2.12e-4, Saturn 1.32e-4, Uranus 9.97e-5, Neptune 7.53e-5. Max \|Δv\| 7.6e-10 km/s (Mercury). FerroAstro 31765 steps; REBOUND 16017 steps, relative energy change 1.31e-15, adaptive_mode PRS23. | `ORACLE-STAGE-A-REBOUND-MAX-DR` 0 ± 1e-3 km (PROVISIONAL) | **pass, margin 0.71** |
+| ↳ diagnosis (scratch only, not committed) | FerroAstro **double-double** at ε 1e-9 and 1e-11 agree to < 0.05 mm, so DD is truncation-converged. Distance to that DD reference: FerroAstro f64 0.106 m (ε 1e-9), 0.151 m (1e-11); REBOUND 0.685 m (1e-9), 0.426 m (1e-10), **1.511 m (1e-11)**. REBOUND's own ε variants differ by up to 2.2 m. | — | The stage A difference is **f64 round-off, dominated by REBOUND's**. My pre-registered expectation ("far below 1 m") was wrong. |
+| (2) **ERFA image** regenerates the WP8/WP9 goldens | data rows **IDENTICAL** for `erfa-time-pyerfa.csv` (223 rows, data sha256 `5dfc1fff…952048`), `erfa-dat-pyerfa.csv` (219, `60ecbc2f…432f1d`), `erfa-frames-pyerfa.csv` (113, `c5c9d2ac…52923d`). The image runs Python 3.12.15 (committed goldens: 3.12.13); pyerfa 2.0.1.5 / ERFA 2.0.1 / SOFA 20231011, numpy 2.5.4. Image `sha256:dad18848…`. | committed goldens, bit-identical | **pass** (not committed: tests/goldens is the golden; the result is recorded here) |
+| (3) **jpl image** verifies the REF-001 pins | fresh download into an empty cache: header.440 22802 B `0f4636b6…6ac3359`, testpo.440 858238 B `45084a7f…6693429f`, de440.bsp 119799808 B `a4ce9bf9…fff7c4b5`, all **= pin**; Last-Modified Tue, 22 Dec 2020 00:51:11 / 00:51:11 / 00:56:26 GMT. jplephem cross-check, header.440 vs de440.bsp at JDEPOC: max \|Δr\| **4.768e-7 km** (Neptune), max \|Δv\| 7.1e-15 km/s. | MANIFEST.toml pins; `SYSTEM-HEADER-VS-DE440-POS/VEL-MAX-DIFF` (1e-3 km, 1e-9 km/s) | **pass**. The 4.768e-7 km equals WP11's FerroAstro value, now reproduced with jplephem and an independent header reader. |
+| (4) **REF-011 canary** through the REBOUNDx image | `canary-ppn-gr-eih`: exit **3**, "REFUSED: rebound cannot run scenario 'canary-ppn-gr-eih': it requests `gr_eih` (…stage C (WP21)); `ppn` (REBOUNDx gr_full has only the parameter c (beta = gamma = 1)…)". `canary-sun-j2`: exit 3 naming `sun_j2`. | non-zero exit naming the switch | **pass** |
+| Data tier (`tools/run_long_local.sh --data-only`, empty `FA_DATA_DIR`, log `target/long-local/20261015T190616Z-62a806852114.log`) | **27/27 pass** (71.2 s). Horizons: 35 cache misses (live), `signature.version` 1.2, source DE441. | as WP15 | pass |
+
+Image Ids: rebound `sha256:36f54585…b03e3` (stage A golden), erfa `sha256:dad18848…a9d1`, jpl `sha256:ac1eb8d2…82a0d` (first golden) and the later fresh-fetch run. The rebound wall clock is 0.37 s for 100 yr; FerroAstro's PR-tier stage A test takes 1.4 s (test profile, opt-level as configured).
+
+### Interpretations and NEEDS HUMAN REVIEW (WP16)
+1. **Stage A tolerance.** 1 m (PROVISIONAL, from the plan) passes with margin 0.71, but it sits only 1.4× above the oracle's own f64 round-off at ε 1e-9, and REBOUND at ε 1e-11 would miss it against the converged DD truth (1.51 m). Value and tolerance are unchanged; the measurement and the wrong pre-registered expectation are in the vector's `notes`. Options for a maintainer: keep 1 m and pin REBOUND's ε 1e-9 (deterministic run), or widen it with this round-off rationale, or compare the REBOUND golden against a FerroAstro DD run. **NEEDS HUMAN REVIEW.**
+2. **CI-001 says images are "pushed to GHCR tagged <tool>-<version>-<yyyymmdd>".** The maintainer decision (GPL images local or CI-cache only) overrides it. Images are tagged `fa-oracle-<tool>:local-<yyyymmdd>` and never pushed. Workflows reference images by build, not by registry digest; the digest is recorded in every manifest instead. Requirement text needs updating (PR #2). **NEEDS HUMAN REVIEW.**
+3. **CI-004 vs a locally generated golden.** The committed goldens were generated by `run_oracles.sh` on this machine (the local equivalent of the dispatch workflow; maintainer decision: long or oracle runs execute locally) and enter through this PR, which needs human review. The dispatch workflow exists but has not run on GitHub. **NEEDS HUMAN REVIEW** whether a locally generated golden satisfies CI-004.
+4. **ERFA and JPL jobs take no scenario.** CI-002's "every oracle runner reads the same scenario" fits N-body tools only. Time/frame goldens and file pins have no force switches, so these runners refuse a scenario argument rather than ignore it. The ERFA regeneration is recorded here and checked by the dispatch workflow's `check` job; the committed golden stays `tests/goldens/` (no second copy).
+5. **REBOUND API.** REBOUND 5 dropped the `ri_ias15` structs (documented in its 5.0.0 changelog). The runner uses `sim.integrator.epsilon` / `adaptive_mode` / `min_dt` per the documented IAS15 page. Only the published documentation and `dir()` of the Python objects were consulted; no REBOUND/REBOUNDx source was read (DEP-008). REBOUNDx is installed and its version recorded but is unused until stage C.
+6. **apt version pins** (`libc6-dev=2.36-9+deb12u14`) will stop resolving when Debian publishes a point update. That is the "rebuild from cache" case of L3. A maintainer may prefer a snapshot.debian.org source.
+7. **"runner SHA"** is the git commit (with `-dirty` when `tools/oracles`, `tools/goldens` or `ci/oracles` have changes). A content hash of the runner sources is recorded too (`runner_sha256`). A PR test refuses committed goldens from a dirty tree.
+8. **Pre-push lapses.** The `be7fa6e` push failed CI's python job (run 38788377104: `TRACE.md` stale after the F9/F11/F12 tests) because I pushed without running the new `tools/pre_push.sh`. The intermediate commit `f0226de` (pushed together with `62a8068`, so CI never ran on it) carried an unfulfilled clippy lint expectation in `tests/jpl_pins.rs`, fixed in `62a8068`. Both are fixed at the tip.
+9. Requirement-text needs, carried forward for PR #2 (unchanged): CI-002's switch list (the `kbos` / `kbo_ring` switches), NUM-009's 16 Majors and the 2× bound, the N-AST requirement, the `blocked_by` schema. New from WP16: CI-001 (GHCR) and REF-005's note ("whether REBOUND/REBOUNDx publish manylinux wheels…"). Answer: rebound 5.2.2 has a cp312 manylinux wheel, but reboundx 5.1.0 is an sdist only and needs a C compiler in the image.
+10. **F13 (restated):** never tick OI-38 from an agent PR. If a maintainer closes it as P-remove, switch the PHY-012 primary protocol in the same change.
+
+### Not done in WP16 (remaining)
+- The optional extra benchmark: Venus P-add from a container integrator (the reviewer's independent value is 277.394857). Not attempted. It needs a passage/estimator path through the oracle output (WP17 applies the Park2017 estimator to each tool's series).
+- The `oracles.yml` dispatch workflow has not been triggered on GitHub (a human must dispatch it; building the GPL image on a hosted runner keeps it ephemeral and unpushed).
+
+### WP16 gate results (2026-10-15, local, toolchain 1.95.0 + MSRV 1.85.0; code tip `62a8068`)
+| command | result |
+|---|---|
+| `cargo fmt --all --check` | pass |
+| `cargo clippy --workspace --all-targets --all-features -- -D warnings` | pass |
+| `cargo nextest run --workspace` + `cargo test --doc --workspace` | pass: 243 run, 0 failed, 37 skipped (27 `data_*`, 10 `nightly_*`); doctests pass |
+| `cargo deny check` | pass (advisories, bans, licenses, sources ok) |
+| `RUSTDOCFLAGS="-D warnings" cargo doc --no-deps --workspace` | pass |
+| `ruff check`, `ruff format --check`, `mypy` (strict), pytest | pass (pytest 53 passed) |
+| `reuse lint` | pass |
+| `trace.py --check` | pass: 119 requirements, 0 errors |
+| `cargo +1.85.0 check --workspace --all-targets`; `cargo +1.85.0 nextest run --workspace -E 'not binary(compile_fail)'` | pass (MSRV nextest 240 passed, 37 skipped) |
+| data tier (fresh `FA_DATA_DIR`) | 27/27 pass |
+| oracle containers (rebound, erfa, jpl) | as in the results table above |
+| **GitHub CI on `62a8068`** | run **38791151386: success** (rust, python, msrv, wasm32, reuse, dco; data/long skipped by design). Earlier: `fa16571` run 38787767843 success; `be7fa6e` run 38788377104 **failure** (python: stale TRACE.md, see item 8). |
+
