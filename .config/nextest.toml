@@ -20,6 +20,16 @@ retries = 0
 success-output = "immediate"
 slow-timeout = { period = "120s", terminate-after = 5 }
 
+# Review F4 after WP10: JPL Horizons answers HTTP 503 to parallel requests from one IP. Every data
+# test that queries Horizons runs in this group, one at a time. This changes scheduling only:
+# assertions are untouched and test-level `retries` stays 0.
+[[profile.data.overrides]]
+filter = "test(/horizons/) | binary(data_single_body) | binary(data_horizons_frames) | binary(data_horizons_mercury) | binary(data_park2017_horizons)"
+test-group = "horizons"
+
+[test-groups]
+horizons = { max-threads = 1 }
+
 [profile.ci]
 fail-fast = false
 slow-timeout = { period = "60s", terminate-after = 10 }

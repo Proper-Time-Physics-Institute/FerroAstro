@@ -5,6 +5,9 @@
 # Run the long tiers on the local machine (maintainer decision 2026-10-15: long/nightly tiers run
 # locally; GitHub-hosted runners do PR-fast work). Runs, in order:
 #
+#   0. `tools/fetch_jpl.py` (the PR-fast set; every manifest product when the data tier runs), so
+#      that the nightly tier never meets an empty cache (review F3 after WP10); its output, with
+#      each product's SHA-256 and URL, goes into the log;
 #   1. the `nightly` nextest profile (nightly_* tests) in release mode;
 #   2. the `data` nextest profile (data_* tests: real JPL products, network);
 #
@@ -57,6 +60,18 @@ log="target/long-local/${stamp}-${short}.log"
 } | tee "$log"
 
 status=0
+cache_dir="${FA_DATA_DIR:-${CARGO_TARGET_DIR:-$root/target}/fa-data}"
+fetch_args=()
+if [[ "$run_data" == 1 ]]; then fetch_args=(--all); fi
+echo "## fetch_jpl.py ${fetch_args[*]:-(PR-fast set)} (pinned SHA-256; cache hit = no download)" | tee -a "$log"
+if ! (cd tools && FA_DATA_DIR="$cache_dir" uv run python fetch_jpl.py "${fetch_args[@]}") 2>&1 | tee -a "$log"; then
+  echo "fetch_jpl.py failed; the tiers below will report FA-E0204 for missing products" | tee -a "$log"
+  status=1
+fi
+for side in "$cache_dir"/*.provenance.toml; do
+  [[ -e "$side" ]] || continue
+  echo "provenance $(basename "$side" .provenance.toml): $(tr '\n' ' ' < "$side")" | tee -a "$log"
+done
 if [[ "$run_nightly" == 1 ]]; then
   echo "## nightly tier (release)" | tee -a "$log"
   if ! cargo nextest run --workspace --cargo-profile release --profile nightly --run-ignored only 2>&1 | tee -a "$log"; then
