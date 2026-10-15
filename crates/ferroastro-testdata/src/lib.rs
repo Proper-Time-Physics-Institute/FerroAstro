@@ -428,7 +428,10 @@ mod tests {
         assert_eq!(product("nope").unwrap_err().code(), ErrorCode::DataManifest);
         for name in ["de440-bsp", "de440-testpo", "sb441-n373s-bsp"] {
             let p = product(name).unwrap();
-            assert!(p.url.starts_with("https://ssd.jpl.nasa.gov/ftp/eph/"), "{name}");
+            assert!(
+                p.url.starts_with("https://ssd.jpl.nasa.gov/ftp/eph/"),
+                "{name}"
+            );
         }
     }
 
