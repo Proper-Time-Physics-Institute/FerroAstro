@@ -8,8 +8,8 @@
 > workflow run; run URLs are not written here so that the file stays deterministic.
 
 - Requirements: **119** (draft 119)
-- `verification: test` requirements cited by at least one test: **11 / 92**
-- Citing tests: **38**; vectors referencing a requirement: **4**
+- `verification: test` requirements cited by at least one test: **12 / 92**
+- Citing tests: **58**; vectors referencing a requirement: **35**
 
 | ID | Status | Crit. | Verification | Tests | Vectors |
 |---|---|---|---|---|---|
@@ -36,8 +36,8 @@
 | [STD-011](STD.md) | draft | low | test | — | — |
 | [STD-012](STD.md) | draft | medium | test | `tools/tests/test_lints.py::test_workflow_lint` | — |
 | [PHY-001](PHY.md) | draft | high | test | — | — |
-| [PHY-002](PHY.md) | draft | high | test | `crates/ferroastro-testdata/tests/data_de440_header.rs::data_de440_header_defined_constants` | `CONST-AU-IAU2012`<br>`CONST-CLIGHT-SI` |
-| [PHY-003](PHY.md) | draft | high | test | — | — |
+| [PHY-002](PHY.md) | draft | high | test | `crates/ferroastro-constants/src/table.rs::committed_table_parses_and_every_entry_is_cited`<br>`crates/ferroastro-constants/src/table.rs::table_rejects_uncited_or_unknown_citations`<br>`crates/ferroastro-constants/tests/data_de440_table.rs::data_de440_table_matches_header`<br>`crates/ferroastro-constants/tests/phy002_constants.rs::asserted_de440_constants`<br>`crates/ferroastro-constants/tests/phy002_constants.rs::open_item_entries_are_flagged_and_not_exposed`<br>`crates/ferroastro-constants/tests/phy002_constants.rs::planetary_gms_match_park21_table_2`<br>`crates/ferroastro-constants/tests/phy002_constants.rs::table_is_cited_versioned_and_pinned_to_the_manifest`<br>`crates/ferroastro-testdata/tests/data_de440_header.rs::data_de440_header_defined_constants` | `CONST-AU-IAU2012`<br>`CONST-CLIGHT-SI`<br>`DE440-ASUN`<br>`DE440-EMRAT`<br>`DE440-GM-EARTH-KM3S2`<br>`DE440-GM-JUPITER-KM3S2`<br>`DE440-GM-MARS-KM3S2`<br>`DE440-GM-MERCURY-KM3S2`<br>`DE440-GM-MOON-KM3S2`<br>`DE440-GM-NEPTUNE-KM3S2`<br>`DE440-GM-PLUTO-KM3S2`<br>`DE440-GM-SATURN-KM3S2`<br>`DE440-GM-URANUS-KM3S2`<br>`DE440-GM-VENUS-KM3S2`<br>`DE440-GMS-AU3D2`<br>`DE440-GMS-KM3S2`<br>`DE440-J2SUN`<br>`DE440-MOISUN`<br>`DE440-OMGSUN-RADD`<br>`PARK21-OMGSUN-DEGD` |
+| [PHY-003](PHY.md) | draft | high | test | `crates/ferroastro-constants/src/nominal.rs::nominal_differs_from_de440`<br>`crates/ferroastro-constants/src/nominal.rs::nominal_values_match_iau_2015_b3`<br>`crates/ferroastro-constants/tests/nominal_quarantine.rs::ladder_code_never_references_nominal`<br>`crates/ferroastro-constants/tests/nominal_quarantine.rs::scanner_detects_references_and_ignores_prose` | `IAU2015B3-GM-EARTH-N`<br>`IAU2015B3-GM-JUPITER-N`<br>`IAU2015B3-GM-SUN-N`<br>`IAU2015B3-R-SUN-N` |
 | [PHY-004](PHY.md) | draft | high | test | — | — |
 | [PHY-005](PHY.md) | draft | high | test | — | — |
 | [PHY-006](PHY.md) | draft | high | test | — | — |
@@ -83,7 +83,7 @@
 | [TST-003](TST.md) | draft | high | test | `crates/ferroastro-vectors/tests/schema.rs::computed_reference_needs_generator_and_engine`<br>`crates/ferroastro-vectors/tests/schema.rs::workspace_vectors_all_validate`<br>`tools/tests/test_trace.py::test_vector_schema_is_enforced` | — |
 | [TST-004](TST.md) | draft | high | inspection | — | — |
 | [TST-005](TST.md) | draft | medium | test | `crates/ferroastro-testdata/src/lib.rs::civil_dates`<br>`crates/ferroastro-testdata/src/lib.rs::sha256_of_empty_input` | — |
-| [API-001](API.md) | draft | high | test | `crates/ferroastro-core/src/frames.rs::same_frame_and_centre_subtract`<br>`crates/ferroastro-core/src/time.rs::same_scale_difference_is_a_time_span`<br>`crates/ferroastro-core/src/units.rs::arcsec_round_trip`<br>`crates/ferroastro-core/src/units.rs::constructors_reject_non_finite`<br>`crates/ferroastro-core/src/units.rs::dimensional_arithmetic`<br>`crates/ferroastro-core/tests/compile_fail.rs::compile_fail_type_mismatches` | — |
+| [API-001](API.md) | draft | high | test | `crates/ferroastro-constants/tests/phy002_constants.rs::body_discriminants_follow_all`<br>`crates/ferroastro-core/src/frames.rs::same_frame_and_centre_subtract`<br>`crates/ferroastro-core/src/time.rs::same_scale_difference_is_a_time_span`<br>`crates/ferroastro-core/src/units.rs::arcsec_round_trip`<br>`crates/ferroastro-core/src/units.rs::constructors_reject_non_finite`<br>`crates/ferroastro-core/src/units.rs::dimensional_arithmetic`<br>`crates/ferroastro-core/tests/compile_fail.rs::compile_fail_type_mismatches` | — |
 | [API-002](API.md) | draft | medium | test | `crates/ferroastro-core/src/error.rs::codes_are_unique_and_well_formed`<br>`crates/ferroastro-core/src/error.rs::messages_name_code_quantity_unit_and_range`<br>`crates/ferroastro-core/src/units.rs::constructors_reject_non_finite` | — |
 | [API-003](API.md) | draft | low | test | — | — |
 | [AGT-001](AGT.md) | draft | medium | inspection | — | — |
@@ -108,7 +108,7 @@
 | [DEP-016](DEP.md) | draft | high | test | — | — |
 | [DEP-017](DEP.md) | draft | high | inspection | — | — |
 | [REF-001](REF.md) | draft | high | test | — | — |
-| [REF-002](REF.md) | draft | high | test | `crates/ferroastro-testdata/src/lib.rs::manifest_products_are_well_formed`<br>`crates/ferroastro-testdata/tests/data_de440_header.rs::data_de440_header_defined_constants` | `CONST-AU-IAU2012`<br>`CONST-CLIGHT-SI` |
+| [REF-002](REF.md) | draft | high | test | `crates/ferroastro-constants/src/header440.rs::malformed_headers_are_fa_e0300`<br>`crates/ferroastro-constants/src/header440.rs::missing_name_is_fa_e0301`<br>`crates/ferroastro-constants/src/header440.rs::parses_names_tokens_values_and_title`<br>`crates/ferroastro-constants/src/table.rs::table_rejects_uncited_or_unknown_citations`<br>`crates/ferroastro-constants/tests/data_de440_table.rs::data_de440_header_ref002_acceptance`<br>`crates/ferroastro-constants/tests/data_de440_table.rs::data_de440_table_matches_header`<br>`crates/ferroastro-constants/tests/phy002_constants.rs::table_is_cited_versioned_and_pinned_to_the_manifest`<br>`crates/ferroastro-constants/tests/phy002_constants.rs::table_scalars_and_counts`<br>`crates/ferroastro-testdata/src/lib.rs::manifest_products_are_well_formed`<br>`crates/ferroastro-testdata/tests/data_de440_header.rs::data_de440_header_defined_constants` | `CONST-AU-IAU2012`<br>`CONST-CLIGHT-SI`<br>`DE440-ASUN`<br>`DE440-BETA`<br>`DE440-CONSTANT-COUNT`<br>`DE440-EMRAT`<br>`DE440-GAMMA`<br>`DE440-GMS-AU3D2`<br>`DE440-J2SUN`<br>`DE440-JDEPOC`<br>`DE440-MA-COUNT` |
 | [REF-003](REF.md) | draft | medium | test | — | — |
 | [REF-004](REF.md) | draft | high | test | — | — |
 | [REF-005](REF.md) | draft | high | test | — | — |

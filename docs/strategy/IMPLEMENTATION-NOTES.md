@@ -125,3 +125,95 @@ the workflow from there.
   (the fixture had `rel = 0`). Added `tolerance_is_the_wider_of_abs_and_rel`, which kills that mutant and also
   checks that NaN never passes. A perturbed `CONST-CLIGHT-SI` (+1e-4 km/s, via `FA_VECTORS_DIR`) made the
   `data` test fail as expected.
+
+## WP2 — DE440 constants from the real header (PHY-002, REF-002, PHY-003)
+
+Crate `crates/ferroastro-constants` (new; ARCHITECTURE.md name). Error codes `FA-E0300` (header malformed),
+`FA-E0301` (constant missing), `FA-E0302` (table malformed) added to `ferroastro-core`.
+
+### Parser and loading mechanism (REF-002)
+- `header440::Header::parse` reads GROUP 1010 (title), 1040 (count + names) and 1041 (count + values). Each
+  value is kept as its verbatim Fortran `D` token and as the nearest `f64`. Counts must agree with each other
+  and with the tokens present; duplicate names and non-finite tokens are errors.
+- REF-002's run-time path ("load ICs and constants directly from header.440") is this parser applied to the
+  downloaded file: all 645 values are available by name. The **states** (`X1` … `ZDC`) are not copied into the
+  committed table and have no typed accessor, because their frame (CENTER) and units are OI-23. REF-002 stays
+  blocked on OI-23 for the states (red-team I5); only the scalar part of its acceptance is tested.
+- The WP1 smoke reader in `ferroastro-testdata/tests/data_de440_header.rs` is kept on purpose as a second,
+  independent reader of the same groups (it agrees: 645 names, CLIGHT and AU exact).
+
+### Versioned constants table (PHY-002)
+- `crates/ferroastro-constants/data/de440-constants.toml` is **generated** by
+  `cargo run -p ferroastro-constants --example gen_de440_table`, which fetches the pinned product, parses it
+  and calls `table::render`. It carries `table_version = 1`, the header's URL, SHA-256, size, retrieval date and
+  Last-Modified, the GROUP 1010 title and the counts (645 constants, 409 `MA*`). It is embedded with
+  `include_str!` and parsed at run time by `Table::de440()` / `De440::load()`.
+- Only a subset is committed (23 entries: DENUM, JDEPOC, CENTER, CLIGHT, BETA, GAMMA, AU, EMRAT, GM1, GM2, GMB,
+  GM4–GM9, GMS, GMSDOT, ASUN, J2SUN, MOISUN, OMGSUN). This is a small derived table, not the JPL file, in line
+  with the "do not commit JPL data" rule while redistribution terms are open. **NEEDS HUMAN REVIEW:** whether
+  committing 23 verbatim tokens of header.440 is acceptable under JPL's terms (ROADMAP legal track).
+- The header states no units. Units and their basis are metadata in `table::DE440_SELECTION` (strings only):
+  GMs au³/d² (because converting with AU and 86400 s/d reproduces Park21 Table 2 in km³/s², which the tests
+  check), CLIGHT km/s and AU km (equal the SI / IAU 2012 defined values), ASUN km and MOISUN from Park21 §3.4,
+  OMGSUN rad/d (Park21 §3.4 quotes 14.1844 deg/day; the header value converts to 14.1843972 deg/day; a test
+  checks it), JDEPOC as a Julian date on TDB.
+- Citation keys are `DE440hdr` (header URL + SHA-256) and `Park21` (AJ 161, 105). Every entry has ≥ 1.
+- Staleness: an offline unit test asserts that each entry's unit, quantity, unit basis and citations equal the
+  generator selection, so a hand edit of metadata fails PR CI. Exactness of the **tokens** is enforced by the
+  `data` test (entry-by-entry token and `f64` equality, plus a byte-for-byte re-render). Offline, GMS, EMRAT,
+  J2SUN, MOISUN, ASUN, JDEPOC, BETA, GAMMA, CLIGHT and AU are pinned exactly, but the planetary GMs only to the
+  6 decimals Park21 prints (about 2e-11 relative for Mercury). Mutation check: a GM1 token edited in the 11th
+  significant digit passes the offline tests and fails `data_de440_table_matches_header`, as expected.
+- `De440` refuses (FA-E0302) to expose any entry with an `open_item`, and checks the unit string of every entry it
+  reads. `Body::Earth`/`Body::Moon` are derived as GMB·EMRAT/(1+EMRAT) and GMB/(1+EMRAT).
+- `AngularRate` (rad/s) was added to `ferroastro-core` for OMGSUN, and `time::SECONDS_PER_DAY` was made public.
+
+### Oracles and tolerances (tests/vectors/de440-constants.toml)
+- Independent oracle: Park et al. 2021, read in the published PDF (sha256 `96c3945d…1634f68ee0`): Table 2
+  (GMSun and the planetary/system GMs, Earth and Moon), §3.4 after Eq. 39 (696,000 km, C/MR² = 0.06884,
+  14.1844 deg/day). Header-only values (GMS in au³/d², EMRAT, J2SUN, JDEPOC, BETA, GAMMA, counts) are pinned
+  from header.440 / the requirement text. These are regression pins, not independent checks; their vectors say so.
+- `DE440-GMS-KM3S2` tolerance `rel = 1e-15`: the 18-digit au³/d² header value converted exactly gives
+  132712440041.2794478 km³/s², 2.2e-16 relative from Park21's 132712440041.279419; f64 conversion adds a few
+  roundings. Measured |diff| = 0 in f64.
+- Planetary GMs tolerance `abs = 5e-7 km³/s²` = half a unit in Park21's 6th printed decimal. Measured diffs:
+  Moon 4.58e-7, Mercury 4.00e-7, Neptune 3.99e-7, Mars 2.44e-7, Earth 2.3e-8, Jupiter 1.5e-8, Uranus 1.9e-9,
+  Venus/Saturn/Pluto 0. These are the rounding of Park21's printed values, not FerroAstro error. The Moon sits at
+  92 % of the tolerance; that is the arithmetic of rounding, not a fit.
+- `DE440-OMGSUN-RADD` `abs = 5e-13 rad/d` (PHY-002 quotes 12 decimals; measured 2.9e-15).
+  `PARK21-OMGSUN-DEGD` `abs = 5e-5 deg/d` (Park21 prints 4 decimals; measured 2.8e-6).
+- ADR-0004 has no kind for "a fact read from a data product" (the 645 and 409 counts); they use `measured`
+  with a note. BETA/GAMMA use `defined` (DE440 adopts GR).
+- Rule 8: GMSDOT (OI-04) and CENTER (OI-23) appear in the table with `open_item` and `unit = "unverified"`
+  (GMSDOT), have no vector and are not asserted. OI-06 (GM☉ uncertainty / J2 rationale in Park21) was not
+  needed: no tolerance relies on it. Red-team I5 still holds: PHY-002 is satisfied for the listed constants, but
+  REF-002's state-vector part remains blocked on OI-23.
+- Interpretation: PHY-002 lists the planetary GMs without asserted values; WP2 asserts them anyway against
+  Park21 Table 2 (as quoted in PHY-002's notes, re-read in the PDF).
+
+### PHY-003 nominal namespace
+- `ferroastro_constants::nominal`: (GM)☉ᴺ, R☉ᴺ, (GM)ᴇᴺ, (GM)ᴊᴺ from Prša et al. 2016 Table 1 (read in
+  arXiv:1605.09788v1, sha256 `2b7bcd88…a6f4a99`), stored in km units (decimal-exact) and returned as
+  `Nominal<T>`, which has no `Deref`, `From` or arithmetic. Vectors: `tests/vectors/iau2015-nominal.toml`.
+  These four values are hand-typed in `nominal.rs`; REF-002's "never hand-transcribed" applies to header
+  constants, and these are defined conversion constants checked against the cited table.
+- "No ladder-rung code path references `nominal`" is enforced by `tests/nominal_quarantine.rs`: it scans all
+  Rust files under `crates/` (except `nominal.rs`, the crate's `lib.rs` and the test itself), strips comments and
+  strings, and fails on any identifier `nominal`/`Nominal`. No ladder crate exists yet, so today the test guards
+  future code. It is a lexical scan: it cannot see a macro that builds the path from tokens, and it flags a
+  local variable named exactly `nominal` (conservative). A self-test shows it catches `use …::nominal`,
+  grouped imports, spaced paths and the wrapper type, and ignores comments, strings and `nominal_value`.
+
+### Fixes to WP1 infrastructure
+- `ferroastro-testdata`: two nextest processes downloading the same product into an empty cache raced on
+  `<file>.part` (ENOENT on rename, seen as a flaky first try). Temp files now carry the process id.
+
+### WP2 real-data results (run locally 2026-10-14, UTC date 2026-10-15)
+`FA_DATA_DIR` pointed at an empty scratch directory, so all three `data` tests downloaded header.440 (cache
+miss): sha256 `0f4636b663e6f00af9efa2b605ef23635489f56b23dd1a5e3821d3acc6ac3359`, 22802 bytes, Last-Modified
+`Tue, 22 Dec 2020 00:51:11 GMT`, URL https://ssd.jpl.nasa.gov/ftp/eph/planets/ascii/de440/header.440.
+- `data_de440_table_matches_header`: 23/23 entries equal (token and f64), re-render byte-identical. PASS.
+- `data_de440_header_ref002_acceptance`: JDEPOC 2440400.5, CLIGHT 299792.458, BETA 1, GAMMA 1, AU 149597870.7,
+  J2SUN 2.1961391516529825e-7, ASUN 696000, GMS 2.95912208284119561e-4, EMRAT 81.3005682214972154 all |diff| = 0;
+  645 constants, 409 MA entries. PASS.
+- `data_de440_header_defined_constants` (WP1): PASS.
