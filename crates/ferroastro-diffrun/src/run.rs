@@ -605,7 +605,12 @@ impl PlanResult {
                 c.steps
             );
         }
-        for p in [Protocol::Add, Protocol::Remove, Protocol::CrossTerm] {
+        for p in [
+            Protocol::Add,
+            Protocol::Remove,
+            Protocol::CrossTerm,
+            Protocol::CrossTermRemove,
+        ] {
             if self.rows_of(p).next().is_none() {
                 continue;
             }

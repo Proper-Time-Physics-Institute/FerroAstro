@@ -83,7 +83,8 @@ fn plan_shares_identical_ics_and_rows_are_signed_sums() {
             "base+Venus+Jupiter",
             "full",
             "full-Venus",
-            "full-Jupiter"
+            "full-Jupiter",
+            "full-Venus-Jupiter"
         ]
     );
     let est = common::park17_estimator(

@@ -36,7 +36,7 @@ fn vector_id(label: &str, protocol: Protocol) -> String {
         .to_uppercase();
     match protocol {
         Protocol::Add | Protocol::Remove => format!("PARK17-T3-{key}"),
-        Protocol::CrossTerm => format!("PARK17-T3-X-{key}"),
+        Protocol::CrossTerm | Protocol::CrossTermRemove => format!("PARK17-T3-X-{key}"),
     }
 }
 
@@ -46,7 +46,7 @@ fn vector_id(label: &str, protocol: Protocol) -> String {
     clippy::too_many_lines,
     reason = "nightly evidence test; it reads top to bottom"
 )]
-#[ignore = "nightly: 44 IAS15 legs of ~1000 yr; cargo nextest run --cargo-profile release --profile nightly --run-ignored only"]
+#[ignore = "nightly: 56 IAS15 legs of ~1000 yr; cargo nextest run --cargo-profile release --profile nightly --run-ignored only"]
 fn nightly_phy012_park17_table3_newtonian_contributions() {
     use BodyName::{
         Earth, Jupiter, Mars, Mercury, Moon, Neptune, Pluto, Saturn, Sun, Uranus, Venus,
@@ -159,14 +159,17 @@ fn nightly_phy012_park17_table3_newtonian_contributions() {
         "base (Sun + Mercury) rate {:.3e} arcsec/cy: the estimator floor on a closed Kepler orbit (true 0)",
         rate("base")
     );
-    for w in r.rows_of(Protocol::CrossTerm) {
-        let p = reference(&w.combination.label, Protocol::CrossTerm);
-        println!(
-            "cross term {}: {:+.6} vs Park17 interaction row {} (informational; different decomposition, OI-38)",
-            w.combination.label,
-            w.value,
-            p.map_or_else(|| "-".into(), |x| format!("{x:+.4}"))
-        );
+    for p in [Protocol::CrossTerm, Protocol::CrossTermRemove] {
+        for w in r.rows_of(p) {
+            let park = reference(&w.combination.label, p);
+            println!(
+                "{} {}: {:+.6} vs Park17 interaction row {} (informational, OI-38)",
+                p.label(),
+                w.combination.label,
+                w.value,
+                park.map_or_else(|| "-".into(), |x| format!("{x:+.4}"))
+            );
+        }
     }
 
     // PHY-012 rows (P-add), gating only once OI-38 is closed.

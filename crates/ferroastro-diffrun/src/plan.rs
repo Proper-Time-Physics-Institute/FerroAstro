@@ -20,6 +20,9 @@ pub enum Protocol {
     /// `ϖ̇(base + X + Y) − ϖ̇(base + X) − ϖ̇(base + Y) + ϖ̇(base)`: the interaction of two
     /// toggles under [`Protocol::Add`] (reported separately).
     CrossTerm,
+    /// `ϖ̇(full) − ϖ̇(full − X) − ϖ̇(full − Y) + ϖ̇(full − X − Y)`: the interaction of two toggles
+    /// under [`Protocol::Remove`] (informational).
+    CrossTermRemove,
 }
 
 impl Protocol {
@@ -30,6 +33,7 @@ impl Protocol {
             Protocol::Add => "P-add",
             Protocol::Remove => "P-remove",
             Protocol::CrossTerm => "cross term (P-add)",
+            Protocol::CrossTermRemove => "cross term (P-remove)",
         }
     }
 }
@@ -202,9 +206,9 @@ fn storage_order(
 
 impl Plan {
     /// Body toggles (PHY-012): configurations `base`, `base + X` for every toggle and
-    /// `base + X + Y` for every pair; when `full` is not empty also `full` and `full − X`.
-    /// Combinations: P-add for every toggle, P-remove for every toggle (if `full`), and the
-    /// cross term of every pair. `template` supplies everything but the body list and the span.
+    /// `base + X + Y` for every pair; when `full` is not empty also `full`, `full − X` and
+    /// `full − X − Y`. Combinations: P-add for every toggle, the P-add cross term of every pair,
+    /// and (if `full`) P-remove for every toggle and the P-remove cross term of every pair. `template` supplies everything but the body list and the span.
     ///
     /// # Errors
     /// `FA-E1400` if a toggle is empty, repeats a base body, is missing from `full`, labels
@@ -278,6 +282,24 @@ impl Plan {
                     protocol: Protocol::Remove,
                     terms: vec![(1, "full".into()), (-1, format!("full-{}", t.label))],
                 });
+            }
+            for &(i, j) in pairs {
+                if let (Some(x), Some(y)) = (toggles.get(i), toggles.get(j)) {
+                    let both: BTreeSet<i32> =
+                        toggle_set(x).union(&toggle_set(y)).copied().collect();
+                    let set: BTreeSet<i32> = full_set.difference(&both).copied().collect();
+                    add(format!("full-{}-{}", x.label, y.label), &set);
+                    combinations.push(Combination {
+                        label: format!("{}+{}", x.label, y.label),
+                        protocol: Protocol::CrossTermRemove,
+                        terms: vec![
+                            (1, "full".into()),
+                            (-1, format!("full-{}", x.label)),
+                            (-1, format!("full-{}", y.label)),
+                            (1, format!("full-{}-{}", x.label, y.label)),
+                        ],
+                    });
+                }
             }
         }
         let plan = Self {
