@@ -514,3 +514,71 @@ profile was not re-run: no WP4 change touches the integrator or the NUM-023 test
   coefficients against the closed form `μ/(c²r²)[(2U − 2v² + 3ṙ²) n + 2ṙ v]` at the acceleration level. The
   reviewer re-derived that closed form independently with sympy (exact Euler–Lagrange solve, first order in
   `1/c²`) before using it. The new test kills the mutant.
+
+## WP5 — Real observational data: Horizons DE441 + Park2017 estimator (NUM-011 subset, PHY-016 groundwork, PHY-015)
+
+### Plan and pre-registered checks (written 2026-10-15, before any Rust code)
+- **Transparency first.** Before fixing the oracles below, a throw-away Python prototype (scratchpad, not
+  committed) was run on real Horizons answers to choose the sampling step and to check that the procedure is
+  feasible. It printed: Park-frame ϖ̇ = 575.30916 ″/cy (quadratic + 14 Park17 Table 2 frequencies, J2000 ± 1000 yr,
+  20-block jack-knife σ 0.0015), and J2000-ecliptic dog-leg ϖ̇ = 572.03 ″/cy (linear, 1800–2050). The tolerances
+  below are therefore **not** blind. Each one is derived from a published uncertainty or a physical argument that
+  does not use these numbers, and the derivations are written out so a reviewer can check them independently.
+- **Fetcher** (`ferroastro-testdata::horizons`, test infrastructure): JPL Horizons API, `EPHEM_TYPE=VECTORS`,
+  `COMMAND='199'`, `CENTER='500@10'` (Sun body centre), TDB, km and km/s, CSV. The span is split into chunks below
+  Horizons' 90 024-line output limit (seen in an error answer: "Projected output length (~91313) exceeds 90024").
+  Requests are serial, with a 1 s pause before each network request (Horizons does not document a rate limit). Each
+  chunk is cached in `$FA_DATA_DIR` (never committed) with a provenance sidecar, and the test prints URL, retrieval
+  date, SHA-256, `signature.version`, the ephemeris source string (`{source: DE441}`) and the reference-frame line
+  for every chunk. A cached answer that does not parse (e.g. a cached error) is deleted and fetched again once.
+- **Span and step.** The full product is J2000 ± 1000 Julian years (JD 2 086 295.0 – 2 816 795.0 TDB), i.e. Park17's
+  "1000 January 1 to 3000 January 1" span as a symmetric Julian-year interval, at a 2-day step (5 chunks of 400 yr,
+  73 051 rows each). The prototype measured the passage-direction error against a 6-hour-step reference: rms
+  3e-6″ per passage at 2 d (8-point Lagrange), 3e-4″ at 4 d, 0.015″ at 8 d. The 2-day step keeps that error ~10⁶ times
+  below the 0.4″ rms residual of the full fit.
+- **Estimator** (`ferroastro-precession::park2017`, NUM-011), following Park17 §4 as read in the PDF:
+  1. Perihelion passages: roots of `r·v` rising, found by bisection on an 8-point Lagrange interpolant of the sampled
+     `r·v`. The position at the root comes from the same interpolant. A 6-point interpolant gives an error estimate,
+     which is reported.
+  2. Mean-orbit frame: z = the pole (default RA 280.9876°, Dec 61.4481° ICRF), y = z × x_ICRF normalised, x = y × z
+     (Park17 §4 wording). The perihelion direction is the passage position projected onto the frame's xy-plane. The
+     longitude is its angle, unwrapped, relative to the first passage.
+  3. Fit B + ϖ̇t + Qt² + Σ(Sᵢ sin νᵢt + Cᵢ cos νᵢt), t in Julian centuries from J2000.0 TDB (Park17 says "the epoch of
+     2000 January 1"; the half-day difference shifts ϖ̇ by 2Q·Δt ≈ 1e-6 ″/cy). The solver is Householder QR. The
+     frequencies are either supplied or "FFT-derived" (periodogram peaks found by iterative prewhitening).
+  4. The formal σ of ϖ̇ comes from the residual variance and (RᵀR)⁻¹. The jack-knife σ is a delete-one-block jack-knife
+     over G = 20 contiguous blocks (100 yr each), because the residuals are serially correlated.
+  5. A second longitude definition, `DogLeg` (ϖ = Ω + ω of the osculating orbit at the passage, with Ω on the
+     reference plane), is needed for SW92. SW92's "long.peri." is Ω + ω, not a projected angle. For Mercury in the
+     J2000 ecliptic, the two definitions differ in rate by ≈ 2 tan²(i/2) cos 2ω · ω̇ ≈ 4 ″/cy, so mixing them up would be
+     a gross error.
+- **Supplied frequencies** = Park17 Table 2's 14 combinations k·n_M + j·n_P. The mean motions are SW92 Table 2a
+  (3000 BC – 3000 AD) mean-longitude rates of Mercury, Venus, EM Bary, Jupiter and Saturn, which cover the fit span.
+  They are transcribed into vectors and re-read from the JPL page by the data test.
+- **(a) SW92, fixed J2000 ecliptic, 1800–2050.** Horizons `REF_PLANE='ECLIPTIC'` ("Ecliptic of J2000.0"), one chunk
+  JD 2 378 496.5 – 2 470 172.5, DogLeg longitude, **linear** fit (SW92's model is linear in time). The oracle is SW92
+  Table 1 ϖ̇ = 0.16047689 °/cy = 577.716804 ″/cy. **Tolerance ±20 ″/cy**, derived from SW92's own fit quality and
+  independent of the result. SW92 states nominal heliocentric-longitude errors of 15″ for Mercury over 1800–2050.
+  They also say the elements "are not intended to represent any sort of mean; they are simply the result of being
+  adjusted for a best fit". At fixed mean longitude, ∂λ/∂ϖ = 1 − df/dM ranges over [1 − (1+e)²/(1−e²)^{3/2},
+  1 − (1−e)²/(1−e²)^{3/2}] = [−0.551, +0.327]. A rate error δ, pivoting at the window centre (half-width 1.25 cy),
+  therefore produces a longitude error up to 0.551 · 1.25 · δ. Requiring this ≤ 15″ gives |δ| ≤ 21.8 ″/cy, rounded
+  to 20. The bound is weak by construction: SW92's two fits of the same ephemeris (Table 1, 1800–2050: 577.72;
+  Table 2a, 3000 BC – 3000 AD: 573.84 ″/cy) already differ by 3.9 ″/cy. The result is reported against both. This
+  check is about frames and definitions (ecliptic vs mean-orbit, dog-leg vs projected), not about precision.
+- **(b) Park17, mean-orbit frame, J2000 ± 1000 yr.** ICRF (`REF_PLANE='FRAME'`) vectors, default pole, Projected
+  longitude, quadratic + 14 Table 2 frequencies. Oracle: Park17 total 575.3100 ± 0.0015 ″/cy. Two assertions:
+  - **NUM-011 acceptance**, |ϖ̇ − 575.31| ≤ 0.01 ″/cy, for "a DE440-class model over 1000–3000 CE" (DE441 is one).
+  - **Consistency**, |ϖ̇ − 575.3100| ≤ 3·√(σ_Park² + σ_jk²), with σ_Park = 0.0015 (Park17) and σ_jk measured. The
+    argument from first principles: DE441 and Park17's ephemeris are both fitted to MESSENGER ranging. Park17 §4
+    argues that any parameter combination that fits those ranges "must give the same precession rate". So the two
+    rates should agree within Park's σ plus our estimator's σ, and no model-difference term is added.
+  - Known model differences are **reported, not subtracted**: J2☉ (DE440 2.196e-7 vs Park17 2.25e-7 gives
+    0.0286 × (2.196 − 2.25)/2.25 = −0.00075 ″/cy if nothing else compensates), and Park17's fitted (β − 1) = −2.6e-5
+    (+0.00037 ″/cy if their integration used it; DE441 has β = 1). Both are inside the consistency band.
+  - Sensitivity runs (reported only): FFT-derived frequencies, SW92 Table 1 vs Table 2a mean motions, a 4-day step
+    (decimated), G = 10 and 40 jack-knife blocks, and linear and quadratic fits without periodic terms.
+- PHY-015: every reported rate goes through `RateReportBuilder` (frame, epoch, fit span, fit model, constants
+  version = "JPL DE441 via Horizons API v<signature.version>", gauge = "DE441 (PPN, isotropic/harmonic, as
+  integrated by JPL)", estimator).
+- If a check fails, the number is reported and nothing is loosened without a NEEDS HUMAN REVIEW note.
