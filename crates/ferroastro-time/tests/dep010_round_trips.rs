@@ -98,6 +98,7 @@ fn round_trips_every_scale_pair_double_double() {
 }
 
 /// TDB seconds since J2000 (the propagation variable) round-trip through an epoch.
+/// Bound: vector `TIME-TDB-SECONDS-DD-ROUNDTRIP`.
 /// Verifies: DEP-010
 #[test]
 fn tdb_seconds_round_trip() {
@@ -111,7 +112,7 @@ fn tdb_seconds_round_trip() {
         worst = worst.max(seconds_between(back, e).abs().to_f64());
     }
     println!("TDB seconds round trip (double-double): worst {worst:.3e} s");
-    v.get("TIME-ROUNDTRIP-DD-MAX")
+    v.get("TIME-TDB-SECONDS-DD-ROUNDTRIP")
         .unwrap()
         .check(worst)
         .unwrap();

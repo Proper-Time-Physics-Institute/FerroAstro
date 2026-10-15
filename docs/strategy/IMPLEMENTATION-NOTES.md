@@ -1639,3 +1639,16 @@ Extras:
 - Data tier: 15/15 pass (above).
 - `doctest_coverage.py` (report-only): 0 of 289 public functions carry a per-function doctest. `ferroastro-erfa` and `ferroastro-time` each have a crate-level doctest. The API-003 clause stays deferred (WP7 item 6).
 - The nightly tier was not re-run: WP8 changes no integrator, force or ladder code.
+
+### WP8 adversarial review (2026-10-15, reviewer agent)
+Re-ran every AGENTS.md command at `2ee4d15` (all pass: nextest 148 passed / 18 skipped, doctests pass, deny/reuse/trace/ruff/mypy clean) and the data tier on an **empty** cache (`FA_DATA_DIR` fresh, 15/15 pass, every download a cache miss). The IERS and IANA files had the same SHA-256 as the builder's run; the Park17-frame (575.309163 ″/cy), SW92 dog-leg (571.968047) and D5 (42.980085159575 / 42.980085160105) numbers are unchanged. Regenerating the pyerfa goldens with `uv run --group goldens python goldens/erfa_time.py` reproduced every data row; only the `generated_by` and `generated_utc` header lines differ, so the pinned files were left unchanged. Ported formulas were checked line by line against ERFA 2.0.1 (`tdbtcb`, `tcbtdb`, `tttcg`, `tcgtt`, `dtdb` topocentric, Fairhead and JPL-mass terms, `jd2cal` Klein summation). The licence headers, NOTICE and `LICENSES/BSD-3-Clause.txt` are present.
+
+What the review changed:
+1. **Test gap: the `|d1| <= |d2|` branch of every two-part-date routine had no test.** Both `t_erfa_c.c` and the pyerfa goldens split dates as "(JD at 0 h, fraction)", so only the first branch ran. Three planted sign flips in the second branches passed all 18 WP8 tests: in `add_to_smaller` (used by taitt, tttai, tttdb and tdbtt), in `tdbtcb` and in `tttcg`. A user passing `(0, JD)` or `(fraction, JD)` would have received a result 64 s or more out, silently. The review adds `crates/ferroastro-erfa/tests/dep009_split_order.rs` and the vector `ERFA-SPLIT-ORDER-DD-MAX`, pre-registered before the first run with a bound of 1e-15 s in double-double. The test checks that every routine gives the same instant for `(d1, d2)` and `(d2, d1)`, and for `(JD, 0)` and `(0, JD)`. Measured: 4.5e-21 s over 1170 comparisons. All five planted mutants fail it (the three sign flips, a `tcbtdb` TDB0 sign flip, and `elgg` replaced by `elg` in `tttcg`).
+2. **`tdb_seconds_round_trip` now checks its own vector.** It still checked `TIME-ROUNDTRIP-DD-MAX`, which left `TIME-TDB-SECONDS-DD-ROUNDTRIP` unused. Both have the same 1e-20 s value, so the verdict is unchanged (1.4e-22 s).
+3. Mutation probes on the UTC adapter: changing `<=` to `<` at the leap entry, or `>=` to `>` at the leap-second interval, fails the second-by-second and `erfa.dat` tests. Those tests do discriminate.
+
+Non-blocking observations, for a maintainer:
+- `tdb_seconds_since_j2000` maps a `TimeSpan::from_seconds` error to `TimeSpan::zero()`. In practice this is unreachable, because the epoch is finite and within ±1e9 d. Still, J2000 is a silently wrong value; returning `Result` or documenting it as infallible would be clearer.
+- The hifitime TT-vs-ours difference (4.96e-10 s) is printed but not asserted.
+- hifitime 4.3.1 declares no `rust-version`. The MSRV evidence is the 1.85 build alone.

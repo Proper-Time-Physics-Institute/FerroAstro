@@ -210,3 +210,17 @@ retrieved = "2026-10-15"
 tolerance = { abs = 0.0 }
 tolerance_rationale = "Leap seconds are integers; any non-zero difference is a stale or wrong table (a new IERS leap second after hifitime 4.3.1's last entry, 2017-01-01, would show here)."
 verified_by = "WP8 builder agent, 2026-10-15: written before the first data run; the two products were inspected by eye the same day (IERS file 'Updated through IERS Bulletin 72 issued in July 2026', last entry 2017-01-01, TAI-UTC 37 s)."
+
+[[vector]]
+id = "ERFA-SPLIT-ORDER-DD-MAX"
+requirement = ["DEP-009", "DEP-007"]
+quantity = "largest |f(d1, d2) - f(d2, d1)| and |f(d1 + d2, 0) - f(0, d1 + d2)| (sum of the two output parts, in seconds; dtdb compared directly) over taitt, tttai, tttdb, tdbtt, tdbtcb, tcbtdb, tttcg, tcgtt and dtdb, at dates 1550-2650 split as (JD at 0 h, fraction), in double-double"
+value = 0.0
+unit = "s"
+kind = "analytic"
+source = "ERFA's two-part Julian date convention: the date is d1 + d2 for any split, and each routine has one branch for |d1| > |d2| and one for |d1| <= |d2| (ERFA 2.0.1 taitt.c note 1 and the tdbtcb/tcbtdb/tttcg/tcgtt bodies). Exchanging the parts must give the same instant. Double-double round-off at JD ~2.6e6 d is ~2.6e6 d * 2^-104 ~ 1e-25 d ~ 1e-20 s per rounding; a dozen roundings stay below 1e-18 s."
+citation = "liberfa/erfa v2.0.1, src/taitt.c, src/tdbtcb.c, src/tcbtdb.c, src/tttcg.c, src/tcgtt.c (two-part date notes); Joldes, Muller & Popescu 2017, ACM TOMS 44(2) 15res (double-word bounds)"
+retrieved = "2026-10-15"
+tolerance = { abs = 1e-15 }
+tolerance_rationale = "Pre-registered by the WP8 reviewer before the test's first run. Three orders above the double-double round-off estimate, and seven below the smallest term a wrong branch would drop or flip (L_G^2 * (JD - T_77) * 86400 s ~ 1e-8 s at 2650 for elgg vs elg; 32.184 s, L_B and L_G terms are far larger), so a sign, constant or branch error in either branch fails. Added because the |d1| <= |d2| branches had no test: three planted sign flips in them (add_to_smaller, tdbtcb, tttcg) passed every WP8 test."
+verified_by = "WP8 reviewer agent, 2026-10-15: written before the first run of crates/ferroastro-erfa/tests/dep009_split_order.rs."
