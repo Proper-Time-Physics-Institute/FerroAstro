@@ -632,8 +632,8 @@ profile was not re-run: no WP4 change touches the integrator or the NUM-023 test
 | test | measured | oracle / tolerance | result | provenance |
 |---|---|---|---|---|
 | `data_sw92_table1_mercury` (extended) | 12 new SW92 rate/mean-motion tokens | vectors, exact | PASS (all equal) | approx_pos.html sha256 `9f7b30ca…f9c4d742`, Last-Modified 2026-10-06 |
-| `data_sw92_rate_from_horizons_de441_ecliptic` | dog-leg ϖ̇ = **571.968 ″/cy** (formal σ 0.332, jack-knife σ 0.147, 10 blocks); 1038 passages; rms residual 7.71″ | SW92 Table 1 577.716804 ± 20 → **−5.749** | PASS | Horizons API v1.2, DE441, "Ecliptic of J2000.0", 2 chunks (1 d step), sha256 `1f79316e…23da5c`, `4d1901a5…7966f2` |
-| `data_park17_rate_from_horizons_de441_mean_orbit` | ϖ̇ = **575.30916 ″/cy**, formal σ 0.00083, **jack-knife σ 0.00153** (20 blocks); Q = −0.0447605 ″/cy²; 8304 passages; rms residual 0.437″ | Park17 575.3100: NUM-011 ± 0.01 and 3·√(0.0015² + σ_jk²) = ± 0.00643 → **−0.00084 (−0.39 σ)** | PASS (both) | Horizons API v1.2, DE441, ICRF, 5 chunks of 73 051 rows (2 d step), sha256 `27ff0431…92383853`, `015ac2fd…358dfe`, `7d2a118a…cd37006`, `09033cf7…31cda9`, `db6db6a5…cb31cda9`—see test output |
+| `data_sw92_rate_from_horizons_de441_ecliptic` | dog-leg ϖ̇ = **571.968 ″/cy** (formal σ 0.332, jack-knife σ 0.147, 10 blocks); 1038 passages; rms residual 7.71″ | SW92 Table 1 577.716804 ± 20 → **−5.749** | PASS | Horizons API v1.2, DE441, "Ecliptic of J2000.0", 2 chunks (1 d step), sha256 (first run) `1f79316e…d04323da5c`, `4d1901a5…fcf7966f2` |
+| `data_park17_rate_from_horizons_de441_mean_orbit` | ϖ̇ = **575.30916 ″/cy**, formal σ 0.00083, **jack-knife σ 0.00153** (20 blocks); Q = −0.0447605 ″/cy²; 8304 passages; rms residual 0.437″ | Park17 575.3100: NUM-011 ± 0.01 and 3·√(0.0015² + σ_jk²) = ± 0.00643 → **−0.00084 (−0.39 σ)** | PASS (both) | Horizons API v1.2, DE441, ICRF, 5 chunks of 73 051 rows (2 d step), sha256 (first run) `27ff0431…92383853`, `015ac2fd…85358dfe`, `7d2a118a…e9cd6fed`, `09033cf7…a136e67e13`, `db6db6a5…76cb31cda9` |
 
 Sensitivity of (b), reported only (Δ vs 575.30916):
 | variant | ϖ̇ (″/cy) | Δ | jack-knife σ |
@@ -657,6 +657,8 @@ Sensitivity of (b), reported only (Δ vs 575.30916):
   positions along the whole orbit, not perihelion passages, and their ϖ̇ absorbs whatever the six-element
   linear model cannot represent; DE200 vs DE441; long-period terms in a 250-yr window. **Open question, flagged for
   human review:** whether a tighter, independently justified SW92 oracle exists. No tolerance was changed.
+- Horizons answers embed a request timestamp, so every fresh download has a new SHA-256. The second empty-cache run
+  (whole `data` profile) printed different digests, but the same numbers to every printed digit.
 - Cost: the (b) test takes 20 s on a fresh cache (≈ 72 MB in 5 requests) and < 2 s cached. The (a) test takes 6 s
   (≈ 18 MB). The weekly CI `data` job picks both up through the `data_*` filter.
 
