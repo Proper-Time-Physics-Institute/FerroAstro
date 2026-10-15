@@ -2264,3 +2264,53 @@ Every number above equals the builders' WP7–WP10 reports, and the WP5/WP6 numb
 
 Reviewer artefacts are in the local scratchpad, not committed: `gates.log`, `long.log`, `rerun.log`, `mutate.log`, `mutate.sh`, `py/testpo_indep.py` and `py/recompute.py`.
 
+
+## WP11 — [M3] `ferroastro-system`: body catalogue, tiers and initial-condition assembly
+
+Builder agent, 2026-10-15. Branch `m3-newtonian-nbody`, stacked on `m0-foundation`, draft PR #13.
+
+### Plan and pre-registered checks (written 2026-10-15, before the first FerroAstro run)
+**Disclosure, before anything else.** To choose the header symbols to map, I explored header.440 and
+de440.bsp in Python with jplephem 2.24 (scratchpad scripts, not committed) **before** writing these
+bounds. What I saw: every header state (`X1…ZD9`, `XB…`, `XS…`) equals the de440.bsp barycentric
+state at JDEPOC 2440400.5 to ≤ 6.7e-7 km and ≤ 8.4e-15 km/s when read as SSB-centred ICRF in au and
+au/day; `XM…` equals the SPK Moon − Earth to 1.8e-8 km; the heliocentric reading misses by
+6.8e5 km; `XC…ZDC` are all zero; the header barycentre (Newtonian, no asteroids) is 122.7 km from
+the origin. The position bound below is the plan's (≤ 1 m, PROVISIONAL), fixed before this
+exploration. The velocity bound (1e-9 km/s) is mine, chosen **after** seeing the numbers: it is
+REF-004's velocity target, copied, and is 1e5× the observed value, so it was not tuned.
+
+**Header symbols (GROUP 1040/1041).** `X1…ZD1`, `X2…`, `X4…X9` (body or system barycentre),
+`XB…ZDB` (Earth–Moon barycentre), `XS…ZDS` (Sun), `XM…ZDM` (Moon relative to Earth, the DE
+"geocentric Moon" variable), `XC…ZDC` (all zero in DE440; their meaning stays OI-23 and they are
+not used), `CENTER` (0). The interpretation under test is **"CENTER = 0 means SSB-centred states in
+the ICRF-aligned DE frame, positions in au and velocities in au/day (AU = header `AU` km, day =
+86 400 s TDB)"**. It is encoded as a named constant in the crate and printed by the test.
+
+**NAIF ids.** Mercury 1, Venus 2, Mars…Pluto 4…9 (the header's planet states are system
+barycentres, which for Mercury and Venus coincide with the body; GM1…GM9 are system GMs), Sun 10,
+Earth 399, Moon 301 (split from `XB` and `XM` with EMRAT). Header `MAnnnn` with nnnn < 8000 →
+asteroid NAIF 2 000 000 + nnnn; the 66 entries `MA8001…MA8236` are **not identified** here (their
+GMs sum to 8.5e-8 GMS, about 0.03 Earth masses, and no SPK in the manifest carries ids for them).
+They are kept as "unidentified masses" and are not placed. Their identity is an OI-24 question for
+humans.
+
+**Checks** (margin = |Δ| / tolerance).
+| # | check | tier | oracle | tolerance | rationale |
+|---|---|---|---|---|---|
+| 1 | (REF-002, OI-23) header.440 ICs assembled by `InitialConditions::from_header` vs de440.bsp evaluated at JDEPOC through `from_ephemeris`, every body (Sun, 1, 2, 4–9, Earth, Moon), barycentric; plus the geocentric Moon `XM` vs SPK 301 − 399 | PR-fast (cached header.440 + de440.bsp) | de440.bsp (independent product) | position **≤ 1e-3 km** (PROVISIONAL, plan), velocity **≤ 1e-9 km/s** | the SPK is a Chebyshev fit to the same integration; at the integration's initial epoch the fit reproduces the ICs to its interpolation error. The test also prints the residual under the heliocentric reading and under "km, km/s" units, and asserts each is > 1e3 × the tolerance, so a pass discriminates between the readings. |
+| 2 | Earth + Moon GMs from EMRAT recombine to GMB | PR-fast (committed table) | GMB itself | **≤ 2 ulp** of GMB | each GM is GMB·frac rounded once and the sum is rounded once; 2 ulp covers the three roundings. |
+| 3 | the header catalogue's GMs equal `De440::gm` for all 12 bodies | PR-fast (cached header) | the committed table | **exact** (bitwise) | same tokens, same conversion arithmetic. |
+| 4 | barycentre of all header bodies, Newtonian μ and relativistic μ* (DE440 convention), without and with the 343 numbered asteroids of sb441-n373s.bsp at JDEPOC | PR-fast (without) and data (with) | — | **report only** | the plan defers the assertion to WP15. |
+| 5 | typed state ↔ SoA container round trips | PR-fast | identity | **exact** | no arithmetic. |
+| 6 | compile-fail: a heliocentric state where a barycentric one is required | PR-fast (trybuild) | rustc | does not compile | API-001 pattern. |
+| 7 | Horizons DE441 vectors at JDEPOC (500@0, ICRF, TDB) assembled by `from_states`, vs header ICs | data | JPL Horizons (signature.version printed) | gross bound **10 km, 1e-3 km/s** (as WP10 check 7) | DE441 ≠ DE440, so this only catches convention errors (frame, centre, units, time scale). The DE440 − DE441 differences are reported. |
+| 8 | μ* barycentring: after `rebarycentre`, Σ μ*·r and Σ μ*·v vanish to round-off; μ* − μ has the size of (v² − U)/(2c²) | PR-fast (header ICs) | definition | Σμ*r ≤ 1e-6 km·(GM units), see vector | algebraic property. |
+
+**Relativistic barycentre.** μᵢ* = μᵢ [1 + vᵢ²/(2c²) − (1/(2c²)) Σⱼ≠ᵢ μⱼ/rᵢⱼ], SSB: Σ μᵢ* rᵢ = 0,
+Σ μᵢ* vᵢ = 0 (the time derivative of μ* is neglected in the velocity condition). Transcribed from
+memory of Folkner et al. 2014 (IPN PR 42-196) / Park et al. 2021 Eqs. 1–2 as cited by NUM-018; I did
+**not** re-open the PDFs: **NEEDS HUMAN REVIEW** (same status as OI-33 for the EIH transcription).
+
+**Review corrections in this WP.** F1–F4 were applied before the crate (commits `e47834c`,
+`78116c2`, `d5ee274`, `011ff7c`); F5 is discussed below.
