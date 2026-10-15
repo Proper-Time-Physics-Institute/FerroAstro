@@ -13,9 +13,11 @@ fn root() -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR")).join("../..")
 }
 
+// REUSE-IgnoreStart (searched-for text, not this file's copyright)
 const ERFA_COPYRIGHT: &str = "Copyright (C) 2013-2023, NumFOCUS Foundation.";
 const ERFA_CONDITION_1: &str = "Redistributions of source code must retain the above copyright";
 const ERFA_DISCLAIMER_END: &str = "POSSIBILITY OF SUCH DAMAGE.";
+// REUSE-IgnoreEnd
 
 /// Verifies: DEP-009, LIC-004
 #[test]
@@ -46,6 +48,7 @@ fn every_ported_file_carries_spdx_copyright_source_and_licence() {
         }
         let text = fs::read_to_string(&path).unwrap();
         let name = path.display();
+        // REUSE-IgnoreStart (the strings below are searched for, not this file's licence)
         assert!(
             text.contains("SPDX-License-Identifier: Apache-2.0 AND BSD-3-Clause"),
             "{name}"
@@ -54,6 +57,7 @@ fn every_ported_file_carries_spdx_copyright_source_and_licence() {
             text.contains("SPDX-FileCopyrightText: 2013-2023 NumFOCUS Foundation"),
             "{name}"
         );
+        // REUSE-IgnoreEnd
         assert!(
             text.contains("ERFA 2.0.1"),
             "{name} must cite its ERFA source"

@@ -167,9 +167,11 @@ def header(title: str, units: str, columns: Sequence[str], rows: int) -> str:
     if erfa.__version__ != PYERFA_PIN:
         msg = f"pyerfa {erfa.__version__} != pinned {PYERFA_PIN} (REF-009)"
         raise SystemExit(msg)
+    # REUSE-IgnoreStart (header text written into the CSV, not this file's licence)
     lines = [
         "SPDX-FileCopyrightText: 2026 Proper-Time Physics Institute",
         "SPDX-License-Identifier: Apache-2.0",
+        # REUSE-IgnoreEnd
         title,
         f"generated_by: tools/goldens/erfa_time.py@{git_head()}",
         f"engine: pyerfa {erfa.__version__} (ERFA {erfa.version.erfa_version}, "
