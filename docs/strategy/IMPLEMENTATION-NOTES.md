@@ -217,3 +217,24 @@ miss): sha256 `0f4636b663e6f00af9efa2b605ef23635489f56b23dd1a5e3821d3acc6ac3359`
   J2SUN 2.1961391516529825e-7, ASUN 696000, GMS 2.95912208284119561e-4, EMRAT 81.3005682214972154 all |diff| = 0;
   645 constants, 409 MA entries. PASS.
 - `data_de440_header_defined_constants` (WP1): PASS.
+
+## WP3 — IAS15 integrator, Newtonian two-body, analytic GR (PHY-001, PHY-004, NUM-001 subset, NUM-023)
+
+### Plan and pre-registered checks (written before any run)
+- New crates (ARCHITECTURE.md names): `ferroastro-integrators` (IAS15-class Gauss–Radau, clean-room from
+  Everhart 1985 and Rein & Spiegel 2015 — no REBOUND/REBOUNDx/ASSIST/Swiftest source was opened),
+  `ferroastro-forces` (Newtonian point masses), `ferroastro-precession` (Kepler elements, LRL-vector
+  perihelion longitude, secular slope fit, analytic Schwarzschild advance).
+- Oracles fixed before running anything, so no tolerance is chosen after seeing a result:
+  - PHY-001: |fitted ϖ̇| < 1e-6 ″/cy over ≥ 1000 yr (the requirement's own bound). If IAS15 does not reach
+    it, the achieved value is reported and the test is **not** loosened without a NEEDS HUMAN REVIEW note.
+  - PHY-004: 42.9805 ± 0.0001 ″/cy, 5.01866e-7 rad/orbit (± half a unit in the 6th significant digit) and
+    415.2009 orbits/cy (± half a unit in the 4th decimal), from DE440 GM☉, c, au and SW92 a, e.
+  - NUM-023: Brouwer slopes ½ (energy) and 3/2 (phase / along-track), each ± 0.1 (requirement).
+  - Real data (Horizons, DE441): (a) my state→elements conversion of the Horizons heliocentric state must
+    reproduce Horizons' own osculating EC and A with the same GM (tolerance set by the 16 printed digits and
+    f64 round-off, ≤ 1e-12 relative); (b) the analytic GR rate from **osculating** J2000 a, e is a diagnostic
+    compared with Park et al. 2017 Table 3 (42.9799 ± 0.0009 ″/cy) at 3σ (± 0.0027): single-epoch
+    osculating elements carry short-period perturbations, and red-team §1 labels the mean-vs-osculating
+    explanation of the 0.0006 gap a hypothesis, so this is not a 1σ test; (c) PHY-001 repeated with the
+    Horizons J2000 state as initial condition.
