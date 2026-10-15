@@ -1,0 +1,212 @@
+# SPDX-FileCopyrightText: 2026 Proper-Time Physics Institute
+# SPDX-License-Identifier: Apache-2.0
+# Time-scale oracles for ferroastro-time (DEP-010, REF-009, TST-003). Pre-registered in WP8 before
+# the first run of the tests that use them (IMPLEMENTATION-NOTES WP8). Golden tables live in
+# tests/goldens/ and are pinned here by SHA-256 (notes); a changed table fails the tests.
+schema_version = 1
+
+[[vector]]
+id = "PYERFA-TT-TAI-MAX-DIFF"
+requirement = ["REF-009", "DEP-010"]
+quantity = "largest |FerroAstro - pyerfa| over the 223 golden epochs (1550-2650) of TT->TAI and TAI->TT (pyerfa tttai, taitt), per date"
+value = 0.0
+unit = "s"
+kind = "computed-reference"
+source = "tests/goldens/erfa-time-pyerfa.csv, columns tt1,tt2 -> tai1,tai2 and tai1,tai2 -> tt_from_tai1,tt_from_tai2, written by pyerfa 2.0.1.5."
+citation = "pyerfa 2.0.1.5 (PyPI), bundling ERFA 2.0.1 = SOFA 20231011 (REF-009); erfa.tttai / erfa.taitt"
+retrieved = "2026-10-15"
+generated_by = "tools/goldens/erfa_time.py@6f0dd8c7d06ec78a594f2bf822457473ec956633"
+engine = { name = "pyerfa", version = "2.0.1.5 (ERFA 2.0.1, SOFA 20231011), numpy 2.5.4, CPython 3.12.13 x86_64", settings = "TT epochs as (JD at 0 h, fraction of day); 223 epochs every 5 years 1550-2650 plus J2000.0 and 1977-01-01T00:00:32.184 TT" }
+tolerance = { abs = 1e-9 }
+tolerance_rationale = "PROVISIONAL (red-team: needs human approval). Same algorithm in both; residual is two-part-JD round-off (~1e-11 s per operation). 1 ns per the WP8 brief."
+verified_by = "WP8 builder agent, 2026-10-15: pre-registered before the first run; measured maxima in IMPLEMENTATION-NOTES WP8."
+notes = "golden table sha256 1c6caacecd886333b3deeb111a9a62827953fb0a980e08174cf92667515a6d9d"
+
+[[vector]]
+id = "PYERFA-TT-TDB-MAX-DIFF"
+requirement = ["REF-009", "DEP-010"]
+quantity = "largest |FerroAstro - pyerfa| over the 223 golden epochs of TT->TDB (pyerfa tttdb with dtdb(tt, u=v=0)) and TDB->TT (pyerfa tdbtt with dtdb evaluated at the TDB date; FerroAstro iterates to the exact inverse)"
+value = 0.0
+unit = "s"
+kind = "computed-reference"
+source = "tests/goldens/erfa-time-pyerfa.csv, columns tt -> tdb1,tdb2 and tdb -> tt_from_tdb1,tt_from_tdb2."
+citation = "pyerfa 2.0.1.5 (ERFA 2.0.1, SOFA 20231011); erfa.dtdb / erfa.tttdb / erfa.tdbtt"
+retrieved = "2026-10-15"
+generated_by = "tools/goldens/erfa_time.py@6f0dd8c7d06ec78a594f2bf822457473ec956633"
+engine = { name = "pyerfa", version = "2.0.1.5 (ERFA 2.0.1, SOFA 20231011), numpy 2.5.4, CPython 3.12.13 x86_64", settings = "dtdb(date, ut=0, elong=0, u=0, v=0): geocentric Fairhead & Bretagnon" }
+tolerance = { abs = 1e-9 }
+tolerance_rationale = "PROVISIONAL. Same algorithm; two-part-JD round-off plus the TDB->TT definition difference |d(dtdb)/dt|*|dtdb| ~ 3.3e-10 * 1.7e-3 s ~ 6e-13 s (FerroAstro iterates to the exact inverse of its TT->TDB; pyerfa's one-shot use does not)."
+verified_by = "WP8 builder agent, 2026-10-15: pre-registered before the first run; measured maxima in IMPLEMENTATION-NOTES WP8."
+notes = "golden table sha256 1c6caacecd886333b3deeb111a9a62827953fb0a980e08174cf92667515a6d9d"
+
+[[vector]]
+id = "PYERFA-TDB-TCB-MAX-DIFF"
+requirement = ["REF-009", "DEP-010"]
+quantity = "largest |FerroAstro - pyerfa| over the 223 golden epochs of TDB->TCB and TCB->TDB (pyerfa tdbtcb, tcbtdb)"
+value = 0.0
+unit = "s"
+kind = "computed-reference"
+source = "tests/goldens/erfa-time-pyerfa.csv, columns tdb -> tcb1,tcb2 and tcb -> tdb_from_tcb1,tdb_from_tcb2."
+citation = "pyerfa 2.0.1.5 (ERFA 2.0.1, SOFA 20231011); erfa.tdbtcb / erfa.tcbtdb (IAU 2006 Resolution B3)"
+retrieved = "2026-10-15"
+generated_by = "tools/goldens/erfa_time.py@6f0dd8c7d06ec78a594f2bf822457473ec956633"
+engine = { name = "pyerfa", version = "2.0.1.5 (ERFA 2.0.1, SOFA 20231011), numpy 2.5.4, CPython 3.12.13 x86_64", settings = "TDB input = pyerfa TDB of the golden TT epochs" }
+tolerance = { abs = 1e-9 }
+tolerance_rationale = "PROVISIONAL. Same algorithm and binary64 constants in f64; in double-double the defined constants are exact to 106 bits, which moves the result by < 1e-14 s (L_B rounding 1e-24 times <= 2.5e5 d)."
+verified_by = "WP8 builder agent, 2026-10-15: pre-registered before the first run; measured maxima in IMPLEMENTATION-NOTES WP8."
+notes = "golden table sha256 1c6caacecd886333b3deeb111a9a62827953fb0a980e08174cf92667515a6d9d"
+
+[[vector]]
+id = "PYERFA-TT-TCG-MAX-DIFF"
+requirement = ["REF-009", "DEP-010"]
+quantity = "largest |FerroAstro - pyerfa| over the 223 golden epochs of TT->TCG and TCG->TT (pyerfa tttcg, tcgtt)"
+value = 0.0
+unit = "s"
+kind = "computed-reference"
+source = "tests/goldens/erfa-time-pyerfa.csv, columns tt -> tcg1,tcg2 and tcg -> tt_from_tcg1,tt_from_tcg2."
+citation = "pyerfa 2.0.1.5 (ERFA 2.0.1, SOFA 20231011); erfa.tttcg / erfa.tcgtt (IAU 2000 Resolution B1.9)"
+retrieved = "2026-10-15"
+generated_by = "tools/goldens/erfa_time.py@6f0dd8c7d06ec78a594f2bf822457473ec956633"
+engine = { name = "pyerfa", version = "2.0.1.5 (ERFA 2.0.1, SOFA 20231011), numpy 2.5.4, CPython 3.12.13 x86_64", settings = "TT epochs as (JD at 0 h, fraction of day)" }
+tolerance = { abs = 1e-9 }
+tolerance_rationale = "PROVISIONAL. Same algorithm; two-part-JD round-off."
+verified_by = "WP8 builder agent, 2026-10-15: pre-registered before the first run; measured maxima in IMPLEMENTATION-NOTES WP8."
+notes = "golden table sha256 1c6caacecd886333b3deeb111a9a62827953fb0a980e08174cf92667515a6d9d"
+
+[[vector]]
+id = "PYERFA-DTDB-MAX-DIFF"
+requirement = ["REF-009", "DEP-009"]
+quantity = "largest |FerroAstro dtdb - pyerfa dtdb| over the 223 golden epochs, geocentric (u=v=0) and at a deterministic topocentric site per epoch"
+value = 0.0
+unit = "s"
+kind = "computed-reference"
+source = "tests/goldens/erfa-time-pyerfa.csv, columns dtdb_geo and (ut, elong, u, v) -> dtdb_topo."
+citation = "pyerfa 2.0.1.5 (ERFA 2.0.1, SOFA 20231011); erfa.dtdb (Fairhead & Bretagnon 1990; Moyer 1981; Murray 1983)"
+retrieved = "2026-10-15"
+generated_by = "tools/goldens/erfa_time.py@6f0dd8c7d06ec78a594f2bf822457473ec956633"
+engine = { name = "pyerfa", version = "2.0.1.5 (ERFA 2.0.1, SOFA 20231011), numpy 2.5.4, CPython 3.12.13 x86_64", settings = "site latitude -80..80 deg, longitude sweeping the circle, GRS80 radii; ut = fraction of the TT day" }
+tolerance = { abs = 1e-14 }
+tolerance_rationale = "Same 787-term sum in the same order. Argument rounding ulp(4e3 rad) * 1.7e-3 s ~ 8e-16 s dominates; platform sin differences are below it. 1e-14 s leaves an order of magnitude."
+verified_by = "WP8 builder agent, 2026-10-15: pre-registered before the first run; measured maxima in IMPLEMENTATION-NOTES WP8."
+notes = "golden table sha256 1c6caacecd886333b3deeb111a9a62827953fb0a980e08174cf92667515a6d9d"
+
+[[vector]]
+id = "PYERFA-JD2CAL-FD-MAX-DIFF"
+requirement = ["REF-009", "DEP-009"]
+quantity = "largest |FerroAstro jd2cal fraction - pyerfa jd2cal fraction| over the 223 golden TT dates (year, month and day must match exactly)"
+value = 0.0
+unit = "d"
+kind = "computed-reference"
+source = "tests/goldens/erfa-time-pyerfa.csv, columns tt1,tt2 -> cal_iy,cal_im,cal_id,cal_fd."
+citation = "pyerfa 2.0.1.5 (ERFA 2.0.1, SOFA 20231011); erfa.jd2cal"
+retrieved = "2026-10-15"
+generated_by = "tools/goldens/erfa_time.py@6f0dd8c7d06ec78a594f2bf822457473ec956633"
+engine = { name = "pyerfa", version = "2.0.1.5 (ERFA 2.0.1, SOFA 20231011), numpy 2.5.4, CPython 3.12.13 x86_64", settings = "TT epochs as (JD at 0 h, fraction of day)" }
+tolerance = { abs = 1e-15 }
+tolerance_rationale = "Same binary64 operations (Klein compensated sum); 1e-15 d is a few ulp of a day fraction (ulp(1) = 2.2e-16)."
+verified_by = "WP8 builder agent, 2026-10-15: pre-registered before the first run; measured maxima in IMPLEMENTATION-NOTES WP8."
+notes = "golden table sha256 1c6caacecd886333b3deeb111a9a62827953fb0a980e08174cf92667515a6d9d"
+
+[[vector]]
+id = "TIME-ROUNDTRIP-F64-MAX"
+requirement = ["DEP-010"]
+quantity = "largest |A->B->A - A| over all 10 pairs of {TAI, TT, TDB, TCB, TCG}, both directions, at the 223 golden epochs, in f64"
+value = 0.0
+unit = "s"
+kind = "analytic"
+source = "Round-off budget: at most about 16 roundings of a day-scale fraction along the longest route and back (TCB<->TCG), each <= 1/2 ulp(1 d) = 9.6e-12 s, i.e. <= 1.6e-10 s."
+citation = "IEEE 754-2019 binary64 (u = 2^-53); ERFA two-part Julian date convention (ERFA 2.0.1 taitt.c note)"
+retrieved = "2026-10-15"
+tolerance = { abs = 2e-10 }
+tolerance_rationale = "Pre-registered round-off bound (above), not a fit. Holds for 'JD at 0 h + fraction of day' splits; a 'JD + 0' split loses resolution by design (ERFA)."
+verified_by = "WP8 builder agent, 2026-10-15: pre-registered before the first run; measured maxima in IMPLEMENTATION-NOTES WP8."
+
+[[vector]]
+id = "TIME-ROUNDTRIP-DD-MAX"
+requirement = ["DEP-010", "DEP-007"]
+quantity = "largest |A->B->A - A| over all 10 pairs of {TAI, TT, TDB, TCB, TCG}, both directions, at the 223 golden epochs, in double-double"
+value = 0.0
+unit = "s"
+kind = "analytic"
+source = "Double-double day-fraction ulp is ~1e-27 s; the TDB->TT fixed point after 3 iterations leaves (3.3e-10)^3 * 1.7e-3 s ~ 6e-32 s."
+citation = "Joldes, Muller & Popescu 2017, ACM TOMS 44(2) 15res (double-word bounds, as in tests/vectors/real-backends.toml)"
+retrieved = "2026-10-15"
+tolerance = { abs = 1e-20 }
+tolerance_rationale = "Pre-registered: seven orders of magnitude above the estimate, ten below the f64 bound, so it demonstrates the DD path without being fragile."
+verified_by = "WP8 builder agent, 2026-10-15: pre-registered before the first run; measured maxima in IMPLEMENTATION-NOTES WP8."
+
+[[vector]]
+id = "HIFITIME-TAI-UTC-VS-ERFA-DAT"
+requirement = ["DEP-010", "REF-009"]
+quantity = "largest |hifitime TAI-UTC - pyerfa dat| over 219 UTC instants: 0 h of every Jan 1 and Jul 1, 1972-2026, and 23:59:59 of the day before each"
+value = 0.0
+unit = "s"
+kind = "computed-reference"
+source = "tests/goldens/erfa-dat-pyerfa.csv (erfa.dat). FerroAstro path: UTC calendar -> hifitime 4.3.1 -> Epoch<Tai> (ns-exact) -> hifitime leap_seconds(iers_only = true); also (TAI epoch - UTC JD) * 86400."
+citation = "pyerfa 2.0.1.5 (ERFA 2.0.1, SOFA 20231011); erfa.dat, leap seconds through 2017 January 1"
+retrieved = "2026-10-15"
+generated_by = "tools/goldens/erfa_time.py@6f0dd8c7d06ec78a594f2bf822457473ec956633"
+engine = { name = "pyerfa", version = "2.0.1.5 (ERFA 2.0.1, SOFA 20231011), numpy 2.5.4, CPython 3.12.13 x86_64", settings = "erfa.dat(iy, im, id, fd), fd = 0 or 86399/86400" }
+tolerance = { abs = 0.0 }
+tolerance_rationale = "Leap seconds are integers; any difference is a table error. The JD path is held to 1 us (hifitime ns rounding and binary64 JD resolution), stated in the test."
+verified_by = "WP8 builder agent, 2026-10-15: pre-registered before the first run; measured maxima in IMPLEMENTATION-NOTES WP8."
+notes = "golden table sha256 3fb51aeb631408d8e2bda2433ee1c78de185cda37e6ffac36fbd69710b207004"
+
+[[vector]]
+id = "HIFITIME-TDB-VS-ERFA-MAX-DIFF"
+requirement = ["DEP-010"]
+quantity = "largest |hifitime TDB - FerroAstro TDB| (seconds since J2000 TDB) over the 223 golden TT epochs 1550-2650"
+value = 0.0
+unit = "s"
+kind = "analytic"
+source = "hifitime 4.3.1 TDB = SPICE one-term model 1.658e-3 s * sin(g + 0.0167 sin g), g' = 1.990910018065731e-7 rad/s (6282.834 rad/millennium) (hifitime src/epoch/mod.rs inner_g). FerroAstro TDB = ERFA dtdb (787-term Fairhead & Bretagnon, main term 6283.076 rad/millennium). Bound written before running hifitime: sum of |A|*|T|^n over all non-main Fairhead terms at |T| = 0.65 millennium = 134.1 us; main-term frequency/phase/amplitude mismatch over |T| <= 0.65 = 262.2 us; JPL-mass terms 0.02 us; total 396 us."
+citation = "Fairhead, L. & Bretagnon, P. 1990, A&A 229, 240 (via ERFA 2.0.1 dtdb.c); hifitime 4.3.1 (crates.io, MPL-2.0) src/epoch/mod.rs"
+retrieved = "2026-10-15"
+tolerance = { abs = 4.0e-4 }
+tolerance_rationale = "Analytic bound (396 us, rounded up), not a fit: the two libraries use different TDB series by design (DEP-010 note: 'hifitime's ET is SPICE's approximation'). The measured value is recorded, not the bound."
+verified_by = "WP8 builder agent, 2026-10-15: bound computed from the ERFA table and hifitime's published constants before any hifitime run; measured maximum in IMPLEMENTATION-NOTES WP8."
+
+[[vector]]
+id = "TIME-TDB-SECONDS-DD-ROUNDTRIP"
+requirement = ["DEP-010", "DEP-007"]
+quantity = "largest |epoch -> TDB seconds since J2000 -> epoch - epoch| over the 223 golden TDB dates, in double-double"
+value = 0.0
+unit = "s"
+kind = "analytic"
+source = "Double-double relative resolution ~2^-104 times |t| <= 3.5e10 s (1550 or 2650 from J2000) gives ~2e-21 s per rounding; a handful of roundings (subtract J2000, multiply and divide by 86400) stay below 1e-20 s."
+citation = "Joldes, Muller & Popescu 2017, ACM TOMS 44(2) 15res (double-word bounds)"
+retrieved = "2026-10-15"
+tolerance = { abs = 1e-20 }
+tolerance_rationale = "Round-off bound from the resolution argument above. NOT blind: this vector was added after the first run measured 1.4e-22 s (that run had borrowed TIME-ROUNDTRIP-DD-MAX, whose quantity is the scale-pair round trip); same 1e-20 s value as that pre-registered bound."
+verified_by = "WP8 builder agent, 2026-10-15; NEEDS HUMAN REVIEW (non-blind, IMPLEMENTATION-NOTES WP8)."
+
+[[vector]]
+id = "HIFITIME-UTC-JD-PATH-MAX"
+requirement = ["DEP-010"]
+quantity = "largest |(TAI epoch from hifitime - UTC Julian date from cal2jd + fd) * 86400 - pyerfa dat| over the 219 UTC instants of erfa-dat-pyerfa.csv, f64"
+value = 0.0
+unit = "s"
+kind = "computed-reference"
+source = "tests/goldens/erfa-dat-pyerfa.csv (erfa.dat); FerroAstro path UTC calendar -> hifitime 4.3.1 -> Epoch<Tai, f64> -> seconds_between with the UTC JD (0 h + fd)."
+citation = "pyerfa 2.0.1.5 (ERFA 2.0.1, SOFA 20231011); erfa.dat"
+retrieved = "2026-10-15"
+generated_by = "tools/goldens/erfa_time.py@6f0dd8c7d06ec78a594f2bf822457473ec956633"
+engine = { name = "pyerfa", version = "2.0.1.5 (ERFA 2.0.1, SOFA 20231011), numpy 2.5.4, CPython 3.12.13 x86_64", settings = "erfa.dat(iy, im, id, fd), fd = 0 or 86399/86400" }
+tolerance = { abs = 1e-6 }
+tolerance_rationale = "1 us as stated in HIFITIME-TAI-UTC-VS-ERFA-DAT before any hifitime run: hifitime rounds to 1 ns, and fd = 86399/86400 is not exact in binary64 (~1e-11 s); 1 us leaves three orders of margin while catching any whole-second or JD-split error."
+verified_by = "WP8 builder agent, 2026-10-15: written before the first hifitime run; measured maximum in IMPLEMENTATION-NOTES WP8."
+notes = "golden table sha256 3fb51aeb631408d8e2bda2433ee1c78de185cda37e6ffac36fbd69710b207004"
+
+[[vector]]
+id = "LEAPSEC-IERS-IANA-VS-FERROASTRO"
+requirement = ["DEP-010"]
+quantity = "largest |FerroAstro (hifitime table) TAI-UTC - published TAI-UTC| at 0 h UTC of every entry, and one second before it, of IERS Leap_Second.dat and IANA leap-seconds.list (1972 onwards)"
+value = 0.0
+unit = "s"
+kind = "measured"
+source = "IERS Earth Orientation Centre, Bulletin C leap-second history file Leap_Second.dat; IANA tz database leap-seconds.list (NTP timestamps). Downloaded live by the data test; URL, SHA-256, retrieval date and the files' own 'updated through' / expiry lines are printed."
+citation = "https://hpiers.obspm.fr/iers/bul/bulc/Leap_Second.dat ; https://data.iana.org/time-zones/tzdb/leap-seconds.list"
+retrieved = "2026-10-15"
+tolerance = { abs = 0.0 }
+tolerance_rationale = "Leap seconds are integers; any non-zero difference is a stale or wrong table (a new IERS leap second after hifitime 4.3.1's last entry, 2017-01-01, would show here)."
+verified_by = "WP8 builder agent, 2026-10-15: written before the first data run; the two products were inspected by eye the same day (IERS file 'Updated through IERS Bulletin 72 issued in July 2026', last entry 2017-01-01, TAI-UTC 37 s)."

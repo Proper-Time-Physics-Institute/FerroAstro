@@ -14,6 +14,7 @@
 //! | `FA-E0500`–`FA-E0599` | force models (`ferroastro-forces`) |
 //! | `FA-E0600`–`FA-E0699` | shared by two crates: `FA-E0600` orbital elements and analytic oracles (`ferroastro-analytic`); `FA-E0601`–`FA-E0603` precession estimators and rate reports (`ferroastro-precession`) |
 //! | `FA-E0700`–`FA-E0799` | ladder rungs, scenarios and the CLI (`ferroastro-ladder`, `ferroastro-cli`) |
+//! | `FA-E0800`–`FA-E0899` | calendar and time-scale conversions: `FA-E0800`–`FA-E0803` ERFA statuses (`ferroastro-erfa`, which cannot depend on this crate and mirrors the strings); `FA-E0804`–`FA-E0805` UTC and conversion results (`ferroastro-time`) |
 
 use std::fmt;
 
@@ -82,11 +83,24 @@ pub enum ErrorCode {
     LadderSelection,
     /// `FA-E0701`: a ladder scenario file is missing or malformed.
     LadderScenario,
+    /// `FA-E0800`: a calendar year is before −4799 (ERFA `cal2jd` status −1).
+    CalendarYear,
+    /// `FA-E0801`: a calendar month is outside 1–12 (ERFA `cal2jd` status −2).
+    CalendarMonth,
+    /// `FA-E0802`: a calendar day is outside its month (ERFA `cal2jd` status −3).
+    CalendarDay,
+    /// `FA-E0803`: a Julian date is outside the calendar range (ERFA `jd2cal` status −1).
+    JulianDateRange,
+    /// `FA-E0804`: UTC or leap seconds are unavailable for this date or build (before 1972, or
+    /// the `hifitime` feature is off).
+    UtcUnavailable,
+    /// `FA-E0805`: a time-scale conversion produced a non-finite or unrepresentable date.
+    TimeConversion,
 }
 
 impl ErrorCode {
     /// Every code, in numeric order (used to prove codes are unique).
-    pub const ALL: [ErrorCode; 30] = [
+    pub const ALL: [ErrorCode; 36] = [
         ErrorCode::NonFinite,
         ErrorCode::OutOfRange,
         ErrorCode::VectorIo,
@@ -117,6 +131,12 @@ impl ErrorCode {
         ErrorCode::EstimatorInput,
         ErrorCode::LadderSelection,
         ErrorCode::LadderScenario,
+        ErrorCode::CalendarYear,
+        ErrorCode::CalendarMonth,
+        ErrorCode::CalendarDay,
+        ErrorCode::JulianDateRange,
+        ErrorCode::UtcUnavailable,
+        ErrorCode::TimeConversion,
     ];
 
     /// The stable textual code, e.g. `"FA-E0001"`.
@@ -153,6 +173,12 @@ impl ErrorCode {
             ErrorCode::EstimatorInput => "FA-E0603",
             ErrorCode::LadderSelection => "FA-E0700",
             ErrorCode::LadderScenario => "FA-E0701",
+            ErrorCode::CalendarYear => "FA-E0800",
+            ErrorCode::CalendarMonth => "FA-E0801",
+            ErrorCode::CalendarDay => "FA-E0802",
+            ErrorCode::JulianDateRange => "FA-E0803",
+            ErrorCode::UtcUnavailable => "FA-E0804",
+            ErrorCode::TimeConversion => "FA-E0805",
         }
     }
 }

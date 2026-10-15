@@ -19,6 +19,8 @@ repository = "https://github.com/Proper-Time-Physics-Institute/FerroAstro"
 [workspace.dependencies]
 ferroastro-real = { path = "crates/ferroastro-real", version = "0.0.0", default-features = false, features = ["std"] }
 ferroastro-core = { path = "crates/ferroastro-core", version = "0.0.0" }
+ferroastro-erfa = { path = "crates/ferroastro-erfa", version = "0.0.0" }
+ferroastro-time = { path = "crates/ferroastro-time", version = "0.0.0" }
 ferroastro-vectors = { path = "crates/ferroastro-vectors", version = "0.0.0" }
 ferroastro-testdata = { path = "crates/ferroastro-testdata", version = "0.0.0" }
 ferroastro-constants = { path = "crates/ferroastro-constants", version = "0.0.0" }
@@ -29,6 +31,9 @@ ferroastro-precession = { path = "crates/ferroastro-precession", version = "0.0.
 ferroastro-ladder = { path = "crates/ferroastro-ladder", version = "0.0.0" }
 ferroastro-cli = { path = "crates/ferroastro-cli", version = "0.0.0" }
 serde = { version = "1.0.219", features = ["derive"] }
+# UTC and leap seconds (DEP-010) behind ferroastro-time's optional `hifitime` feature. MPL-2.0 is
+# allowed for this crate only (deny.toml exception); used unmodified, no_std (no serde/web-time).
+hifitime = { version = "=4.3.1", default-features = false }
 # Arbitrary-precision oracle for the DEP-012 property tests (dev-dependency only; MIT).
 astro-float = { version = "0.9.6", default-features = false, features = ["std"] }
 libm = "0.2.16"

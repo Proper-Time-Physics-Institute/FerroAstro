@@ -3,8 +3,8 @@
 //! Time scales as type markers and a two-part Julian date epoch (ADR-0001, ADR-0003).
 //!
 //! `Epoch<Tdb> - Epoch<Tdb>` is a [`TimeSpan`]; subtracting epochs on different scales does not
-//! compile. Conversions between scales arrive with `ferroastro-time` (M1, hifitime + ERFA port).
-//! UTC is deliberately absent: it is not a uniform scale and is handled by `hifitime`.
+//! compile. Conversions between scales live in `ferroastro-time` (ERFA port; UTC through its
+//! optional `hifitime` feature). UTC is deliberately absent here: it is not a uniform scale.
 
 use crate::error::{Error, require_finite};
 use crate::units::TimeSpan;
@@ -47,6 +47,10 @@ macro_rules! scale {
     };
 }
 
+scale!(
+    /// International Atomic Time (the uniform anchor of UTC; TT = TAI + 32.184 s).
+    Tai, "TAI"
+);
 scale!(
     /// Terrestrial Time.
     Tt, "TT"
