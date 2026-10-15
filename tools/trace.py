@@ -16,7 +16,8 @@ Usage (from ``tools/``)::
 * a committed TRACE.md that differs from the generated one (ORG-004);
 * a vector file that violates ``tests/vectors/schema.json`` (TST-002/003);
 * a bare physical literal in test code (TST-002, ``lint_literals.py``);
-* a third-party GitHub Action not pinned to a commit SHA (STD-012, ``lint_workflows.py``).
+* a third-party GitHub Action not pinned to a commit SHA (STD-012, ``lint_workflows.py``);
+* an upward, same-layer or cyclic crate dependency (CRATE-PLAN §1, ``check_layers.py``).
 """
 
 from __future__ import annotations
@@ -34,6 +35,7 @@ from typing import Any
 import jsonschema
 import yaml
 
+import check_layers
 import lint_literals
 import lint_workflows
 
@@ -287,6 +289,7 @@ def main(argv: list[str] | None = None) -> int:
             errors.append("docs/requirements/TRACE.md is stale; run `uv run python trace.py`")
         errors += [f"literal: {f}" for f in lint_literals.lint_repo(ROOT)]
         errors += [f"workflow: {f}" for f in lint_workflows.lint_repo(ROOT)]
+        errors += [f"layers: {f}" for f in check_layers.check_repo(ROOT)]
     else:
         TRACE_MD.write_text(text, encoding="utf-8")
         print(f"wrote {TRACE_MD.relative_to(ROOT)}")
