@@ -388,3 +388,107 @@ Extras: `uv run pytest` (13 passed), MSRV 1.85.0 nextest (52 passed), `data` pro
   - D3: LT rung with GS from a freshly downloaded header.440 (GMS·MOISUN·ASUN²·OMGSUN) in the same real geometry;
     numerical vs Park17 Table 3 "Lense–Thirring" −0.0020 ± 0.0002 (Park's 1σ) and vs Park17 Eq. 2 (NUM-015).
 - If any of these fails, the measured value is reported and nothing is loosened without a NEEDS HUMAN REVIEW note.
+
+### What was built
+- `ferroastro-forces`: `TestParticle<F>` (fixed central body) with composable `CentralTerm`s, each declaring its
+  gauge: `SrKepler` (R2), `SchwarzschildPpn` (R3), `PnLagrangian` (PHY-009 general form; constructors `ppn`,
+  `sr_b_harmonic`, `sr_b_areal`, `schwarzschild_areal`, `generic`), `SolarJ2` (R1, configurable `Pole`),
+  `LenseThirring` (R3b). Combining two different relativistic gauges is `FA-E0502`.
+- `tools/pn_lagrangian.py` (sympy): derives A, B, C, D from `−c² dτ/dt` of the PPN (isotropic) and areal
+  Schwarzschild metrics (1/8, γ+½, ½−β, 0 and 1/8, ½, ½, 1), checks the reduced Euler–Lagrange closed form
+  `δa = (εμ/r²)[((4A−B−2D)v² + 2(B−C+D)U + 3Dṙ²) n + (8A+2B) ṙ v]` used in Rust, and that its PPN case equals
+  Journal #4 R3. A negative control (B + ½) is detected. A Rust unit test checks the two independent 1PN
+  implementations (`PnLagrangian::ppn` vs `SchwarzschildPpn`) agree to ≤ 64 ulp at 36 states × 3 (β, γ).
+- `ferroastro-precession`: `passages` (r·v = 0 events, Newton-refined; per-orbit OLS fit), analytic oracles
+  (`ppn_scaling`, `pn_unit`, `sr_exact_advance`, `j2_planar_advance`, `j2_inclined_rate` = Park17 Eq. 3,
+  `lense_thirring_rate` = Park17 Eq. 2, `keplerian_period`) and `report::RateReport`.
+- `ferroastro-ladder` (new): cited scenario `data/mercury-single-body.toml`, rung catalogue, `SingleBody` runner.
+- `ferroastro-cli` (new, binary `ferroastro`): `ferroastro ladder --rungs single-body [--orbits N] [--details]
+  [--no-check]`. Hand-written argument parsing (no `clap`, to keep the dependency graph unchanged).
+- `ferroastro-core`: `SpinGm` (G·S, km⁵/s³), frame marker `SunEquatorIau` (Horizons `IAU_SUN`), codes
+  FA-E0502, FA-E0602, FA-E0700, FA-E0701.
+
+### Interpretations
+- **C7 / which μ.** All single-body rungs use `μ = GM☉` for the Newtonian term and every correction, and build the
+  initial state with that μ (test-particle limit, matching the analytic formulas). PHY-005's comparison with the
+  PHY-004 analytic value uses PHY-004's own convention (GM☉ advance, GM☉+GM☿ period). The numerical rate
+  uses the measured anomalistic period; the "analytic" column of the CLI uses the Keplerian period of the
+  initial osculating orbit with μ = GM☉ (42.9804754 vs PHY-004's 42.9804790; the 8.3e-8 relative difference
+  is the period's √(1 + m☿/M☉)).
+- **Estimator.** Perihelion passages, not the WP3 LRL vector, because the Newtonian LRL vector carries 1PN
+  periodic terms and step-time sampling is non-uniform. The LRL rate is still reported as a cross-check: for
+  GR-SCHW it is 42.980487 vs 42.980469 from passages (4e-7 relative); for J2/LT they agree to ≤ 6e-7 relative.
+- **PHY-006** asserts the ratio rate(β,γ)/rate(1,1) against (2+2γ−β)/3 (red-team fix), not
+  `42.98 × (2+2γ−β)/3`. The γ = 1 + 2.3e-5 test point comes from PHY-006's notes ("Cassini σ_γ"); the Cassini
+  source was **not** re-read in WP4, so it is used only as an input, never as an oracle.
+- **PHY-008 / NUM-017 exemption.** NUM-017 forbids standard-Schwarzschild-coordinate EOMs except the labelled
+  exact-geodesic oracle; PHY-008 requires an areal-gauge SR-b rung. Resolved as an explicitly labelled
+  pedagogical gauge (`Gauge::SchwarzschildAreal`, label "… [pedagogical only, NUM-017 exemption]") that cannot be
+  combined with harmonic-gauge terms. **NEEDS HUMAN REVIEW:** amend NUM-017's text to name this exemption.
+- **PHY-009** tests 8, 4, 2, 2 per unit of A, B, C, D and 1 at A = 1/8 (red-team correction); the requirement
+  text still says "1, 4, 2, 2". **NEEDS HUMAN REVIEW:** fix the PHY-009 / journal 01 §5 table wording.
+- **PHY-010 geometry.** The planar oracle is tested with the pole equal to the initial orbit normal (strictly
+  equatorial; inclination < 1e-12 rad asserted). The inclined check uses **Park17 Eq. 3** (read in the PDF), the
+  in-plane rate `(3/2) n J₂ (R/a)² (1−e²)⁻² (1 − (3/2) sin² i)`, at Park17's 3.4° (offline) and at the real
+  IAU solar pole from Horizons (data tier, i = 3.381087°). This gives a verified citation for the combination
+  ω̇ + Ω̇ cos i that OI-37 asks about; the separate ω̇ and Ω̇ formulas remain uncited and are **not** asserted.
+- **PHY-011 / OI-35.** The R3b (IERS-style) acceleration is implemented. PHY-011 says the rung "SHALL use the
+  INPOP21a Eq. 1 acceleration"; INPOP21a (IMCCE note S110) could not be retrieved in this session (the IMCCE URL
+  returned 404 and arXiv has no INPOP21a paper), so equivalence with Eq. 1 is **not** demonstrated. Evidence
+  instead: the numerical R3b rate reproduces Park17 Eq. 2 (sign, (1+γ) factor and cos i) to 1.25e-6 relative
+  (equatorial) and 7.7e-8 (real geometry). **NEEDS HUMAN REVIEW:** OI-35 stays open.
+- **NUM-015 absolute floor (1.17e-15 rad/orbit = 1e-7 ″/cy).** It is a red-team recommendation, not yet
+  requirement text. **NEEDS HUMAN REVIEW.** It decides one check: LT (equatorial) has a relative per-orbit
+  deviation of **1.25e-6** (> 1e-6) and passes only through the floor (absolute 2.9e-17 rad/orbit). The measured
+  noise floor of the estimator on a Newtonian test particle is 4.5e-17 rad/orbit (formal σ 2.8e-17), so the LT
+  deviation is round-off, and the floor sits 26× above the measured noise. In the real geometry LT passes the
+  relative bound directly (7.7e-8).
+- **NUM-017 acceptance** (the R5 → R3 EIH limit) needs EIH, which does not exist yet; it is **not** met by this WP.
+  Delivered for NUM-017: every 1PN EOM is in PPN isotropic/harmonic gauge (asserted per rung), the symbolic
+  derivation, and the two-implementation cross-check.
+- **NUM-016** (inspection): the Hamiltonian and the model-dependence statement are in the `SrKepler` rustdoc,
+  the `ferroastro-ladder` crate docs and the CLI footer; a test checks the rung's dynamics string names
+  `H = gamma m c^2 - mu m/r`.
+- **PHY-015** is enforced by construction: `RateReportBuilder::build` returns FA-E0602 for a missing or blank
+  frame, epoch, fit span, fit model, constants version, gauge, estimator, dynamics or rung name. The constants
+  string always contains the header.440 SHA-256.
+- **Park17 facts read in the PDF** (sha256 `24fb2153…2433380b`): Eq. 2 (LT, with (1+γ) and cos i), Eq. 3 (J2,
+  inclined), S = 190 × 10³⁹ kg m² s⁻¹, Table 1 total J2 = 2.25 ± 0.09 × 10⁻⁷ and (β−1) = −2.6 ± 3.9 × 10⁻⁵,
+  while the **abstract says (β−1) = −2.7 ± 3.9 × 10⁻⁵** (an inconsistency inside Park17; only σ = 3.9e-5 is used
+  here). OI-11: INPOP21a's "2.28 ± 0.06" is Park17's §3 hypothetical case (γ = β = 1 fixed, no a-priori on J2
+  and the solar moment of inertia), not the Table 1 total.
+
+### WP4 results (offline PR tier, 1000 orbits per run, 2026-10-15)
+| check | measured | oracle ± tolerance | result |
+|---|---|---|---|
+| PHY-005 GR-SCHW numerical | 42.9804688 ″/cy | 42.980 ± 0.001 | PASS |
+| PHY-005 numerical − PHY-004 analytic | −1.02e-5 ″/cy | 0 ± 0.001 | PASS |
+| PHY-006 ratio deviations (5 points) | ≤ 4.0e-10 | 0 ± 1e-6 | PASS |
+| PHY-006 β shift (β−1 = 3.9e-5) / γ shift (γ−1 = 2.3e-5) | −0.00055875 / +0.00065904 ″/cy | −0.00056 / +0.00066 ± 5e-6 | PASS |
+| PHY-007 SR-a numerical / analytic πGM/(c²p) | 7.1634124 / 7.1634126 ″/cy | 7.1634 ± 0.001 | PASS |
+| NUM-015 R2 exact formula | 5.8e-10 relative per orbit | 1e-6 | PASS |
+| PHY-008 SR-b harmonic / areal | 50.1438857 / 35.8170613 ″/cy | 50.144 / 35.817 ± 0.002 | PASS |
+| PHY-009 A, B, C, D (= 1), A = 1/8 | 8.0000029, 4.0000001, 2.0000001, 2.0000001, 1.0000000 | 8, 4, 2, 2, 1 (1e-3 rel) | PASS |
+| PHY-010 analytic (Park17 J2 / DE440 J2) | 0.0286015 / 0.0279168 ″/cy | 0.02860 / 0.02792 ± 5e-6 | PASS |
+| PHY-010 numerical − analytic, equatorial | < 1e-8 ″/cy | 0 ± 0.0005 | PASS |
+| NUM-015 R1 J2 equatorial (Park17 / DE440 J2) / inclined 3.4° | 2.3e-7 / 8.6e-8 / 2.1e-7 relative | 1e-6 | PASS |
+| PHY-011 LT numerical / analytic | −0.0020184 / −0.0020183 ″/cy | −0.0020 ± 0.0002 / −0.00202 ± 5e-6 | PASS |
+| NUM-015 R3b LT equatorial | 1.25e-6 relative, 2.9e-17 rad/orbit | 1e-6 rel **or** 1.17e-15 rad | PASS (floor only) |
+| NUM-015 R3 GR / PPN points | ≤ 5.1e-9 relative | 1e-6 | PASS |
+| Estimator noise (Newtonian test particle) | 4.5e-17 rad/orbit; 3.8e-9 ″/cy | floor 1.17e-15; PHY-001 1e-6 ″/cy | PASS |
+- Cost: 76 468 IAS15 steps per 1000-orbit run, 0 rejected, 0 unconverged; ≈ 0.6 s per rung at opt-level 1;
+  the whole CLI report (8 rungs) takes 4.8 s in release mode. Passage refinement leaves |r·v|/(|r||v|) ≤ 1e-13.
+- Interesting but expected: the anomalistic period under 1PN is 87.969479 d vs the Keplerian 87.969466 d
+  (+1.5e-7 relative, O(GM/c²a)).
+
+### WP4 real-data results (data tier, run locally 2026-10-15, empty `FA_DATA_DIR`, all downloads fresh)
+| test | measured | oracle / tolerance | result | provenance |
+|---|---|---|---|---|
+| `data_gr_rung_from_horizons_de441_state` | 42.980644 ″/cy (osculating a = 57 909 074.636 km, e = 0.2056301618); − Park17 = +0.00074 (0.83σ) | Park17 GE 42.9799 ± 0.0027 (3σ, pre-registered); − osculating analytic −1.0e-5 (± 0.001); NUM-015 4.7e-9 | PASS | Horizons API v1.2, DE441, `Ecliptic of J2000.0`, sha256 `01d74c36…49463f4` |
+| `data_j2_and_lt_rungs_in_real_solar_equator_geometry` | i = 3.381087°; J2 0.028452 ″/cy; LT −0.0020148 ″/cy | Park17 Table 3 0.0286 ± 0.0011 (−0.13σ) and −0.0020 ± 0.0002 (−0.07σ); NUM-015 vs Park17 Eqs. 3/2: 1.3e-7 and 7.7e-8 relative | PASS | Horizons API v1.2, DE441, `IAU_SUN body equator and node of date`, sha256 `e6a416ec…6c3ce1d` |
+| `data_solar_spin_from_fresh_header_440` | G·S = 1.2680765843106158e16 km⁵/s³ | committed table, ≤ 8 ulp | PASS (identical) | header.440 sha256 `0f4636b6…6ac3359`, Last-Modified 2020-12-22 |
+- Horizons answers embed a request timestamp, so their SHA-256 changes with every download (as in WP3); the
+  numbers above are the ones printed by the run.
+- The J2 rung in the real geometry gives 0.028452, i.e. Park17's 0.0286 is matched to 0.13σ only because the
+  real 3.38° inclination is included (the planar value 0.028601 would be +0.0000 vs Park17; both are inside 1σ,
+  which is the J2 uncertainty). With DE440's own J2 the real-geometry value would be ≈ 0.02777 (not asserted).

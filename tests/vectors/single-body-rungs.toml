@@ -226,7 +226,7 @@ citation = "Park, R. S., Folkner, W. M., Konopliv, A. S., et al. 2017, AJ 153, 1
 retrieved = "2026-10-15"
 tolerance = { abs = 0.0 }
 tolerance_rationale = "A transcribed published value; exact. It is the J2 of PHY-010's 0.02860 and of Park17 Table 3's solar-oblateness row."
-verified_by = "WP4 builder agent, 2026-10-15: read in the published PDF (iopscience.iop.org/article/10.3847/1538-3881/aa5be2/pdf, sha256 24fb2153f6b78109daa80171cd37006157b73564f8d0ac383532b5c92433380b), re-downloaded 2026-10-15 with the same SHA-256 as WP3. Note OI-11: INPOP21a quotes Park17's J2 as 2.28 +/- 0.06, which is the Park17 Sec. 3 value WITHOUT the gamma/S constraints, not the Table 1 total."
+verified_by = "WP4 builder agent, 2026-10-15: read in the published PDF (iopscience.iop.org/article/10.3847/1538-3881/aa5be2/pdf, sha256 24fb2153f6b78109daa80171cd37006157b73564f8d0ac383532b5c92433380b), re-downloaded 2026-10-15 with the same SHA-256 as WP3. Note OI-11: INPOP21a quotes Park17's J2 as 2.28 +/- 0.06; in Park17 that is the Sec. 3 hypothetical case with gamma = beta = 1 fixed and no a priori information on J2 and the solar moment of inertia (with S = (196 +/- 70) x 10^39 kg m^2/s), not the Table 1 total."
 
 [[vector]]
 id = "PARK17-SOLAR-EQUATOR-TILT"
