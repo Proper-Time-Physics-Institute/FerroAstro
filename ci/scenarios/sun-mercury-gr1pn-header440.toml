@@ -1,0 +1,33 @@
+# SPDX-FileCopyrightText: 2026 Proper-Time Physics Institute
+# SPDX-License-Identifier: Apache-2.0
+# Rung GR-SCHW (PHY-005) driven by a scenario: Mercury as a test particle about a fixed Sun
+# (mu = GM_sun, DE440), 1PN Schwarzschild field (beta = gamma = 1, DE440), from the DE440 initial
+# conditions in header.440 (Mercury minus Sun at JDEPOC). 1001 perihelion passages = 1000 orbits,
+# as the single-body rungs. Schema: scenario.schema.json (CI-002).
+schema_version = 1
+name = "sun-mercury-gr1pn-header440"
+description = "Sun + Mercury test particle, 1PN Schwarzschild, header.440 ICs, 1000 orbits (PHY-005)"
+mode = "test-particle"
+bodies = ["Sun", "Mercury"]
+central_body = "Sun"
+
+[initial_conditions]
+source = "de440-header"
+
+[constants]
+gm_set = "de440"
+
+[forces]
+newton = true
+gr_1pn_central = true
+
+[integrator]
+name = "ias15"
+precision = "f64"
+
+[span]
+years = 250.0
+stop_after_passages = 1001
+
+[output]
+perihelion = ["Mercury"]

@@ -1,0 +1,31 @@
+# SPDX-FileCopyrightText: 2026 Proper-Time Physics Institute
+# SPDX-License-Identifier: Apache-2.0
+# Newtonian Sun + Mercury two-body problem (both bodies move), from the DE440 initial conditions
+# in header.440, 100 Julian years. Perihelion events of Mercury relative to the Sun on IAS15 dense
+# output (NUM-010), compared with the analytic Kepler times (WP13 check 6). Schema:
+# scenario.schema.json (CI-002).
+schema_version = 1
+name = "sun-mercury-newton-header440"
+description = "Sun + Mercury Newtonian two-body, header.440 ICs, 100 yr (NUM-010 events)"
+mode = "n-body"
+bodies = ["Sun", "Mercury"]
+central_body = "Sun"
+
+[initial_conditions]
+source = "de440-header"
+
+[constants]
+gm_set = "de440"
+
+[forces]
+newton = true
+
+[integrator]
+name = "ias15"
+precision = "f64"
+
+[span]
+years = 100.0
+
+[output]
+perihelion = ["Mercury"]
