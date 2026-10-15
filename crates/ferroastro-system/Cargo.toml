@@ -15,6 +15,7 @@ ferroastro-core.workspace = true
 ferroastro-real.workspace = true
 ferroastro-constants.workspace = true
 ferroastro-ephem.workspace = true
+ferroastro-frames.workspace = true
 thiserror.workspace = true
 
 [dev-dependencies]

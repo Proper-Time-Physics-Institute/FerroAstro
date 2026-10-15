@@ -200,3 +200,18 @@ tolerance = { abs = 0.005 }
 tolerance_rationale = "Informational only (PHY-012 notes and NUM-013(b): cross terms reported separately); never asserted. The PHY-012 bound is recorded for scale. FerroAstro's cross term is the P-add interaction rate(S+M+X+Y) - rate(S+M+X) - rate(S+M+Y) + rate(S+M); Park17 describes its interaction rows as indirect effects through the other planet's orbit (section 4), a different decomposition (OI-38)."
 verified_by = "WP14 builder agent, 2026-10-15: read in the published PDF (iopscience.iop.org/article/10.3847/1538-3881/aa5be2/pdf, sha256 24fb2153f6b78109daa80171cd37006157b73564f8d0ac383532b5c92433380b, the copy WP5 read; re-downloaded 2026-10-15, same sha256), pdftotext -layout of page 6, Table 3."
 blocked_by = "OI-38"
+
+[[vector]]
+id = "PARK17-T3-ASTEROIDS"
+requirement = ["PHY-013", "NUM-013"]
+quantity = "contribution of the 343 asteroids to the precession rate of Mercury's perihelion, Mercury mean-orbit frame (Park17 Table 3 row 'Asteroids', rung N-AST)"
+value = "0.0012"
+unit = "arcsec/cy"
+kind = "measured"
+source = "Park17 Table 3, row 'Asteroids': 0.0012 +/- <0.0001 arcsec/Julian century; the text attributes the uncertainty to the estimated GMs of the 343 asteroids."
+citation = 'Park, R. S., Folkner, W. M., Konopliv, A. S., et al. 2017, AJ 153, 121, doi:10.3847/1538-3881/aa5be2, Table 3'
+retrieved = "2026-10-15"
+tolerance = { abs = 0.0003 }
+tolerance_rationale = "Agent-set from the red-team PHY-014 proposal (an N-AST differential at +/- 0.0003; no requirement holds it yet, PHY.md lists N-AST as a rung without a requirement) and the WP14/WP15 review correction. PROVISIONAL. Computed with the maintainer protocol P-add = rate(Sun + Mercury + asteroids) - rate(Sun + Mercury); non-gating while OI-38 (Park's own protocol) is open, as every Park17 row."
+verified_by = "WP15 builder agent, 2026-10-15: read in the published PDF (sha256 24fb2153f6b78109daa80171cd37006157b73564f8d0ac383532b5c92433380b), pdftotext -layout of page 6, Table 3."
+blocked_by = "OI-38"

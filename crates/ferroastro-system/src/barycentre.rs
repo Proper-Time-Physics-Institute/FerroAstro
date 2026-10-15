@@ -7,10 +7,11 @@
 //!   μᵢ* = μᵢ [1 + vᵢ²/(2c²) − (1/(2c²)) Σⱼ≠ᵢ μⱼ/rᵢⱼ], the velocities being barycentric. The
 //!   velocity condition neglects dμ*/dt (Σ μᵢ* vᵢ = 0), as stated.
 //!
-//! **Transcription status:** written from Folkner et al. 2014 (IPN PR 42-196) and Park et al.
-//! 2021 (AJ 161, 105) Eqs. 1–2 as cited by NUM-018, **from memory, without re-opening the PDFs**
-//! (IMPLEMENTATION-NOTES WP11, NEEDS HUMAN REVIEW). The 1/(2c²) structure is the standard 1PN
-//! mass-energy weight (rest mass + kinetic − ½ potential energy per unit c²).
+//! **Transcription status:** written in WP11 from memory of Park et al. 2021 (AJ 161, 105)
+//! Eqs. 1–2; in WP15 compared with the printed Eq. 2 of the published PDF (iopscience, sha256
+//! `96c3945d…e8f0ee0`): m*ᵢ = GMᵢ [1 + vᵢ²/(2c²) − (1/(2c²)) Σⱼ≠ᵢ GMⱼ/rᵢⱼ], vᵢ the barycentric
+//! speed, the same form. A second, human reading is still the NUM-018 sign-off (IMPLEMENTATION-NOTES
+//! WP15).
 //!
 //! Every body of the state with a catalogue GM contributes, whatever its tier.
 

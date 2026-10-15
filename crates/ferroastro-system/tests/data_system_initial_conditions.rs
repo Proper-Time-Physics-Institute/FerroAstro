@@ -212,3 +212,55 @@ fn data_sb441_asteroids_at_jdepoc_barycentre_report() {
         unidentified / de.gm_sun().km3_per_s2()
     );
 }
+
+/// WP15 check 1b: the REF-003 sampled file (jplephem 2.24) round-trips through
+/// `ferroastro-ephem`: every target of the pinned sb441-n373s.bsp evaluated at the file's JDEPOC
+/// equals its row (the WP10 REF-004 targets, 1 mm and 1 um/s).
+///
+/// Verifies: REF-003, REF-004
+#[test]
+#[ignore = "data tier: downloads sb441-n373s.bsp (936.6 MB)"]
+fn data_ref003_sampled_states_round_trip_through_ferroastro_ephem() {
+    use ferroastro_system::SmallBodyStates;
+    let v = VectorSet::load_canonical().unwrap();
+    let (bsp, sprov) = fetch("sb441-n373s-bsp");
+    let spk = Spk::parse(&bsp).unwrap();
+    let path = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("../../tests/goldens/sb441-n373s-jdepoc-states.csv");
+    let file = SmallBodyStates::parse(&std::fs::read_to_string(path).unwrap()).unwrap();
+    println!("{}", file.provenance());
+    assert!(sprov.contains(file.source_sha256()), "file and SPK differ");
+    let epoch = Epoch::<Tdb>::from_jd_parts(file.jdepoc().unwrap(), 0.0).unwrap();
+    let (mut pos, mut vel) = ((0.0_f64, 0), (0.0_f64, 0));
+    for r in file.records() {
+        let s = spk.state::<Heliocentric, f64>(r.id, epoch).unwrap();
+        let p = s.position().components().map(Length::km);
+        let w = s.velocity().map(Velocity::km_per_s);
+        for k in 0..3 {
+            let dp = (p[k] - r.position_km[k]).abs();
+            let dv = (w[k] - r.velocity_km_s[k]).abs();
+            if dp > pos.0 {
+                pos = (dp, r.id.0);
+            }
+            if dv > vel.0 {
+                vel = (dv, r.id.0);
+            }
+        }
+    }
+    println!(
+        "{} targets evaluated by ferroastro-ephem",
+        file.records().len()
+    );
+    check(
+        &v,
+        "SB441-JPLEPHEM-POS-MAX-DIFF",
+        pos.0,
+        &format!("NAIF {}", pos.1),
+    );
+    check(
+        &v,
+        "SB441-JPLEPHEM-VEL-MAX-DIFF",
+        vel.0,
+        &format!("NAIF {}", vel.1),
+    );
+}

@@ -45,6 +45,16 @@ pub struct BodyEntry {
 }
 
 impl BodyEntry {
+    pub(crate) fn new(id: NaifId, name: &str, gm: GravParam, tier: Tier, gm_source: &str) -> Self {
+        Self {
+            id,
+            name: name.to_owned(),
+            gm,
+            tier,
+            gm_source: gm_source.to_owned(),
+        }
+    }
+
     /// NAIF id.
     #[must_use]
     pub const fn id(&self) -> NaifId {
@@ -77,7 +87,8 @@ impl BodyEntry {
 }
 
 /// A mass in the constants set that no NAIF id is attached to here (e.g. header.440
-/// `MA8001…MA8236`; their identity is an open item, OI-24). Kept for reports; never placed.
+/// `MA8001…MA8236`; their identity is an open item, OI-24). Kept for reports; never placed unless
+/// promoted by [`Catalogue::with_identified_kbos`] or [`Catalogue::with_kbo_ring`].
 #[derive(Debug, Clone, PartialEq)]
 pub struct UnidentifiedMass {
     /// Header symbol.
@@ -130,8 +141,8 @@ pub const MA_UNIDENTIFIED_FROM: i32 = 8000;
 /// A body catalogue tied to one constants set.
 #[derive(Debug, Clone, PartialEq)]
 pub struct Catalogue {
-    bodies: Vec<BodyEntry>,
-    unidentified: Vec<UnidentifiedMass>,
+    pub(crate) bodies: Vec<BodyEntry>,
+    pub(crate) unidentified: Vec<UnidentifiedMass>,
     constants: String,
 }
 

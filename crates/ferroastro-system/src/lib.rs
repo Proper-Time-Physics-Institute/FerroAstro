@@ -12,7 +12,10 @@
 //! * [`EarthMoon`]: the geocentric-Moon variables (Earth–Moon barycentre + Moon − Earth);
 //! * [`barycentre`] / [`rebarycentre`]: Newtonian and relativistic (μ*, DE440) SSB conditions;
 //! * [`InitialConditions`]: assembly from `header.440`, from an ephemeris at an epoch, or from
-//!   supplied barycentric vectors (e.g. JPL Horizons).
+//!   supplied barycentric vectors (e.g. JPL Horizons);
+//! * [`SmallBodyStates`], [`KBO_IDENTIFICATION`], [`KBO_RING`]: the REF-003 asteroid/KBO initial
+//!   states sampled from `sb441-n373s.bsp` at JDEPOC, the identified KBO masses and the DE440 KBO
+//!   ring (provisional, OI-24).
 //!
 //! ```
 //! use ferroastro_constants::De440;
@@ -32,6 +35,7 @@ mod catalogue;
 mod earth_moon;
 mod error;
 mod ic;
+mod small_bodies;
 mod state;
 mod vec3;
 
@@ -43,4 +47,8 @@ pub use catalogue::{
 pub use earth_moon::EarthMoon;
 pub use error::SystemError;
 pub use ic::{HEADER_STATE_INTERPRETATION, HEADER_STATE_SUFFIXES, InitialConditions};
+pub use small_bodies::{
+    KBO_IDENTIFICATION, KBO_RING, KboIdentification, KboRing, SmallBodyRecord, SmallBodyStates,
+    kbo_ring_states, place_small_bodies,
+};
 pub use state::{BodyState, SystemState};
