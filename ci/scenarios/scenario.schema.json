@@ -159,7 +159,7 @@
       "type": "object",
       "properties": {
         "asteroids": {
-          "description": "Number of numbered asteroids added as Minor bodies.",
+          "description": "Number of numbered asteroids added as Minor bodies: the first N numbered asteroids of\nheader.440 in header order (N <= 343), states from the REF-003 sampled file.",
           "type": "integer",
           "format": "uint32",
           "default": 0,
@@ -174,6 +174,14 @@
           "description": "1PN Einstein–Infeld–Hoffmann N-body equations.",
           "type": "boolean",
           "default": false
+        },
+        "kbo_ring": {
+          "description": "The DE440 KBO ring: 36 fixed Ring masses at 44 au in the ecliptic (provisional, OI-24;\nnot a CI-002 switch name, WP15).",
+          "type": "boolean"
+        },
+        "kbos": {
+          "description": "The identified Kuiper-belt objects of header.440 as Minor bodies (REF-003, provisional\nwhile OI-24 is open; not a CI-002 switch name, WP15).",
+          "type": "boolean"
         },
         "lense_thirring": {
           "description": "Lense–Thirring field of the spinning central body (DE440 solar spin).",
@@ -356,6 +364,16 @@
         "perihelion": {
           "description": "Bodies whose perihelion passages relative to `central_body` are located (NUM-010).",
           "type": "array",
+          "items": {
+            "$ref": "#/$defs/BodyName"
+          }
+        },
+        "sample_bodies": {
+          "description": "Record only these bodies in each sample (absent: every body). Keeps the output of runs\nwith hundreds of small bodies small (WP15).",
+          "type": [
+            "array",
+            "null"
+          ],
           "items": {
             "$ref": "#/$defs/BodyName"
           }

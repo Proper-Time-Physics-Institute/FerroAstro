@@ -11,7 +11,7 @@ use ferroastro_core::units::{Length, SpinGm, Velocity};
 use ferroastro_ephem::{Ephemeris, NaifId, Spk};
 use ferroastro_real::Real;
 use ferroastro_scenario::{IcSource, Mode, ScenarioSpec};
-use ferroastro_system::{EarthMoon, InitialConditions, SystemState};
+use ferroastro_system::{EarthMoon, InitialConditions, SmallBodyStates, SystemState};
 
 /// Name of this runner in refusals (REF-011).
 pub const RUNNER: &str = "FerroAstro (ferroastro-propagate)";
@@ -26,6 +26,7 @@ pub struct DataSources<'a> {
     header: Option<(&'a Header, &'a str)>,
     spk: Option<(&'a Spk<'a>, &'a str)>,
     horizons: Option<(&'a [SuppliedState], &'a str)>,
+    small_bodies: Option<&'a SmallBodyStates>,
 }
 
 impl<'a> DataSources<'a> {
@@ -47,6 +48,27 @@ impl<'a> DataSources<'a> {
     pub const fn with_spk(mut self, spk: &'a Spk<'a>, provenance: &'a str) -> Self {
         self.spk = Some((spk, provenance));
         self
+    }
+
+    /// With the REF-003 sampled asteroid/KBO states (`tests/goldens/sb441-n373s-jdepoc-states.csv`
+    /// parsed by [`SmallBodyStates::parse`]; its provenance is recorded in the run output). Needed
+    /// by the `asteroids` and `kbos` switches.
+    #[must_use]
+    pub const fn with_small_bodies(mut self, states: &'a SmallBodyStates) -> Self {
+        self.small_bodies = Some(states);
+        self
+    }
+
+    /// The small-body states, if supplied.
+    #[must_use]
+    pub const fn small_bodies(&self) -> Option<&'a SmallBodyStates> {
+        self.small_bodies
+    }
+
+    /// The header and its provenance, if supplied.
+    #[must_use]
+    pub const fn header(&self) -> Option<(&'a Header, &'a str)> {
+        self.header
     }
 
     /// With barycentric ICRF states at the scenario epoch (e.g. JPL Horizons, centre `500@0`,
@@ -75,7 +97,11 @@ pub fn supports(item: &str, mode: Mode) -> Result<(), String> {
         "initial_conditions.source.horizons",
     ];
     let central_term = matches!(item, "gr_1pn_central" | "lense_thirring");
-    if ALWAYS.contains(&item) || (central_term && mode == Mode::TestParticle) {
+    let small_bodies = matches!(item, "asteroids" | "kbos" | "kbo_ring");
+    if ALWAYS.contains(&item)
+        || (central_term && mode == Mode::TestParticle)
+        || (small_bodies && mode == Mode::NBody)
+    {
         return Ok(());
     }
     Err(match item {
@@ -84,7 +110,7 @@ pub fn supports(item: &str, mode: Mode) -> Result<(), String> {
             "a central-body term in N-body mode; use gr_eih for N-body relativity (WP19)".into()
         }
         "gr_eih" => "the EIH N-body equations arrive in WP19 (ferroastro-eih)".into(),
-        "asteroids" => "asteroids as Minor bodies arrive in WP15".into(),
+        _ if small_bodies => "small bodies (Minor/Ring tiers) need n-body mode".into(),
         other if other.starts_with("integrator.") => {
             "only IAS15 is implemented (ABM: WP24; WHFast/IRK16: WP29)".into()
         }

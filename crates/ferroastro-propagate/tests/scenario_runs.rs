@@ -173,8 +173,9 @@ fn run_refuses_unimplemented_switches_by_name() {
     let base = spec("sun-mercury-newton-header440.toml");
     let mut eih = base.clone();
     eih.forces.gr_eih = true;
-    let mut ast = base.clone();
-    ast.forces.asteroids = 343;
+    // Small bodies are N-body only (WP15): refused in test-particle mode.
+    let mut ast = spec("sun-mercury-gr1pn-header440.toml");
+    ast.forces.asteroids = 343; // lint: allow-literal(the DE440 asteroid count, a switch value)
     let mut pn = base.clone();
     pn.forces.gr_1pn_central = true;
     let mut abm = base;
@@ -419,4 +420,97 @@ fn chained_segments_equal_the_uninterrupted_run_in_both_directions() {
         assert_eq!(full.stats, joined.stats);
         assert!(joined.finished);
     }
+}
+
+const SMALL_BODY_YEARS: f64 = 1.0; // lint: allow-literal(run length, PR-tier cost)
+
+fn small_body_file() -> ferroastro_system::SmallBodyStates {
+    let path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("../../tests/goldens/sb441-n373s-jdepoc-states.csv");
+    ferroastro_system::SmallBodyStates::parse(&std::fs::read_to_string(path).unwrap()).unwrap()
+}
+
+fn bits(p: &[ferroastro_scenario::Parts; 3]) -> Vec<u64> {
+    p.iter()
+        .flat_map(|x| x.iter().map(|y| y.to_bits()))
+        .collect()
+}
+
+/// WP15: the `asteroids`, `kbos` and `kbo_ring` switches add the DE440 small bodies (REF-003
+/// states + the header Sun; GMs from header.440) without touching the major-body records; the
+/// ring stays at rest; sampling can be restricted to named bodies; the run is deterministic.
+///
+/// Verifies: NUM-009, REF-003, TST-005
+#[test]
+fn small_body_switches_add_minor_and_ring_bodies_without_touching_the_majors() {
+    let (h, prov) = header();
+    let file = small_body_file();
+    let data = DataSources::none()
+        .with_header(&h, &prov)
+        .with_small_bodies(&file);
+    let mut planets = spec("phy012-newton-full-header440.toml");
+    planets.span.years = SMALL_BODY_YEARS;
+    planets.output.sample_bodies = Some(vec![BodyName::Sun, BodyName::Mercury]);
+    let mut full = planets.clone();
+    full.forces.asteroids = 343; // lint: allow-literal(the DE440 asteroid count, a switch value)
+    full.forces.kbos = true;
+    full.forces.kbo_ring = true;
+    let a = initial_conditions(&planets, &data).unwrap();
+    let b = initial_conditions(&full, &data).unwrap();
+    let cat = {
+        let mut c = Catalogue::from_header(&h, &prov).unwrap();
+        c.with_identified_kbos().unwrap();
+        c.with_kbo_ring().unwrap();
+        c
+    };
+    let minor = cat.ids_in(Tier::Minor).count();
+    let ring = cat.ids_in(Tier::Ring).count();
+    println!(
+        "records: planets {} -> full {} ({minor} Minor, {ring} Ring)",
+        a.records.len(),
+        b.records.len()
+    );
+    assert_eq!(b.records.len(), a.records.len() + minor + ring);
+    for (x, y) in a.records.iter().zip(&b.records) {
+        assert_eq!(x.naif, y.naif);
+        assert_eq!(bits(&x.position), bits(&y.position), "NAIF {}", x.naif);
+        assert_eq!(bits(&x.velocity), bits(&y.velocity), "NAIF {}", x.naif);
+    }
+    let out = run(&full, &data).unwrap();
+    println!("{}\n{}", out.model, out.ic_source);
+    assert!(out.model.contains("minor-from-majors") && out.model.contains("ring-fixed-masses"));
+    assert!(
+        out.states
+            .iter()
+            .all(|s| s.bodies == [NaifId::SUN.0, NaifId::MERCURY_BARYCENTER.0])
+    );
+    let fin = out.final_state.as_ref().unwrap();
+    for (i, id) in fin.bodies.iter().enumerate() {
+        if let Some(r) = b.records.iter().find(|r| r.naif == *id)
+            && cat.get(NaifId(*id)).is_ok_and(|e| e.tier() == Tier::Ring)
+        {
+            assert_eq!(
+                bits(&fin.positions[i]),
+                bits(&r.position),
+                "ring point {id} moved"
+            );
+            assert!(fin.velocities[i].iter().flatten().all(|v| *v == 0.0));
+        }
+    }
+    let again = run(&full, &data).unwrap();
+    assert_eq!(
+        format!("{:?}", out.final_state),
+        format!("{:?}", again.final_state)
+    );
+    assert_eq!(out.stats.steps, again.stats.steps);
+
+    // Coded refusals: no sampled file, too many asteroids.
+    let none = DataSources::none().with_header(&h, &prov);
+    let e = run(&full, &none).unwrap_err();
+    assert_eq!(e.code(), ErrorCode::PropagateSetup, "{e}");
+    let mut too_many = full.clone();
+    too_many.forces.asteroids = u32::try_from(cat.ids_in(Tier::Minor).count()).unwrap();
+    let e = run(&too_many, &data).unwrap_err();
+    println!("{e}");
+    assert!(e.to_string().contains("forces.asteroids"), "{e}");
 }

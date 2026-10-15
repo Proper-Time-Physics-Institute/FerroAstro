@@ -225,10 +225,8 @@ fn kbo_ring_points_are_fixed_on_the_44_au_ecliptic_circle() {
         "ring: {} points, total GM {total:.6} km^3/s^2, dipole offset {offset:.3e} km",
         ring.len()
     );
-    assert!(
-        offset <= f64::EPSILON * radius * 64.0,
-        "ring dipole {offset} km"
-    ); // lint: allow-literal(64 ulp round-off bound of a 36-term sum)
+    let bound = f64::EPSILON * radius * 64.0; // lint: allow-literal(64 ulp round-off bound of a 36-term sum)
+    assert!(offset <= bound, "ring dipole {offset} km");
     // Promoting twice is refused.
     let err = cat.with_kbo_ring().unwrap_err();
     assert!(err.to_string().starts_with("FA-E1100"), "{err}");

@@ -192,13 +192,22 @@ pub struct Forces {
     /// Lense–Thirring field of the spinning central body (DE440 solar spin).
     #[serde(default)]
     pub lense_thirring: bool,
-    /// Number of numbered asteroids added as Minor bodies.
+    /// Number of numbered asteroids added as Minor bodies: the first N numbered asteroids of
+    /// header.440 in header order (N <= 343), states from the REF-003 sampled file.
     #[serde(default)]
     pub asteroids: u32,
+    /// The identified Kuiper-belt objects of header.440 as Minor bodies (REF-003, provisional
+    /// while OI-24 is open; not a CI-002 switch name, WP15).
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub kbos: bool,
+    /// The DE440 KBO ring: 36 fixed Ring masses at 44 au in the ecliptic (provisional, OI-24;
+    /// not a CI-002 switch name, WP15).
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub kbo_ring: bool,
 }
 
 /// The force switches of CI-002, as written under `[forces]`.
-pub const SWITCHES: [&str; 7] = [
+pub const SWITCHES: [&str; 9] = [
     "newton",
     "sun_j2",
     "gr_1pn_central",
@@ -206,6 +215,8 @@ pub const SWITCHES: [&str; 7] = [
     "ppn",
     "lense_thirring",
     "asteroids",
+    "kbos",
+    "kbo_ring",
 ];
 
 impl Forces {
@@ -220,6 +231,8 @@ impl Forces {
             self.ppn.is_some(),
             self.lense_thirring,
             self.asteroids > 0,
+            self.kbos,
+            self.kbo_ring,
         ];
         SWITCHES
             .iter()
@@ -315,6 +328,10 @@ pub struct OutputSpec {
     /// Sample every body's state every this many days (from dense output; absent: no samples).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub cadence_days: Option<f64>,
+    /// Record only these bodies in each sample (absent: every body). Keeps the output of runs
+    /// with hundreds of small bodies small (WP15).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub sample_bodies: Option<Vec<BodyName>>,
     /// Bodies whose perihelion passages relative to `central_body` are located (NUM-010).
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub perihelion: Vec<BodyName>,
