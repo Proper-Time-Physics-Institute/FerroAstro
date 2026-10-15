@@ -8,8 +8,8 @@
 > workflow run; run URLs are not written here so that the file stays deterministic.
 
 - Requirements: **119** (draft 119)
-- `verification: test` requirements cited by at least one test: **10 / 92**
-- Citing tests: **36**; vectors referencing a requirement: **4**
+- `verification: test` requirements cited by at least one test: **11 / 92**
+- Citing tests: **38**; vectors referencing a requirement: **4**
 
 | ID | Status | Crit. | Verification | Tests | Vectors |
 |---|---|---|---|---|---|
@@ -67,7 +67,7 @@
 | [NUM-012](NUM.md) | draft | medium | test | — | — |
 | [NUM-013](NUM.md) | draft | high | test | — | — |
 | [NUM-014](NUM.md) | draft | high | test | — | — |
-| [NUM-015](NUM.md) | draft | high | test | — | — |
+| [NUM-015](NUM.md) | draft | high | test | `crates/ferroastro-vectors/tests/schema.rs::tolerance_is_the_wider_of_abs_and_rel` | — |
 | [NUM-016](NUM.md) | draft | medium | inspection | — | — |
 | [NUM-017](NUM.md) | draft | high | test | — | — |
 | [NUM-018](NUM.md) | draft | high | test | — | — |
@@ -79,7 +79,7 @@
 | [NUM-024](NUM.md) | draft | medium | demonstration | — | — |
 | [NUM-025](NUM.md) | draft | low | test | — | — |
 | [TST-001](TST.md) | draft | high | test | — | — |
-| [TST-002](TST.md) | draft | high | test | `crates/ferroastro-vectors/tests/schema.rs::bad_values_are_rejected`<br>`crates/ferroastro-vectors/tests/schema.rs::duplicate_ids_across_files_are_rejected`<br>`crates/ferroastro-vectors/tests/schema.rs::every_required_field_is_enforced`<br>`crates/ferroastro-vectors/tests/schema.rs::valid_fixture_loads_and_checks`<br>`crates/ferroastro-vectors/tests/schema.rs::workspace_vectors_all_validate`<br>`tools/tests/test_lints.py::test_allow_marker_needs_reason`<br>`tools/tests/test_lints.py::test_python_literals_flagged`<br>`tools/tests/test_lints.py::test_repository_is_clean`<br>`tools/tests/test_lints.py::test_rust_literals_flagged`<br>`tools/tests/test_lints.py::test_rust_structural_literals_allowed`<br>`tools/tests/test_trace.py::test_vector_schema_is_enforced` | — |
+| [TST-002](TST.md) | draft | high | test | `crates/ferroastro-vectors/tests/schema.rs::bad_values_are_rejected`<br>`crates/ferroastro-vectors/tests/schema.rs::duplicate_ids_across_files_are_rejected`<br>`crates/ferroastro-vectors/tests/schema.rs::every_required_field_is_enforced`<br>`crates/ferroastro-vectors/tests/schema.rs::tolerance_is_the_wider_of_abs_and_rel`<br>`crates/ferroastro-vectors/tests/schema.rs::valid_fixture_loads_and_checks`<br>`crates/ferroastro-vectors/tests/schema.rs::workspace_vectors_all_validate`<br>`tools/tests/test_lints.py::test_allow_marker_needs_reason`<br>`tools/tests/test_lints.py::test_python_literals_flagged`<br>`tools/tests/test_lints.py::test_repository_is_clean`<br>`tools/tests/test_lints.py::test_rust_literals_flagged`<br>`tools/tests/test_lints.py::test_rust_structural_literals_allowed`<br>`tools/tests/test_trace.py::test_vector_schema_is_enforced` | — |
 | [TST-003](TST.md) | draft | high | test | `crates/ferroastro-vectors/tests/schema.rs::computed_reference_needs_generator_and_engine`<br>`crates/ferroastro-vectors/tests/schema.rs::workspace_vectors_all_validate`<br>`tools/tests/test_trace.py::test_vector_schema_is_enforced` | — |
 | [TST-004](TST.md) | draft | high | inspection | — | — |
 | [TST-005](TST.md) | draft | medium | test | `crates/ferroastro-testdata/src/lib.rs::civil_dates`<br>`crates/ferroastro-testdata/src/lib.rs::sha256_of_empty_input` | — |

@@ -113,3 +113,15 @@ All eight AGENTS.md commands passed locally, with cargo-nextest 0.9.148 and reus
 38675095723 on PR #11 was green for rust, msrv, python, reuse and dco. The `data` job was skipped as designed.
 It cannot be dispatched by hand until `ci.yml` exists on the default branch, because `workflow_dispatch` reads
 the workflow from there.
+
+### WP1 adversarial review (2026-10-14)
+- Rule 8 / OI-05: `CONST-AU-IAU2012` cited IAU 2012 Resolution B2, whose text OPEN-ITEMS lists as UNVERIFIED, and
+  its only cross-check was header.440 — the very file the `data` test checks, which made the oracle circular.
+  The reviewer opened the Resolution text (SYRTE mirror `Res_IAU2012_B2.pdf`, sha256 `3489ebb1…7afec984`;
+  the iau.org `static/resolutions` URL now returns 404): "recommends 1. that the astronomical unit be re-defined
+  to be a conventional unit of length equal to 149 597 870 700 m exactly". The vector's `verified_by` now records
+  this. Value and tolerance are unchanged. OI-05 can be closed in the requirements PR (#2).
+- Mutation testing: replacing `abs.max(rel)` with `abs.min(rel)` in `Tolerance::allowed` survived the whole suite
+  (the fixture had `rel = 0`). Added `tolerance_is_the_wider_of_abs_and_rel`, which kills that mutant and also
+  checks that NaN never passes. A perturbed `CONST-CLIGHT-SI` (+1e-4 km/s, via `FA_VECTORS_DIR`) made the
+  `data` test fail as expected.

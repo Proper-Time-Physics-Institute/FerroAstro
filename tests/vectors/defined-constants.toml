@@ -30,5 +30,5 @@ citation = "IAU 2012 General Assembly, Resolution B2 (re-definition of the astro
 retrieved = "2026-10-14"
 tolerance = { abs = 0.0 }
 tolerance_rationale = "Exact by definition. header.440 prints AU as 0.149597870699999988D+09, the 18-digit rendering of the f64 nearest 149597870.7 km, which parses back to the same double; equality is therefore required."
-verified_by = "WP1 agent, 2026-10-14: value reproduced in DE440 header.440 (AU) and checked by the `data` test de440_header_defined_constants. OI-05 (Resolution text not re-opened) qualifies but does not block PHY-002."
-notes = "OI-05 tracks re-reading the Resolution B2 text itself."
+verified_by = "WP1 reviewer agent, 2026-10-14: Resolution B2 text re-opened (SYRTE mirror https://syrte.obspm.fr/IAU_resolutions/Res_IAU2012_B2.pdf, sha256 3489ebb1e51f7c278d56c9e0f9cb49c142e036ac34e21defc87414507afec984), recommends 1: au = 149 597 870 700 m exactly. Independent of DE440 header.440, which the `data` test de440_header_defined_constants checks against this value."
+notes = "OI-05 (Resolution text UNVERIFIED) is resolved by the re-reading above; closing it in OPEN-ITEMS.md is left to the requirements PR (#2)."

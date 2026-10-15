@@ -56,6 +56,27 @@ fn valid_fixture_loads_and_checks() {
     assert!(err.to_string().contains("FIXTURE-A"));
 }
 
+/// The pass rule is `|x − v| ≤ max(abs, rel·|v|)`: whichever of the absolute floor and the
+/// relative band is wider wins (NUM-015 absolute floor, red-team §1). Kills a `max` → `min` mutant.
+/// Verifies: TST-002, NUM-015
+#[test]
+fn tolerance_is_the_wider_of_abs_and_rel() {
+    // Relative band wider: value 3, abs 1, rel 1/2 → allowed 3/2.
+    let set = load(&fixture("abs = 1, rel = 0", "abs = 1, rel = 0.5")).unwrap();
+    let v = set.get("FIXTURE-A").unwrap();
+    let x = v.value().unwrap();
+    assert!(v.check(x * 3.0 / 2.0).is_ok());
+    assert!(v.check(x * 2.0).is_err());
+    // Absolute floor wider: value 3, abs 2, rel 1/4 → allowed 2.
+    let set = load(&fixture("abs = 1, rel = 0", "abs = 2, rel = 0.25")).unwrap();
+    let v = set.get("FIXTURE-A").unwrap();
+    let x = v.value().unwrap();
+    assert!(v.check(x + 2.0).is_ok());
+    assert!(v.check(x + 3.0).is_err());
+    // A non-finite measurement never passes.
+    assert!(v.check(f64::NAN).is_err());
+}
+
 /// Verifies: TST-002
 #[test]
 fn every_required_field_is_enforced() {
