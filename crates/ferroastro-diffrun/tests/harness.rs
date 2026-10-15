@@ -170,6 +170,21 @@ fn plan_shares_identical_ics_and_rows_are_signed_sums() {
         check_identical_ics(&plan, &initial).unwrap(),
         r.shared_ic_hash
     );
+    // A non-base body (Venus) whose record differs by one ulp in one leg is refused too, although
+    // the base hash is unchanged.
+    let mut tampered = initial.clone();
+    let venus = BodyName::Venus.naif();
+    let (_, last) = tampered
+        .iter_mut()
+        .rev()
+        .find(|(_, ic)| ic.records.iter().any(|x| x.naif == venus))
+        .unwrap();
+    let rec = last.records.iter_mut().find(|x| x.naif == venus).unwrap();
+    rec.position[0][0] = f64::from_bits(rec.position[0][0].to_bits() + 1);
+    let e = check_identical_ics(&plan, &tampered).unwrap_err();
+    println!("refused: {e}");
+    assert_eq!(e.code(), ErrorCode::DiffrunIcMismatch);
+    assert!(e.to_string().contains(&format!("NAIF {venus}")));
     initial.push((dd.name.clone(), initial_conditions(&dd, &data).unwrap()));
     let e = check_identical_ics(&plan, &initial).unwrap_err();
     println!("refused: {e}");
@@ -290,6 +305,8 @@ fn interrupted_leg_resumes_from_its_store_bitwise() {
     assert!(file.exists());
     let resumed = run_leg(&spec, &data, &est, &opts, None).unwrap().unwrap();
     assert!(resumed.resumed_from_store);
+    // It continues with segment 3 of 6 (not from segment 1 again).
+    assert_eq!(resumed.segments_run, 4); // lint: allow-literal(6 segments minus the 2 already run)
     assert!(!file.exists(), "a completed leg's store file is removed");
     let words = one_piece.track.differing_words(&resumed.track);
     println!(
