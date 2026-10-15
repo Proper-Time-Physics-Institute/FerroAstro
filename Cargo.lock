@@ -403,6 +403,7 @@ dependencies = [
  "ferroastro-precession",
  "ferroastro-propagate",
  "ferroastro-real",
+ "ferroastro-scenario",
  "ferroastro-testdata",
  "ferroastro-time",
  "ferroastro-vectors",
