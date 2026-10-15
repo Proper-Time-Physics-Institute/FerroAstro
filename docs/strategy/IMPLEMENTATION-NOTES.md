@@ -501,3 +501,16 @@ All eight AGENTS.md commands passed: fmt; clippy `-D warnings`; `cargo nextest r
 (15 passed, including the sympy derivation), MSRV 1.85.0 nextest (78 passed, trybuild excluded), and the whole
 workspace `data` profile on an empty cache (10 passed: 3 new WP4 tests plus the 7 from WP1–WP3). The `nightly`
 profile was not re-run: no WP4 change touches the integrator or the NUM-023 test.
+
+### WP4 adversarial review (2026-10-15, reviewer agent)
+- Re-ran all eight AGENTS.md commands and the whole `data` profile on an empty `FA_DATA_DIR`: all pass, and
+  the data-tier numbers match the builder's report (GR from Horizons 42.980644, J2 real geometry 0.028452,
+  LT real geometry −0.0020148 ″/cy).
+- Sign mutations of the R3 `(1+γ)` term, the LT `v × ŝ` term, the J2 axial term, the SR `1 − 1/γ` factor,
+  the Lagrangian `−2D v²` term and the Park17 Eq. 3 geometry factor are each caught by at least one test.
+  A sign flip of the Lagrangian's `3D ṙ² n` term was **not** caught: that term's orbit average
+  `∝ ∮ sin²f cos f df` vanishes, so it has no first-order secular effect on the perihelion and no rung can
+  see it. Added `relativity::tests::areal_lagrangian_matches_closed_form_areal_eom`, which checks the areal
+  coefficients against the closed form `μ/(c²r²)[(2U − 2v² + 3ṙ²) n + 2ṙ v]` at the acceleration level. The
+  reviewer re-derived that closed form independently with sympy (exact Euler–Lagrange solve, first order in
+  `1/c²`) before using it. The new test kills the mutant.

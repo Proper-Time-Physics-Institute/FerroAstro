@@ -457,6 +457,35 @@ mod tests {
         }
     }
 
+    /// Areal Schwarzschild coefficients (1/8, ½, ½, 1) give the closed-form 1PN areal-gauge
+    /// equation `δa = μ/(c²r²)[(2U − 2v² + 3ṙ²) n + 2ṙ v]` component by component. The
+    /// `3ṙ² n` term has zero secular effect on the perihelion (its orbit average vanishes), so
+    /// only an acceleration-level check like this one constrains it (WP4 review; the closed form
+    /// was re-derived independently with sympy from the areal-metric Lagrangian).
+    ///
+    /// Verifies: PHY-009, PHY-008
+    #[test]
+    fn areal_lagrangian_matches_closed_form_areal_eom() {
+        let c = 7.0; // lint: allow-literal(dimensionless test speed of light, as samples())
+        let l = PnLagrangian::schwarzschild_areal(gm(1.0), speed(c)).unwrap();
+        for (r, v) in samples() {
+            let p = accel(&l, r, v);
+            let rn = dot(r, r).sqrt();
+            let rdot = dot(r, v) / rn;
+            let u = 1.0 / rn;
+            // lint: allow-literal(closed-form areal 1PN coefficients 2, 2, 3, 2)
+            let radial = (3.0 * rdot).mul_add(rdot, 2.0f64.mul_add(u, -2.0 * dot(v, v)));
+            let along = 2.0 * rdot; // lint: allow-literal(closed-form areal 1PN coefficient)
+            for k in 0..3 {
+                let want = radial.mul_add(r[k] / rn, along * v[k]) / (c * c * rn * rn);
+                assert!(
+                    (p[k] - want).abs() <= 64.0 * f64::EPSILON * want.abs().max(1e-3), // lint: allow-literal(round-off bound in ulps and a floor)
+                    "component {k}: {p:?} vs {want}"
+                );
+            }
+        }
+    }
+
     /// The SR correction plus Newton equals the closed form `−μ/(γr³)[r − (r·v)v/c²]`.
     ///
     /// Verifies: PHY-007, NUM-015
