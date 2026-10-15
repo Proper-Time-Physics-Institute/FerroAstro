@@ -34,7 +34,10 @@ fn load(text: &str) -> Result<VectorSet, VectorError> {
     Ok(set)
 }
 
-#[expect(clippy::panic, reason = "test helper: a wrong error kind fails the calling test")]
+#[expect(
+    clippy::panic,
+    reason = "test helper: a wrong error kind fails the calling test"
+)]
 fn schema_error(text: &str) -> String {
     match load(text) {
         Err(e @ VectorError::Schema { .. }) => e.to_string(),

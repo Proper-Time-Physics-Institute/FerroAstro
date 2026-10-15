@@ -68,3 +68,22 @@ Branch `m0-foundation`, stacked on PR #2 (`1-scientific-computing-strategy`). Ag
 - `trace.py` shadows the stdlib `trace` module; the pytest suite loads it by path for that reason.
 - `tools/.python-version` pins Python 3.12 (uv otherwise picked 3.14 on this machine).
 - `pytest` (STD-009) is not in the AGENTS.md command list; CI runs it as an extra step next to ruff/mypy.
+
+### Real-data tier (`data` tests)
+- `crates/ferroastro-testdata` (publish = false) downloads products listed in `tests/data/MANIFEST.toml` with the
+  system `curl`, so no TLS crate enters the graph (`ureq`'s `webpki-roots` is CDLA-Permissive-2.0, which the
+  allow-list rejects; red-team L2). Files go to `$FA_DATA_DIR` or `<target>/fa-data`, are never committed, and
+  get a `.provenance.toml` sidecar (URL, UTC retrieval date, SHA-256, bytes, `Last-Modified`).
+- Pinned products are re-verified on every run (`FA-E0201` on mismatch). Un-pinned fetches (`fetch_url(…, None)`)
+  are for service answers such as Horizons, whose provenance is the service's `signature.version`; the WP that
+  adds Horizons tests must print it.
+- Data tests are `#[ignore]`d and named `data_*`; `.config/nextest.toml` profile `data` selects them and shows
+  their output. Command: `cargo nextest run --workspace --profile data --run-ignored only`. CI runs this in a
+  scheduled (and manually dispatchable) `data` job, not on PRs, so PR CI stays offline-safe.
+- First data test, run locally 2026-10-14 (UTC date 2026-10-15): `data_de440_header_defined_constants`.
+  header.440 sha256 `0f4636b6…6ac3359`, 22802 bytes, Last-Modified 2020-12-22. GROUP 1040/1041 declares
+  645 constants (645 distinct names, matching REF-002's note). `CLIGHT` = 299792.458 km/s and `AU` =
+  149597870.7 km equal the SI / IAU 2012 B2 defined values exactly (|diff| = 0).
+- The GROUP 1040/1041 reader in that test is a smoke-test reader only. The full REF-002 loader (JDEPOC, states,
+  409 MA entries, J2SUN, …) belongs to `ferroastro-ephem`/`ferroastro-constants` in a later WP and should replace
+  it. REF-002/PHY-002 remain blocked on OI-23/OI-04 for the state units and GMSDOT (red-team I5).

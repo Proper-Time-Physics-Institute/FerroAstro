@@ -15,7 +15,7 @@ source = "SI definition of the metre: c = 299 792 458 m/s exactly"
 citation = "BIPM, The International System of Units (SI), 9th edition (2019), section 2.2 and Table 1"
 retrieved = "2026-10-14"
 tolerance = { abs = 0.0 }
-tolerance_rationale = "Exact by definition. The header stores the value as a decimal with 3 decimals in km/s, which round-trips through f64 to the same double as this literal, so equality is required."
+tolerance_rationale = "Exact by definition. header.440 prints CLIGHT as 0.299792457999999984D+06, the 18-digit rendering of the f64 nearest 299792.458, which parses back to the same double as this value; equality is therefore required."
 verified_by = "WP1 agent, 2026-10-14: value is the SI defining constant; cross-checked against JPL DE440 header.440 CLIGHT by the `data` test de440_header_defined_constants"
 
 [[vector]]
@@ -29,6 +29,6 @@ source = "IAU 2012 Resolution B2: the au is a conventional unit of length equal 
 citation = "IAU 2012 General Assembly, Resolution B2 (re-definition of the astronomical unit of length)"
 retrieved = "2026-10-14"
 tolerance = { abs = 0.0 }
-tolerance_rationale = "Exact by definition; an integer number of metres, representable exactly in km as an f64 to well below 1 ulp."
+tolerance_rationale = "Exact by definition. header.440 prints AU as 0.149597870699999988D+09, the 18-digit rendering of the f64 nearest 149597870.7 km, which parses back to the same double; equality is therefore required."
 verified_by = "WP1 agent, 2026-10-14: value reproduced in DE440 header.440 (AU) and checked by the `data` test de440_header_defined_constants. OI-05 (Resolution text not re-opened) qualifies but does not block PHY-002."
 notes = "OI-05 tracks re-reading the Resolution B2 text itself."

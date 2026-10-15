@@ -8,8 +8,8 @@
 > workflow run; run URLs are not written here so that the file stays deterministic.
 
 - Requirements: **119** (draft 119)
-- `verification: test` requirements cited by at least one test: **7 / 92**
-- Citing tests: **31**; vectors referencing a requirement: **4**
+- `verification: test` requirements cited by at least one test: **10 / 92**
+- Citing tests: **36**; vectors referencing a requirement: **4**
 
 | ID | Status | Crit. | Verification | Tests | Vectors |
 |---|---|---|---|---|---|
@@ -36,7 +36,7 @@
 | [STD-011](STD.md) | draft | low | test | — | — |
 | [STD-012](STD.md) | draft | medium | test | `tools/tests/test_lints.py::test_workflow_lint` | — |
 | [PHY-001](PHY.md) | draft | high | test | — | — |
-| [PHY-002](PHY.md) | draft | high | test | — | `CONST-AU-IAU2012`<br>`CONST-CLIGHT-SI` |
+| [PHY-002](PHY.md) | draft | high | test | `crates/ferroastro-testdata/tests/data_de440_header.rs::data_de440_header_defined_constants` | `CONST-AU-IAU2012`<br>`CONST-CLIGHT-SI` |
 | [PHY-003](PHY.md) | draft | high | test | — | — |
 | [PHY-004](PHY.md) | draft | high | test | — | — |
 | [PHY-005](PHY.md) | draft | high | test | — | — |
@@ -82,7 +82,7 @@
 | [TST-002](TST.md) | draft | high | test | `crates/ferroastro-vectors/tests/schema.rs::bad_values_are_rejected`<br>`crates/ferroastro-vectors/tests/schema.rs::duplicate_ids_across_files_are_rejected`<br>`crates/ferroastro-vectors/tests/schema.rs::every_required_field_is_enforced`<br>`crates/ferroastro-vectors/tests/schema.rs::valid_fixture_loads_and_checks`<br>`crates/ferroastro-vectors/tests/schema.rs::workspace_vectors_all_validate`<br>`tools/tests/test_lints.py::test_allow_marker_needs_reason`<br>`tools/tests/test_lints.py::test_python_literals_flagged`<br>`tools/tests/test_lints.py::test_repository_is_clean`<br>`tools/tests/test_lints.py::test_rust_literals_flagged`<br>`tools/tests/test_lints.py::test_rust_structural_literals_allowed`<br>`tools/tests/test_trace.py::test_vector_schema_is_enforced` | — |
 | [TST-003](TST.md) | draft | high | test | `crates/ferroastro-vectors/tests/schema.rs::computed_reference_needs_generator_and_engine`<br>`crates/ferroastro-vectors/tests/schema.rs::workspace_vectors_all_validate`<br>`tools/tests/test_trace.py::test_vector_schema_is_enforced` | — |
 | [TST-004](TST.md) | draft | high | inspection | — | — |
-| [TST-005](TST.md) | draft | medium | test | — | — |
+| [TST-005](TST.md) | draft | medium | test | `crates/ferroastro-testdata/src/lib.rs::civil_dates`<br>`crates/ferroastro-testdata/src/lib.rs::sha256_of_empty_input` | — |
 | [API-001](API.md) | draft | high | test | `crates/ferroastro-core/src/frames.rs::same_frame_and_centre_subtract`<br>`crates/ferroastro-core/src/time.rs::same_scale_difference_is_a_time_span`<br>`crates/ferroastro-core/src/units.rs::arcsec_round_trip`<br>`crates/ferroastro-core/src/units.rs::constructors_reject_non_finite`<br>`crates/ferroastro-core/src/units.rs::dimensional_arithmetic`<br>`crates/ferroastro-core/tests/compile_fail.rs::compile_fail_type_mismatches` | — |
 | [API-002](API.md) | draft | medium | test | `crates/ferroastro-core/src/error.rs::codes_are_unique_and_well_formed`<br>`crates/ferroastro-core/src/error.rs::messages_name_code_quantity_unit_and_range`<br>`crates/ferroastro-core/src/units.rs::constructors_reject_non_finite` | — |
 | [API-003](API.md) | draft | low | test | — | — |
@@ -108,7 +108,7 @@
 | [DEP-016](DEP.md) | draft | high | test | — | — |
 | [DEP-017](DEP.md) | draft | high | inspection | — | — |
 | [REF-001](REF.md) | draft | high | test | — | — |
-| [REF-002](REF.md) | draft | high | test | — | `CONST-AU-IAU2012`<br>`CONST-CLIGHT-SI` |
+| [REF-002](REF.md) | draft | high | test | `crates/ferroastro-testdata/src/lib.rs::manifest_products_are_well_formed`<br>`crates/ferroastro-testdata/tests/data_de440_header.rs::data_de440_header_defined_constants` | `CONST-AU-IAU2012`<br>`CONST-CLIGHT-SI` |
 | [REF-003](REF.md) | draft | medium | test | — | — |
 | [REF-004](REF.md) | draft | high | test | — | — |
 | [REF-005](REF.md) | draft | high | test | — | — |
