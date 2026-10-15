@@ -13,13 +13,13 @@
     reason = "test-only helpers: a failed unwrap or index is a test failure with a clear message"
 )]
 
+use ferroastro_analytic::kepler::Elements;
 use ferroastro_constants::{Body, De440};
 use ferroastro_core::frames::{Barycentric, EclipticJ2000, Heliocentric, State};
 use ferroastro_core::time::{DAYS_PER_JULIAN_YEAR, SECONDS_PER_DAY};
 use ferroastro_core::units::{Angle, GravParam, Length, Velocity};
 use ferroastro_forces::NewtonianPointMasses;
 use ferroastro_integrators::{Ias15, Ias15Config, Ias15Stats};
-use ferroastro_precession::kepler::Elements;
 use ferroastro_precession::lrl::PerihelionTracker;
 use ferroastro_vectors::VectorSet;
 

@@ -4,8 +4,8 @@
 
 mod common;
 
+use ferroastro_analytic::advance::{pn_unit, rate_arcsec_per_century};
 use ferroastro_forces::Gauge;
-use ferroastro_precession::analytic::{pn_unit, rate_arcsec_per_century};
 
 /// Verifies: PHY-007, NUM-015, NUM-016
 #[test]
@@ -26,7 +26,7 @@ fn sr_a_gives_one_sixth_of_gr() {
     let p = ferroastro_core::units::Length::from_km(el.a.km() * el.e.mul_add(-el.e, 1.0)).unwrap();
     let unit = pn_unit(c.de.gm_sun(), c.de.speed_of_light(), p).unwrap();
     let mu_total = c.de.gm_sun() + c.de.gm(ferroastro_constants::Body::Mercury);
-    let period = ferroastro_precession::analytic::keplerian_period(mu_total, el.a).unwrap();
+    let period = ferroastro_analytic::advance::keplerian_period(mu_total, el.a).unwrap();
     let analytic = rate_arcsec_per_century(unit / period);
     c.check("PHY007-SRA-ANALYTIC-RATE", analytic);
     println!(

@@ -184,6 +184,16 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "00d174d5400e5e8fd687ad1049e2f578285fa914201b1af7e8b112a4546bd826"
 
 [[package]]
+name = "ferroastro-analytic"
+version = "0.0.0"
+dependencies = [
+ "ferroastro-constants",
+ "ferroastro-core",
+ "ferroastro-vectors",
+ "thiserror",
+]
+
+[[package]]
 name = "ferroastro-cli"
 version = "0.0.0"
 dependencies = [
@@ -234,6 +244,8 @@ dependencies = [
 name = "ferroastro-ladder"
 version = "0.0.0"
 dependencies = [
+ "criterion",
+ "ferroastro-analytic",
  "ferroastro-constants",
  "ferroastro-core",
  "ferroastro-forces",
@@ -251,14 +263,11 @@ dependencies = [
 name = "ferroastro-precession"
 version = "0.0.0"
 dependencies = [
- "criterion",
+ "ferroastro-analytic",
  "ferroastro-constants",
  "ferroastro-core",
- "ferroastro-forces",
- "ferroastro-integrators",
  "ferroastro-testdata",
  "ferroastro-vectors",
- "serde_json",
  "thiserror",
 ]
 

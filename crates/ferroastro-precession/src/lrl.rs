@@ -12,20 +12,8 @@
 //! Units: `r` in km, `v` in km/s, `μ` in km³/s²; the longitude is returned in radians.
 
 use crate::PrecessionError;
-use crate::kepler::{cross, dot, norm};
-
-/// The eccentricity (LRL) vector `(v × h)/μ − r̂` (dimensionless).
-#[must_use]
-pub fn eccentricity_vector(r: [f64; 3], v: [f64; 3], mu: f64) -> [f64; 3] {
-    let h = cross(r, v);
-    let vxh = cross(v, h);
-    let rn = norm(r);
-    [
-        vxh[0] / mu - r[0] / rn,
-        vxh[1] / mu - r[1] / rn,
-        vxh[2] / mu - r[2] / rn,
-    ]
-}
+pub use ferroastro_analytic::vector::eccentricity_vector;
+use ferroastro_analytic::vector::{cross, dot, norm};
 
 /// Tracks the longitude of the eccentricity vector, unwrapped, in the initial orbit plane.
 #[derive(Debug, Clone)]
@@ -85,17 +73,14 @@ impl PerihelionTracker {
 mod tests {
     use super::*;
 
-    /// The eccentricity vector of a periapsis state points along r with |e| = e.
+    /// The tracker reads zero at the initial periapsis and refuses `mu = 0`.
     ///
-    /// Verifies: PHY-001
+    /// Verifies: NUM-012
     #[test]
-    fn eccentricity_vector_at_periapsis() {
+    fn tracker_starts_at_zero_longitude() {
         // GM = 1, a = 1, e = 1/2: periapsis r = 1/2, speed sqrt((1+e)/(1-e)) = sqrt(3).
         let r = [0.5, 0.0, 0.0];
         let v = [0.0, 3.0_f64.sqrt(), 0.0];
-        let e = eccentricity_vector(r, v, 1.0);
-        assert!((e[0] - 0.5).abs() < 4.0 * f64::EPSILON);
-        assert!(e[1].abs() < 4.0 * f64::EPSILON && e[2].abs() < 4.0 * f64::EPSILON);
         let mut t = PerihelionTracker::new(r, v, 1.0).unwrap();
         assert!(t.longitude(r, v).abs() < 4.0 * f64::EPSILON);
         assert!(PerihelionTracker::new(r, v, 0.0).is_err());

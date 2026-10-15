@@ -5,8 +5,8 @@
 
 mod common;
 
+use ferroastro_analytic::advance::schwarzschild_advance;
 use ferroastro_forces::Gauge;
-use ferroastro_precession::analytic::schwarzschild_advance;
 
 /// Verifies: PHY-005, NUM-015, NUM-017
 #[test]

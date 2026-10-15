@@ -15,13 +15,13 @@
 )]
 
 use criterion::{Criterion, criterion_group, criterion_main};
+use ferroastro_analytic::kepler::Elements;
 use ferroastro_constants::{Body, De440};
 use ferroastro_core::frames::{Barycentric, EclipticJ2000, Heliocentric, State};
 use ferroastro_core::time::{DAYS_PER_JULIAN_YEAR, SECONDS_PER_DAY};
 use ferroastro_core::units::{Angle, Length, Velocity};
 use ferroastro_forces::NewtonianPointMasses;
 use ferroastro_integrators::{Ias15, Ias15Config, SecondOrderSystem};
-use ferroastro_precession::kepler::Elements;
 use ferroastro_vectors::VectorSet;
 use std::hint::black_box;
 

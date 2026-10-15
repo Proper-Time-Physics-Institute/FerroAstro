@@ -3,7 +3,7 @@
 //! Rung N-2B (PHY-001): a Newtonian Sun + Mercury run must show zero perihelion precession.
 //! Any fitted rate is integrator error, and the output says so.
 
-mod common;
+mod two_body;
 
 use ferroastro_constants::De440;
 use ferroastro_core::frames::{EclipticJ2000, Heliocentric, State};
@@ -22,17 +22,17 @@ const SPAN_YEARS: f64 = 1000.0; // lint: allow-literal(PHY-001 minimum span, fro
 fn n2b_sun_mercury_has_no_perihelion_precession() {
     let de = De440::load().unwrap();
     let vs = VectorSet::load_workspace().unwrap();
-    let (gm_sun, gm_me) = common::gms(&de);
+    let (gm_sun, gm_me) = two_body::gms(&de);
     // Caveat C7, documented: the relative orbit has mu = GM_sun + GM_Mercury (both bodies move).
     let mu = gm_sun + gm_me;
-    let el = common::sw92_elements(&vs, &de);
+    let el = two_body::sw92_elements(&vs, &de);
     let rel: State<EclipticJ2000, Heliocentric> = el.to_state(mu).unwrap();
-    let (x0, v0) = common::barycentric(&rel, gm_sun, gm_me);
+    let (x0, v0) = two_body::barycentric(&rel, gm_sun, gm_me);
     let model = NewtonianPointMasses::new(&[gm_sun, gm_me]).unwrap();
     let cfg = Ias15Config::default();
-    let span = SPAN_YEARS * common::julian_year_s();
+    let span = SPAN_YEARS * two_body::julian_year_s();
     let started = std::time::Instant::now();
-    let run = common::run_lrl(&model, &x0, &v0, mu.km3_per_s2(), span, cfg);
+    let run = two_body::run_lrl(&model, &x0, &v0, mu.km3_per_s2(), span, cfg);
     let wall = started.elapsed();
     let meta = Metadata {
         estimator: "LRL eccentricity-vector longitude of the Mercury-Sun relative orbit",

@@ -12,10 +12,10 @@
     reason = "test code: failures are test failures, readability over fused operations"
 )]
 
+use ferroastro_analytic::kepler::eccentric_anomaly;
 use ferroastro_core::frames::{EclipticJ2000, Icrf};
 use ferroastro_core::time::{DAYS_PER_JULIAN_CENTURY, J2000_JD, SECONDS_PER_DAY};
 use ferroastro_core::units::Angle;
-use ferroastro_precession::kepler::eccentric_anomaly;
 use ferroastro_precession::park2017::{
     FftConfig, FitModel, Frequency, LongitudeDefinition, Park2017, PassageConfig, ReferencePlane,
     SampledOrbit, fft_frequencies, find_passages, fit_longitudes, perihelion_longitudes,

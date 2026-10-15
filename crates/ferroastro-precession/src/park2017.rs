@@ -34,11 +34,11 @@
 //! both, is not affected.
 
 use crate::PrecessionError;
-use crate::analytic::rate_arcsec_per_century;
-use crate::kepler::{cross, dot, norm};
 use crate::lsq::{LsqSolution, lstsq};
 use crate::report::{RateReport, RateReportBuilder};
 use crate::spectral::fft_in_place;
+use ferroastro_analytic::advance::rate_arcsec_per_century;
+use ferroastro_analytic::vector::{cross, dot, norm};
 use ferroastro_core::frames::{Center, Frame, Heliocentric, Icrf, State};
 use ferroastro_core::time::{DAYS_PER_JULIAN_CENTURY, Epoch, J2000_JD, SECONDS_PER_DAY, Tdb};
 use ferroastro_core::units::{Angle, AngularRate, TimeSpan};

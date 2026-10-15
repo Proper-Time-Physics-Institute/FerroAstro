@@ -8,7 +8,7 @@
 //! must also be present and finite.
 
 use crate::PrecessionError;
-use crate::analytic::rate_arcsec_per_century;
+use ferroastro_analytic::advance::rate_arcsec_per_century;
 use ferroastro_core::time::{Epoch, SECONDS_PER_DAY, Tdb};
 use ferroastro_core::units::{AngularRate, TimeSpan};
 use std::fmt;

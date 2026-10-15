@@ -4,9 +4,9 @@
 
 mod common;
 
+use ferroastro_analytic::advance::{lense_thirring_rate, rate_arcsec_per_century};
 use ferroastro_core::units::Angle;
 use ferroastro_ladder::single_body::de440_solar_spin;
-use ferroastro_precession::analytic::{lense_thirring_rate, rate_arcsec_per_century};
 
 /// Verifies: PHY-011, NUM-015
 #[test]

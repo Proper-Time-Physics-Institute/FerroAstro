@@ -4,8 +4,8 @@
 //! runs → structured results").
 
 use crate::LadderError;
+use ferroastro_analytic::kepler::Elements;
 use ferroastro_core::units::{Angle, Length};
-use ferroastro_precession::kepler::Elements;
 use serde::Deserialize;
 
 /// The committed single-body scenario (`data/mercury-single-body.toml`).

@@ -16,6 +16,7 @@
 //! special relativity to Newtonian gravity give other fractions (NUM-016).
 
 mod error;
+pub mod passage_run;
 mod scenario;
 pub mod single_body;
 

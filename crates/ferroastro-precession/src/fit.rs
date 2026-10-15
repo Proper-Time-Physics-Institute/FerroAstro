@@ -4,10 +4,9 @@
 //! ADR-0011): frame, epoch, span, fit model, estimator, gauge, integrator and constants.
 
 use crate::PrecessionError;
-use crate::analytic::rate_arcsec_per_century;
+use ferroastro_analytic::advance::rate_arcsec_per_century;
 use ferroastro_core::time::{Epoch, Tdb};
 use ferroastro_core::units::{Angle, AngularRate, TimeSpan};
-use ferroastro_integrators::diagnostics::fit_line;
 use std::fmt;
 
 /// Fit model of [`fit_secular_rate`].
@@ -92,6 +91,82 @@ impl fmt::Display for PrecessionEstimate {
     }
 }
 
+/// Result of fitting `y = intercept + slope·x` (intercept evaluated at `x = 0`).
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct LineFit {
+    /// Fitted slope.
+    pub slope: f64,
+    /// Fitted intercept at `x = 0`.
+    pub intercept: f64,
+    /// One-sigma standard error of the slope from the residual scatter (meaningful only for
+    /// independent residuals).
+    pub slope_stderr: f64,
+    /// Root-mean-square residual.
+    pub rms_residual: f64,
+    /// Number of points.
+    pub points: usize,
+}
+
+/// Neumaier-compensated sum.
+fn compensated_sum(xs: impl Iterator<Item = f64>) -> f64 {
+    let (mut s, mut c) = (0.0_f64, 0.0_f64);
+    for x in xs {
+        let t = s + x;
+        c += if s.abs() >= x.abs() {
+            (s - t) + x
+        } else {
+            (x - t) + s
+        };
+        s = t;
+    }
+    s + c
+}
+
+/// Ordinary least squares `y = a + b x`, computed about the mean of `x` for conditioning.
+///
+/// The estimators' own line fit, so that this crate needs no integrator (CRATE-PLAN: estimators
+/// contain no propagation).
+///
+/// # Errors
+/// `FA-E0601` if fewer than 3 points, the lengths differ, any value is non-finite, or all `x`
+/// are equal.
+pub fn fit_line(x: &[f64], y: &[f64]) -> Result<LineFit, PrecessionError> {
+    if x.len() != y.len() || x.len() < 3 {
+        return Err(PrecessionError::Fit(format!(
+            "line fit needs >= 3 paired points, got {} x and {} y",
+            x.len(),
+            y.len()
+        )));
+    }
+    if x.iter().chain(y).any(|v| !v.is_finite()) {
+        return Err(PrecessionError::Fit(
+            "line fit input contains NaN or infinity".into(),
+        ));
+    }
+    let n = x.len();
+    let nf =
+        f64::from(u32::try_from(n).map_err(|_| PrecessionError::Fit("too many points".into()))?);
+    let xm = compensated_sum(x.iter().copied()) / nf;
+    let ym = compensated_sum(y.iter().copied()) / nf;
+    let sxx = compensated_sum(x.iter().map(|xi| (xi - xm) * (xi - xm)));
+    let sxy = compensated_sum(x.iter().zip(y).map(|(xi, yi)| (xi - xm) * (yi - ym)));
+    if sxx <= 0.0 {
+        return Err(PrecessionError::Fit("all abscissae are equal".into()));
+    }
+    let slope = sxy / sxx;
+    let ssr = compensated_sum(x.iter().zip(y).map(|(xi, yi)| {
+        let r = yi - slope.mul_add(xi - xm, ym);
+        r * r
+    }));
+    Ok(LineFit {
+        slope,
+        intercept: slope.mul_add(-xm, ym),
+        slope_stderr: (ssr / (nf - 2.0) / sxx).sqrt(),
+        rms_residual: (ssr / nf).sqrt(),
+        points: n,
+    })
+}
+
 /// Fit a straight line to unwrapped longitudes (rad) against time (s from the epoch).
 ///
 /// # Errors
@@ -114,4 +189,23 @@ pub fn fit_secular_rate(
         fit_model: LINEAR_FIT_MODEL,
         metadata,
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// An exact line is recovered; degenerate inputs are refused with FA-E0601.
+    #[test]
+    fn line_fit_recovers_exact_line() {
+        let x = [0.0, 1.0, 2.0, 3.0];
+        let y = x.map(|v| 2.0_f64.mul_add(v, 1.0));
+        let f = fit_line(&x, &y).unwrap();
+        assert!((f.slope - 2.0).abs() <= 4.0 * f64::EPSILON);
+        assert!((f.intercept - 1.0).abs() <= 8.0 * f64::EPSILON);
+        assert!(f.rms_residual <= 4.0 * f64::EPSILON);
+        assert!(fit_line(&x[..2], &y[..2]).is_err());
+        assert!(fit_line(&[1.0; 3], &[0.0, 1.0, 2.0]).is_err());
+        assert!(fit_line(&[0.0, 1.0, f64::NAN], &[0.0; 3]).is_err());
+    }
 }

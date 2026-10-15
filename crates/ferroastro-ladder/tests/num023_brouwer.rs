@@ -14,14 +14,14 @@
 //! --run-ignored only`). Size: `FA_NUM023_RUNS` runs (default 64) of `FA_NUM023_ORBITS` Mercury
 //! orbits (default 2000), run in parallel threads.
 
-mod common;
+mod two_body;
 
+use ferroastro_analytic::kepler::Elements;
 use ferroastro_constants::De440;
 use ferroastro_core::frames::{EclipticJ2000, Heliocentric, State};
 use ferroastro_core::units::Angle;
 use ferroastro_integrators::diagnostics::loglog_slope;
 use ferroastro_integrators::{Ias15, Ias15Config};
-use ferroastro_precession::kepler::Elements;
 use ferroastro_vectors::VectorSet;
 use std::f64::consts::{PI, TAU};
 
@@ -78,7 +78,7 @@ fn norm(l: [f64; 3]) -> f64 {
 
 #[expect(clippy::unwrap_used, reason = "test helper: failure is a test failure")]
 fn run_one(
-    model: &common::Model,
+    model: &two_body::Model,
     x0: &[f64],
     v0: &[f64],
     mu: f64,
@@ -86,7 +86,7 @@ fn run_one(
 ) -> (Errors, u64) {
     let e0 = model.energy_over_g(x0, v0);
     let l0 = norm(model.angular_momentum_over_g(x0, v0));
-    let (r0, w0) = common::relative(x0, v0);
+    let (r0, w0) = two_body::relative(x0, v0);
     let (lambda0, a0) = mean_longitude(r0, w0, mu);
     let n0 = (mu / (a0 * a0 * a0)).sqrt();
     let mut ias = Ias15::new(
@@ -104,7 +104,7 @@ fn run_one(
         let (x, v) = (ias.positions(), ias.velocities());
         let de = (model.energy_over_g(x, v) - e0) / e0;
         let dl = (norm(model.angular_momentum_over_g(x, v)) - l0) / l0;
-        let (r, w) = common::relative(x, v);
+        let (r, w) = two_body::relative(x, v);
         let (lambda, _) = mean_longitude(r, w, mu);
         let dlam = wrap(lambda - n0.mul_add(t, lambda0));
         out.push((de, dl, dlam));
@@ -118,11 +118,11 @@ fn run_one(
 fn nightly_num023_brouwer_slopes_ias15_f64() {
     let de = De440::load().unwrap();
     let vs = VectorSet::load_workspace().unwrap();
-    let (gm_sun, gm_me) = common::gms(&de);
+    let (gm_sun, gm_me) = two_body::gms(&de);
     let mu = gm_sun + gm_me;
     let runs = env_or("FA_NUM023_RUNS", DEFAULT_RUNS);
     let orbits = f64::from(env_or("FA_NUM023_ORBITS", DEFAULT_ORBITS));
-    let base = common::sw92_elements(&vs, &de);
+    let base = two_body::sw92_elements(&vs, &de);
     let period = TAU * (base.a.km().powi(3) / mu.km3_per_s2()).sqrt();
     let checkpoints: Vec<f64> = (0..CHECKPOINTS)
         .map(|j| {
@@ -130,7 +130,7 @@ fn nightly_num023_brouwer_slopes_ias15_f64() {
             FIRST_ORBIT * (orbits / FIRST_ORBIT).powf(f) * period
         })
         .collect();
-    let model = common::Model::new(&[gm_sun, gm_me]).unwrap();
+    let model = two_body::Model::new(&[gm_sun, gm_me]).unwrap();
     let started = std::time::Instant::now();
     let results: Vec<(Errors, u64)> = std::thread::scope(|scope| {
         let handles: Vec<_> = (0..runs)
@@ -139,7 +139,7 @@ fn nightly_num023_brouwer_slopes_ias15_f64() {
                 el.mean_anomaly =
                     Angle::from_radians(TAU * f64::from(k) / f64::from(runs)).unwrap();
                 let rel: State<EclipticJ2000, Heliocentric> = el.to_state(mu).unwrap();
-                let (x0, v0) = common::barycentric(&rel, gm_sun, gm_me);
+                let (x0, v0) = two_body::barycentric(&rel, gm_sun, gm_me);
                 let (model, cps) = (&model, &checkpoints);
                 scope.spawn(move || run_one(model, &x0, &v0, mu.km3_per_s2(), cps))
             })
@@ -203,12 +203,12 @@ fn nightly_num023_brouwer_slopes_ias15_f64() {
 fn nightly_num023_forward_backward_reversibility() {
     let de = De440::load().unwrap();
     let vs = VectorSet::load_workspace().unwrap();
-    let (gm_sun, gm_me) = common::gms(&de);
+    let (gm_sun, gm_me) = two_body::gms(&de);
     let mu = gm_sun + gm_me;
-    let el = common::sw92_elements(&vs, &de);
+    let el = two_body::sw92_elements(&vs, &de);
     let rel: State<EclipticJ2000, Heliocentric> = el.to_state(mu).unwrap();
-    let (x0, v0) = common::barycentric(&rel, gm_sun, gm_me);
-    let model = common::Model::new(&[gm_sun, gm_me]).unwrap();
+    let (x0, v0) = two_body::barycentric(&rel, gm_sun, gm_me);
+    let model = two_body::Model::new(&[gm_sun, gm_me]).unwrap();
     let period = TAU * (el.a.km().powi(3) / mu.km3_per_s2()).sqrt();
     let orbits = f64::from(env_or("FA_NUM023_ORBITS", DEFAULT_ORBITS)) / 2.0;
     let mut ias = Ias15::new(
@@ -224,8 +224,8 @@ fn nightly_num023_forward_backward_reversibility() {
         .unwrap();
     let steps_fwd = ias.stats().steps;
     ias.integrate_to(&model, 0.0, |_, _| Ok(())).unwrap();
-    let (r_end, _) = common::relative(ias.positions(), ias.velocities());
-    let (r_0, _) = common::relative(&x0, &v0);
+    let (r_end, _) = two_body::relative(ias.positions(), ias.velocities());
+    let (r_0, _) = two_body::relative(&x0, &v0);
     let dr = norm([r_end[0] - r_0[0], r_end[1] - r_0[1], r_end[2] - r_0[2]]);
     println!(
         "NUM-023 reversibility: {orbits} orbits forward ({steps_fwd} steps) and back: |dr| = {dr:.3e} km, |dr|/|r0| = {:.3e} (reported; no acceptance value in NUM-023)",

@@ -2,8 +2,8 @@
 // SPDX-License-Identifier: Apache-2.0
 //! Errors of this crate (`FA-E06xx`, API-002).
 
+use ferroastro_analytic::AnalyticError;
 use ferroastro_core::ErrorCode;
-use ferroastro_integrators::IntegratorError;
 
 /// Errors from element conversions and precession estimators.
 #[derive(Debug, Clone, PartialEq, thiserror::Error)]
@@ -53,8 +53,15 @@ impl PrecessionError {
     }
 }
 
-impl From<IntegratorError> for PrecessionError {
-    fn from(e: IntegratorError) -> Self {
-        PrecessionError::Fit(e.to_string())
+impl From<AnalyticError> for PrecessionError {
+    fn from(e: AnalyticError) -> Self {
+        match e {
+            AnalyticError::Domain { what, value } => PrecessionError::Domain { what, value },
+            // `AnalyticError` is non-exhaustive; any future variant is a domain problem too.
+            _ => PrecessionError::Domain {
+                what: "analytic input",
+                value: f64::NAN,
+            },
+        }
     }
 }

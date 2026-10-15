@@ -4,10 +4,18 @@
 //! coefficient study, J2 and Lense–Thirring, each a test particle about a fixed Sun.
 //!
 //! A run integrates [`SingleBody::orbits`] anomalistic orbits with IAS15, locates the perihelion
-//! passages, fits the per-orbit advance (`ferroastro_precession::passages`) and compares it with
-//! the rung's analytic oracle (NUM-015). Every result carries a [`RateReport`] (PHY-015).
+//! passages ([`crate::passage_run`]), fits the per-orbit advance
+//! (`ferroastro_precession::passages`) and compares it with the rung's analytic oracle
+//! (`ferroastro_analytic`, NUM-015). Every result carries a [`RateReport`] (PHY-015).
 
+use crate::passage_run::find_perihelia;
 use crate::{LadderError, Scenario};
+use ferroastro_analytic::advance::{
+    j2_inclined_rate, keplerian_period, lense_thirring_rate, pn_unit, ppn_scaling,
+    rate_arcsec_per_century, sr_exact_advance,
+};
+use ferroastro_analytic::kepler::Elements;
+use ferroastro_analytic::vector::{cross, dot, norm};
 use ferroastro_constants::De440;
 use ferroastro_core::frames::{EclipticJ2000, Frame, Heliocentric, State};
 use ferroastro_core::time::{Epoch, Tdb};
@@ -16,16 +24,9 @@ use ferroastro_forces::{
     CentralTerm, ForceModel, Gauge, LenseThirring, PnCoefficients, PnLagrangian, Pole,
     SchwarzschildPpn, SolarJ2, SrKepler, TestParticle,
 };
-use ferroastro_integrators::diagnostics::fit_line;
 use ferroastro_integrators::{Ias15Config, Ias15Stats};
-use ferroastro_precession::analytic::{
-    j2_inclined_rate, keplerian_period, lense_thirring_rate, pn_unit, ppn_scaling,
-    rate_arcsec_per_century, sr_exact_advance,
-};
-use ferroastro_precession::kepler::Elements;
-use ferroastro_precession::passages::{
-    self, OrbitPlane, PerOrbitFit, find_perihelia, fit_per_orbit,
-};
+use ferroastro_precession::fit::fit_line;
+use ferroastro_precession::passages::{self, OrbitPlane, PerOrbitFit, fit_per_orbit};
 use ferroastro_precession::report::{RateReport, RateReportBuilder};
 
 /// The dynamics of a rung (all add to Newtonian `−μr/r³` about a fixed Sun).
@@ -320,7 +321,7 @@ impl<F: Frame> SingleBody<F> {
             PoleSpec::OrbitNormalTilted(t) => {
                 let h = cross(self.r0, self.v0);
                 let hn = norm(h);
-                let e = ferroastro_precession::lrl::eccentricity_vector(
+                let e = ferroastro_analytic::vector::eccentricity_vector(
                     self.r0,
                     self.v0,
                     self.mu.km3_per_s2(),
@@ -565,20 +566,4 @@ impl RungResult {
     pub fn per_orbit_relative_deviation(&self) -> f64 {
         self.per_orbit_difference() / self.analytic_per_orbit.radians()
     }
-}
-
-fn dot(a: [f64; 3], b: [f64; 3]) -> f64 {
-    a[0].mul_add(b[0], a[1].mul_add(b[1], a[2] * b[2]))
-}
-
-fn cross(a: [f64; 3], b: [f64; 3]) -> [f64; 3] {
-    [
-        a[1].mul_add(b[2], -a[2] * b[1]),
-        a[2].mul_add(b[0], -a[0] * b[2]),
-        a[0].mul_add(b[1], -a[1] * b[0]),
-    ]
-}
-
-fn norm(a: [f64; 3]) -> f64 {
-    dot(a, a).sqrt()
 }

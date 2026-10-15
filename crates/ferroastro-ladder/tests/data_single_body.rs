@@ -15,10 +15,10 @@
 mod common;
 mod horizons;
 
+use ferroastro_analytic::advance::schwarzschild_advance;
 use ferroastro_constants::header440::Header;
 use ferroastro_core::frames::{EclipticJ2000, Frame, SunEquatorIau};
 use ferroastro_ladder::single_body::{Model, PoleSpec, Rung, SingleBody, de440_solar_spin};
-use ferroastro_precession::analytic::schwarzschild_advance;
 use ferroastro_testdata::fetch_product;
 
 /// Verifies: PHY-005, NUM-015

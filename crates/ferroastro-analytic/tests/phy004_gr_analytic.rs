@@ -2,11 +2,23 @@
 // SPDX-License-Identifier: Apache-2.0
 //! Rung GR-SCHW analytic (PHY-004): 6πGM/(c²a(1−e²)) with DE440 GM☉, c, au and SW92 a, e.
 
-mod common;
-
-use ferroastro_constants::De440;
-use ferroastro_precession::analytic::schwarzschild_advance;
+use ferroastro_analytic::advance::schwarzschild_advance;
+use ferroastro_constants::{Body, De440};
+use ferroastro_core::units::{GravParam, Length};
 use ferroastro_vectors::VectorSet;
+
+/// SW92 J2000 mean a (converted with the DE440 au) and e of Mercury, from the test vectors.
+#[expect(clippy::unwrap_used, reason = "test helper: failure is a test failure")]
+fn sw92_a_e(vs: &VectorSet, de: &De440) -> (Length, f64) {
+    let value = |id: &str| vs.get(id).unwrap().value().unwrap();
+    let a = Length::from_km(value("SW92-MERCURY-A") * de.au().km()).unwrap();
+    (a, value("SW92-MERCURY-E"))
+}
+
+/// `(GM_sun, GM_mercury)` from DE440.
+fn gms(de: &De440) -> (GravParam, GravParam) {
+    (de.gm_sun(), de.gm(Body::Mercury))
+}
 
 #[expect(clippy::unwrap_used, reason = "test helper: failure is a test failure")]
 fn check(vs: &VectorSet, id: &str, measured: f64) {
@@ -27,17 +39,16 @@ fn check(vs: &VectorSet, id: &str, measured: f64) {
 fn gr_schw_analytic_rate_from_de440_and_sw92() {
     let de = De440::load().unwrap();
     let vs = VectorSet::load_workspace().unwrap();
-    let el = common::sw92_elements(&vs, &de);
-    let (gm_sun, gm_me) = common::gms(&de);
+    let (a, e) = sw92_a_e(&vs, &de);
+    let (gm_sun, gm_me) = gms(&de);
     // Caveat C7, documented: GM_sun in the advance (Schwarzschild test-particle formula, as the
     // PHY-004 statement says), GM_sun + GM_Mercury in the period (as its acceptance says).
-    let adv =
-        schwarzschild_advance(gm_sun, de.speed_of_light(), el.a, el.e, gm_sun + gm_me).unwrap();
+    let adv = schwarzschild_advance(gm_sun, de.speed_of_light(), a, e, gm_sun + gm_me).unwrap();
     println!(
         "GR-SCHW analytic: frame-independent secular rate; a = {} km, e = {}, \
          P = {} d, constants DE440 (header.440 sha256 {})",
-        el.a.km(),
-        el.e,
+        a.km(),
+        e,
         adv.period.seconds() / ferroastro_core::time::SECONDS_PER_DAY,
         de.table().source().sha256
     );
@@ -46,14 +57,8 @@ fn gr_schw_analytic_rate_from_de440_and_sw92() {
     check(&vs, "PHY004-GR-RATE", adv.arcsec_per_century());
 
     // C7 alternative: GM_sun + GM_Mercury in the advance too. Reported, and must also pass.
-    let alt = schwarzschild_advance(
-        gm_sun + gm_me,
-        de.speed_of_light(),
-        el.a,
-        el.e,
-        gm_sun + gm_me,
-    )
-    .unwrap();
+    let alt =
+        schwarzschild_advance(gm_sun + gm_me, de.speed_of_light(), a, e, gm_sun + gm_me).unwrap();
     println!(
         "C7 alternative (mu = GM_sun + GM_Mercury in the advance): {:.7} arcsec/cy (shift {:e})",
         alt.arcsec_per_century(),
@@ -76,7 +81,7 @@ fn gr_schw_analytic_rate_from_de440_and_sw92() {
 #[test]
 fn analytic_rejects_unbound_orbits() {
     let de = De440::load().unwrap();
-    let (gm_sun, _) = common::gms(&de);
+    let (gm_sun, _) = gms(&de);
     let err = schwarzschild_advance(gm_sun, de.speed_of_light(), de.au(), 1.0, gm_sun).unwrap_err();
     assert_eq!(err.code(), ferroastro_core::ErrorCode::OrbitDomain);
 }

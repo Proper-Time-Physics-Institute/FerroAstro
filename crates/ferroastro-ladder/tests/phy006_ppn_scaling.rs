@@ -6,8 +6,8 @@
 
 mod common;
 
+use ferroastro_analytic::advance::ppn_scaling;
 use ferroastro_ladder::single_body::{Model, Rung};
-use ferroastro_precession::analytic::ppn_scaling;
 
 #[expect(clippy::unwrap_used, reason = "test helper: failure is a test failure")]
 fn rate(c: &common::Ctx, beta: f64, gamma: f64) -> f64 {

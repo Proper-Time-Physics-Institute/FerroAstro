@@ -8,7 +8,7 @@
 //! Keplerian `P = 2π √(a³/μ)`, where `μ` may differ from the `GM` of the advance (PHY-004 uses
 //! `GM☉` for the advance and `GM☉ + GM_Mercury` for the period; caveat C7).
 
-use crate::PrecessionError;
+use crate::AnalyticError;
 use ferroastro_core::time::{DAYS_PER_JULIAN_CENTURY, SECONDS_PER_DAY};
 use ferroastro_core::units::{Angle, AngularRate, GravParam, Length, SpinGm, TimeSpan, Velocity};
 use std::f64::consts::{PI, TAU};
@@ -55,8 +55,8 @@ pub fn schwarzschild_advance(
     a: Length,
     e: f64,
     mu_period: GravParam,
-) -> Result<SchwarzschildAdvance, PrecessionError> {
-    let dom = |what, value| PrecessionError::Domain { what, value };
+) -> Result<SchwarzschildAdvance, AnalyticError> {
+    let dom = |what, value| AnalyticError::Domain { what, value };
     let (gm, cc, aa, mu) = (
         gm_advance.km3_per_s2(),
         c.km_per_s(),
@@ -94,31 +94,31 @@ pub fn schwarzschild_advance(
 // Single-body analytic oracles (NUM-015; rungs SR-a, SR-b, PPN, J2, LT).
 // ---------------------------------------------------------------------------------------------
 
-fn positive(what: &'static str, v: f64) -> Result<f64, PrecessionError> {
+fn positive(what: &'static str, v: f64) -> Result<f64, AnalyticError> {
     if v.is_finite() && v > 0.0 {
         Ok(v)
     } else {
-        Err(PrecessionError::Domain { what, value: v })
+        Err(AnalyticError::Domain { what, value: v })
     }
 }
 
-fn eccentricity(e: f64) -> Result<f64, PrecessionError> {
+fn eccentricity(e: f64) -> Result<f64, AnalyticError> {
     if (0.0..1.0).contains(&e) {
         Ok(e)
     } else {
-        Err(PrecessionError::Domain {
+        Err(AnalyticError::Domain {
             what: "eccentricity",
             value: e,
         })
     }
 }
 
-fn angle(what: &'static str, rad: f64) -> Result<Angle, PrecessionError> {
-    Angle::from_radians(rad).map_err(|_| PrecessionError::Domain { what, value: rad })
+fn angle(what: &'static str, rad: f64) -> Result<Angle, AnalyticError> {
+    Angle::from_radians(rad).map_err(|_| AnalyticError::Domain { what, value: rad })
 }
 
-fn rate(what: &'static str, rad_s: f64) -> Result<AngularRate, PrecessionError> {
-    AngularRate::from_rad_per_s(rad_s).map_err(|_| PrecessionError::Domain { what, value: rad_s })
+fn rate(what: &'static str, rad_s: f64) -> Result<AngularRate, AnalyticError> {
+    AngularRate::from_rad_per_s(rad_s).map_err(|_| AnalyticError::Domain { what, value: rad_s })
 }
 
 /// PPN scaling of the Schwarzschild advance, `(2 + 2γ − β)/3` (Will 2014 Eq. 65; PHY-006).
@@ -132,7 +132,7 @@ pub fn ppn_scaling(beta: f64, gamma: f64) -> f64 {
 ///
 /// # Errors
 /// `FA-E0600` for non-positive `μ`, `c` or `p`.
-pub fn pn_unit(mu: GravParam, c: Velocity, p: Length) -> Result<Angle, PrecessionError> {
+pub fn pn_unit(mu: GravParam, c: Velocity, p: Length) -> Result<Angle, AnalyticError> {
     let m = positive("GM (km^3/s^2)", mu.km3_per_s2())?;
     let cc = positive("c (km/s)", c.km_per_s())?;
     let pp = positive("semi-latus rectum (km)", p.km())?;
@@ -150,20 +150,20 @@ pub fn sr_exact_advance(
     c: Velocity,
     r: [f64; 3],
     v: [f64; 3],
-) -> Result<Angle, PrecessionError> {
+) -> Result<Angle, AnalyticError> {
     let m = positive("GM (km^3/s^2)", mu.km3_per_s2())?;
     let cc = positive("c (km/s)", c.km_per_s())?;
-    let b2 = crate::kepler::dot(v, v) / (cc * cc);
+    let b2 = crate::vector::dot(v, v) / (cc * cc);
     if b2.is_nan() || b2 >= 1.0 {
-        return Err(PrecessionError::Domain {
+        return Err(AnalyticError::Domain {
             what: "v^2/c^2",
             value: b2,
         });
     }
-    let h = crate::kepler::norm(crate::kepler::cross(r, v)) / (1.0 - b2).sqrt();
+    let h = crate::vector::norm(crate::vector::cross(r, v)) / (1.0 - b2).sqrt();
     let x = m * m / (cc * cc * h * h);
     if x.is_nan() || x >= 1.0 {
-        return Err(PrecessionError::Domain {
+        return Err(AnalyticError::Domain {
             what: "mu^2/(c^2 h^2)",
             value: x,
         });
@@ -175,11 +175,11 @@ pub fn sr_exact_advance(
 ///
 /// # Errors
 /// `FA-E0600` for non-positive `a` or `μ`.
-pub fn keplerian_period(mu: GravParam, a: Length) -> Result<TimeSpan, PrecessionError> {
+pub fn keplerian_period(mu: GravParam, a: Length) -> Result<TimeSpan, AnalyticError> {
     let m = positive("GM (km^3/s^2)", mu.km3_per_s2())?;
     let aa = positive("a (km)", a.km())?;
     let p = TAU * (aa * aa * aa / m).sqrt();
-    TimeSpan::from_seconds(p).map_err(|_| PrecessionError::Domain {
+    TimeSpan::from_seconds(p).map_err(|_| AnalyticError::Domain {
         what: "period (s)",
         value: p,
     })
@@ -190,9 +190,9 @@ pub fn keplerian_period(mu: GravParam, a: Length) -> Result<TimeSpan, Precession
 ///
 /// # Errors
 /// `FA-E0600` for a non-finite `J₂` or non-positive `R` or `p`.
-pub fn j2_planar_advance(j2: f64, radius: Length, p: Length) -> Result<Angle, PrecessionError> {
+pub fn j2_planar_advance(j2: f64, radius: Length, p: Length) -> Result<Angle, AnalyticError> {
     if !j2.is_finite() {
-        return Err(PrecessionError::Domain {
+        return Err(AnalyticError::Domain {
             what: "J2",
             value: j2,
         });
@@ -216,9 +216,9 @@ pub fn j2_inclined_rate(
     a: Length,
     e: f64,
     inclination: Angle,
-) -> Result<AngularRate, PrecessionError> {
+) -> Result<AngularRate, AnalyticError> {
     if !j2.is_finite() {
-        return Err(PrecessionError::Domain {
+        return Err(AnalyticError::Domain {
             what: "J2",
             value: j2,
         });
@@ -250,10 +250,10 @@ pub fn lense_thirring_rate(
     a: Length,
     e: f64,
     inclination: Angle,
-) -> Result<AngularRate, PrecessionError> {
+) -> Result<AngularRate, AnalyticError> {
     let g = gs.km5_per_s3();
     if !(g.is_finite() && g >= 0.0 && gamma.is_finite()) {
-        return Err(PrecessionError::Domain {
+        return Err(AnalyticError::Domain {
             what: "G S (km^5/s^3) or gamma",
             value: g,
         });

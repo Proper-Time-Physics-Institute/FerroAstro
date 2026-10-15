@@ -4,10 +4,8 @@
 
 mod common;
 
+use ferroastro_analytic::advance::{j2_planar_advance, keplerian_period, rate_arcsec_per_century};
 use ferroastro_core::units::Length;
-use ferroastro_precession::analytic::{
-    j2_planar_advance, keplerian_period, rate_arcsec_per_century,
-};
 
 /// Verifies: PHY-010
 #[test]

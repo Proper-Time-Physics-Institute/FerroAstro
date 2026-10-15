@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 //! Errors of the ladder (`FA-E07xx`, plus those of the crates it drives).
 
+use ferroastro_analytic::AnalyticError;
 use ferroastro_constants::ConstantsError;
 use ferroastro_core::ErrorCode;
 use ferroastro_forces::ForceError;
@@ -36,7 +37,10 @@ pub enum LadderError {
     /// Force-model error.
     #[error(transparent)]
     Force(#[from] ForceError),
-    /// Estimator or element-conversion error.
+    /// Element-conversion or analytic-oracle error.
+    #[error(transparent)]
+    Analytic(#[from] AnalyticError),
+    /// Estimator error.
     #[error(transparent)]
     Precession(#[from] PrecessionError),
     /// Integrator error.
@@ -53,6 +57,7 @@ impl LadderError {
             LadderError::Scenario { .. } => ErrorCode::LadderScenario,
             LadderError::Constants(e) => e.code(),
             LadderError::Force(e) => e.code(),
+            LadderError::Analytic(e) => e.code(),
             LadderError::Precession(e) => e.code(),
             LadderError::Integrator(e) => e.code(),
         }

@@ -3,7 +3,8 @@
 //! Osculating Keplerian elements of elliptic orbits and their conversion to and from Cartesian
 //! states (two-body formulae, e.g. Murray & Dermott 1999, *Solar System Dynamics*, §2.8–2.9).
 
-use crate::PrecessionError;
+use crate::AnalyticError;
+use crate::vector::{cross, dot, eccentricity_vector, norm};
 use ferroastro_core::frames::{Center, Frame, Position, State};
 use ferroastro_core::units::{Angle, GravParam, Length, Velocity};
 use std::f64::consts::TAU;
@@ -25,8 +26,8 @@ pub struct Elements {
     pub mean_anomaly: Angle,
 }
 
-fn domain(what: &'static str, value: f64) -> PrecessionError {
-    PrecessionError::Domain { what, value }
+fn domain(what: &'static str, value: f64) -> AnalyticError {
+    AnalyticError::Domain { what, value }
 }
 
 /// Solve Kepler's equation `E − e sin E = M` for the eccentric anomaly (Newton iteration from
@@ -34,7 +35,7 @@ fn domain(what: &'static str, value: f64) -> PrecessionError {
 ///
 /// # Errors
 /// `FA-E0600` if `e` is outside `[0, 1)` or `M` is not finite.
-pub fn eccentric_anomaly(mean_anomaly: f64, e: f64) -> Result<f64, PrecessionError> {
+pub fn eccentric_anomaly(mean_anomaly: f64, e: f64) -> Result<f64, AnalyticError> {
     if !(0.0..1.0).contains(&e) {
         return Err(domain("eccentricity (elliptic orbits only)", e));
     }
@@ -52,22 +53,6 @@ pub fn eccentric_anomaly(mean_anomaly: f64, e: f64) -> Result<f64, PrecessionErr
         }
     }
     Ok(big_e)
-}
-
-pub(crate) fn cross(a: [f64; 3], b: [f64; 3]) -> [f64; 3] {
-    [
-        a[1].mul_add(b[2], -a[2] * b[1]),
-        a[2].mul_add(b[0], -a[0] * b[2]),
-        a[0].mul_add(b[1], -a[1] * b[0]),
-    ]
-}
-
-pub(crate) fn dot(a: [f64; 3], b: [f64; 3]) -> f64 {
-    a[0].mul_add(b[0], a[1].mul_add(b[1], a[2] * b[2]))
-}
-
-pub(crate) fn norm(a: [f64; 3]) -> f64 {
-    dot(a, a).sqrt()
 }
 
 impl Elements {
@@ -106,7 +91,7 @@ impl Elements {
     pub fn to_state<F: Frame, C: Center>(
         &self,
         mu: GravParam,
-    ) -> Result<State<F, C>, PrecessionError> {
+    ) -> Result<State<F, C>, AnalyticError> {
         let a = self.a.km();
         let mu = mu.km3_per_s2();
         if a.is_nan() || a <= 0.0 {
@@ -163,7 +148,7 @@ impl Elements {
     pub fn from_state<F: Frame, C: Center>(
         state: &State<F, C>,
         mu: GravParam,
-    ) -> Result<Self, PrecessionError> {
+    ) -> Result<Self, AnalyticError> {
         let r = state.position().components().map(Length::km);
         let v = state.velocity().map(Velocity::km_per_s);
         Self::from_vectors(r, v, mu.km3_per_s2())
@@ -173,7 +158,7 @@ impl Elements {
     ///
     /// # Errors
     /// As [`Elements::from_state`].
-    pub fn from_vectors(r: [f64; 3], v: [f64; 3], mu: f64) -> Result<Self, PrecessionError> {
+    pub fn from_vectors(r: [f64; 3], v: [f64; 3], mu: f64) -> Result<Self, AnalyticError> {
         if mu.is_nan() || mu <= 0.0 {
             return Err(domain("gravitational parameter (km^3/s^2)", mu));
         }
@@ -183,7 +168,7 @@ impl Elements {
         if rn.is_nan() || hn.is_nan() || rn <= 0.0 || hn <= 0.0 {
             return Err(domain("angular momentum (degenerate orbit)", hn));
         }
-        let ev = crate::lrl::eccentricity_vector(r, v, mu);
+        let ev = eccentricity_vector(r, v, mu);
         let e = norm(ev);
         let inv_a = 2.0 / rn - dot(v, v) / mu;
         if inv_a.is_nan() || inv_a <= 0.0 || e >= 1.0 {
@@ -234,8 +219,6 @@ mod tests {
     }
 
     /// Elements -> state -> elements is the identity to round-off.
-    ///
-    /// Verifies: PHY-001, PHY-004
     #[test]
     fn elements_state_round_trip() {
         let mu = GravParam::from_km3_per_s2(1.0).unwrap();
@@ -265,7 +248,7 @@ mod tests {
         );
     }
 
-    /// Verifies: PHY-001
+    /// Kepler's equation is solved to a few ulp.
     #[test]
     fn kepler_equation_is_solved() {
         for (m, e) in [(0.25, 0.5), (3.0, 0.25), (6.0, 0.5)] {

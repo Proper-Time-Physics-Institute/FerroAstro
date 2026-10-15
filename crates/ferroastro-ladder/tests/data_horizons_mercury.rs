@@ -11,17 +11,17 @@
 //! Every test prints the request URL, retrieval date, SHA-256, `signature.version` and the
 //! ephemeris source string Horizons reports.
 
-mod common;
+mod two_body;
 
+use ferroastro_analytic::advance::schwarzschild_advance;
+use ferroastro_analytic::kepler::Elements;
 use ferroastro_constants::De440;
 use ferroastro_core::frames::{EclipticJ2000, Heliocentric, Position, State};
 use ferroastro_core::time::J2000_JD;
 use ferroastro_core::units::{GravParam, Length, Velocity};
 use ferroastro_forces::NewtonianPointMasses;
 use ferroastro_integrators::Ias15Config;
-use ferroastro_precession::analytic::schwarzschild_advance;
 use ferroastro_precession::fit::{Metadata, fit_secular_rate};
-use ferroastro_precession::kepler::Elements;
 use ferroastro_testdata::{Fetched, fetch_url};
 use ferroastro_vectors::VectorSet;
 use std::collections::BTreeMap;
@@ -198,7 +198,7 @@ fn data_horizons_gr_rate_from_osculating_elements_vs_park17() {
     let els = query("ELEMENTS", "horizons-199-sun-j2000-elements.json");
     els.print("ELEMENTS");
     let de = De440::load().unwrap();
-    let (gm_sun, gm_me) = common::gms(&de);
+    let (gm_sun, gm_me) = two_body::gms(&de);
     let a = Length::from_km(els.num("A")).unwrap();
     let e = els.num("EC");
     let adv = schwarzschild_advance(gm_sun, de.speed_of_light(), a, e, gm_sun + gm_me).unwrap();
@@ -223,7 +223,7 @@ fn data_horizons_n2b_from_de441_state() {
     let vecs = query("VECTORS", "horizons-199-sun-j2000-vectors.json");
     vecs.print("VECTORS");
     let de = De440::load().unwrap();
-    let (gm_sun, gm_me) = common::gms(&de);
+    let (gm_sun, gm_me) = two_body::gms(&de);
     let (r, v) = state(&vecs);
     let l = |z: f64| Length::from_km(z).unwrap();
     let w = |z: f64| Velocity::from_km_per_s(z).unwrap();
@@ -232,11 +232,11 @@ fn data_horizons_n2b_from_de441_state() {
         [w(v[0]), w(v[1]), w(v[2])],
     );
     let mu: GravParam = gm_sun + gm_me;
-    let (x0, v0) = common::barycentric(&rel, gm_sun, gm_me);
+    let (x0, v0) = two_body::barycentric(&rel, gm_sun, gm_me);
     let model = NewtonianPointMasses::new(&[gm_sun, gm_me]).unwrap();
-    let span = 1000.0 * common::julian_year_s(); // lint: allow-literal(PHY-001 minimum span in years)
+    let span = 1000.0 * two_body::julian_year_s(); // lint: allow-literal(PHY-001 minimum span in years)
     let cfg = Ias15Config::default();
-    let run = common::run_lrl(&model, &x0, &v0, mu.km3_per_s2(), span, cfg);
+    let run = two_body::run_lrl(&model, &x0, &v0, mu.km3_per_s2(), span, cfg);
     let meta = Metadata {
         estimator: "LRL eccentricity-vector longitude of the Mercury-Sun relative orbit",
         frame: "initial osculating orbit plane, axes fixed in Horizons' 'Ecliptic of J2000.0' (REF_SYSTEM=ICRF)".into(),

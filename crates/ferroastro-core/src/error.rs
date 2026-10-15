@@ -12,7 +12,7 @@
 //! | `FA-E0300`–`FA-E0399` | ephemeris constants and `header.440` parsing (`ferroastro-constants`) |
 //! | `FA-E0400`–`FA-E0499` | numerical integrators (`ferroastro-integrators`) |
 //! | `FA-E0500`–`FA-E0599` | force models (`ferroastro-forces`) |
-//! | `FA-E0600`–`FA-E0699` | orbital elements and precession estimators (`ferroastro-precession`) |
+//! | `FA-E0600`–`FA-E0699` | orbital elements, analytic oracles and precession estimators (`ferroastro-analytic`, `ferroastro-precession`) |
 //! | `FA-E0700`–`FA-E0799` | ladder rungs, scenarios and the CLI (`ferroastro-ladder`, `ferroastro-cli`) |
 
 use std::fmt;
