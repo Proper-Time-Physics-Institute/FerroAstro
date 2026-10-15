@@ -1,0 +1,53 @@
+{
+  "entries": [
+    {
+      "command": "python -m oracles.orekit_runner --scenario /in/oracle-stage-b-mercury-de440-field-100yr.toml --jpl-dir /jpl --out-dir /out",
+      "cpu": "13th Gen Intel(R) Core(TM) i9-13900 (32 logical CPUs)",
+      "extra": {
+        "abs_tol_m": "0.0001",
+        "ephemeris_file": "linux_p1550p2650.440",
+        "force_models": "NewtonianAttraction(GM_sun) + ThirdBodyAttraction per field body",
+        "hipparchus": "4.0.3",
+        "integration_frame_rotation_to_icrf_rad": "0.5346586944821988",
+        "integrator": "DormandPrince853",
+        "integrator_mapping": "scenario integrator 'ias15' (f64) mapped to the tool settings [abs_tol_m = 0.0001, integrator = 'DormandPrince853', max_step_s = 172800.0, min_step_s = 0.001, rel_tol = 1e-15]",
+        "java": "openjdk version \"17.0.20.1\" 2026-08-18",
+        "max_output_time_deviation_s": "0.0",
+        "max_step_s": "172800.0",
+        "min_step_s": "0.001",
+        "orekit": "13.1.9",
+        "orekit_data_commit": "2422a7d06ee2cc3b5a503a47271203b0706f3e82",
+        "orekit_gm_earth_m3_s2": "3.9860043550702275E14",
+        "orekit_gm_jupiter_m3_s2": "1.26712764099999984E17",
+        "orekit_gm_mars_m3_s2": "4.282837581575612E13",
+        "orekit_gm_moon_m3_s2": "4.902800118457551E12",
+        "orekit_gm_neptune_m3_s2": "6.836527100580401E15",
+        "orekit_gm_pluto_m3_s2": "9.755000000000002E11",
+        "orekit_gm_saturn_m3_s2": "3.7940584841800008E16",
+        "orekit_gm_sun_m3_s2": "1.3271244004127946E20",
+        "orekit_gm_uranus_m3_s2": "5.794556399999999E15",
+        "orekit_gm_venus_m3_s2": "3.248585920000001E14",
+        "rel_tol": "1e-15"
+      },
+      "file": "oracle-stage-b-mercury-de440-field-100yr.orekit.states.csv",
+      "frame": "ICRF axes, heliocentric (particle minus Sun; center_naif 10)",
+      "generated_utc": "2026-10-15T20:35:58Z",
+      "image_digest": "sha256:ef7274fa804b3d630153e48bcb219f02c6632462dd88619e68615e98eb066647",
+      "input_sha256": {
+        "linux_p1550p2650.440": "29915576d0a6555766b99485ac3056ee415e86df4fce282611c31afb329ad062",
+        "oracle-stage-b-mercury-de440-field-100yr.toml": "47eac2a5b2192ccc201ae8dcfb69b16b5f68cccd06fc1829c24a41dc7f169bd4",
+        "settings.toml": "bedcbd29fa6230142a2ba3e77605e8afc5ceae88b356e6ffd05b686b2e57d33d"
+      },
+      "output_sha256": "43ab1231cbc271f5223e4ae4a9904ff7d6fc23607d515a354d034fbb26c709ad",
+      "runner_sha": "5fad88493f8af5be11fd8e44fd12b21472abab28",
+      "runner_sha256": "93c2d0bb84cfee8fecfbf0bbabbba2f0c30cbed9c2e6c6bd6b8fb3cc4da9cefc",
+      "scenario": "oracle-stage-b-mercury-de440-field-100yr",
+      "time_scale": "TDB",
+      "tool": "orekit",
+      "units": "t_days: TDB days since epoch_jd_tdb; position: km; velocity: km/s",
+      "version": "orekit 13.1.9, hipparchus 4.0.3",
+      "wall_clock_s": 419.025
+    }
+  ],
+  "schema_version": 1
+}

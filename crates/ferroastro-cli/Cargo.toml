@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: Apache-2.0
 [package]
 name = "ferroastro-cli"
-description = "The ferroastro command-line tool (M2: `ferroastro ladder --rungs single-body`)"
+description = "The ferroastro command-line tool (M2: `ferroastro ladder --rungs single-body`; M3: `ferroastro scenario validate|run|resume`)"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
@@ -19,6 +19,13 @@ ferroastro-constants.workspace = true
 ferroastro-core.workspace = true
 ferroastro-ladder.workspace = true
 ferroastro-vectors.workspace = true
+ferroastro-ephem.workspace = true
+ferroastro-propagate = { workspace = true, features = ["parallel"] }
+ferroastro-scenario.workspace = true
+sha2.workspace = true
+
+[dev-dependencies]
+ferroastro-testdata.workspace = true
 
 [lints]
 workspace = true

@@ -17,6 +17,7 @@
 //! | `retrieved` | `YYYY-MM-DD` |
 //! | `tolerance` | table with `abs` and/or `rel`, both finite and ≥ 0 |
 //! | `generated_by`, `engine` | required when `kind = "computed-reference"` (TST-003) |
+//! | `blocked_by` | optional `OI-NN`: the oracle is non-gating while that open item is open ([`Vector::blocking_open_item`]) |
 //!
 //! `source` and `citation` may not contain `UNVERIFIED` or `[S]`: such values cannot be oracles
 //! until closed in `docs/requirements/OPEN-ITEMS.md` (PHY-018).
@@ -97,6 +98,16 @@ pub enum VectorError {
     /// A measured value lies outside the tolerance.
     #[error("FA-E0105: {0}")]
     ToleranceExceeded(Box<Deviation>),
+    /// The canonical vectors were required but `FA_VECTORS_DIR` redirects them.
+    #[error(
+        "FA-E0106: {VECTORS_DIR_ENV} = {dir} would replace the committed oracles in a tier whose output is evidence \
+         (data_*/nightly_* tests, the CLI report); fix: unset {VECTORS_DIR_ENV}, or perturb tests/vectors in a \
+         scratch checkout for mutation probes"
+    )]
+    NonCanonical {
+        /// The override directory.
+        dir: PathBuf,
+    },
 }
 
 impl VectorError {
@@ -110,6 +121,7 @@ impl VectorError {
             VectorError::UnknownId(_) => ErrorCode::VectorUnknownId,
             VectorError::DuplicateId { .. } => ErrorCode::VectorDuplicateId,
             VectorError::ToleranceExceeded(_) => ErrorCode::ToleranceExceeded,
+            VectorError::NonCanonical { .. } => ErrorCode::VectorOverrideRefused,
         }
     }
 }
@@ -154,6 +166,17 @@ impl std::fmt::Display for Deviation {
     }
 }
 
+/// The stderr banner printed whenever `FA_VECTORS_DIR` is honoured or refused.
+#[must_use]
+pub fn non_canonical_banner(dir: &Path) -> String {
+    let rule = "!".repeat(96);
+    format!(
+        "{rule}\n!!! NON-CANONICAL VECTORS: {VECTORS_DIR_ENV} = {}\n!!! Every oracle and tolerance may differ from \
+         the committed tests/vectors. Results produced this way are NOT evidence.\n{rule}",
+        dir.display()
+    )
+}
+
 /// All vectors from one directory, keyed by id.
 #[derive(Debug, Default)]
 pub struct VectorSet {
@@ -161,21 +184,50 @@ pub struct VectorSet {
 }
 
 impl VectorSet {
-    /// The workspace vector directory: `$FA_VECTORS_DIR` if set, else `<workspace>/tests/vectors`.
+    /// The committed vector directory, `<workspace>/tests/vectors` (never redirected).
+    #[must_use]
+    pub fn canonical_dir() -> PathBuf {
+        Path::new(env!("CARGO_MANIFEST_DIR")).join("../../tests/vectors")
+    }
+
+    /// The workspace vector directory: `$FA_VECTORS_DIR` if set, else
+    /// [`VectorSet::canonical_dir`]. An override prints a NON-CANONICAL banner on stderr every
+    /// time it is read, because it replaces every oracle at once (red-team H2 pattern).
     #[must_use]
     pub fn workspace_dir() -> PathBuf {
         match std::env::var_os(VECTORS_DIR_ENV) {
-            Some(dir) => PathBuf::from(dir),
-            None => Path::new(env!("CARGO_MANIFEST_DIR")).join("../../tests/vectors"),
+            Some(dir) => {
+                let dir = PathBuf::from(dir);
+                eprintln!("{}", non_canonical_banner(&dir));
+                dir
+            }
+            None => Self::canonical_dir(),
         }
     }
 
-    /// Load every vector under [`VectorSet::workspace_dir`].
+    /// Load every vector under [`VectorSet::workspace_dir`] (honours `FA_VECTORS_DIR`, with a
+    /// banner; for PR-tier mutation probes only).
     ///
     /// # Errors
     /// Any [`VectorError`] raised by [`VectorSet::load_dir`].
     pub fn load_workspace() -> Result<Self, VectorError> {
         Self::load_dir(&Self::workspace_dir())
+    }
+
+    /// Load the committed vectors and **refuse** an `FA_VECTORS_DIR` override. Used wherever the
+    /// output is evidence: the `data_*` and `nightly_*` tiers, the ladder rung tests and the CLI
+    /// report.
+    ///
+    /// # Errors
+    /// [`VectorError::NonCanonical`] (`FA-E0106`) if `FA_VECTORS_DIR` is set, else any error of
+    /// [`VectorSet::load_dir`].
+    pub fn load_canonical() -> Result<Self, VectorError> {
+        if let Some(dir) = std::env::var_os(VECTORS_DIR_ENV) {
+            let dir = PathBuf::from(dir);
+            eprintln!("{}", non_canonical_banner(&dir));
+            return Err(VectorError::NonCanonical { dir });
+        }
+        Self::load_dir(&Self::canonical_dir())
     }
 
     /// Load and validate every `*.toml` file in `dir` (non-recursive, sorted by name).

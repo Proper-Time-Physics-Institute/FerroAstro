@@ -17,13 +17,18 @@ ferroastro-core.workspace = true
 ferroastro-forces.workspace = true
 ferroastro-integrators.workspace = true
 ferroastro-precession.workspace = true
+ferroastro-propagate.workspace = true
+ferroastro-real.workspace = true
 serde.workspace = true
 thiserror.workspace = true
 toml.workspace = true
 
 [dev-dependencies]
+ferroastro-scenario.workspace = true
 criterion.workspace = true
+ferroastro-frames.workspace = true
 ferroastro-testdata.workspace = true
+ferroastro-time.workspace = true
 ferroastro-vectors.workspace = true
 serde_json.workspace = true
 

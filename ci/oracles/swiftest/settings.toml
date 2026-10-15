@@ -1,0 +1,10 @@
+# SPDX-FileCopyrightText: 2026 Proper-Time Physics Institute
+# SPDX-License-Identifier: Apache-2.0
+#
+# Swiftest integrator settings (WP17; NEEDS HUMAN REVIEW: the scenario's [integrator] block names
+# FerroAstro's IAS15, which Swiftest does not have, so the runner maps it to the settings below).
+# Pre-registered in docs/strategy/IMPLEMENTATION-NOTES.md (WP17 plan) before any run.
+# Units: au, day (TDB), GM in au^3/d^2 (bodies are added by Gmass).
+[default]
+integrator = "whm"           # Wisdom-Holman in Jacobi coordinates (fixed step, symplectic)
+dt_days = 0.0078125          # 1/128 d, exact in binary64

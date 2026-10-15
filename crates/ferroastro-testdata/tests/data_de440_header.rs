@@ -84,7 +84,7 @@ fn data_de440_header_defined_constants() {
         "duplicate constant names in GROUP 1040"
     );
 
-    let vectors = VectorSet::load_workspace().unwrap();
+    let vectors = VectorSet::load_canonical().unwrap();
     for (name, id) in [("CLIGHT", "CONST-CLIGHT-SI"), ("AU", "CONST-AU-IAU2012")] {
         let v = vectors.get(id).unwrap();
         let header = table[name];

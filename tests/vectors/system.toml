@@ -1,0 +1,164 @@
+# SPDX-FileCopyrightText: 2026 Proper-Time Physics Institute
+# SPDX-License-Identifier: Apache-2.0
+# ferroastro-system checks (REF-002, NUM-009, NUM-018 SSB part; OI-23 evidence). Checked by
+# crates/ferroastro-system/tests/*.rs. Tolerances were fixed in IMPLEMENTATION-NOTES WP11 before the
+# first FerroAstro run; the velocity bound of check 1 was chosen after a disclosed Python exploration.
+# Schema: ADR-0004.
+schema_version = 1
+
+[[vector]]
+id = "SYSTEM-HEADER-VS-DE440-POS-MAX-DIFF"
+requirement = ["REF-002", "NUM-009"]
+quantity = "largest |header.440 IC - de440.bsp| barycentric position component at JDEPOC over Sun, Mercury, Venus, Earth, Moon, Mars-Pluto systems, the EMB and the geocentric Moon (header read as SSB-centred ICRF, au and au/day)"
+value = 0.0
+unit = "km"
+kind = "measured"
+source = "header.440 GROUP 1041 states (X1..ZDS, XB.., XM..) vs de440.bsp evaluated at JDEPOC 2440400.5 TDB by ferroastro-ephem, both from the pinned JPL products (tests/data/MANIFEST.toml)."
+citation = "JPL DE440 (Park et al. 2021, AJ 161, 105): header.440 sha256 0f4636b663e6f00af9efa2b605ef23635489f56b23dd1a5e3821d3acc6ac3359; de440.bsp sha256 a4ce9bf9b3282becc9f4b2ac3cebe03a2ae7599981aabd7265fd8482fff7c4b5"
+retrieved = "2026-10-15"
+tolerance = { abs = 1e-3 }
+tolerance_rationale = "PROVISIONAL (WP11 plan): 1 m. The SPK is a Chebyshev fit to the same integration, so at the integration's start epoch it reproduces the initial conditions to the fit's interpolation error. A wrong centre, frame or unit reading misses by >= 1e5 km (the test prints and bounds those)."
+verified_by = "WP11 builder agent, 2026-10-15: tolerance from the WP11 plan, written before any run (IMPLEMENTATION-NOTES WP11)."
+notes = "OI-23 evidence. Closure of OI-23 is a maintainer decision (NEEDS HUMAN REVIEW)."
+
+[[vector]]
+id = "SYSTEM-HEADER-VS-DE440-VEL-MAX-DIFF"
+requirement = ["REF-002", "NUM-009"]
+quantity = "largest |header.440 IC - de440.bsp| barycentric velocity component at JDEPOC (as SYSTEM-HEADER-VS-DE440-POS-MAX-DIFF)"
+value = 0.0
+unit = "km/s"
+kind = "measured"
+source = "As SYSTEM-HEADER-VS-DE440-POS-MAX-DIFF."
+citation = "JPL DE440 (Park et al. 2021, AJ 161, 105): header.440 and de440.bsp as pinned"
+retrieved = "2026-10-15"
+tolerance = { abs = 1e-9 }
+tolerance_rationale = "REF-004's velocity target (1 um/s), copied. Chosen AFTER a disclosed jplephem exploration that showed <= 8.4e-15 km/s; the bound is 1e5x that and was not tuned to it."
+verified_by = "WP11 builder agent, 2026-10-15: disclosed in IMPLEMENTATION-NOTES WP11 (not blind)."
+
+[[vector]]
+id = "SYSTEM-HEADER-ALT-READING-MIN-DIFF"
+requirement = ["REF-002"]
+quantity = "lower bound on the smallest |header - de440.bsp| position component under each wrong reading (header vector taken as heliocentric; header numbers taken as km)"
+value = 1.0
+unit = "km"
+kind = "defined"
+source = "1e3 x SYSTEM-HEADER-VS-DE440-POS-MAX-DIFF's tolerance: a reading test discriminates only if the wrong readings miss by far more than the right one may."
+citation = "FerroAstro WP11 test design (IMPLEMENTATION-NOTES WP11, check 1)"
+retrieved = "2026-10-15"
+tolerance = { abs = 0.0 }
+tolerance_rationale = "Used as a one-sided threshold (the measured miss must exceed the value); the tolerance field is unused."
+verified_by = "WP11 builder agent, 2026-10-15: fixed in the WP11 plan before the first run."
+
+[[vector]]
+id = "SYSTEM-EMRAT-GMB-RECOMBINE-ULP"
+requirement = ["REF-002", "PHY-002"]
+quantity = "|(GMB*EMRAT/(1+EMRAT) + GMB/(1+EMRAT)) - GMB| in units of one ulp of GMB (km^3/s^2, binary64)"
+value = 0.0
+unit = "ulp"
+kind = "analytic"
+source = "Exact identity EMRAT/(1+EMRAT) + 1/(1+EMRAT) = 1; the two GMs are each rounded once in the products and once in the unit conversion, and the sum once."
+citation = "header.440 GMB and EMRAT (sha256 0f4636b663e6f00af9efa2b605ef23635489f56b23dd1a5e3821d3acc6ac3359) through the committed DE440 table"
+retrieved = "2026-10-15"
+tolerance = { abs = 2.0 }
+tolerance_rationale = "Two ulp covers the independent roundings of the split fractions, the products and the sum (each <= 1/2 ulp of its result)."
+verified_by = "WP11 builder agent, 2026-10-15: fixed in the WP11 plan before the first run."
+
+[[vector]]
+id = "SYSTEM-HEADER-CATALOGUE-VS-TABLE-GM-DIFF"
+requirement = ["REF-002"]
+quantity = "largest |GM from header.440 at run time - GM from the committed DE440 table| over the 11 major bodies"
+value = 0.0
+unit = "km^3/s^2"
+kind = "measured"
+source = "Catalogue::from_header vs Catalogue::de440_major: same tokens, same conversion arithmetic (au^3/d^2 x AU^3/86400^2, EMRAT split)."
+citation = "header.440 (sha256 0f4636b663e6f00af9efa2b605ef23635489f56b23dd1a5e3821d3acc6ac3359); crates/ferroastro-constants/data/de440-constants.toml"
+retrieved = "2026-10-15"
+tolerance = { abs = 0.0 }
+tolerance_rationale = "Bit-identical by construction; any difference means the two paths diverged."
+verified_by = "WP11 builder agent, 2026-10-15: fixed in the WP11 plan before the first run."
+
+[[vector]]
+id = "SYSTEM-HEADER-NUMBERED-ASTEROIDS"
+requirement = ["NUM-009", "REF-002"]
+quantity = "number of header.440 MAnnnn entries with nnnn < 8000 (numbered asteroids, catalogued as Minor bodies with NAIF 2000000 + nnnn)"
+value = 343
+unit = "1"
+kind = "measured"
+source = "Counted in the downloaded header.440; equals the 343 asteroids of NUM-009's acceptance text (the DE440 asteroid set). Each id is also present in sb441-n373s.bsp (data test)."
+citation = "JPL DE440 ASCII header header.440 (sha256 0f4636b663e6f00af9efa2b605ef23635489f56b23dd1a5e3821d3acc6ac3359); NUM-009"
+retrieved = "2026-10-15"
+tolerance = { abs = 0.0 }
+tolerance_rationale = "A count; equality is required."
+verified_by = "WP11 builder agent, 2026-10-15: counted in the header during the disclosed exploration; NUM-009 states 343 independently."
+notes = "kind = measured because ADR-0004 has no 'data-product fact' kind."
+
+[[vector]]
+id = "SYSTEM-HEADER-UNIDENTIFIED-MA"
+requirement = ["REF-002"]
+quantity = "number of header.440 MAnnnn entries with nnnn >= 8000 (MA8001..MA8236), kept as unidentified masses"
+value = 66
+unit = "1"
+kind = "measured"
+source = "Counted in the downloaded header.440 (409 MA entries - 343 numbered asteroids). Their GMs sum to ~8.5e-8 GMS. No manifest SPK carries NAIF ids for them; their identity is an OI-24 question (NEEDS HUMAN REVIEW)."
+citation = "JPL DE440 ASCII header header.440 (sha256 0f4636b663e6f00af9efa2b605ef23635489f56b23dd1a5e3821d3acc6ac3359)"
+retrieved = "2026-10-15"
+tolerance = { abs = 0.0 }
+tolerance_rationale = "A count; equality is required."
+verified_by = "WP11 builder agent, 2026-10-15: counted in the header during the disclosed exploration."
+notes = "kind = measured because ADR-0004 has no 'data-product fact' kind."
+
+[[vector]]
+id = "SYSTEM-REBARYCENTRE-POS-RESIDUAL"
+requirement = ["NUM-018"]
+quantity = "|sum mu_i* r_i / sum mu_i*| after two rebarycentring passes of the header.440 bodies (relativistic DE440 masses), f64"
+value = 0.0
+unit = "km"
+kind = "analytic"
+source = "After translating every body by the weighted mean, the weighted mean is zero up to the rounding of the translated coordinates and of the compensated weighted sums."
+citation = "Definition of the barycentre; mu* per NUM-018 (Park et al. 2021 Eqs. 1-2, transcription NEEDS HUMAN REVIEW)"
+retrieved = "2026-10-15"
+tolerance = { abs = 1e-6 }
+tolerance_rationale = "1 mm: the translated coordinates carry <= 1/2 ulp each (<= 5e-7 km for the 7.4e9 km Pluto system, whose weight is ~7e-9 of the total; ~1e-10 km for the Sun), so the weighted residual is far below 1e-6 km."
+verified_by = "WP11 builder agent, 2026-10-15: fixed when writing the test, before its first run."
+
+[[vector]]
+id = "SYSTEM-REBARYCENTRE-VEL-RESIDUAL"
+requirement = ["NUM-018"]
+quantity = "|sum mu_i* v_i / sum mu_i*| after two rebarycentring passes of the header.440 bodies, f64"
+value = 0.0
+unit = "km/s"
+kind = "analytic"
+source = "As SYSTEM-REBARYCENTRE-POS-RESIDUAL; the weights change by O(1e-16) between passes because v_i^2 changes with the translation."
+citation = "Definition of the barycentre; mu* per NUM-018"
+retrieved = "2026-10-15"
+tolerance = { abs = 1e-12 }
+tolerance_rationale = "Velocities are <= ~50 km/s (ulp ~7e-15 km/s); 1e-12 km/s leaves two orders of magnitude for the weighted sums."
+verified_by = "WP11 builder agent, 2026-10-15: fixed when writing the test, before its first run."
+
+[[vector]]
+id = "SYSTEM-HORIZONS-DE441-VS-HEADER-POS-GROSS"
+requirement = ["REF-002"]
+quantity = "largest |header.440 IC (DE440) - Horizons DE441 vectors| barycentric position component at JDEPOC over the Sun, Mercury..Pluto systems, Earth and Moon"
+value = 0.0
+unit = "km"
+kind = "measured"
+source = "JPL Horizons API vectors (CENTER 500@0, REF_SYSTEM ICRF, REF_PLANE FRAME, TIME_TYPE TDB, OUT_UNITS KM-S) at JD 2440400.5 TDB, assembled with InitialConditions::from_states."
+citation = "JPL Horizons System, https://ssd.jpl.nasa.gov/api/horizons.api (DE441; Park et al. 2021, AJ 161, 105)"
+retrieved = "2026-10-15"
+tolerance = { abs = 10.0 }
+tolerance_rationale = "Gross-error bound only, as HORIZONS-DE441-VS-DE440-POS-GROSS (WP10): DE441 is not DE440. A wrong frame gives ~1e7 km, a wrong centre >= 1e5 km, a 1-day epoch error >= 1e6 km. The DE440-DE441 differences are reported, not asserted."
+verified_by = "WP11 builder agent, 2026-10-15: fixed in the WP11 plan before the first data run."
+
+[[vector]]
+id = "SYSTEM-HORIZONS-DE441-VS-HEADER-VEL-GROSS"
+requirement = ["REF-002"]
+quantity = "largest |header.440 IC - Horizons DE441| barycentric velocity component at JDEPOC (as SYSTEM-HORIZONS-DE441-VS-HEADER-POS-GROSS)"
+value = 0.0
+unit = "km/s"
+kind = "measured"
+source = "As SYSTEM-HORIZONS-DE441-VS-HEADER-POS-GROSS."
+citation = "JPL Horizons System, https://ssd.jpl.nasa.gov/api/horizons.api (DE441)"
+retrieved = "2026-10-15"
+tolerance = { abs = 1e-3 }
+tolerance_rationale = "Gross-error bound only, as HORIZONS-DE441-VS-DE440-VEL-GROSS (WP10)."
+verified_by = "WP11 builder agent, 2026-10-15: fixed in the WP11 plan before the first data run."

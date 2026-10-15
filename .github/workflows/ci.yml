@@ -3,8 +3,10 @@
 #
 # PR gates: the AGENTS.md command list, verbatim, plus MSRV (STD-005) and DCO (ORG-008).
 # Real-data tier: the `data` job runs the #[ignore]d network tests on a schedule / by hand only,
-# so PR CI never depends on JPL availability. The `long` job runs the #[ignore]d nightly_* tier
-# (testing.md) on the same schedule.
+# so PR CI never depends on JPL availability (whether this weekly job may stay on GitHub-hosted
+# runners is an open maintainer question, IMPLEMENTATION-NOTES WP7). The `long` job (nightly_*
+# tier) is manual-dispatch only: long tiers run on the maintainer's machine via
+# tools/run_long_local.sh (maintainer decision 2026-10-15).
 #
 # Security (STD-012, red-team §2): read-only token, no pull_request_target, every action pinned to a
 # commit SHA (checked by tools/lint_workflows.py), checkout without persisted credentials.
@@ -36,6 +38,8 @@ jobs:
     if: github.event_name != 'schedule'
     runs-on: ubuntu-24.04
     timeout-minutes: 30
+    env:
+      FA_DATA_DIR: ${{ github.workspace }}/.fa-data
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -43,6 +47,16 @@ jobs:
       - name: Install pinned toolchain (rust-toolchain.toml)
         run: rustup show active-toolchain || rustup toolchain install
       - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+      # CI-005 PR-fast cache: the pinned de440.bsp, testpo.440 and header.440 that the
+      # non-ignored ephemeris tests read (REF-001, REF-004). Keyed on the manifest pins; on a miss
+      # fetch_jpl.py downloads and verifies them. Nothing is committed (LIC-003).
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ github.workspace }}/.fa-data
+          key: fa-data-${{ hashFiles('tests/data/MANIFEST.toml') }}
+      - uses: astral-sh/setup-uv@1c37ad07a6a961277cf70c0d37d6f313000f5884 # v10.3.0
+      - name: Fetch the PR-fast JPL products (verifies SHA-256; cache hit = no download)
+        run: cd tools && uv run python fetch_jpl.py
       - uses: taiki-e/install-action@1168f6810a3cb30a3514bf5756a3b7f0422c6df8 # v2.87.28
         with:
           tool: cargo-nextest@0.9.148,cargo-deny@0.19.8
@@ -64,10 +78,22 @@ jobs:
     if: github.event_name != 'schedule'
     runs-on: ubuntu-24.04
     timeout-minutes: 30
+    env:
+      FA_DATA_DIR: ${{ github.workspace }}/.fa-data
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+      # CI-005 PR-fast cache: the pinned de440.bsp, testpo.440 and header.440 that the
+      # non-ignored ephemeris tests read (REF-001, REF-004). Keyed on the manifest pins; on a miss
+      # fetch_jpl.py downloads and verifies them. Nothing is committed (LIC-003).
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ github.workspace }}/.fa-data
+          key: fa-data-${{ hashFiles('tests/data/MANIFEST.toml') }}
+      - uses: astral-sh/setup-uv@1c37ad07a6a961277cf70c0d37d6f313000f5884 # v10.3.0
+      - name: Fetch the PR-fast JPL products (verifies SHA-256; cache hit = no download)
+        run: cd tools && uv run python fetch_jpl.py
       - name: Install MSRV toolchain
         run: rustup toolchain install 1.85.0 --profile minimal
       - uses: taiki-e/install-action@1168f6810a3cb30a3514bf5756a3b7f0422c6df8 # v2.87.28
@@ -77,6 +103,30 @@ jobs:
       # excluded here; they run in the `rust` job.
       - name: Build and test on MSRV
         run: cargo +1.85.0 nextest run --workspace -E 'not binary(compile_fail)'
+
+  wasm32:
+    name: wasm32 (real, core, erfa, time, integrators, forces, analytic, frames, ephem)
+    if: github.event_name != 'schedule'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Install pinned toolchain (rust-toolchain.toml) and the wasm32 target
+        run: (rustup show active-toolchain || rustup toolchain install) && rustup target add wasm32-unknown-unknown
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+      # CRATE-PLAN: the foundation and dynamics crates (also ferroastro-system, WP11; ferroastro-scenario and
+      # ferroastro-propagate without `parallel`, WP13) build for
+      # wasm32-unknown-unknown (DEP-006);
+      # ferroastro-real also as no_std with the pure-Rust libm (no default features).
+      - name: Build for wasm32-unknown-unknown
+        run: cargo build -p ferroastro-real -p ferroastro-core -p ferroastro-erfa -p ferroastro-time -p ferroastro-integrators -p ferroastro-forces -p ferroastro-analytic -p ferroastro-frames -p ferroastro-ephem -p ferroastro-system -p ferroastro-scenario -p ferroastro-propagate -p ferroastro-diffrun --target wasm32-unknown-unknown
+      - name: Build ferroastro-real and ferroastro-erfa no_std (libm) for wasm32-unknown-unknown
+        run: cargo build -p ferroastro-real -p ferroastro-erfa --no-default-features --features libm --target wasm32-unknown-unknown
+      # DEP-010 / WP8: the optional hifitime (UTC) feature must build for wasm32 too.
+      - name: Build ferroastro-time with hifitime for wasm32-unknown-unknown
+        run: cargo build -p ferroastro-time --features hifitime --target wasm32-unknown-unknown
 
   python:
     name: python (ruff, mypy, pytest, trace)
@@ -94,6 +144,8 @@ jobs:
         run: (cd tools && uv run ruff check && uv run ruff format --check && uv run mypy .)
       - name: pytest (STD-009)
         run: (cd tools && uv run pytest)
+      - name: doctest coverage of public fns (API-003; report-only until a maintainer sets a ratio)
+        run: (cd tools && uv run python doctest_coverage.py)
       - name: trace.py --check (AGENTS.md)
         run: (cd tools && uv run python trace.py --check)
 
@@ -154,8 +206,8 @@ jobs:
         run: cargo nextest run --workspace --profile data --run-ignored only
 
   long:
-    name: long runs (nightly_* tier, release build)
-    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    name: long runs (nightly_* tier, release build; manual only, normally run locally)
+    if: github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-24.04
     timeout-minutes: 90
     steps:

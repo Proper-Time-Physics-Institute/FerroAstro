@@ -1,0 +1,26 @@
+# SPDX-FileCopyrightText: 2026 Proper-Time Physics Institute
+# SPDX-License-Identifier: Apache-2.0
+[package]
+name = "ferroastro-ephem"
+description = "In-crate JPL DAF/SPK reader (Chebyshev types 2 and 3) generic over Real, with segment chaining and a testpo parser"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+authors.workspace = true
+repository.workspace = true
+
+[dependencies]
+ferroastro-core.workspace = true
+ferroastro-real.workspace = true
+thiserror.workspace = true
+
+[dev-dependencies]
+ferroastro-constants.workspace = true
+ferroastro-testdata.workspace = true
+ferroastro-vectors.workspace = true
+proptest.workspace = true
+sha2.workspace = true
+
+[lints]
+workspace = true

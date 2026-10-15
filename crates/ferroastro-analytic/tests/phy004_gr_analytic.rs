@@ -85,3 +85,35 @@ fn analytic_rejects_unbound_orbits() {
     let err = schwarzschild_advance(gm_sun, de.speed_of_light(), de.au(), 1.0, gm_sun).unwrap_err();
     assert_eq!(err.code(), ferroastro_core::ErrorCode::OrbitDomain);
 }
+
+/// The PHY-004 formula evaluated in double-double (DEP-007): same oracle, and the f64 value is
+/// its correctly rounded neighbour to a few ulp. The DE440 inputs are the binary64 values of the
+/// header (exact in double-double).
+///
+/// Verifies: PHY-004, DEP-007, NUM-006
+#[test]
+fn gr_schw_analytic_rate_in_double_double() {
+    use ferroastro_real::{DoubleDouble, Real};
+    let de = De440::load().unwrap();
+    let vs = VectorSet::load_canonical().unwrap();
+    let (a, e) = sw92_a_e(&vs, &de);
+    let (gm_sun, gm_me) = gms(&de);
+    let f = schwarzschild_advance(gm_sun, de.speed_of_light(), a, e, gm_sun + gm_me).unwrap();
+    let mu_p = (gm_sun + gm_me).cast::<DoubleDouble>();
+    let dd = schwarzschild_advance(
+        gm_sun.cast::<DoubleDouble>(),
+        de.speed_of_light().cast(),
+        a.cast(),
+        DoubleDouble::from_f64(e),
+        mu_p,
+    )
+    .unwrap();
+    let (rf, rd) = (f.arcsec_per_century(), dd.arcsec_per_century());
+    println!(
+        "GR-SCHW analytic: f64 {rf:.15} arcsec/cy, double-double {:?} (diff {:e})",
+        rd.to_parts(),
+        rd.to_f64() - rf
+    );
+    check(&vs, "PHY004-GR-RATE", rd.to_f64());
+    assert!((rd.to_f64() - rf).abs() <= 8.0 * f64::EPSILON * rf);
+}

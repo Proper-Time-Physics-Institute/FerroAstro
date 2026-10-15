@@ -31,3 +31,4 @@ __pycache__/
 
 # Downloaded external data products (JPL DE/Horizons); never committed (licence terms are an open item)
 fa-data/
+.fa-data/

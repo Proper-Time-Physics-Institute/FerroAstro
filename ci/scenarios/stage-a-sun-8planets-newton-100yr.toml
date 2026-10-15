@@ -1,0 +1,35 @@
+# SPDX-FileCopyrightText: 2026 Proper-Time Physics Institute
+# SPDX-License-Identifier: Apache-2.0
+# Oracle stage A (CI-005, REF-005; WP16): Sun + 8 planets (Earth-Moon barycentre as one body;
+# planets beyond Venus are system barycentres), Newtonian point masses only, from the DE440 initial
+# conditions in header.440, 100 Julian years forward, IAS15 in f64 with the step-control settings
+# stated explicitly so that FerroAstro and REBOUND run the same configuration. States of every body
+# are sampled every Julian year. The REBOUND output of this scenario is the cached PR-fast golden
+# in ci/golden/rebound/. Schema: scenario.schema.json (CI-002).
+schema_version = 1
+name = "stage-a-sun-8planets-newton-100yr"
+description = "Stage A: Sun + 8 planets (EMB), Newtonian, header.440 ICs, 100 yr, IAS15 f64"
+mode = "n-body"
+bodies = ["Sun", "Mercury", "Venus", "EMB", "Mars", "Jupiter", "Saturn", "Uranus", "Neptune"]
+central_body = "Sun"
+
+[initial_conditions]
+source = "de440-header"
+
+[constants]
+gm_set = "de440"
+
+[forces]
+newton = true
+
+[integrator]
+name = "ias15"
+precision = "f64"
+epsilon = 1e-9
+dt0_days = 0.1
+
+[span]
+years = 100.0
+
+[output]
+cadence_days = 365.25

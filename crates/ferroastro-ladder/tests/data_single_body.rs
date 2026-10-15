@@ -14,6 +14,11 @@
 //!   DE441 state in the real `IAU_SUN` geometry (inclined orbit, so the J2/LT oracles are the
 //!   inclined Park17 Eqs. 3 and 2).
 //!
+//! * D5 (WP7, pre-registered with vector PHY005-F64-DD-AGREEMENT before the first run): rung
+//!   GR-SCHW from the DE440 initial conditions in a fresh header.440 (Mercury minus Sun at
+//!   JDEPOC), integrated in f64 and in double-double. Each must meet PHY-005 and they must agree
+//!   within 1e-6 ″/cy.
+//!
 //! Every test prints URL, retrieval date, SHA-256 and the Horizons `signature.version`.
 
 mod common;
@@ -260,4 +265,78 @@ fn data_isolation_and_estimator_spread_from_horizons_de441_state() {
         );
         c.check("NUM012-ESTIMATOR-SPREAD", s.spread());
     }
+}
+
+/// D5: GR-SCHW from header.440 initial conditions, f64 and double-double (WP7).
+///
+/// The header's GROUP 1041 holds the DE440 integration's initial states at JDEPOC. Their centre,
+/// axes and units (solar-system barycentre, ICRF, au and au/day) are inferred, not documented
+/// (OI-23). They are used here only as an **initial condition**, never as an oracle: the
+/// oracles are PHY-005's 42.980 ± 0.001 ″/cy and the f64/double-double agreement. A units error
+/// would move the rate by orders of magnitude (it scales as a^-5/2).
+///
+/// Verifies: PHY-005, DEP-007, NUM-006, NUM-015
+#[test]
+#[ignore = "data: downloads JPL header.440 (network); run with --profile data"]
+fn data_gr_schw_f64_and_double_double_from_header440_initial_conditions() {
+    use ferroastro_core::frames::Icrf;
+    use ferroastro_real::DoubleDouble;
+    let c = common::ctx();
+    let fetched = fetch_product("de440-header").unwrap();
+    println!("de440-header {}", fetched.provenance());
+    let h = Header::parse(&std::fs::read_to_string(&fetched.path).unwrap()).unwrap();
+    let v = |n: &str| h.value(n).unwrap();
+    let (au, day) = (v("AU"), ferroastro_core::time::SECONDS_PER_DAY);
+    let r0 = ["X", "Y", "Z"].map(|k| (v(&format!("{k}1")) - v(&format!("{k}S"))) * au);
+    let v0 = ["XD", "YD", "ZD"].map(|k| (v(&format!("{k}1")) - v(&format!("{k}S"))) * au / day);
+    println!(
+        "header.440 JDEPOC {} (CENTER {}): Mercury - Sun r0 = {r0:?} km, v0 = {v0:?} km/s \
+         (centre/axes/units inferred: OI-23)",
+        v("JDEPOC"),
+        v("CENTER")
+    );
+    let setup = SingleBody::<Icrf>::from_state(
+        r0,
+        v0,
+        &c.de,
+        c.scn.orbits,
+        format!(
+            "initial osculating orbit plane (axes fixed in {} as inferred for header.440, OI-23); zero at the initial periapsis",
+            Icrf::NAME
+        ),
+        format!(
+            "DE440 (header.440 sha256 {}); initial state: header.440 GROUP 1041 X1..ZD1 minus XS..ZDS at JDEPOC",
+            fetched.sha256
+        ),
+    )
+    .unwrap()
+    // Date the run at JDEPOC (report metadata only: single-body dynamics are epoch-free; WP9).
+    .with_epoch(ferroastro_core::time::Epoch::from_jd_parts(v("JDEPOC"), 0.0).unwrap());
+    let el = setup.initial_elements().unwrap();
+    println!(
+        "osculating heliocentric orbit at JDEPOC (mu = GM_sun): a = {:.3} km ({:.8} au), e = {:.10}",
+        el.a.km(),
+        el.a.km() / au,
+        el.e
+    );
+    let rung = c.rung("GR-SCHW");
+    let f = setup.run(&rung).unwrap();
+    let d = setup.run_in::<DoubleDouble>(&rung).unwrap();
+    common::show(&f);
+    common::show(&d);
+    let (rf, rd) = (
+        f.numerical_arcsec_per_century(),
+        d.numerical_arcsec_per_century(),
+    );
+    println!(
+        "D5 GR-SCHW from header.440 ICs: f64 {rf:.12}, double-double {rd:.12} arcsec/cy; \
+         f64 - DD = {:+.3e}; analytic (same osculating orbit) {:.9}",
+        rf - rd,
+        f.analytic_arcsec_per_century()
+    );
+    c.check("PHY005-GR-NUM-RATE", rf);
+    c.check("PHY005-GR-NUM-RATE", rd);
+    c.check("PHY005-F64-DD-AGREEMENT", rf - rd);
+    c.check_num015(&f);
+    c.check_num015(&d);
 }

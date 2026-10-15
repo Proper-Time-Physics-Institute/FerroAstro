@@ -162,7 +162,7 @@ fn data_horizons_osculating_elements_match() {
     let gm = keplerian_gm(&els);
     let (r, v) = state(&vecs);
     let mine = Elements::from_vectors(r, v, gm).unwrap();
-    let vs = VectorSet::load_workspace().unwrap();
+    let vs = VectorSet::load_canonical().unwrap();
     let agree = vs.get("HORIZONS-ELEMENTS-AGREEMENT").unwrap();
     println!("Keplerian GM used by Horizons: {gm} km^3/s^2");
     for (name, ours, theirs) in [
@@ -202,7 +202,7 @@ fn data_horizons_gr_rate_from_osculating_elements_vs_park17() {
     let a = Length::from_km(els.num("A")).unwrap();
     let e = els.num("EC");
     let adv = schwarzschild_advance(gm_sun, de.speed_of_light(), a, e, gm_sun + gm_me).unwrap();
-    let vs = VectorSet::load_workspace().unwrap();
+    let vs = VectorSet::load_canonical().unwrap();
     let park = vs.get("PARK17-GE-RATE").unwrap();
     let rate = adv.arcsec_per_century();
     println!(
@@ -212,6 +212,17 @@ fn data_horizons_gr_rate_from_osculating_elements_vs_park17() {
         park.value().unwrap(),
         rate - park.value().unwrap(),
         park.tolerance.allowed(park.value().unwrap())
+    );
+    // mu convention (WP6 review): the advance 6 pi GM/(c^2 a (1 - e^2)) uses GM = GMS; the
+    // period (mean motion n) uses GMS + GM1, the Keplerian GM with which Horizons computed these
+    // osculating a and e. With GMS in both places the rate shifts by ~4e-6 arcsec/cy.
+    let gms_only = schwarzschild_advance(gm_sun, de.speed_of_light(), a, e, gm_sun)
+        .unwrap()
+        .arcsec_per_century();
+    println!(
+        "mu convention: 6 pi GM/c^2 with GM = GMS; n with GMS + GM1 (Horizons' Keplerian GM). \
+         GMS in both: {gms_only:.6} arcsec/cy (shift {:+.2e}); reported, not asserted",
+        gms_only - rate
     );
     park.check(rate).unwrap();
 }
@@ -252,7 +263,7 @@ fn data_horizons_n2b_from_de441_state() {
     let est = fit_secular_rate(&run.times, &run.longitudes, meta).unwrap();
     println!("N-2B from the Horizons DE441 J2000 state:\n{est}");
     println!("  NOTE: any non-zero rate is NUMERICAL ERROR (true N-2B rate is exactly 0).");
-    let vs = VectorSet::load_workspace().unwrap();
+    let vs = VectorSet::load_canonical().unwrap();
     vs.get("PHY001-NEWTON-RATE")
         .unwrap()
         .check(est.arcsec_per_century())

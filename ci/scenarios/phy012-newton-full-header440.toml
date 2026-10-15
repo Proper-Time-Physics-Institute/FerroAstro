@@ -1,0 +1,37 @@
+# SPDX-FileCopyrightText: 2026 Proper-Time Physics Institute
+# SPDX-License-Identifier: Apache-2.0
+# PHY-012 / NUM-013(b) template (WP14): the full Newtonian point-mass system of header.440 (Sun,
+# the planets with Earth and Moon resolved, Pluto; no asteroids, which are WP15), DE440 GMs, f64
+# IAS15, from the DE440 initial conditions at JDEPOC. The differential plan derives every
+# configuration from this file by changing only the body list and the span: Sun + Mercury
+# (+ X, + X + Y), the full system and the full system without X; each configuration runs one leg
+# backwards to J2000 - 1000 Julian yr - 30 d and one forwards to J2000 + 1000 Julian yr + 30 d.
+# This file's span is the forward leg. Mercury relative to the Sun is sampled daily for the
+# Park2017 estimator and its perihelion passages are located on dense output (NUM-010).
+# Schema: scenario.schema.json (CI-002).
+schema_version = 1
+name = "phy012-newton-full-header440"
+description = "Full Newtonian point-mass system (header.440 Major bodies, Earth and Moon resolved), DE440 GMs, 1969 -> 3000 CE leg (PHY-012 template)"
+mode = "n-body"
+bodies = ["Sun", "Mercury", "Venus", "Earth", "Moon", "Mars", "Jupiter", "Saturn", "Uranus", "Neptune", "Pluto"]
+central_body = "Sun"
+
+[initial_conditions]
+source = "de440-header"
+
+[constants]
+gm_set = "de440"
+
+[forces]
+newton = true
+
+[integrator]
+name = "ias15"
+precision = "f64"
+
+[span]
+years = 1030.5941136208078
+
+[output]
+cadence_days = 1.0
+perihelion = ["Mercury"]

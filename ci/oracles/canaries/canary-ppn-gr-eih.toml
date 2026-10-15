@@ -1,0 +1,33 @@
+# SPDX-FileCopyrightText: 2026 Proper-Time Physics Institute
+# SPDX-License-Identifier: Apache-2.0
+# REF-011 canary (WP16): a schema-valid scenario that requests ppn{beta,gamma} with the EIH terms.
+# The REBOUND/REBOUNDx runner must refuse it with a non-zero exit naming `ppn` (REBOUNDx gr_full
+# has only the parameter c, i.e. beta = gamma = 1) and `gr_eih` (stage C, WP21). Not a ladder
+# scenario: it lives outside ci/scenarios/ so no FerroAstro tier runs it.
+schema_version = 1
+name = "canary-ppn-gr-eih"
+description = "REF-011 canary: PPN beta/gamma with EIH, which the REBOUNDx runner must refuse"
+mode = "n-body"
+bodies = ["Sun", "Mercury", "Venus"]
+central_body = "Sun"
+
+[initial_conditions]
+source = "de440-header"
+
+[constants]
+gm_set = "de440"
+
+[forces]
+newton = true
+gr_eih = true
+ppn = { beta = 1.0, gamma = 0.9 }
+
+[integrator]
+name = "ias15"
+precision = "f64"
+
+[span]
+years = 1.0
+
+[output]
+cadence_days = 30.0

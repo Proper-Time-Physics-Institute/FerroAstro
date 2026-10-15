@@ -13,6 +13,9 @@ path = [
     "tools/.python-version",
     "crates/*/tests/ui/*.stderr",
     "tests/vectors/schema.json",
+    "ci/scenarios/scenario.schema.json",
+    "ci/golden/**/MANIFEST.json",
+    "ci/golden/**/*.json",
 ]
 SPDX-FileCopyrightText = "2026 Proper-Time Physics Institute"
 SPDX-License-Identifier = "Apache-2.0"
