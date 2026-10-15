@@ -309,7 +309,9 @@ fn data_gr_schw_f64_and_double_double_from_header440_initial_conditions() {
             fetched.sha256
         ),
     )
-    .unwrap();
+    .unwrap()
+    // Date the run at JDEPOC (report metadata only: single-body dynamics are epoch-free; WP9).
+    .with_epoch(ferroastro_core::time::Epoch::from_jd_parts(v("JDEPOC"), 0.0).unwrap());
     let el = setup.initial_elements().unwrap();
     println!(
         "osculating heliocentric orbit at JDEPOC (mu = GM_sun): a = {:.3} km ({:.8} au), e = {:.10}",

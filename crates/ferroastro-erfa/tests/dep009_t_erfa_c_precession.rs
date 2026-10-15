@@ -13,8 +13,9 @@
     clippy::panic,
     clippy::inconsistent_digit_grouping,
     clippy::unreadable_literal,
+    clippy::excessive_precision,
     reason = "test helpers: a failed unwrap is a test failure with a clear message; ERFA's \
-              arguments are kept in ERFA's digit grouping"
+              arguments are kept verbatim, in ERFA's digits and grouping"
 )]
 
 use ferroastro_erfa::{
@@ -54,7 +55,7 @@ fn d<R: Real>(x: f64) -> R {
     R::from_f64(x)
 }
 
-/// The test matrix `r` of t_rx, t_rz, t_rxr, t_tr, t_rxp, t_trxp and t_ir.
+/// The test matrix `r` of `t_rx`, `t_rz`, `t_rxr`, `t_tr`, `t_rxp`, `t_trxp` and `t_ir`.
 fn erfa_r<R: Real>() -> Matrix3<R> {
     [
         [d(2.0), d(3.0), d(2.0)], // lint: allow-literal(t_erfa_c.c test matrix r)

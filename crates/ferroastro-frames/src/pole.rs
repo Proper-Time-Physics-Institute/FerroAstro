@@ -77,7 +77,7 @@ impl<R: Real> Pole<R> {
     ///
     /// # Errors
     /// Never for the built-in values; the `Result` mirrors [`Pole::from_degrees`].
-    pub fn iau_sun() -> Result<Self, FrameError> {
+    pub fn sun_wgccre2015() -> Result<Self, FrameError> {
         Self::from_degrees(
             SOLAR_POLE_IAU_RA_DEG,
             SOLAR_POLE_IAU_DEC_DEG,
@@ -162,12 +162,12 @@ pub fn icrf_to_solar_equator<R: Real>(
 }
 
 /// ICRF → `IAU_SUN` (the Sun's IAU body-equator frame, as JPL Horizons realises it): the
-/// [`icrf_to_solar_equator`] axes of the IAU pole [`Pole::iau_sun`].
+/// [`icrf_to_solar_equator`] axes of the IAU pole [`Pole::sun_wgccre2015`].
 ///
 /// # Errors
 /// Never for the built-in pole.
 pub fn icrf_to_sun_equator_iau<R: Real>() -> Result<Rotation<Icrf, SunEquatorIau, R>, FrameError> {
-    let pole = Pole::iau_sun()?;
+    let pole = Pole::sun_wgccre2015()?;
     Ok(Rotation::from_parts_unchecked(
         equator_axes(&pole)?,
         format!(

@@ -24,7 +24,9 @@ toml.workspace = true
 
 [dev-dependencies]
 criterion.workspace = true
+ferroastro-frames.workspace = true
 ferroastro-testdata.workspace = true
+ferroastro-time.workspace = true
 ferroastro-vectors.workspace = true
 serde_json.workspace = true
 

@@ -8,7 +8,7 @@
 //! (`ferroastro_precession::passages`) and compares it with the rung's analytic oracle
 //! (`ferroastro_analytic`, NUM-015). Every result carries a [`RateReport`] (PHY-015).
 
-use crate::passage_run::{find_perihelia, sample_uniform};
+use crate::passage_run::{PassageRun, find_perihelia, sample_uniform};
 use crate::{LadderError, Scenario};
 use ferroastro_analytic::advance::{
     j2_inclined_rate, keplerian_period, lense_thirring_rate, pn_unit, ppn_scaling,
@@ -299,6 +299,42 @@ impl<F: Frame> SingleBody<F> {
     #[must_use]
     pub const fn initial_state(&self) -> ([f64; 3], [f64; 3]) {
         (self.r0, self.v0)
+    }
+
+    /// The same set-up with the initial state at `epoch` (TDB) instead of J2000. The dynamics of
+    /// a single body do not depend on the epoch; it only dates the passages (and so matters for
+    /// time-dependent frames such as the ecliptic of date, NUM-014) and the report metadata.
+    #[must_use]
+    pub const fn with_epoch(mut self, epoch: Epoch<Tdb>) -> Self {
+        self.epoch = epoch;
+        self
+    }
+
+    /// The epoch (TDB) of the initial state.
+    #[must_use]
+    pub const fn epoch(&self) -> Epoch<Tdb> {
+        self.epoch
+    }
+
+    /// The perihelion passages of a rung's run (f64), as [`SingleBody::run`] finds them: times
+    /// in seconds from [`SingleBody::epoch`], heliocentric positions and velocities in frame `F`.
+    ///
+    /// # Errors
+    /// Force-model and integrator errors; `FA-E0601` if too few passages occur.
+    pub fn perihelion_passages(&self, rung: &Rung) -> Result<PassageRun, LadderError> {
+        let model = self.model(rung)?;
+        let el = self.initial_elements()?;
+        let period = keplerian_period(self.mu, el.a)?;
+        let passages_wanted = usize::try_from(self.orbits).unwrap_or(usize::MAX) + 1;
+        find_perihelia(
+            &model,
+            self.r0,
+            self.v0,
+            self.mu.km3_per_s2(),
+            passages_wanted,
+            period.seconds() * (f64::from(self.orbits) + 2.0),
+            self.ias15,
+        )
     }
 
     /// Hash of the initial conditions: FNV-1a (64 bit) over the IEEE-754 bit patterns of the six
