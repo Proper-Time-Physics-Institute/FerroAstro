@@ -227,6 +227,7 @@ version = "0.0.0"
 dependencies = [
  "ferroastro-constants",
  "ferroastro-core",
+ "ferroastro-real",
  "ferroastro-vectors",
  "thiserror",
 ]

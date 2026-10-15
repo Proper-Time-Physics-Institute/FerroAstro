@@ -10,6 +10,9 @@
 //!   Eq. 3) and Lense–Thirring (PHY-011, Park et al. 2017 Eq. 2).
 //! * [`vector`]: raw 3-vector helpers and the eccentricity (LRL) vector.
 //!
+//! Every oracle is generic over the scalar backend `R: ferroastro_real::Real` (default `f64`), so
+//! the same formula can be evaluated in double-double when a rung is run in double-double.
+//!
 //! This crate contains no propagation and no estimator: numerical rungs live in
 //! `ferroastro-ladder`, estimators in `ferroastro-precession`. Keeping the oracles apart from
 //! the code they check is what makes a rung comparison non-circular.
