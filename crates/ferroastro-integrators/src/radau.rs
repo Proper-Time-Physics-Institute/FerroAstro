@@ -6,11 +6,15 @@
 //!
 //! Nothing here is transcribed from tables or code: the spacings are computed as the roots of
 //! `P₇(x) + P₈(x)` on `[−1, 1]` (the left-endpoint Radau nodes, `x = −1` being the step start),
-//! mapped to `[0, 1]`, and the matrices are built from the spacings by polynomial algebra.
+//! mapped to `[0, 1]`, and the matrices are built from the spacings by polynomial algebra. All of
+//! it is done in double-double ([`crate::dd`]) and rounded to `f64` once, so each constant is the
+//! correctly rounded value of the exact one (Rein & Spiegel 2015 §3.2).
 //!
 //! Notation. Over one step the acceleration is the degree-7 polynomial in `τ = (t − t₀)/Δt`
 //! `a(τ) = a₀ + Σₘ Bₘ τᵐ` (m = 1…7; IAS15's `b₀…b₆` are `B₁…B₇`), equivalently the Newton form
 //! `a(τ) = a₀ + Σₖ gₖ Nₖ(τ)` with `Nₖ(τ) = Πⱼ₍₌₀…ₖ₋₁₎ (τ − hⱼ)` and `h₀ = 0`.
+
+use crate::dd::Dd;
 
 /// Number of Radau nodes per step, including the step start.
 pub(crate) const NODES: usize = 8;
@@ -100,39 +104,78 @@ fn radau_roots() -> [f64; TERMS] {
     roots
 }
 
+/// `(P₇(x) + P₈(x), d/dx)` in double-double, by the Bonnet recurrence.
+fn radau_poly_dd(x: Dd) -> (Dd, Dd) {
+    let one = Dd::from_f64(1.0);
+    let (mut p_prev, mut p) = (one, x);
+    let (mut dp_prev, mut dp) = (Dd::from_f64(0.0), one);
+    let (mut p7, mut dp7) = (p, dp);
+    for n in 1..8_u32 {
+        let nf = Dd::from_f64(f64::from(n));
+        let two_n1 = Dd::from_f64(f64::from(2 * n + 1));
+        let n1 = Dd::from_f64(f64::from(n + 1));
+        let p_next = (two_n1 * x * p - nf * p_prev) / n1;
+        let dp_next = (two_n1 * (p + x * dp) - nf * dp_prev) / n1;
+        p_prev = p;
+        dp_prev = dp;
+        p = p_next;
+        dp = dp_next;
+        if n == 6 {
+            p7 = p;
+            dp7 = dp;
+        }
+    }
+    (p7 + p, dp7 + dp)
+}
+
 impl Radau {
-    /// Compute the spacings and matrices.
+    /// Compute the spacings and matrices in double-double and round each to `f64`.
     #[expect(
         clippy::indexing_slicing,
         clippy::needless_range_loop,
         reason = "fixed-size 8x8 tables indexed by loop counters bounded by NODES"
     )]
     pub(crate) fn new() -> Self {
-        let mut h = [0.0; NODES];
-        for (slot, x) in h.iter_mut().skip(1).zip(radau_roots()) {
-            *slot = 0.5 * (x + 1.0);
+        let zero = Dd::from_f64(0.0);
+        let one = Dd::from_f64(1.0);
+        let half = Dd::from_f64(0.5);
+        let mut hd = [zero; NODES];
+        for (slot, x0) in hd.iter_mut().skip(1).zip(radau_roots()) {
+            // Newton polish of the f64 root in double-double (quadratic convergence: two steps
+            // take ~1e-16 to below 1e-32).
+            let mut x = Dd::from_f64(x0);
+            for _ in 0..3 {
+                let (f, df) = radau_poly_dd(x);
+                if df.hi != 0.0 {
+                    x = x - f / df;
+                }
+            }
+            *slot = (x + one) * half;
         }
         // c[k] = coefficients of N_k(τ) = N_{k−1}(τ)·(τ − h_{k−1}).
-        let mut c = [[0.0; NODES]; NODES];
-        c[0][0] = 1.0;
+        let mut cd = [[zero; NODES]; NODES];
+        cd[0][0] = one;
         for k in 1..NODES {
             for m in 0..=k {
-                let shifted = if m > 0 { c[k - 1][m - 1] } else { 0.0 };
-                c[k][m] = (-h[k - 1]).mul_add(c[k - 1][m], shifted);
+                let shifted = if m > 0 { cd[k - 1][m - 1] } else { zero };
+                cd[k][m] = shifted - hd[k - 1] * cd[k - 1][m];
             }
         }
         // B = M g with M[m][k] = c[k][m] (unit upper triangular in m ≤ k); d = M⁻¹ by back
         // substitution, stored as d[k][m] (row k of the inverse).
-        let mut d = [[0.0; NODES]; NODES];
+        let mut dd = [[zero; NODES]; NODES];
         for j in 1..NODES {
             for m in (1..NODES).rev() {
-                let mut s = if m == j { 1.0 } else { 0.0 };
+                let mut s = if m == j { one } else { zero };
                 for k in (m + 1)..NODES {
-                    s = (-c[k][m]).mul_add(d[k][j], s);
+                    s = s - cd[k][m] * dd[k][j];
                 }
-                d[m][j] = s;
+                dd[m][j] = s;
             }
         }
+        let h = hd.map(Dd::to_f64);
+        let c = cd.map(|row| row.map(Dd::to_f64));
+        let d = dd.map(|row| row.map(Dd::to_f64));
         Self { h, c, d }
     }
 }
@@ -160,6 +203,23 @@ mod tests {
         }
         // The left endpoint is itself a root of P7 + P8 (P7(-1) = -1, P8(-1) = 1).
         assert!(radau_poly(-1.0).0.abs() < 1e-14); // lint: allow-literal(f64 round-off bound)
+    }
+
+    /// The double-double roots are accurate far below f64 resolution, and each stored spacing is
+    /// the nearest f64 to its double-double value.
+    ///
+    /// Verifies: NUM-001
+    #[test]
+    fn spacings_are_correctly_rounded() {
+        let r = Radau::new();
+        for &h in &r.h[1..] {
+            let x = Dd::from_f64(h) + Dd::from_f64(h) - Dd::from_f64(1.0);
+            let (f, df) = radau_poly_dd(x);
+            // Newton distance from the stored f64 node to the true root; h·eps bounds ulp(h) above.
+            let dist = (f / df).to_f64().abs() / 2.0;
+            let ulp = h * f64::EPSILON;
+            assert!(dist <= 0.5 * ulp, "node {h}: {dist:e} > ulp/2 {ulp:e}");
+        }
     }
 
     /// The Newton form built from c reproduces any degree-7 polynomial sampled at the nodes, and

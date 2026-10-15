@@ -35,6 +35,7 @@
 //! ```
 
 pub mod compensated;
+mod dd;
 pub mod diagnostics;
 mod error;
 mod ias15;

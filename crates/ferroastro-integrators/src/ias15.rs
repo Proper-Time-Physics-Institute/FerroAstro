@@ -105,7 +105,7 @@ impl Ias15Config {
 }
 
 /// Counters accumulated over a run.
-#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, Default, PartialEq)]
 pub struct Ias15Stats {
     /// Accepted steps.
     pub steps: u64,
@@ -118,6 +118,12 @@ pub struct Ias15Stats {
     /// Accepted steps whose iteration hit `max_iterations` without meeting `pc_tolerance`
     /// (rejected attempts are not counted: they are redone).
     pub unconverged: u64,
+    /// Accepted steps whose iteration ended because the correction stopped decreasing.
+    pub stalled: u64,
+    /// Predictor restarts from zero after a step shortened to land on a requested time.
+    pub cold_starts: u64,
+    /// Largest final `max|ΔB₇|/max|a|` of any accepted step.
+    pub max_pc_error: f64,
 }
 
 /// What one accepted step did.
@@ -131,6 +137,14 @@ pub struct StepReport {
     pub iterations: u32,
     /// True when the step was shortened to land exactly on the requested limit.
     pub reached_limit: bool,
+}
+
+/// How a predictor–corrector iteration ended (with the final relative `ΔB₇` where relevant).
+#[derive(Debug, Clone, Copy, PartialEq)]
+enum Exit {
+    Converged,
+    Stalled(f64),
+    RanOut(f64),
 }
 
 /// Coefficient divisors of the position integral, `(m+1)(m+2)` for `τᵐ`, m = 0…7.
@@ -387,7 +401,7 @@ impl Ias15 {
         &mut self,
         sys: &S,
         dt: f64,
-    ) -> Result<(u32, f64, bool), IntegratorError> {
+    ) -> Result<(u32, f64, Exit), IntegratorError> {
         self.g_from_b();
         let mut last_err = f64::INFINITY;
         let mut iterations = 0_u32;
@@ -420,7 +434,14 @@ impl Ias15 {
             let stalled = iterations > 2 && err >= last_err;
             if converged || stalled || iterations >= self.cfg.max_iterations {
                 self.stats.iterations += u64::from(iterations);
-                return Ok((iterations, max_a, !converged && !stalled));
+                let exit = if converged {
+                    Exit::Converged
+                } else if stalled {
+                    Exit::Stalled(err)
+                } else {
+                    Exit::RanOut(err)
+                };
+                return Ok((iterations, max_a, exit));
             }
             last_err = err;
         }
@@ -494,7 +515,7 @@ impl Ias15 {
                     reached_limit: true,
                 });
             }
-            let (iterations, max_a, ran_out) = self.correct(sys, dt)?;
+            let (iterations, max_a, exit) = self.correct(sys, dt)?;
 
             // Step-size control (Rein & Spiegel 2015 global criterion).
             let b7 = max_abs(&self.b[TERMS - 1]);
@@ -546,10 +567,29 @@ impl Ias15 {
                 self.t_comp = 0.0;
             }
             self.stats.steps += 1;
-            if ran_out {
-                self.stats.unconverged += 1;
+            match exit {
+                Exit::Converged => {}
+                Exit::Stalled(err) => {
+                    self.stats.stalled += 1;
+                    self.stats.max_pc_error = self.stats.max_pc_error.max(err);
+                }
+                Exit::RanOut(err) => {
+                    self.stats.unconverged += 1;
+                    self.stats.max_pc_error = self.stats.max_pc_error.max(err);
+                }
             }
-            self.extrapolate_b(next / dt);
+            let q = next / dt;
+            if q.abs() <= 1.0 / self.cfg.safety {
+                self.extrapolate_b(q);
+            } else {
+                // Only after a step shortened to hit `t_limit`: extrapolating that short step's
+                // polynomial by a large factor amplifies its round-off, so restart the predictor
+                // from zero (as on the first step) instead.
+                for bm in &mut self.b {
+                    bm.fill(0.0);
+                }
+                self.stats.cold_starts += 1;
+            }
             self.dt_trial = next;
             return Ok(StepReport {
                 t: self.t,
