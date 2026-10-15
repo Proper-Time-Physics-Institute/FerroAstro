@@ -1,0 +1,30 @@
+# SPDX-FileCopyrightText: 2026 Proper-Time Physics Institute
+# SPDX-License-Identifier: Apache-2.0
+# cargo-nextest profiles (STD-008, testing.md tiers).
+
+[profile.default]
+# PR-fast tier. #[ignore]d tests (network `data_*` and nightly long runs) are skipped.
+fail-fast = false
+slow-timeout = { period = "60s", terminate-after = 10 }
+
+[profile.data]
+# Real-data tier: `cargo nextest run --workspace --profile data --run-ignored only`.
+# Only tests named data_* run; they download into $FA_DATA_DIR (default target/fa-data) and print
+# their provenance (URL, retrieval date, SHA-256), so show their output even when they pass.
+default-filter = "test(/^data_/)"
+fail-fast = false
+retries = 1
+success-output = "immediate"
+slow-timeout = { period = "120s", terminate-after = 5 }
+
+[profile.ci]
+fail-fast = false
+slow-timeout = { period = "60s", terminate-after = 10 }
+
+[profile.nightly]
+# Nightly long-run tier (testing.md): `cargo nextest run --workspace --cargo-profile release --profile nightly --run-ignored only`.
+# Only tests named nightly_* run (e.g. the NUM-023 Brouwer-law ensemble); their output is the evidence.
+default-filter = "test(/^nightly_/)"
+fail-fast = false
+success-output = "immediate"
+slow-timeout = { period = "300s", terminate-after = 6 }

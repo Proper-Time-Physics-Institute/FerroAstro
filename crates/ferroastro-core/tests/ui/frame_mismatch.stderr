@@ -1,0 +1,8 @@
+error[E0308]: mismatched types
+  --> tests/ui/frame_mismatch.rs:10:17
+   |
+10 |     let _ = a - b;
+   |                 ^ expected `Position<Icrf, Barycentric>`, found `Position<EclipticJ2000, Barycentric>`
+   |
+   = note: expected struct `Position<Icrf, Barycentric>`
+              found struct `Position<EclipticJ2000, Barycentric>`

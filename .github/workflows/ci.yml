@@ -1,0 +1,171 @@
+# SPDX-FileCopyrightText: 2026 Proper-Time Physics Institute
+# SPDX-License-Identifier: Apache-2.0
+#
+# PR gates: the AGENTS.md command list, verbatim, plus MSRV (STD-005) and DCO (ORG-008).
+# Real-data tier: the `data` job runs the #[ignore]d network tests on a schedule / by hand only,
+# so PR CI never depends on JPL availability. The `long` job runs the #[ignore]d nightly_* tier
+# (testing.md) on the same schedule.
+#
+# Security (STD-012, red-team §2): read-only token, no pull_request_target, every action pinned to a
+# commit SHA (checked by tools/lint_workflows.py), checkout without persisted credentials.
+name: ci
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  schedule:
+    # Weekly real-data run, Mondays 06:17 UTC.
+    - cron: "17 6 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}-${{ github.event_name }}
+  cancel-in-progress: true
+
+env:
+  CARGO_TERM_COLOR: always
+  RUST_BACKTRACE: 1
+
+jobs:
+  rust:
+    name: rust (fmt, clippy, nextest, doctest, deny, doc)
+    if: github.event_name != 'schedule'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Install pinned toolchain (rust-toolchain.toml)
+        run: rustup show active-toolchain || rustup toolchain install
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+      - uses: taiki-e/install-action@1168f6810a3cb30a3514bf5756a3b7f0422c6df8 # v2.87.28
+        with:
+          tool: cargo-nextest@0.9.148,cargo-deny@0.19.8
+      - name: cargo fmt --all --check
+        run: cargo fmt --all --check
+      - name: cargo clippy
+        run: cargo clippy --workspace --all-targets --all-features -- -D warnings
+      - name: cargo nextest + doctests
+        run: cargo nextest run --workspace && cargo test --doc --workspace
+      - name: cargo deny check
+        run: cargo deny check
+      - name: cargo doc
+        run: cargo doc --no-deps --workspace
+        env:
+          RUSTDOCFLAGS: "-D warnings"
+
+  msrv:
+    name: msrv (rust-version 1.85)
+    if: github.event_name != 'schedule'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Install MSRV toolchain
+        run: rustup toolchain install 1.85.0 --profile minimal
+      - uses: taiki-e/install-action@1168f6810a3cb30a3514bf5756a3b7f0422c6df8 # v2.87.28
+        with:
+          tool: cargo-nextest@0.9.148
+      # The trybuild compile-fail snapshots are specific to the pinned toolchain, so they are
+      # excluded here; they run in the `rust` job.
+      - name: Build and test on MSRV
+        run: cargo +1.85.0 nextest run --workspace -E 'not binary(compile_fail)'
+
+  python:
+    name: python (ruff, mypy, pytest, trace)
+    if: github.event_name != 'schedule'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@1c37ad07a6a961277cf70c0d37d6f313000f5884 # v10.3.0
+      - name: uv sync --locked
+        run: cd tools && uv sync --locked
+      - name: ruff + mypy (AGENTS.md)
+        run: (cd tools && uv run ruff check && uv run ruff format --check && uv run mypy .)
+      - name: pytest (STD-009)
+        run: (cd tools && uv run pytest)
+      - name: trace.py --check (AGENTS.md)
+        run: (cd tools && uv run python trace.py --check)
+
+  reuse:
+    name: reuse lint
+    if: github.event_name != 'schedule'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@1c37ad07a6a961277cf70c0d37d6f313000f5884 # v10.3.0
+      - name: reuse lint
+        run: uv tool install reuse==6.2.0 && reuse lint
+
+  dco:
+    name: dco (Signed-off-by on every commit)
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - name: Check sign-off trailers
+        env:
+          BASE: ${{ github.event.pull_request.base.sha }}
+          HEAD: ${{ github.event.pull_request.head.sha }}
+        run: |
+          missing=0
+          for c in $(git rev-list --no-merges "$BASE..$HEAD"); do
+            if ! git log -1 --format='%(trailers:key=Signed-off-by,valueonly)' "$c" | grep -q '[^[:space:]]'; then
+              echo "::error::commit $c has no Signed-off-by trailer (DCO, ORG-008)"
+              missing=1
+            fi
+          done
+          exit "$missing"
+
+  data:
+    name: data (real JPL products, network)
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    env:
+      FA_DATA_DIR: ${{ github.workspace }}/target/fa-data
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Install pinned toolchain (rust-toolchain.toml)
+        run: rustup show active-toolchain || rustup toolchain install
+      - uses: taiki-e/install-action@1168f6810a3cb30a3514bf5756a3b7f0422c6df8 # v2.87.28
+        with:
+          tool: cargo-nextest@0.9.148
+      - name: Run data_* tests (prints URL, retrieval date, SHA-256 per product)
+        run: cargo nextest run --workspace --profile data --run-ignored only
+
+  long:
+    name: long runs (nightly_* tier, release build)
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Install pinned toolchain (rust-toolchain.toml)
+        run: rustup show active-toolchain || rustup toolchain install
+      - uses: taiki-e/install-action@1168f6810a3cb30a3514bf5756a3b7f0422c6df8 # v2.87.28
+        with:
+          tool: cargo-nextest@0.9.148
+      - name: Run nightly_* tests (NUM-023 Brouwer ensemble, reversibility)
+        run: cargo nextest run --workspace --cargo-profile release --profile nightly --run-ignored only

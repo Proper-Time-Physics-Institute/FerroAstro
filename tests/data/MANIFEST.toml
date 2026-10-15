@@ -1,0 +1,16 @@
+# SPDX-FileCopyrightText: 2026 Proper-Time Physics Institute
+# SPDX-License-Identifier: Apache-2.0
+# External data products used by `data` integration tests (REF-002). The files themselves are NEVER committed:
+# JPL redistribution terms are an open item (ROADMAP "Legal" track). ferroastro-testdata downloads them into
+# $FA_DATA_DIR (default <target>/fa-data), verifies the pinned SHA-256 and writes a provenance sidecar.
+schema_version = 1
+
+[[product]]
+name = "de440-header"
+url = "https://ssd.jpl.nasa.gov/ftp/eph/planets/ascii/de440/header.440"
+file = "header.440"
+# Pinned on first retrieval 2026-10-14 (22802 bytes; server Last-Modified: Tue, 22 Dec 2020 00:51:11 GMT).
+sha256 = "0f4636b663e6f00af9efa2b605ef23635489f56b23dd1a5e3821d3acc6ac3359"
+first_retrieved = "2026-10-14"
+publisher = "NASA/JPL Solar System Dynamics, planetary ephemeris DE440 (Park et al. 2021, AJ 161, 105)"
+terms = "Redistribution terms not yet confirmed; download-only, not committed"

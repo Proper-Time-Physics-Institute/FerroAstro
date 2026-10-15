@@ -1,0 +1,211 @@
+# SPDX-FileCopyrightText: 2026 Proper-Time Physics Institute
+# SPDX-License-Identifier: Apache-2.0
+# GENERATED FILE: do not edit by hand (REF-002). Regenerate with
+#   cargo run -p ferroastro-constants --example gen_de440_table
+# Each `token` is copied verbatim from JPL DE440 header.440 GROUP 1041 by the generator.
+# Units are not stated in the header: `unit_basis` says why each unit is right, and an
+# `open_item` marks entries that must not be used as oracles (AGENTS.md rule 8).
+schema_version = 1
+table_version = 1
+ephemeris = "DE440"
+
+[source]
+product = "de440-header"
+url = "https://ssd.jpl.nasa.gov/ftp/eph/planets/ascii/de440/header.440"
+sha256 = "0f4636b663e6f00af9efa2b605ef23635489f56b23dd1a5e3821d3acc6ac3359"
+bytes = 22802
+retrieved = "2026-10-15"
+last_modified = "Tue, 22 Dec 2020 00:51:11 GMT"
+title = "JPL Planetary Ephemeris DE440/LE440"
+constant_count = 645
+ma_count = 409
+
+[citations]
+DE440hdr = "JPL Solar System Dynamics, DE440 ASCII header header.440, GROUP 1040/1041, https://ssd.jpl.nasa.gov/ftp/eph/planets/ascii/de440/header.440 (sha256 0f4636b663e6f00af9efa2b605ef23635489f56b23dd1a5e3821d3acc6ac3359)"
+Park21 = "Park, R. S., Folkner, W. M., Williams, J. G. & Boggs, D. H. 2021, The JPL Planetary and Lunar Ephemerides DE440 and DE441, AJ 161, 105, doi:10.3847/1538-3881/abd414"
+
+[[constant]]
+name = "DENUM"
+token = "0.440000000000000000D+03"
+unit = "1"
+quantity = "development ephemeris number"
+citation = ["DE440hdr"]
+unit_basis = "identifier"
+
+[[constant]]
+name = "JDEPOC"
+token = "0.244040050000000000D+07"
+unit = "d"
+quantity = "epoch of the initial conditions, Julian date"
+citation = ["DE440hdr"]
+unit_basis = "Julian date (REF-002 acceptance); the DE ephemeris argument is TDB"
+
+[[constant]]
+name = "CENTER"
+token = "0.000000000000000000D+00"
+unit = "1"
+quantity = "centre of the initial-condition states (flag)"
+citation = ["DE440hdr"]
+unit_basis = "flag; whether 0 means the solar-system barycentre in ICRF is an open item"
+open_item = "OI-23"
+
+[[constant]]
+name = "CLIGHT"
+token = "0.299792457999999984D+06"
+unit = "km/s"
+quantity = "speed of light c"
+citation = ["DE440hdr"]
+unit_basis = "equals the SI defining constant 299792.458 km/s (vector CONST-CLIGHT-SI)"
+
+[[constant]]
+name = "BETA"
+token = "0.100000000000000000D+01"
+unit = "1"
+quantity = "PPN parameter beta"
+citation = ["DE440hdr"]
+unit_basis = "dimensionless"
+
+[[constant]]
+name = "GAMMA"
+token = "0.100000000000000000D+01"
+unit = "1"
+quantity = "PPN parameter gamma"
+citation = ["DE440hdr"]
+unit_basis = "dimensionless"
+
+[[constant]]
+name = "AU"
+token = "0.149597870699999988D+09"
+unit = "km"
+quantity = "astronomical unit"
+citation = ["DE440hdr"]
+unit_basis = "equals the IAU 2012 B2 au 149597870.700 km (vector CONST-AU-IAU2012)"
+
+[[constant]]
+name = "EMRAT"
+token = "0.813005682214972154D+02"
+unit = "1"
+quantity = "Earth/Moon mass ratio"
+citation = ["DE440hdr", "Park21"]
+unit_basis = "dimensionless; agrees with GMEarth/GMMoon of Park21 Table 2 to the 1e-10 relative precision of the printed GMs"
+
+[[constant]]
+name = "GM1"
+token = "0.491250019488931818D-10"
+unit = "au^3/d^2"
+quantity = "GM of Mercury"
+citation = ["DE440hdr", "Park21"]
+unit_basis = "GM in au^3/d^2: converting with AU (km) and 86400 s/d reproduces the km^3 s^-2 values of Park21 Table 2 (checked by the PHY-002 tests)"
+
+[[constant]]
+name = "GM2"
+token = "0.724345233264411869D-09"
+unit = "au^3/d^2"
+quantity = "GM of Venus"
+citation = ["DE440hdr", "Park21"]
+unit_basis = "GM in au^3/d^2: converting with AU (km) and 86400 s/d reproduces the km^3 s^-2 values of Park21 Table 2 (checked by the PHY-002 tests)"
+
+[[constant]]
+name = "GMB"
+token = "0.899701139294734660D-09"
+unit = "au^3/d^2"
+quantity = "GM of the Earth-Moon system"
+citation = ["DE440hdr", "Park21"]
+unit_basis = "GM in au^3/d^2: converting with AU (km) and 86400 s/d reproduces the km^3 s^-2 values of Park21 Table 2 (checked by the PHY-002 tests)"
+
+[[constant]]
+name = "GM4"
+token = "0.954954882972581189D-10"
+unit = "au^3/d^2"
+quantity = "GM of the Mars system"
+citation = ["DE440hdr", "Park21"]
+unit_basis = "GM in au^3/d^2: converting with AU (km) and 86400 s/d reproduces the km^3 s^-2 values of Park21 Table 2 (checked by the PHY-002 tests)"
+
+[[constant]]
+name = "GM5"
+token = "0.282534582522579175D-06"
+unit = "au^3/d^2"
+quantity = "GM of the Jupiter system"
+citation = ["DE440hdr", "Park21"]
+unit_basis = "GM in au^3/d^2: converting with AU (km) and 86400 s/d reproduces the km^3 s^-2 values of Park21 Table 2 (checked by the PHY-002 tests)"
+
+[[constant]]
+name = "GM6"
+token = "0.845970599337629027D-07"
+unit = "au^3/d^2"
+quantity = "GM of the Saturn system"
+citation = ["DE440hdr", "Park21"]
+unit_basis = "GM in au^3/d^2: converting with AU (km) and 86400 s/d reproduces the km^3 s^-2 values of Park21 Table 2 (checked by the PHY-002 tests)"
+
+[[constant]]
+name = "GM7"
+token = "0.129202656496823994D-07"
+unit = "au^3/d^2"
+quantity = "GM of the Uranus system"
+citation = ["DE440hdr", "Park21"]
+unit_basis = "GM in au^3/d^2: converting with AU (km) and 86400 s/d reproduces the km^3 s^-2 values of Park21 Table 2 (checked by the PHY-002 tests)"
+
+[[constant]]
+name = "GM8"
+token = "0.152435734788519386D-07"
+unit = "au^3/d^2"
+quantity = "GM of the Neptune system"
+citation = ["DE440hdr", "Park21"]
+unit_basis = "GM in au^3/d^2: converting with AU (km) and 86400 s/d reproduces the km^3 s^-2 values of Park21 Table 2 (checked by the PHY-002 tests)"
+
+[[constant]]
+name = "GM9"
+token = "0.217509646489335811D-11"
+unit = "au^3/d^2"
+quantity = "GM of the Pluto system"
+citation = ["DE440hdr", "Park21"]
+unit_basis = "GM in au^3/d^2: converting with AU (km) and 86400 s/d reproduces the km^3 s^-2 values of Park21 Table 2 (checked by the PHY-002 tests)"
+
+[[constant]]
+name = "GMS"
+token = "0.295912208284119561D-03"
+unit = "au^3/d^2"
+quantity = "GM of the Sun"
+citation = ["DE440hdr", "Park21"]
+unit_basis = "GM in au^3/d^2: converting with AU (km) and 86400 s/d reproduces the km^3 s^-2 values of Park21 Table 2 (checked by the PHY-002 tests)"
+
+[[constant]]
+name = "GMSDOT"
+token = "-0.899999999999999952D-13"
+unit = "unverified"
+quantity = "rate of change of GM of the Sun"
+citation = ["DE440hdr"]
+unit_basis = "not stated in the header or in the parts of Park21 read so far; presumably au^3/d^2 per year"
+open_item = "OI-04"
+
+[[constant]]
+name = "ASUN"
+token = "0.696000000000000000D+06"
+unit = "km"
+quantity = "equatorial radius of the Sun (J2 reference radius)"
+citation = ["DE440hdr", "Park21"]
+unit_basis = "Park21 Sec. 3.4 (LT acceleration, after Eq. 39): the Sun's equatorial radius (696,000 km)"
+
+[[constant]]
+name = "J2SUN"
+token = "0.219613915165298248D-06"
+unit = "1"
+quantity = "dynamical form factor J2 of the Sun"
+citation = ["DE440hdr"]
+unit_basis = "dimensionless zonal harmonic referred to ASUN"
+
+[[constant]]
+name = "MOISUN"
+token = "0.688399999999999984D-01"
+unit = "1"
+quantity = "polar moment of inertia of the Sun, C/(M R^2)"
+citation = ["DE440hdr", "Park21"]
+unit_basis = "Park21 Sec. 3.4 (after Eq. 39): C/(M R^2) = 0.06884"
+
+[[constant]]
+name = "OMGSUN"
+token = "0.247564432906997117D+00"
+unit = "rad/d"
+quantity = "rotation rate of the Sun"
+citation = ["DE440hdr", "Park21"]
+unit_basis = "Park21 Sec. 3.4 (after Eq. 39) quotes 14.1844 deg/day, which the header value in rad/d reproduces to the printed digits (checked by the PHY-002 tests)"
