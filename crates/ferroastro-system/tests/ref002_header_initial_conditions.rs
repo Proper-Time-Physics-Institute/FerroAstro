@@ -387,6 +387,9 @@ fn geocentric_moon_round_trips_through_the_split() {
 /// smaller in magnitude than U/(2c²) for every planet (U = Σⱼ μⱼ/rᵢⱼ, computed here
 /// independently). A sign error in the potential term gives (v² + U)/(2c²) > U/(2c²).
 ///
+/// The value itself is also pinned to (vᵢ² − Uᵢ)/(2c²) recomputed from the raw states for every
+/// body, so a missing correction or a 1/c² factor fails (the bound alone does not catch them).
+///
 /// Verifies: NUM-018
 #[test]
 fn relativistic_mass_correction_is_bounded_by_the_virial_cancellation() {
@@ -407,11 +410,7 @@ fn relativistic_mass_correction_is_bounded_by_the_virial_cancellation() {
         .map(|&id| raw(&s.state(id).unwrap()))
         .collect();
     for (i, &id) in s.ids().iter().enumerate() {
-        if id == NaifId::SUN || id == NaifId::MOON || id == NaifId::EARTH {
-            // The Sun is not on a heliocentric Kepler orbit; Earth and Moon are a close pair.
-            continue;
-        }
-        let (ri, _) = raws[i];
+        let (ri, vi) = raws[i];
         let u: f64 = raws
             .iter()
             .zip(&w_n)
@@ -424,10 +423,26 @@ fn relativistic_mass_correction_is_bounded_by_the_virial_cancellation() {
             .sum();
         let corr = w_r[i] / w_n[i] - 1.0;
         let bound = u / (2.0 * c * c);
+        // Magnitude pin (review of WP11): the library value must equal (v^2 - U)/(2c^2) recomputed
+        // here from the raw states. Without it a relativistic model that silently returned the
+        // Newtonian weights, or used 1/c^2, passed this test. The budget is the round-off of
+        // w_r/w_n - 1 (a few ulp of 1).
+        let v2 = vi[0].mul_add(vi[0], vi[1].mul_add(vi[1], vi[2] * vi[2]));
+        let expected = (v2 - u) / (2.0 * c * c);
         println!(
-            "NAIF {:>3}: mu*/mu - 1 = {corr:+.6e}, U/(2c^2) = {bound:.6e}",
+            "NAIF {:>3}: mu*/mu - 1 = {corr:+.6e}, (v^2-U)/(2c^2) = {expected:+.6e}, U/(2c^2) = {bound:.6e}",
             id.0
         );
+        assert!(
+            (corr - expected).abs() <= 8.0 * f64::EPSILON, // lint: allow-literal(round-off budget of a ratio minus one)
+            "NAIF {}: mu*/mu - 1 = {corr} but (v^2 - U)/(2c^2) = {expected}",
+            id.0
+        );
+        assert!(expected != 0.0, "NAIF {}: no relativistic correction", id.0);
+        if id == NaifId::SUN || id == NaifId::MOON || id == NaifId::EARTH {
+            // The Sun is not on a heliocentric Kepler orbit; Earth and Moon are a close pair.
+            continue;
+        }
         assert!(corr.abs() < bound, "NAIF {}: |{corr}| >= {bound}", id.0);
     }
 }
