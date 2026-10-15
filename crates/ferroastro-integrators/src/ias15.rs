@@ -52,6 +52,7 @@ pub trait SecondOrderSystem<R: Real = f64> {
 
 /// IAS15 settings. The defaults are those of Rein & Spiegel 2015.
 #[derive(Debug, Clone, Copy, PartialEq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Ias15Config {
     /// Step-control precision parameter ε (dimensionless). Default `1e-9`.
     pub epsilon: f64,
@@ -117,6 +118,7 @@ impl Ias15Config {
 
 /// Counters accumulated over a run.
 #[derive(Debug, Clone, Copy, Default, PartialEq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Ias15Stats {
     /// Accepted steps.
     pub steps: u64,
@@ -837,5 +839,201 @@ impl<R: Real> Ias15<R> {
                 return Ok(());
             }
         }
+    }
+}
+
+/// A binary64 pair `(hi, lo)` whose exact sum is one backend value (`lo = 0` for f64).
+pub type Parts = [f64; 2];
+
+/// Everything an [`Ias15`] carries from one accepted step to the next, as `(hi, lo)` binary64
+/// pairs (CI-010 checkpoint/resume). Restoring it with [`Ias15::restore`] and stepping on gives
+/// bit-for-bit the steps the original integrator would have taken.
+///
+/// Carried state: the time and its Kahan compensation, positions and velocities and their
+/// compensations, the trial step, the eight predictor coefficient vectors `B₁…B₇`
+/// (`b[m-1][i]`; IAS15's "predictor history": the next step starts from their extrapolation),
+/// and the run counters. Not carried, because every step recomputes it before use: the Newton
+/// coefficients `g` (rebuilt from `B`), the start-of-step acceleration, the node scratch
+/// vectors, and the dense-output polynomial of the last step (so [`Ias15::dense_state`] needs one
+/// new step after a restore).
+#[derive(Debug, Clone, PartialEq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+pub struct Ias15Snapshot {
+    /// [`Real::NAME`] of the backend that took the snapshot.
+    pub backend: String,
+    /// Settings.
+    pub config: Ias15Config,
+    /// Number of coordinates.
+    pub dimension: u64,
+    /// Time.
+    pub t: Parts,
+    /// Kahan compensation of the time.
+    pub t_comp: Parts,
+    /// Positions.
+    pub x: Vec<Parts>,
+    /// Velocities.
+    pub v: Vec<Parts>,
+    /// Compensations of the positions.
+    pub x_comp: Vec<Parts>,
+    /// Compensations of the velocities.
+    pub v_comp: Vec<Parts>,
+    /// The step the next call to [`Ias15::step`] will try.
+    pub dt_trial: Parts,
+    /// Predictor coefficients `B₁…B₇`, each of length `dimension`.
+    pub b: Vec<Vec<Parts>>,
+    /// Run counters.
+    pub stats: Ias15Stats,
+}
+
+fn checkpoint_err(what: &'static str, problem: impl Into<String>) -> IntegratorError {
+    IntegratorError::Checkpoint {
+        what,
+        problem: problem.into(),
+    }
+}
+
+/// Split a value into parts, refusing a backend whose parts do not reconstruct it exactly.
+fn to_parts_exact<R: Real>(what: &'static str, z: R) -> Result<Parts, IntegratorError> {
+    let (hi, lo) = z.to_parts();
+    let back = R::from_parts(hi, lo);
+    if back.to_parts() == (hi, lo) && (back == z || (z.is_nan() && back.is_nan())) {
+        Ok([hi, lo])
+    } else {
+        Err(checkpoint_err(
+            what,
+            format!(
+                "the {} backend does not split {:e} into an exact (hi, lo) pair",
+                R::NAME,
+                z.to_f64()
+            ),
+        ))
+    }
+}
+
+fn parts_vec<R: Real>(what: &'static str, zs: &[R]) -> Result<Vec<Parts>, IntegratorError> {
+    zs.iter().map(|&z| to_parts_exact(what, z)).collect()
+}
+
+/// Rebuild backend values from parts, checking the length and finiteness.
+fn from_parts_vec<R: Real>(
+    what: &'static str,
+    parts: &[Parts],
+    n: usize,
+) -> Result<Vec<R>, IntegratorError> {
+    if parts.len() != n {
+        return Err(checkpoint_err(
+            what,
+            format!("has {} values, expected {n}", parts.len()),
+        ));
+    }
+    parts.iter().map(|&p| from_parts_one(what, p)).collect()
+}
+
+fn from_parts_one<R: Real>(what: &'static str, [hi, lo]: Parts) -> Result<R, IntegratorError> {
+    let z = R::from_parts(hi, lo);
+    if !z.is_finite() {
+        return Err(checkpoint_err(
+            what,
+            format!("non-finite value ({hi:e}, {lo:e})"),
+        ));
+    }
+    if z.to_parts() != (hi, lo) {
+        return Err(checkpoint_err(
+            what,
+            format!(
+                "({hi:e}, {lo:e}) is not a normalised {} value (was the file edited?)",
+                R::NAME
+            ),
+        ));
+    }
+    Ok(z)
+}
+
+impl<R: Real> Ias15<R> {
+    /// The state carried between steps, for a checkpoint (CI-010). Take it between steps (for
+    /// example in the observer of [`Ias15::integrate_to`] or after [`Ias15::step`]).
+    ///
+    /// # Errors
+    /// `FA-E0405` if the backend cannot represent a value as an exact `(hi, lo)` pair.
+    pub fn snapshot(&self) -> Result<Ias15Snapshot, IntegratorError> {
+        Ok(Ias15Snapshot {
+            backend: R::NAME.to_owned(),
+            config: self.cfg,
+            dimension: u64::try_from(self.n)
+                .map_err(|_| checkpoint_err("dimension", "does not fit in 64 bits"))?,
+            t: to_parts_exact("time", self.t)?,
+            t_comp: to_parts_exact("time compensation", self.t_comp)?,
+            x: parts_vec("positions", &self.x)?,
+            v: parts_vec("velocities", &self.v)?,
+            x_comp: parts_vec("position compensations", &self.x_comp)?,
+            v_comp: parts_vec("velocity compensations", &self.v_comp)?,
+            dt_trial: to_parts_exact("trial step", self.dt_trial)?,
+            b: self
+                .b
+                .iter()
+                .map(|bm| parts_vec("predictor coefficients", bm))
+                .collect::<Result<_, _>>()?,
+            stats: self.stats,
+        })
+    }
+
+    /// An integrator that continues exactly where the one that took `snap` stopped.
+    ///
+    /// # Errors
+    /// `FA-E0405` for another backend, inconsistent lengths, or non-finite or non-normalised
+    /// values; `FA-E0402` for invalid settings.
+    pub fn restore(snap: &Ias15Snapshot) -> Result<Self, IntegratorError> {
+        if snap.backend != R::NAME {
+            return Err(checkpoint_err(
+                "backend",
+                format!(
+                    "snapshot taken with {:?}, restoring into {:?}",
+                    snap.backend,
+                    R::NAME
+                ),
+            ));
+        }
+        snap.config.validate()?;
+        let n = usize::try_from(snap.dimension)
+            .map_err(|_| checkpoint_err("dimension", "does not fit this platform"))?;
+        if snap.b.len() != TERMS {
+            return Err(checkpoint_err(
+                "predictor coefficients",
+                format!("{} vectors, expected {TERMS}", snap.b.len()),
+            ));
+        }
+        let b_vecs = snap
+            .b
+            .iter()
+            .map(|bm| from_parts_vec::<R>("predictor coefficients", bm, n))
+            .collect::<Result<Vec<_>, _>>()?;
+        let mut b_iter = b_vecs.into_iter();
+        let b: [Vec<R>; TERMS] = std::array::from_fn(|_| b_iter.next().unwrap_or_default());
+        let dt_trial: R = from_parts_one("trial step", snap.dt_trial)?;
+        if dt_trial == R::ZERO {
+            return Err(checkpoint_err("trial step", "is zero"));
+        }
+        let zeros = || vec![R::ZERO; n];
+        Ok(Self {
+            cfg: snap.config,
+            rc: Radau::new(),
+            n,
+            t: from_parts_one("time", snap.t)?,
+            t_comp: from_parts_one("time compensation", snap.t_comp)?,
+            x: from_parts_vec("positions", &snap.x, n)?,
+            v: from_parts_vec("velocities", &snap.v, n)?,
+            x_comp: from_parts_vec("position compensations", &snap.x_comp, n)?,
+            v_comp: from_parts_vec("velocity compensations", &snap.v_comp, n)?,
+            dt_trial,
+            b,
+            g: std::array::from_fn(|_| zeros()),
+            a0: zeros(),
+            an: zeros(),
+            xs: zeros(),
+            vs: zeros(),
+            b7_prev: zeros(),
+            stats: snap.stats,
+            last: None,
+        })
     }
 }

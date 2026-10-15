@@ -42,4 +42,6 @@ mod ias15;
 mod radau;
 
 pub use error::IntegratorError;
-pub use ias15::{Ias15, Ias15Config, Ias15Stats, SecondOrderSystem, StepReport};
+pub use ias15::{
+    Ias15, Ias15Config, Ias15Snapshot, Ias15Stats, Parts, SecondOrderSystem, StepReport,
+};

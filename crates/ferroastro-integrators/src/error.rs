@@ -62,6 +62,17 @@ pub enum IntegratorError {
         /// What is wrong.
         message: String,
     },
+    /// A checkpoint snapshot cannot be taken or restored.
+    #[error(
+        "FA-E0405: integrator checkpoint {what}: {problem}; fix: restore a snapshot with the \
+         backend and dimension it was taken with, from an unmodified checkpoint file"
+    )]
+    Checkpoint {
+        /// What was checked.
+        what: &'static str,
+        /// What is wrong.
+        problem: String,
+    },
     /// The dynamics (force model) reported an error with its own stable code.
     #[error("{code}: force model error: {message}")]
     Dynamics {
@@ -82,6 +93,7 @@ impl IntegratorError {
             IntegratorError::Config { .. } => ErrorCode::IntegratorConfig,
             IntegratorError::Dimension { .. } => ErrorCode::IntegratorDimension,
             IntegratorError::Fit { .. } => ErrorCode::DiagnosticFitDegenerate,
+            IntegratorError::Checkpoint { .. } => ErrorCode::IntegratorCheckpoint,
             IntegratorError::Dynamics { code, .. } => *code,
         }
     }

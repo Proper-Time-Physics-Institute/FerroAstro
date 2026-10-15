@@ -18,6 +18,8 @@
 //! | `FA-E0900`–`FA-E0999` | reference-frame rotations (`ferroastro-frames`) |
 //! | `FA-E1000`–`FA-E1099` | DAF/SPK ephemeris files and `testpo` points (`ferroastro-ephem`) |
 //! | `FA-E1100`–`FA-E1199` | body catalogues, system states and initial conditions (`ferroastro-system`) |
+//! | `FA-E1200`–`FA-E1299` | scenario files, force switches and initial-condition hashes (`ferroastro-scenario`) |
+//! | `FA-E1300`–`FA-E1399` | run driver, outputs, checkpoints and batches (`ferroastro-propagate`) |
 
 use std::fmt;
 
@@ -70,6 +72,9 @@ pub enum ErrorCode {
     /// `FA-E0404`: an integrator round-off diagnostic fit (`integrators::diagnostics`) is
     /// ill-posed. Distinct from `FA-E0601`, the precession-estimator fit.
     DiagnosticFitDegenerate,
+    /// `FA-E0405`: an integrator checkpoint (snapshot) cannot be taken or restored (wrong
+    /// backend or dimension, non-finite or non-representable values).
+    IntegratorCheckpoint,
     /// `FA-E0500`: a force model was built with invalid parameters.
     ForceModelInvalid,
     /// `FA-E0501`: a force model met a singular configuration (e.g. two coincident bodies).
@@ -129,11 +134,29 @@ pub enum ErrorCode {
     SystemInitialConditions,
     /// `FA-E1102`: barycentring is ill-posed (no mass, coincident bodies, or no Sun to solve for).
     SystemBarycentre,
+    /// `FA-E1200`: a scenario file is not valid TOML or violates the scenario schema.
+    ScenarioMalformed,
+    /// `FA-E1201`: a scenario requests a force switch, mode or option that this runner does not
+    /// implement (the message names it; REF-011: never silently omitted).
+    ScenarioUnsupported,
+    /// `FA-E1202`: a scenario names a force switch that CI-002 does not define.
+    ScenarioUnknownSwitch,
+    /// `FA-E1203`: a scenario value is out of range or inconsistent with another value.
+    ScenarioValue,
+    /// `FA-E1300`: a run cannot be set up from a scenario (missing data source, body or
+    /// initial condition).
+    PropagateSetup,
+    /// `FA-E1301`: a run failed while integrating (wraps the integrator or force-model error).
+    PropagateRun,
+    /// `FA-E1302`: a checkpoint is malformed or belongs to another scenario or precision.
+    PropagateCheckpoint,
+    /// `FA-E1303`: a run output or batch could not be encoded, decoded or scheduled.
+    PropagateOutput,
 }
 
 impl ErrorCode {
     /// Every code, in numeric order (used to prove codes are unique).
-    pub const ALL: [ErrorCode; 49] = [
+    pub const ALL: [ErrorCode; 58] = [
         ErrorCode::NonFinite,
         ErrorCode::OutOfRange,
         ErrorCode::VectorIo,
@@ -156,6 +179,7 @@ impl ErrorCode {
         ErrorCode::IntegratorConfig,
         ErrorCode::IntegratorDimension,
         ErrorCode::DiagnosticFitDegenerate,
+        ErrorCode::IntegratorCheckpoint,
         ErrorCode::ForceModelInvalid,
         ErrorCode::ForceModelSingular,
         ErrorCode::OrbitDomain,
@@ -183,6 +207,14 @@ impl ErrorCode {
         ErrorCode::SystemBody,
         ErrorCode::SystemInitialConditions,
         ErrorCode::SystemBarycentre,
+        ErrorCode::ScenarioMalformed,
+        ErrorCode::ScenarioUnsupported,
+        ErrorCode::ScenarioUnknownSwitch,
+        ErrorCode::ScenarioValue,
+        ErrorCode::PropagateSetup,
+        ErrorCode::PropagateRun,
+        ErrorCode::PropagateCheckpoint,
+        ErrorCode::PropagateOutput,
     ];
 
     /// The stable textual code, e.g. `"FA-E0001"`.
@@ -211,6 +243,7 @@ impl ErrorCode {
             ErrorCode::IntegratorConfig => "FA-E0402",
             ErrorCode::IntegratorDimension => "FA-E0403",
             ErrorCode::DiagnosticFitDegenerate => "FA-E0404",
+            ErrorCode::IntegratorCheckpoint => "FA-E0405",
             ErrorCode::ForceModelInvalid => "FA-E0500",
             ErrorCode::ForceModelSingular => "FA-E0501",
             ErrorCode::OrbitDomain => "FA-E0600",
@@ -238,6 +271,14 @@ impl ErrorCode {
             ErrorCode::SystemBody => "FA-E1100",
             ErrorCode::SystemInitialConditions => "FA-E1101",
             ErrorCode::SystemBarycentre => "FA-E1102",
+            ErrorCode::ScenarioMalformed => "FA-E1200",
+            ErrorCode::ScenarioUnsupported => "FA-E1201",
+            ErrorCode::ScenarioUnknownSwitch => "FA-E1202",
+            ErrorCode::ScenarioValue => "FA-E1203",
+            ErrorCode::PropagateSetup => "FA-E1300",
+            ErrorCode::PropagateRun => "FA-E1301",
+            ErrorCode::PropagateCheckpoint => "FA-E1302",
+            ErrorCode::PropagateOutput => "FA-E1303",
         }
     }
 }

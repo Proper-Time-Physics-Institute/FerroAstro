@@ -328,6 +328,7 @@ dependencies = [
  "ferroastro-core",
  "ferroastro-real",
  "ferroastro-vectors",
+ "serde",
  "thiserror",
 ]
 
