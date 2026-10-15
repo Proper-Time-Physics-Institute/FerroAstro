@@ -156,3 +156,109 @@ fn non_rotations_and_degenerate_poles_are_rejected_with_codes() {
     let along_z = Pole::<f64>::from_degrees(0.0, 90.0, "z").unwrap(); // lint: allow-literal(celestial pole)
     assert!(icrf_to_solar_equator(&along_z).is_err());
 }
+
+fn cross3(a: [f64; 3], b: [f64; 3]) -> [f64; 3] {
+    [
+        a[1] * b[2] - a[2] * b[1],
+        a[2] * b[0] - a[0] * b[2],
+        a[0] * b[1] - a[1] * b[0],
+    ]
+}
+
+/// Componentwise agreement to a few ulp (structural: the expected components below are closed
+/// forms of each frame's definition, evaluated independently of `ferroastro-frames`).
+fn assert_components(what: &str, got: [f64; 3], want: [f64; 3]) {
+    for k in 0..3 {
+        assert!(
+            (got[k] - want[k]).abs() <= 8.0 * f64::EPSILON,
+            "{what}[{k}]: got {got:?}, the definition gives {want:?}"
+        );
+    }
+}
+
+/// Unit pole vector from (α, δ) in degrees, written out here (not `Pole::unit_vector`).
+fn pole_from_degrees(ra_deg: f64, dec_deg: f64) -> [f64; 3] {
+    let (sa, ca) = ra_deg.to_radians().sin_cos();
+    let (sd, cd) = dec_deg.to_radians().sin_cos();
+    [cd * ca, cd * sa, sd]
+}
+
+/// F1 of the progress review after WP10: the sign of every axis of the pole-defined frames is
+/// pinned by its definition, so a 180° turn about the pole (e.g. y = X̂ × z instead of z × X̂)
+/// fails the PR tier.
+///
+/// * Park et al. 2017 §4 mean-orbit frame: z = pole p, y = (p × X̂_ICRF)/|·|, x = y × z. With
+///   p = (cos δ cos α, cos δ sin α, sin δ), p × X̂ = (0, sin δ, −cos δ sin α), so
+///   y = (0, sin δ, −cos δ sin α)/√(sin²δ + cos²δ sin²α); y·(z × X̂) > 0 and x = y × z.
+/// * Solar equator (any pole): x = (Ẑ_ICRF × p)/|·| = (−sin α, cos α, 0), the ascending node of
+///   the equator on the ICRF equator; y = z × x; z = p.
+///
+/// The pole angles are the cited vectors (`PARK17-MEANORBIT-POLE-*`, `SUN-POLE-IAU-*`).
+///
+/// Verifies: NUM-014, PHY-010
+#[test]
+fn every_axis_sign_of_the_pole_frames_follows_its_definition() {
+    let v = vectors();
+    let val = |id: &str| v.get(id).unwrap().value().unwrap();
+    let x_icrf = [1.0, 0.0, 0.0];
+    let z_icrf = [0.0, 0.0, 1.0];
+
+    // Park17 mean orbit.
+    let (ra, dec) = (
+        val("PARK17-MEANORBIT-POLE-RA"),
+        val("PARK17-MEANORBIT-POLE-DEC"),
+    );
+    let p = pole_from_degrees(ra, dec);
+    let (sa, _) = ra.to_radians().sin_cos();
+    let (sd, cd) = dec.to_radians().sin_cos();
+    let n = sd.hypot(cd * sa);
+    let y_def = [0.0, sd / n, -cd * sa / n];
+    let x_def = cross3(y_def, p);
+    let r = icrf_to_mean_orbit(&Pole::<f64>::from_degrees(ra, dec, "vector").unwrap()).unwrap();
+    let [x, y, z] = [0, 1, 2].map(|k| r.axis(k).unwrap());
+    assert_components("mean-orbit z", z, p);
+    assert_components("mean-orbit y", y, y_def);
+    assert_components("mean-orbit x", x, x_def);
+    let y_dot = dot(y, cross3(z, x_icrf));
+    assert!(y_dot > 0.0, "y . (z x X_ICRF) = {y_dot} must be > 0");
+    assert_components("mean-orbit x = y x z", x, cross3(y, z));
+    // Signs implied by the definition at this pole (α ≈ 281°, δ ≈ 61°): y has no X̂ component,
+    // a positive Ŷ component (sin δ > 0) and a positive Ẑ component (−cos δ sin α > 0).
+    assert!(
+        y[0].abs() <= 8.0 * f64::EPSILON && y[1] > 0.0 && y[2] > 0.0,
+        "{y:?}"
+    );
+
+    // Solar equator, configurable pole and IAU pole.
+    for (what, ra, dec) in [
+        (
+            "solar equator (IAU pole)",
+            val("SUN-POLE-IAU-RA"),
+            val("SUN-POLE-IAU-DEC"),
+        ),
+        ("solar equator (Park17 pole as a test pole)", ra, dec),
+    ] {
+        let p = pole_from_degrees(ra, dec);
+        let (sa, ca) = ra.to_radians().sin_cos();
+        let x_def = [-sa, ca, 0.0];
+        let r =
+            icrf_to_solar_equator(&Pole::<f64>::from_degrees(ra, dec, "vector").unwrap()).unwrap();
+        let [x, y, z] = [0, 1, 2].map(|k| r.axis(k).unwrap());
+        assert_components(what, z, p);
+        assert_components(what, x, x_def);
+        assert_components(what, x, {
+            let c = cross3(z_icrf, p);
+            let m = c[0].hypot(c[1]);
+            [c[0] / m, c[1] / m, c[2] / m]
+        });
+        assert_components(what, y, cross3(z, x));
+    }
+    let r = icrf_to_sun_equator_iau::<f64>().unwrap();
+    let (sa, ca) = val("SUN-POLE-IAU-RA").to_radians().sin_cos();
+    assert_components("IAU_SUN x", r.axis(0).unwrap(), [-sa, ca, 0.0]);
+    assert_components(
+        "IAU_SUN z",
+        r.axis(2).unwrap(),
+        pole_from_degrees(val("SUN-POLE-IAU-RA"), val("SUN-POLE-IAU-DEC")),
+    );
+}
