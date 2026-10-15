@@ -12,7 +12,10 @@ The crate ferroastro-erfa contains routines ported from ERFA 2.0.1
 (https://github.com/liberfa/erfa, tag v2.0.1), licensed under the
 BSD-3-Clause licence (LICENSES/BSD-3-Clause.txt). Ported routines: eraCal2jd,
 eraJd2cal, eraTaitt, eraTttai, eraDtdb, eraTttdb, eraTdbtt, eraTdbtcb,
-eraTcbtdb, eraTttcg, eraTcgtt, and constants of erfam.h. That crate is
+eraTcbtdb, eraTttcg, eraTcgtt, eraObl06, eraP06e, eraPfw06, eraFw2m,
+eraPmat06, eraEcm06, eraEqec06, eraEceq06, eraIr, eraRx, eraRz, eraRxr,
+eraTr, eraRxp, eraTrxp, eraS2c, eraC2s, eraAnp, eraAnpm, and constants of
+erfam.h. That crate is
 derived from ERFA, which is derived, with permission, from the IAU SOFA
 library; it is not SOFA, and no SOFA file was used. The ERFA notice,
 conditions and disclaimer follow, as required for redistribution:

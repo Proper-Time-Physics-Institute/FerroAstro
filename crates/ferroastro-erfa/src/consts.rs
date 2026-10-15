@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2013-2023 NumFOCUS Foundation
 // SPDX-FileCopyrightText: 2026 Proper-Time Physics Institute
 // SPDX-License-Identifier: Apache-2.0 AND BSD-3-Clause
-//! Constants of ERFA 2.0.1 `src/erfam.h` used by the time-scale routines.
+//! Constants of ERFA 2.0.1 `src/erfam.h` used by the time-scale and precession routines.
 //!
 //! The binary64 values are ERFA's. The `ttmtai_seconds`, `elb`, `elg` and `tdb0_seconds`
 //! functions return the defined decimal values exact to 106 bits in a double-double backend
@@ -14,6 +14,8 @@ use ferroastro_real::Real;
 pub const DAYSEC: f64 = 86_400.0;
 /// Reference epoch J2000.0 as a Julian date (`ERFA_DJ00`).
 pub const DJ00: f64 = 2_451_545.0;
+/// Days per Julian century (`ERFA_DJC`).
+pub const DJC: f64 = 36_525.0;
 /// Days per Julian millennium (`ERFA_DJM`).
 pub const DJM: f64 = 365_250.0;
 /// Julian date of Modified Julian Date zero (`ERFA_DJM0`).

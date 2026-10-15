@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: Apache-2.0
 [package]
 name = "ferroastro-erfa"
-description = "FerroAstro port of the ERFA (BSD-3-Clause) calendar and time-scale routines, generic over Real"
+description = "FerroAstro port of the ERFA (BSD-3-Clause) calendar, time-scale and IAU 2006 precession routines, generic over Real"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true

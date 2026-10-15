@@ -1,6 +1,7 @@
 // SPDX-FileCopyrightText: 2026 Proper-Time Physics Institute
 // SPDX-License-Identifier: Apache-2.0
-//! Port of the ERFA calendar and time-scale routines, generic over [`Real`] (DEP-009, LIC-004).
+//! Port of the ERFA calendar, time-scale and IAU 2006 precession/ecliptic routines, generic over
+//! [`Real`] (DEP-009, LIC-004).
 //!
 //! # Provenance and licence
 //! The routines are ported from **ERFA 2.0.1** (Essential Routines for Fundamental Astronomy,
@@ -51,20 +52,25 @@ mod cal;
 mod consts;
 mod dtdb;
 mod dtdb_table;
+mod precession;
 mod tai_tt;
 mod tcb_tdb;
 mod tcg_tt;
 mod tdb_tt;
+mod vecmat;
 
 pub use cal::{Calendar, cal2jd, jd2cal};
 pub use consts::{
-    DAYSEC, DJ00, DJM, DJM0, DJM77, ELB, ELG, TDB0, TTMTAI, elb, elg, tdb0_seconds, ttmtai_seconds,
+    DAYSEC, DJ00, DJC, DJM, DJM0, DJM77, ELB, ELG, TDB0, TTMTAI, elb, elg, tdb0_seconds,
+    ttmtai_seconds,
 };
 pub use dtdb::dtdb;
+pub use precession::{P06e, Pfw06, das2r, eceq06, ecm06, eqec06, fw2m, obl06, p06e, pfw06, pmat06};
 pub use tai_tt::{taitt, tttai};
 pub use tcb_tdb::{tcbtdb, tdbtcb};
 pub use tcg_tt::{tcgtt, tttcg};
 pub use tdb_tt::{tdbtt, tttdb};
+pub use vecmat::{Matrix3, anp, anpm, c2s, ir, rx, rxp, rxr, rz, s2c, tr, trxp};
 
 use core::fmt;
 
