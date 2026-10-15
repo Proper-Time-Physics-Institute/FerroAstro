@@ -80,6 +80,25 @@ jobs:
       - name: Build and test on MSRV
         run: cargo +1.85.0 nextest run --workspace -E 'not binary(compile_fail)'
 
+  wasm32:
+    name: wasm32 (real, core, integrators, forces, analytic)
+    if: github.event_name != 'schedule'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Install pinned toolchain (rust-toolchain.toml) and the wasm32 target
+        run: (rustup show active-toolchain || rustup toolchain install) && rustup target add wasm32-unknown-unknown
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+      # CRATE-PLAN: the foundation and dynamics crates build for wasm32-unknown-unknown (DEP-006);
+      # ferroastro-real also as no_std with the pure-Rust libm (no default features).
+      - name: Build for wasm32-unknown-unknown
+        run: cargo build -p ferroastro-real -p ferroastro-core -p ferroastro-integrators -p ferroastro-forces -p ferroastro-analytic --target wasm32-unknown-unknown
+      - name: Build ferroastro-real no_std (libm) for wasm32-unknown-unknown
+        run: cargo build -p ferroastro-real --no-default-features --features libm --target wasm32-unknown-unknown
+
   python:
     name: python (ruff, mypy, pytest, trace)
     if: github.event_name != 'schedule'
