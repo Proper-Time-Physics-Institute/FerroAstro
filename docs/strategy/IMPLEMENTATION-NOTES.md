@@ -1460,3 +1460,33 @@ Extras:
   - NUM-013(a) and the NUM-012 spread.
   - Horizons provenance on every answer: `signature.version` 1.2, ephemeris DE441.
 - **New output line:** the Horizons GR-rate test now prints the μ convention: GM☉ in both places gives 42.980665, a shift of −3.57e-6 ″/cy.
+
+## WP8 — [M1 debt] `ferroastro-erfa` + `ferroastro-time`: ERFA port and time scales
+
+Builder agent, 2026-10-15. Branch `m3-newtonian-nbody`, stacked on `m0-foundation`, draft PR #13.
+
+### Plan and pre-registered checks (written 2026-10-15, before any golden, round-trip or hifitime run)
+The t_erfa_c check (1) was run once while this section was being written; every other number
+below was fixed before its first run.
+
+**Sources.**
+- ERFA 2.0.1 release tarball `erfa-2.0.1.tar.xz`, SHA-256 `45111f0a…8c20e4`, tag `v2.0.1`, commit `9915ba38…8dee3`.
+  It is the version that pyerfa 2.0.1.5 bundles (`erfa.version.erfa_version` = 2.0.1, SOFA 20231011).
+- Only ERFA files were opened: the 11 routines, `erfam.h`, `t_erfa_c.c` and `LICENSE`. No SOFA file was opened or downloaded (LIC-004).
+- The 787 × 3 Fairhead & Bretagnon table is copied mechanically by `tools/erfa_dtdb_table.py`, keeping the literal text. The input `dtdb.c` has SHA-256 `228bd7c7…442105`.
+
+**Oracles and tolerances.**
+| # | check | oracle | tolerance (pre-registered) | reason |
+|---|---|---|---|---|
+| 1 | each ported routine, f64 and DD (DEP-009) | ERFA `t_erfa_c.c` values, 23 vectors `ERFA-T-*` | ERFA's own `dval`, verbatim | DEP-009: "reproducing ERFA's reference values" |
+| 2a | TT→TAI, TT→TDB, TDB→TCB, TT→TCG and the inverses, ≥ 200 epochs 1550–2650, f64 and DD (REF-009, DEP-010) | pyerfa 2.0.1.5 goldens (`tools/goldens/erfa_time.py`) | 1 ns per date, **PROVISIONAL** | Same algorithm. The residual is two-part-JD round-off, about 1e-11 s per operation. The TDB→TT inverse is iterated to a fixed point (below), whereas pyerfa evaluates `dtdb` once at the TDB date; the two differ by \|d(dtdb)/dt\|·\|dtdb\| ≈ 3.3e-10 × 1.7e-3 s ≈ 6e-13 s. |
+| 2b | `dtdb` geocentric and topocentric at the golden epochs | pyerfa `dtdb` | 1e-14 s | Same 787-term sum in the same order. Argument rounding is ulp(4e3 rad) × 1.7e-3 s ≈ 8e-16 s, and platform `sin` differences are below that. |
+| 2c | `jd2cal` / `cal2jd` at the golden epochs | pyerfa | y/m/d exact; fraction 1e-15 d | Same operations in binary64. |
+| 3 | round trip A→B→A for all 10 pairs of {TAI, TT, TDB, TCB, TCG} (DEP-010) | identity | f64: 2e-10 s; DD: 1e-20 s | f64: at most about 16 roundings of a day-scale fraction, each ½ ulp(1 d) = 9.6e-12 s. DD: day-fraction ulp is about 1e-27 s. The TDB→TT fixed point after 3 iterations is (3.3e-10)³ × 1.7e-3 s ≈ 6e-32 s. |
+| 4a | TAI−UTC from hifitime at each Jan 1 and Jul 1, 1972–2026, and 1 s before each leap | pyerfa `dat` goldens; data tier: IERS `Leap_Second.dat` and IANA `leap-seconds.list` | exact (0 s) | Leap seconds are integers. |
+| 4b | hifitime TDB − ERFA TDB over the golden TT epochs 1550–2650 | ERFA port (`dtdb`, u = v = 0) | 4.0e-4 s, a bound, with the measured value recorded | hifitime uses the one-term model 1.658 ms·sin(g + 0.0167 sin g) with g′ = 1.990910018065731e-7 rad/s (6282.834 rad/millennium; ERFA's main term uses 6283.076). Analytic bound written before running hifitime: the sum of \|amplitude\|·\|T\|ⁿ of all non-main Fairhead terms at \|T\| = 0.65 millennium is 134.1 µs. The main-term frequency and phase mismatch over ±0.65 millennium is 262.2 µs. The JPL-mass terms are 0.02 µs. Total 396 µs, rounded up to 400 µs. |
+
+**Design decisions.**
+- **TDB→TT** is the exact inverse of ERFA's TT→TDB map `tdb = tt + dtdb(tt)`. It is solved by 3 fixed-point iterations `tt ← tdb − dtdb(tt)`, so round trips close to the backend's precision. ERFA's own `tdbtt` takes a caller-supplied `dtr`. The 6e-13 s difference from pyerfa's one-shot use is inside tolerance 2a.
+- **`dtdb` is geocentric in `ferroastro-time`** (u = v = 0): the TDB of an ephemeris. The ERFA port keeps the topocentric arguments.
+- **UTC exists only through the optional `hifitime` feature** (MPL-2.0, deny.toml exception, unmodified, no_std build). It is never a `TimeScale` marker: `Epoch<Tai>` is the uniform anchor.

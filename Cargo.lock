@@ -264,6 +264,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "ferroastro-erfa"
+version = "0.0.0"
+dependencies = [
+ "ferroastro-real",
+ "ferroastro-vectors",
+]
+
+[[package]]
 name = "ferroastro-forces"
 version = "0.0.0"
 dependencies = [
