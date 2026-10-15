@@ -11,6 +11,32 @@ use ferroastro_core::frames::Frame;
 use ferroastro_core::units::{GravParam, Length};
 use ferroastro_real::Real;
 
+/// The J2 acceleration (km/s²) at `r` (km) relative to a body of parameter `mu` with pole `k_hat`:
+/// `−(3μJ₂R²)/(2r⁵) [(1 − 5z²/r²) r + 2z k̂]`, `z = r·k̂`.
+pub(crate) fn j2_field<R: Real>(mu: R, j2: R, radius: R, k_hat: [R; 3], r: [R; 3]) -> [R; 3] {
+    let r2 = dot(r, r);
+    let z = dot(r, k_hat);
+    let r5 = r2 * r2 * r2.sqrt();
+    let k = R::from_f64(-1.5) * mu * j2 * radius * radius / r5;
+    let radial = R::ONE - R::from_f64(5.0) * z * z / r2;
+    let [r0, r1, r2c] = r;
+    let [k0, k1, k2] = k_hat;
+    [
+        k * radial.mul_add(r0, R::TWO * z * k0),
+        k * radial.mul_add(r1, R::TWO * z * k1),
+        k * radial.mul_add(r2c, R::TWO * z * k2),
+    ]
+}
+
+/// The J2 potential per unit mass of the attracted body (km²/s²) at `r`:
+/// `V = μJ₂R² (3z²/r² − 1) / (2r³)`, so that `a = −∇V` is [`j2_field`].
+pub(crate) fn j2_potential<R: Real>(mu: R, j2: R, radius: R, k_hat: [R; 3], r: [R; 3]) -> R {
+    let r2 = dot(r, r);
+    let z = dot(r, k_hat);
+    let r3 = r2 * r2.sqrt();
+    mu * j2 * radius * radius * (R::from_f64(3.0) * z * z / r2 - R::ONE) / (R::TWO * r3)
+}
+
 /// Solar (central-body) J2 with a configurable pole, in backend `R` (default `f64`).
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct SolarJ2<F: Frame, R: Real = f64> {
@@ -57,18 +83,19 @@ impl<F: Frame, R: Real> SolarJ2<F, R> {
     pub const fn pole(&self) -> Pole<F, R> {
         self.pole
     }
+
+    /// `(μ, J₂, R)` in km³/s², 1 and km.
+    #[must_use]
+    pub const fn parameters(&self) -> (R, R, R) {
+        (self.mu, self.j2, self.radius)
+    }
 }
 
 impl<F: Frame, R: Real> CentralTerm<F, R> for SolarJ2<F, R> {
     fn add_acceleration(&self, r: [R; 3], _v: [R; 3], a: &mut [R; 3]) {
-        let k_hat = self.pole.unit();
-        let r2 = dot(r, r);
-        let z = dot(r, k_hat);
-        let r5 = r2 * r2 * r2.sqrt();
-        let k = R::from_f64(-1.5) * self.mu * self.j2 * self.radius * self.radius / r5;
-        let radial = R::ONE - R::from_f64(5.0) * z * z / r2;
-        for ((ai, ri), ki) in a.iter_mut().zip(r).zip(k_hat) {
-            *ai += k * radial.mul_add(ri, R::TWO * z * ki);
+        let f = j2_field(self.mu, self.j2, self.radius, self.pole.unit(), r);
+        for (ai, fi) in a.iter_mut().zip(f) {
+            *ai += fi;
         }
     }
     fn gauge(&self) -> Gauge {

@@ -15,6 +15,12 @@
 //! * [`SolarJ2`] (R1): the central body's quadrupole with a configurable pole;
 //! * [`LenseThirring`] (R3b): the gravitomagnetic field of the central body's spin.
 //!
+//! M3 (WP12) adds tiered N-body models: an [`NBodyModel`] is a body [`Layout`] (NAIF ids, GMs,
+//! [`ferroastro_system::Tier`]s, optionally the geocentric Earth–Moon pair of NUM-008) and an
+//! ordered list of [`ForceTerm`]s — [`NewtonianMutual`], [`MinorFromMajors`], [`RingMasses`],
+//! [`GeocentricMoon`] and [`SolarJ2WithReaction`] — each declaring its gauge, parameters and
+//! tiers. [`NBodyPropagator`] advances a model with IAS15 from a TDB epoch.
+//!
 //! Internal units: positions in km, velocities in km/s, time in TDB seconds, GM in km³/s². The
 //! typed constructors and [`NewtonianPointMasses::pack`] / [`NewtonianPointMasses::unpack`]
 //! convert from and to the [`ferroastro_core`] newtypes, so raw scalars only appear inside the
@@ -24,6 +30,7 @@
 
 mod central;
 mod error;
+mod nbody;
 mod newtonian;
 mod oblateness;
 mod relativity;
@@ -31,6 +38,12 @@ mod relativity;
 pub use central::{CentralTerm, Pole, TestParticle};
 pub use error::ForceError;
 pub use ferroastro_integrators::SecondOrderSystem;
+pub use nbody::{
+    Accelerations, ForceTerm, GeocentricMoon, Layout, MOON_TAYLOR_Q_MAX, MOON_TAYLOR_TERMS_DEFAULT,
+    MOON_TAYLOR_TERMS_MIN, MinorFromMajors, MinorReaction, MoonPair, MoonVariables, NBody,
+    NBodyModel, NBodyPropagator, NewtonianMutual, RingMasses, SolarJ2WithReaction, TermParameter,
+    View,
+};
 pub use newtonian::NewtonianPointMasses;
 pub use oblateness::SolarJ2;
 pub use relativity::{LenseThirring, PnCoefficients, PnLagrangian, SchwarzschildPpn, SrKepler};

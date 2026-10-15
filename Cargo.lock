@@ -295,9 +295,15 @@ dependencies = [
 name = "ferroastro-forces"
 version = "0.0.0"
 dependencies = [
+ "ferroastro-constants",
  "ferroastro-core",
+ "ferroastro-ephem",
+ "ferroastro-frames",
  "ferroastro-integrators",
  "ferroastro-real",
+ "ferroastro-system",
+ "ferroastro-testdata",
+ "ferroastro-vectors",
  "thiserror",
 ]
 

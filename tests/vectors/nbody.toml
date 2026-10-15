@@ -1,0 +1,132 @@
+# SPDX-FileCopyrightText: 2026 Proper-Time Physics Institute
+# SPDX-License-Identifier: Apache-2.0
+# ferroastro-forces N-body checks (WP12: NUM-019, NUM-008, NUM-023, TST-005, NUM-009). Checked by
+# crates/ferroastro-forces/tests/*.rs. Every tolerance below was fixed in IMPLEMENTATION-NOTES WP12
+# ("Plan and pre-registered checks") before the first WP12 run. Schema: ADR-0004.
+schema_version = 1
+
+[[vector]]
+id = "NBODY-NEWTON-VS-M0-KERNEL-DIFF"
+requirement = ["NUM-009"]
+quantity = "largest |a(NBodyModel: NewtonianMutual, barycentric Moon) - a(NewtonianPointMasses, M0 kernel)| over all components, 11 header.440 bodies at JDEPOC"
+value = 0.0
+unit = "km/s^2"
+kind = "defined"
+source = "Both kernels visit the pairs (i < j) in storage order with the same arithmetic ((GM_j d_k) / (r^2 sqrt(r^2)) accumulated in order); only the memory layout differs."
+citation = "FerroAstro crates/ferroastro-forces/src/newtonian.rs (M0, WP1) and src/nbody/terms.rs (WP12)"
+retrieved = "2026-10-15"
+tolerance = { abs = 0.0 }
+tolerance_rationale = "Bitwise identity by construction (WP12 plan U1); any difference means the reduction order changed."
+verified_by = "WP12 builder agent, 2026-10-15: fixed in the WP12 plan before the first run."
+
+[[vector]]
+id = "NBODY-J2-REACTION-MOMENTUM-ULPS"
+requirement = ["NUM-019"]
+quantity = "|sum_i GM_i a_i| / (eps * sum_i GM_i |a_i|) for the SolarJ2WithReaction term alone (synthetic 5-body configuration, J2 = 1e-3), f64"
+value = 0.0
+unit = "1"
+kind = "analytic"
+source = "The reaction a_Sun = -sum_i (GM_i/GM_Sun) a_i makes the GM-weighted sum vanish algebraically (DE440 Eq. 29 form, NUM-019)."
+citation = "Park et al. 2021, AJ 161, 105 (DE440), solar J2 with reaction as cited by FerroAstro NUM-019"
+retrieved = "2026-10-15"
+tolerance = { abs = 8.0 }
+tolerance_rationale = "Round-off only: each of the ~10 products and sums contributes <= 1/2 ulp of the running scale; 8 eps of the scale covers them (WP12 plan U2)."
+verified_by = "WP12 builder agent, 2026-10-15: fixed in the WP12 plan before the first run."
+
+[[vector]]
+id = "NBODY-MOON-TAYLOR-VS-DD-ULPS"
+requirement = ["NUM-008"]
+quantity = "max |differential(d, rho) by the 12-term expansion in f64 - direct difference (d-rho)/|d-rho|^3 - d/d^3 in double-double| / (eps * |direct DD difference|), Sun, Venus-at-closest and Jupiter geometries"
+value = 0.0
+unit = "1"
+kind = "analytic"
+source = "(d-rho)/|d-rho|^3 - d/d^3 = [d F(q) - rho (1 + F(q))]/d^3, F(q) = (1+q)^(-3/2) - 1, q = rho.(rho - 2d)/d^2 (binomial series, derived in IMPLEMENTATION-NOTES WP12); the 12-term truncation is < 1e-20 relative at |q| <= 0.02."
+citation = "Classical third-body expansion; NUM-008 (docs/strategy/journal/04-numerical-methods.md section 2 item 2)"
+retrieved = "2026-10-15"
+tolerance = { abs = 4.0 }
+tolerance_rationale = "f64 evaluation of the expansion: q, F and the final combination each carry a few ulp of the tidal term; 4 eps (WP12 plan U3)."
+verified_by = "WP12 builder agent, 2026-10-15: fixed in the WP12 plan before the first run."
+
+[[vector]]
+id = "NBODY-MOMENTUM-ROUNDOFF-ULPS"
+requirement = ["NUM-019"]
+quantity = "max over the run of |P(t) - P(0)| / (sum_i GM_i |v_i|) / (eps * sqrt(N_steps)), Sun + 8 planets + geocentric Moon, Newtonian + solar J2 with reaction, header.440 ICs, 100 yr, IAS15 f64"
+value = 0.0
+unit = "1"
+kind = "analytic"
+source = "Total linear momentum is an exact invariant of mutual Newtonian forces plus J2 with its reaction (NUM-019 acceptance); only round-off changes it, as a random walk over the steps."
+citation = "FerroAstro docs/requirements/NUM.md NUM-019; Brouwer 1937, AJ 46, 149 (random-walk growth of round-off)"
+retrieved = "2026-10-15"
+tolerance = { abs = 64.0 }
+tolerance_rationale = "PROVISIONAL (WP12 plan 1a): a random walk of <= 64 ulp of the momentum scale per step. A missing reaction would make the change systematic."
+verified_by = "WP12 builder agent, 2026-10-15: fixed in the WP12 plan before the first run."
+
+[[vector]]
+id = "NBODY-TST005-BITWISE-DIFF"
+requirement = ["TST-005"]
+quantity = "number of differing bits (as differing f64 words) between two identical N-body runs: final flat state and IAS15 step counts"
+value = 0.0
+unit = "words"
+kind = "defined"
+source = "TST-005: the same scenario run twice gives bitwise-identical output."
+citation = "FerroAstro docs/requirements/TST.md TST-005"
+retrieved = "2026-10-15"
+tolerance = { abs = 0.0 }
+tolerance_rationale = "Exact by requirement."
+verified_by = "WP12 builder agent, 2026-10-15: fixed in the WP12 plan before the first run."
+
+[[vector]]
+id = "NBODY-MOON-GEO-VS-BARY-DD-KM"
+requirement = ["NUM-008"]
+quantity = "max over 10 yr (every 10 d) of |rho_geocentric - rho_barycentric| (Moon - Earth), both formulations integrated in double-double with IAS15 epsilon = 1e-12 from header.440 ICs, Sun + 8 planets + Moon, Newtonian + J2"
+value = 0.0
+unit = "km"
+kind = "defined"
+source = "Both formulations integrate the same ODE; their double-double runs differ only by truncation at epsilon = 1e-12."
+citation = "FerroAstro WP12 plan check 3(a) (IMPLEMENTATION-NOTES WP12)"
+retrieved = "2026-10-15"
+tolerance = { abs = 1e-6 }
+tolerance_rationale = "PROVISIONAL (WP12 plan): 1 mm over 10 yr; IAS15 truncation at epsilon = 1e-12 is far below this."
+verified_by = "WP12 builder agent, 2026-10-15: fixed in the WP12 plan before the first run."
+
+[[vector]]
+id = "NBODY-MOON-ROUNDOFF-GAIN-MIN"
+requirement = ["NUM-008"]
+quantity = "lower bound on the round-off gain: max |rho_f64 - rho_DD| (barycentric formulation) / max |rho_f64 - rho_DD| (geocentric formulation) over 10 yr"
+value = 1.0
+unit = "1"
+kind = "defined"
+source = "NUM-008's rationale: |r_M - r_E| is ~400x smaller than barycentric vectors, so the geocentric variable keeps more significant bits; the gain is reported, and must at least exceed 1."
+citation = "FerroAstro docs/requirements/NUM.md NUM-008 notes; WP12 plan check 3(b)"
+retrieved = "2026-10-15"
+tolerance = { abs = 0.0 }
+tolerance_rationale = "One-sided threshold (measured factor must exceed the value); the tolerance field is unused."
+verified_by = "WP12 builder agent, 2026-10-15: fixed in the WP12 plan before the first run."
+
+[[vector]]
+id = "NBODY-MOON-F64-AGREEMENT-FACTOR"
+requirement = ["NUM-008"]
+quantity = "upper bound on max |rho_geo,f64 - rho_bary,f64| in units of the barycentric formulation's own round-off error max |rho_bary,f64 - rho_bary,DD|, 10 yr"
+value = 2.0
+unit = "1"
+kind = "defined"
+source = "The two f64 formulations should agree to within the larger (barycentric) round-off error: 'agree to within the expected round-off'."
+citation = "FerroAstro WP12 plan check 3(c)"
+retrieved = "2026-10-15"
+tolerance = { abs = 0.0 }
+tolerance_rationale = "One-sided threshold (measured ratio must not exceed the value); the tolerance field is unused."
+verified_by = "WP12 builder agent, 2026-10-15: fixed in the WP12 plan before the first run."
+
+[[vector]]
+id = "NBODY-DE440-OUTER-PLANETS-KM"
+requirement = ["NUM-019", "NUM-009"]
+quantity = "max over 1969-06-28 .. +10 yr (every 10 d) of the barycentric position residual |r_FerroAstro - r_de440.bsp| for the Jupiter, Saturn, Uranus and Neptune system barycentres; Newtonian + solar J2 (DE440 J2SUN, ASUN, IAU 2015 pole), Sun + 8 planets + geocentric Moon from header.440"
+value = 0.0
+unit = "km"
+kind = "measured"
+source = "de440.bsp evaluated by ferroastro-ephem (pinned product, tests/data/MANIFEST.toml); FerroAstro N-body run from header.440 GROUP 1041 ICs."
+citation = "JPL DE440 (Park et al. 2021, AJ 161, 105): header.440 sha256 0f4636b663e6f00af9efa2b605ef23635489f56b23dd1a5e3821d3acc6ac3359; de440.bsp sha256 a4ce9bf9b3282becc9f4b2ac3cebe03a2ae7599981aabd7265fd8482fff7c4b5"
+retrieved = "2026-10-15"
+tolerance = { abs = 100.0 }
+tolerance_rationale = "PROVISIONAL sanity bound (WP12 plan check 4): the model omits the 1PN terms (mean-motion change ~mu/(c^2 a), ~20 km for Jupiter over 10 yr), the 343 asteroids and the KBO masses. This is not a fidelity claim."
+verified_by = "WP12 builder agent, 2026-10-15: bound from the WP12 task text, fixed in the plan before the first run."
