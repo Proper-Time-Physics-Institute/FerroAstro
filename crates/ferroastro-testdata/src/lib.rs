@@ -222,8 +222,11 @@ pub fn fetch_url(url: &str, file: &str, pin: Option<&str>) -> Result<Fetched, Da
         }
     }
 
-    let tmp = dir.join(format!("{file}.part"));
-    let headers = dir.join(format!("{file}.headers"));
+    // Per-process temporary names: nextest runs tests in parallel processes that may download
+    // the same product at once; the final rename is atomic, so the last writer wins harmlessly.
+    let pid = std::process::id();
+    let tmp = dir.join(format!("{file}.{pid}.part"));
+    let headers = dir.join(format!("{file}.{pid}.headers"));
     let output = Command::new("curl")
         .args([
             "--fail",
@@ -277,8 +280,11 @@ pub fn fetch_url(url: &str, file: &str, pin: Option<&str>) -> Result<Fetched, Da
     if let Some(lm) = &last_modified {
         let _ = writeln!(side, "last_modified = {lm:?}");
     }
-    std::fs::write(&sidecar, side)
+    let side_tmp = dir.join(format!("{file}.{pid}.provenance.part"));
+    std::fs::write(&side_tmp, side)
+        .and_then(|()| std::fs::rename(&side_tmp, &sidecar))
         .map_err(|e| fetch_err(format!("write {}: {e}", sidecar.display())))?;
+    let _ = std::fs::remove_file(&headers);
     Ok(Fetched {
         path,
         url: url.to_owned(),
