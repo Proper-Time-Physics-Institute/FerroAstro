@@ -334,3 +334,90 @@ fn interrupted_leg_resumes_from_its_store_bitwise() {
     assert_eq!(e.code(), ErrorCode::DiffrunStore);
     std::fs::remove_dir_all(&dir).unwrap();
 }
+
+/// Progress review after WP15, F12: the fit window is honoured on both passage sources. One
+/// Sun + Mercury leg (header.440 ICs, 10 yr, 1-d samples); the window runs from midway between
+/// passages 5 and 6 to midway between passages 30 and 31 (dense-output passage times), so no
+/// passage sits at an edge. Windowed estimates fit exactly the passages inside it (count) and
+/// their span is the first and last of them; the unwindowed estimate fits more. Kills an
+/// estimator that ignores `window_jd` on the sampled-state path (PR tier; it had no windowed
+/// test).
+///
+/// Verifies: CI-009, NUM-011
+#[test]
+fn fit_window_selects_exactly_the_passages_inside_it() {
+    let (h, prov) = common::header();
+    let data = DataSources::none().with_header(&h, &prov);
+    let mut spec = template();
+    spec.span.years = LEG_YEARS;
+    spec.name = "wp16-window".into();
+    let est =
+        |source, window| common::park17_estimator(quadratic(), JACKKNIFE_BLOCKS, source, window);
+    let leg = run_leg(
+        &spec,
+        &data,
+        &est(PassageSource::DenseOutputEvents, None),
+        &RunOptions {
+            segment_years: LEG_YEARS,
+            ..RunOptions::default()
+        },
+        None,
+    )
+    .unwrap()
+    .unwrap();
+    let track = &leg.track;
+    let jd = |t: f64| track.epoch_jd_tdb + t / 86_400.0; // lint: allow-literal(s per day)
+    let pjd: Vec<f64> = track.passages.iter().map(|p| jd(p.t)).collect();
+    // lint: allow-literal(passage indices that place the window edges between passages)
+    let (k0, k1) = (5_usize, 30_usize);
+    assert!(pjd.len() > k1 + 1, "{} passages", pjd.len());
+    let window = (0.5 * (pjd[k0] + pjd[k0 + 1]), 0.5 * (pjd[k1] + pjd[k1 + 1]));
+    let inside: Vec<f64> = pjd
+        .iter()
+        .copied()
+        .filter(|t| (window.0..=window.1).contains(t))
+        .collect();
+    assert_eq!(inside.len(), k1 - k0);
+    // Span agreement: the estimators return passage times converted through J2000 seconds, so
+    // compare to well below one sample (1 d) and above the conversion round-off (~1e-9 d).
+    let tol_days = 1e-6; // lint: allow-literal(structural: passage-time agreement in days)
+    for source in [
+        PassageSource::DenseOutputEvents,
+        PassageSource::SampledStates,
+    ] {
+        let all = est(source, None).estimate(track, source).unwrap();
+        let win = est(source, Some(window)).estimate(track, source).unwrap();
+        println!(
+            "{source:?}: all {} passages over JD {:.6}..{:.6}; window JD {:.6}..{:.6}: {} \
+             passages over JD {:.6}..{:.6} (dense-output passages inside: {}, {:.6}..{:.6})",
+            all.passages,
+            all.span_jd.0,
+            all.span_jd.1,
+            window.0,
+            window.1,
+            win.passages,
+            win.span_jd.0,
+            win.span_jd.1,
+            inside.len(),
+            inside[0],
+            inside[inside.len() - 1]
+        );
+        assert!(
+            all.passages > win.passages,
+            "{source:?}: window not applied"
+        );
+        assert_eq!(win.passages, inside.len(), "{source:?}: passage count");
+        assert!(
+            window.0 <= win.span_jd.0 && win.span_jd.1 <= window.1,
+            "{source:?}: span"
+        );
+        assert!(
+            (win.span_jd.0 - inside[0]).abs() < tol_days,
+            "{source:?}: first passage"
+        );
+        assert!(
+            (win.span_jd.1 - inside[inside.len() - 1]).abs() < tol_days,
+            "{source:?}: last passage"
+        );
+    }
+}

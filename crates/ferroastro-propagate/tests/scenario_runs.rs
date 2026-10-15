@@ -601,3 +601,116 @@ fn small_bodies_carry_their_gm_and_conserve_total_momentum() {
         .check(ulps)
         .unwrap();
 }
+
+/// Progress review after WP15, F9/F10: every Minor and Ring GM in the propagator's model equals
+/// its header.440 `MAnnnn` value bitwise (converted with the header's AU and 86400 s/d, the unit
+/// change of `ferroastro-system`), under `asteroids = N` (a prefix and all of them), `kbos` and
+/// `kbo_ring`. The expected symbols are read here, independently of the catalogue code: the first
+/// N numbered `MAnnnn` (n < `MA_UNIDENTIFIED_FROM`) in header order, NAIF id `2 000 000 + n`
+/// (cross-checked against the symbol column of the REF-003 file); the identified KBOs from
+/// [`KBO_IDENTIFICATION`]; the ring points from [`KBO_RING`]. The GM records are those of the
+/// model (`initial_conditions` hashes the GM the propagator integrates with). Kills a consistent
+/// rescaling of the small-body GMs (invisible to the momentum test) and a KBO that takes another
+/// header KBO's mass.
+///
+/// Verifies: NUM-009, REF-003
+#[test]
+fn small_body_gms_equal_their_header_values_bitwise() {
+    use ferroastro_system::{
+        ASTEROID_NAIF_BASE, KBO_IDENTIFICATION, KBO_RING, MA_UNIDENTIFIED_FROM,
+    };
+    use std::collections::BTreeMap;
+    let (h, prov) = header();
+    let file = small_body_file();
+    let data = DataSources::none()
+        .with_header(&h, &prov)
+        .with_small_bodies(&file);
+    let au = h.value("AU").unwrap();
+    let to_km3s2 = |au3d2: f64| au3d2 * (au * au * au / (SECONDS_PER_DAY * SECONDS_PER_DAY));
+    // Symbol column of the committed REF-003 file (naif,symbol,...), for the cross-check.
+    let csv = std::fs::read_to_string(
+        PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("../../tests/goldens/sb441-n373s-jdepoc-states.csv"),
+    )
+    .unwrap();
+    let csv_symbol: BTreeMap<i32, String> = csv
+        .lines()
+        .filter(|l| !l.starts_with('#') && !l.starts_with("naif"))
+        .filter_map(|l| {
+            let mut f = l.split(',');
+            let naif = f.next()?.trim().parse().ok()?;
+            let sym = f.next()?.trim().to_owned();
+            (!sym.is_empty()).then_some((naif, sym))
+        })
+        .collect();
+    let numbered: Vec<(i32, String)> = h
+        .constants()
+        .iter()
+        .filter_map(|c| {
+            let n: i32 = c.name.strip_prefix("MA")?.parse().ok()?;
+            (n < MA_UNIDENTIFIED_FROM).then(|| (ASTEROID_NAIF_BASE + n, c.name.clone()))
+        })
+        .collect();
+    for (naif, sym) in &numbered {
+        assert_eq!(
+            csv_symbol.get(naif),
+            Some(sym),
+            "REF-003 symbol of NAIF {naif}"
+        );
+    }
+    let mut base = spec("phy012-newton-full-header440.toml");
+    base.output.cadence_days = None;
+    let majors = initial_conditions(&base, &data).unwrap().records.len();
+    // lint: allow-literal(switch values: a prefix of the 343 DE440 asteroids, and all of them)
+    for (asteroids, kbos, ring) in [
+        (16_u32, false, false),
+        (343, false, false),
+        (0, true, false),
+        (0, false, true),
+        (343, true, true),
+    ] {
+        let mut s = base.clone();
+        s.forces.asteroids = asteroids;
+        s.forces.kbos = kbos;
+        s.forces.kbo_ring = ring;
+        let mut expected: Vec<(i32, String)> =
+            numbered.iter().take(asteroids as usize).cloned().collect();
+        if kbos {
+            expected.extend(
+                KBO_IDENTIFICATION
+                    .iter()
+                    .map(|k| (k.id.0, k.symbol.to_owned())),
+            );
+        }
+        if ring {
+            expected.extend((0..KBO_RING.points).map(|k| {
+                let (sym, id) = KBO_RING.point(k);
+                (id.0, sym)
+            }));
+        }
+        let records = initial_conditions(&s, &data).unwrap().records;
+        let small: BTreeMap<i32, ferroastro_scenario::Parts> =
+            records[majors..].iter().map(|r| (r.naif, r.gm)).collect();
+        assert_eq!(
+            small.len(),
+            expected.len(),
+            "asteroids={asteroids} kbos={kbos} ring={ring}: small-body count"
+        );
+        for (naif, sym) in &expected {
+            let want = to_km3s2(h.value(sym).unwrap());
+            let got = small
+                .get(naif)
+                .unwrap_or_else(|| panic!("NAIF {naif} ({sym}) missing"));
+            assert_eq!(
+                (got[0].to_bits(), got[1].to_bits()),
+                (want.to_bits(), 0),
+                "NAIF {naif}: model GM {got:?} != header {sym} = {want:e} km^3/s^2"
+            );
+        }
+        println!(
+            "asteroids={asteroids} kbos={kbos} kbo_ring={ring}: {} small-body GMs equal header.440 \
+             bitwise",
+            expected.len()
+        );
+    }
+}

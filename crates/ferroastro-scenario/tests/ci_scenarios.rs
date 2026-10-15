@@ -213,3 +213,40 @@ fn ic_hash_identifies_the_initial_conditions() {
     }
     println!("IC hash {h}; variants {others:?}");
 }
+
+/// Progress review after WP15, F11: the hash covers every body's GM. A one-ulp change (up or
+/// down) of one body's GM, in the high part or the double-double low part, changes `ic_hash`,
+/// and the canonical text names the GM bits. Kills a hash that omits the GM.
+///
+/// Verifies: CI-002, NUM-013
+#[test]
+fn ic_hash_changes_with_a_one_ulp_gm_change() {
+    let epoch = [2_440_400.5, 0.0]; // lint: allow-literal(arbitrary JD for a structural hash test)
+    let bodies = [record(10, 1.0), record(1, 7.0), record(2, 3.0)];
+    let h = ic_hash("DE440 sha256 x", "n-body", epoch, &bodies);
+    for i in 0..bodies.len() {
+        let gm = bodies[i].gm[0];
+        for changed in [
+            [f64::from_bits(gm.to_bits() + 1), 0.0],
+            [f64::from_bits(gm.to_bits() - 1), 0.0],
+            [gm, gm * f64::EPSILON * f64::EPSILON],
+        ] {
+            let mut b = bodies;
+            b[i].gm = changed;
+            let other = ic_hash("DE440 sha256 x", "n-body", epoch, &b);
+            assert_ne!(other, h, "body {i}: GM {changed:?} vs {:?}", bodies[i].gm);
+        }
+    }
+    let text = ferroastro_scenario::canonical_ic_text("DE440 sha256 x", "n-body", epoch, &bodies);
+    for b in &bodies {
+        let gm_field = format!("gm {:016x} {:016x}", b.gm[0].to_bits(), b.gm[1].to_bits());
+        assert!(
+            text.contains(&gm_field),
+            "canonical text lacks `{gm_field}`:\n{text}"
+        );
+    }
+    println!(
+        "IC hash {h}: every one-ulp GM change of {} bodies changes it",
+        bodies.len()
+    );
+}
