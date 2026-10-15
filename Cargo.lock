@@ -295,7 +295,6 @@ dependencies = [
  "ferroastro-erfa",
  "ferroastro-real",
  "ferroastro-testdata",
- "ferroastro-time",
  "ferroastro-vectors",
  "sha2",
  "thiserror",

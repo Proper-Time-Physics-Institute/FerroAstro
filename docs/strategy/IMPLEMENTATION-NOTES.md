@@ -1847,3 +1847,25 @@ Extras:
 - wasm32 builds of frames and erfa (std and no_std/libm): pass.
 - Data tier: 18/18 pass after the serial re-run of the five 503 failures (above).
 - The nightly tier was not re-run: WP9 changes no integrator, force or rung code.
+
+### WP9 adversarial review (2026-10-15, reviewer agent, code tip `d3252a0`)
+
+- All AGENTS.md gates re-run at `d3252a0`: they pass (nextest 160 passed / 21 skipped, doctests,
+  deny, doc, ruff/mypy, reuse, trace, layers, literals, workflows, goldens pytest 29 passed).
+- Data tier re-run **serially** (`--test-threads 1`) from a new empty `FA_DATA_DIR`. Every product
+  was fetched fresh. **18/18 pass, with no HTTP 503.** The numbers match the builder's to every
+  printed digit: ECLIPJ2000 2.423e-16 / 3.281e-16, IAU_SUN 4.718e-16 / 4.060e-16, NUM-014 +4.431e-4
+  vs p_A and +8.424e-7 vs geometry, Park17 575.309163.
+- Mutations, each run in a scratch clone and then reverted:
+  - **p_A coefficient +1e-4 ″/cy:** caught by 4 tests (t_erfa_c, pyerfa f64 and DD, and the
+    offline NUM-014 check).
+  - **Flipped node sign of the solar equator:** passes the PR tier, and is caught only by the data
+    tier, at 2.0 relative.
+  - **Flipped y-axis of the Park17 mean-orbit frame** (a 180° turn about the pole): passes **every**
+    tier. Rates do not depend on it, but the claim "Park17 axes" is not pinned in sign.
+  - Follow-up (non-blocking): add offline assertions on the sign of each axis.
+- **Fix applied:** removed the unused `ferroastro-time` dependency of `ferroastro-frames`.
+- **Note:** NUM-014's difference λ_d − λ_i at each passage depends on the orbit only through the
+  passage epochs. The check therefore exercises the typed ecm06 rotation against the independent
+  p06e parameterisation, not the integrator. That is the requirement as written; it is recorded
+  here so that it is not read as a dynamics test.
