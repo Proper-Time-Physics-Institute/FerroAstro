@@ -330,3 +330,38 @@ fn mean_orbit_frame_matches_park17_definition() {
     assert!((ra_back - ra.value().unwrap()).abs() < 1e-12); // lint: allow-literal(round trip)
     assert!(plane.label().contains("280.9876") && plane.label().contains("61.4481"));
 }
+
+/// The jack-knife σ is calibrated: on a straight line plus independent, homoscedastic noise the
+/// delete-one-block jack-knife σ of the slope agrees with the formal least-squares σ to within the
+/// sampling scatter of a 20-block estimate (relative s.d. about 1/sqrt(2·19) ≈ 16 %). A wrong
+/// normalisation (e.g. 1/g instead of (g−1)/g, a factor sqrt(g−1) ≈ 4.4) falls far outside.
+/// Added by the WP5 reviewer after a mutation of the normalisation survived every other test.
+///
+/// Verifies: NUM-011
+#[test]
+fn jackknife_sigma_matches_formal_sigma_for_white_noise() {
+    // Deterministic uniform noise in [-0.5, 0.5) from a 64-bit LCG (Knuth MMIX constants).
+    let mut state: u64 = 0x2545_f491_4f6c_dd1d; // lint: allow-literal(arbitrary seed)
+    let mut noise = || {
+        state = state
+            .wrapping_mul(6_364_136_223_846_793_005) // lint: allow-literal(MMIX LCG multiplier)
+            .wrapping_add(1_442_695_040_888_963_407); // lint: allow-literal(MMIX LCG increment)
+        #[expect(clippy::cast_precision_loss, reason = "top 53 bits are exact in f64")]
+        let u = (state >> 11) as f64 / (1_u64 << 53) as f64;
+        u - 0.5
+    };
+    let n = 4000; // lint: allow-literal(sample count of the fixture)
+    let t: Vec<f64> = (0..n).map(|i| f64::from(i) * CENTURY_S / 100.0).collect(); // lint: allow-literal(fixture spacing)
+    let y: Vec<f64> = t
+        .iter()
+        .map(|ti| 1e-3 + 1e-6 * ti / CENTURY_S + 1e-5 * noise()) // lint: allow-literal(fixture line and noise level, rad)
+        .collect();
+    let model = FitModel {
+        quadratic: false,
+        frequencies: vec![],
+    };
+    let f = fit_longitudes(&t, &y, &model, 20).unwrap();
+    let ratio = f.jackknife_sigma_arcsec_per_century() / f.formal_sigma_arcsec_per_century();
+    println!("jack-knife / formal sigma = {ratio:.4}");
+    assert!((0.6..1.6).contains(&ratio), "jack-knife/formal = {ratio}"); // lint: allow-literal(about 3 s.d. of a 20-block estimate)
+}

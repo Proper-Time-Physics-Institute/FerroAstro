@@ -676,3 +676,20 @@ All eight AGENTS.md commands passed:
 Extras: `uv run pytest` (15 passed), MSRV 1.85.0 nextest (90 passed, trybuild excluded), and the whole-workspace
 `data` profile on an empty cache (12 passed: the 2 new WP5 tests and the 10 from WP1–WP4). The `nightly` profile was
 not re-run: WP5 does not touch the integrator.
+
+### WP5 adversarial review (2026-10-15, reviewer agent)
+
+- Re-ran every AGENTS.md command (all pass) and the data tier on an empty scratch `FA_DATA_DIR` with
+  fresh downloads: 12/12 pass. The builder's numbers reproduce to every printed digit: (b) 575.309163
+  ″/cy, formal σ 0.000832, jack-knife σ 0.001531, 8304 passages, Q −0.04476052; (a) 571.968047 ″/cy,
+  1038 passages. Horizons answered `signature.version` 1.2 with ephemeris source DE441 on every chunk.
+- Mutation checks (local only, reverted): flipping the projected-angle sign, the dog-leg `ω` sign or
+  the pole vector each fail an offline test. Flipping the y-axis convention is a 180° in-plane
+  rotation that only shifts B, so it correctly survives. **Changing the jack-knife normalisation
+  `(g−1)/g` to `1/g` survived every test (offline and data tier).** The reviewer added
+  `jackknife_sigma_matches_formal_sigma_for_white_noise`, which kills it (ratio 0.220 against an
+  accepted band of 0.6–1.6; unmutated 0.959).
+- Not covered offline: `fetch_vectors`' check that chunks agree at their shared epoch (disabling it
+  survives); it can only fire against real answers. Non-blocking.
+- The ±20 ″/cy SW92 band is weak by design (it tests frame and definition only). The −5.75 ″/cy gap
+  stays an open question, as the builder recorded.
