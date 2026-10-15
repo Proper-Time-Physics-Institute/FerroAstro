@@ -296,8 +296,13 @@ version = "0.0.0"
 dependencies = [
  "ferroastro-constants",
  "ferroastro-core",
+ "ferroastro-ephem",
  "ferroastro-ladder",
+ "ferroastro-propagate",
+ "ferroastro-scenario",
+ "ferroastro-testdata",
  "ferroastro-vectors",
+ "sha2",
 ]
 
 [[package]]

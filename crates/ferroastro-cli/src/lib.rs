@@ -11,6 +11,9 @@ use ferroastro_vectors::VectorSet;
 use std::fmt::Write as _;
 use std::io::Write;
 
+mod scenario_cmd;
+pub use scenario_cmd::{SCENARIO_USAGE, run_scenario_command};
+
 /// Usage text.
 pub const USAGE: &str =
     "usage: ferroastro ladder --rungs single-body [--orbits N] [--details] [--no-check]";

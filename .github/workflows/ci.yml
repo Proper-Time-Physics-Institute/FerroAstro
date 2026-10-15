@@ -116,11 +116,12 @@ jobs:
       - name: Install pinned toolchain (rust-toolchain.toml) and the wasm32 target
         run: (rustup show active-toolchain || rustup toolchain install) && rustup target add wasm32-unknown-unknown
       - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
-      # CRATE-PLAN: the foundation and dynamics crates (also ferroastro-system, WP11) build for
+      # CRATE-PLAN: the foundation and dynamics crates (also ferroastro-system, WP11; ferroastro-scenario and
+      # ferroastro-propagate without `parallel`, WP13) build for
       # wasm32-unknown-unknown (DEP-006);
       # ferroastro-real also as no_std with the pure-Rust libm (no default features).
       - name: Build for wasm32-unknown-unknown
-        run: cargo build -p ferroastro-real -p ferroastro-core -p ferroastro-erfa -p ferroastro-time -p ferroastro-integrators -p ferroastro-forces -p ferroastro-analytic -p ferroastro-frames -p ferroastro-ephem -p ferroastro-system --target wasm32-unknown-unknown
+        run: cargo build -p ferroastro-real -p ferroastro-core -p ferroastro-erfa -p ferroastro-time -p ferroastro-integrators -p ferroastro-forces -p ferroastro-analytic -p ferroastro-frames -p ferroastro-ephem -p ferroastro-system -p ferroastro-scenario -p ferroastro-propagate --target wasm32-unknown-unknown
       - name: Build ferroastro-real and ferroastro-erfa no_std (libm) for wasm32-unknown-unknown
         run: cargo build -p ferroastro-real -p ferroastro-erfa --no-default-features --features libm --target wasm32-unknown-unknown
       # DEP-010 / WP8: the optional hifitime (UTC) feature must build for wasm32 too.
