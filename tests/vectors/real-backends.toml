@@ -1,0 +1,356 @@
+# SPDX-FileCopyrightText: 2026 Proper-Time Physics Institute
+# SPDX-License-Identifier: Apache-2.0
+# Error bounds of the ferroastro-real backends (DEP-012, NUM-006), checked against astro-float by
+# crates/ferroastro-real/tests/dep012_ulp_bounds.rs. u = 2^-53. Pre-registered in WP7 before the
+# first property-test run. Schema: ADR-0004.
+schema_version = 1
+
+[[vector]]
+id = "REAL-DD-ADD-REL-ERR"
+requirement = ["DEP-012", "NUM-006"]
+quantity = "largest relative error of double-double add over the DEP-012 property-test inputs (normalised double-words, |exponent| <= 60 for add/sub/mul/scale/div, <= 200 for recip)"
+value = 0.0
+unit = "u^2 (2^-106) relative"
+kind = "analytic"
+source = "Proved bound of AccurateDWPlusDW (JMP 2017 Alg. 6), the algorithm ferroastro-real implements. Theorem 3.1: relative error <= 3u^2/(1-4u) < 3u^2 + 13u^3 for p >= 6."
+citation = "Joldes, M., Muller, J.-M. & Popescu, V. 2017, Tight and rigorous error bounds for basic building blocks of double-word arithmetic, ACM TOMS 44(2), 15res, doi:10.1145/3121432 (HAL hal-01351529v3, PDF sha256 2a820178d2ef079559de9940d7af38258fac24558d406be64779ea901486cbc0)"
+retrieved = "2026-10-15"
+tolerance = { abs = 3.0 }
+tolerance_rationale = "Proved bound, not a fit. The 13u^3 term is 1.4e-15 u^2, below the resolution of the f64 ratio that reports the error, so the band is 3 u^2."
+verified_by = "WP7 builder agent, 2026-10-15: bound copied from the cited theorem (or derived as stated) and written before the first property-test run; measured maxima are reported in IMPLEMENTATION-NOTES WP7."
+
+[[vector]]
+id = "REAL-DD-SUB-REL-ERR"
+requirement = ["DEP-012", "NUM-006"]
+quantity = "largest relative error of double-double sub over the DEP-012 property-test inputs (normalised double-words, |exponent| <= 60 for add/sub/mul/scale/div, <= 200 for recip)"
+value = 0.0
+unit = "u^2 (2^-106) relative"
+kind = "analytic"
+source = "Proved bound of AccurateDWPlusDW (JMP 2017 Alg. 6) applied to -y, the algorithm ferroastro-real implements. Theorem 3.1 (negation is exact)."
+citation = "Joldes, M., Muller, J.-M. & Popescu, V. 2017, Tight and rigorous error bounds for basic building blocks of double-word arithmetic, ACM TOMS 44(2), 15res, doi:10.1145/3121432 (HAL hal-01351529v3, PDF sha256 2a820178d2ef079559de9940d7af38258fac24558d406be64779ea901486cbc0)"
+retrieved = "2026-10-15"
+tolerance = { abs = 3.0 }
+tolerance_rationale = "Proved bound, not a fit. As DD-ADD: x - y = x + (-y) and negation of both words is exact."
+verified_by = "WP7 builder agent, 2026-10-15: bound copied from the cited theorem (or derived as stated) and written before the first property-test run; measured maxima are reported in IMPLEMENTATION-NOTES WP7."
+
+[[vector]]
+id = "REAL-DD-MUL-REL-ERR"
+requirement = ["DEP-012", "NUM-006"]
+quantity = "largest relative error of double-double mul over the DEP-012 property-test inputs (normalised double-words, |exponent| <= 60 for add/sub/mul/scale/div, <= 200 for recip)"
+value = 0.0
+unit = "u^2 (2^-106) relative"
+kind = "analytic"
+source = "Proved bound of DWTimesDW3 with FMA (JMP 2017 Alg. 12), the algorithm ferroastro-real implements. Theorem 5.4: relative error <= (5u^2 + 12u^3/(1+u)^2) < 5u^2 for p >= 4."
+citation = "Joldes, M., Muller, J.-M. & Popescu, V. 2017, Tight and rigorous error bounds for basic building blocks of double-word arithmetic, ACM TOMS 44(2), 15res, doi:10.1145/3121432 (HAL hal-01351529v3, PDF sha256 2a820178d2ef079559de9940d7af38258fac24558d406be64779ea901486cbc0)"
+retrieved = "2026-10-15"
+tolerance = { abs = 5.0 }
+tolerance_rationale = "Proved bound, not a fit. Bound proved by the authors; largest error they observed is 3.936 u^2."
+verified_by = "WP7 builder agent, 2026-10-15: bound copied from the cited theorem (or derived as stated) and written before the first property-test run; measured maxima are reported in IMPLEMENTATION-NOTES WP7."
+
+[[vector]]
+id = "REAL-DD-SCALE-REL-ERR"
+requirement = ["DEP-012", "NUM-006"]
+quantity = "largest relative error of double-double scale over the DEP-012 property-test inputs (normalised double-words, |exponent| <= 60 for add/sub/mul/scale/div, <= 200 for recip)"
+value = 0.0
+unit = "u^2 (2^-106) relative"
+kind = "analytic"
+source = "Proved bound of DWTimesFP3 with FMA (JMP 2017 Alg. 9), double-double times binary64, the algorithm ferroastro-real implements. Theorem 4.3: relative error <= 2u^2."
+citation = "Joldes, M., Muller, J.-M. & Popescu, V. 2017, Tight and rigorous error bounds for basic building blocks of double-word arithmetic, ACM TOMS 44(2), 15res, doi:10.1145/3121432 (HAL hal-01351529v3, PDF sha256 2a820178d2ef079559de9940d7af38258fac24558d406be64779ea901486cbc0)"
+retrieved = "2026-10-15"
+tolerance = { abs = 2.0 }
+tolerance_rationale = "Proved bound, not a fit. Bound proved by the authors; largest error they observed is 1.984 u^2."
+verified_by = "WP7 builder agent, 2026-10-15: bound copied from the cited theorem (or derived as stated) and written before the first property-test run; measured maxima are reported in IMPLEMENTATION-NOTES WP7."
+
+[[vector]]
+id = "REAL-DD-DIV-REL-ERR"
+requirement = ["DEP-012", "NUM-006"]
+quantity = "largest relative error of double-double div over the DEP-012 property-test inputs (normalised double-words, |exponent| <= 60 for add/sub/mul/scale/div, <= 200 for recip)"
+value = 0.0
+unit = "u^2 (2^-106) relative"
+kind = "analytic"
+source = "Proved bound of DWDivDW3 with FMA (JMP 2017 Alg. 18), the algorithm ferroastro-real implements. Theorem 7.2: relative error <= 9.8u^2 for p >= 13."
+citation = "Joldes, M., Muller, J.-M. & Popescu, V. 2017, Tight and rigorous error bounds for basic building blocks of double-word arithmetic, ACM TOMS 44(2), 15res, doi:10.1145/3121432 (HAL hal-01351529v3, PDF sha256 2a820178d2ef079559de9940d7af38258fac24558d406be64779ea901486cbc0)"
+retrieved = "2026-10-15"
+tolerance = { abs = 9.8 }
+tolerance_rationale = "Proved bound, not a fit. Bound proved by the authors; largest error they observed is 5.922 u^2."
+verified_by = "WP7 builder agent, 2026-10-15: bound copied from the cited theorem (or derived as stated) and written before the first property-test run; measured maxima are reported in IMPLEMENTATION-NOTES WP7."
+
+[[vector]]
+id = "REAL-DD-RECIP-REL-ERR"
+requirement = ["DEP-012", "NUM-006"]
+quantity = "largest relative error of double-double recip over the DEP-012 property-test inputs (normalised double-words, |exponent| <= 60 for add/sub/mul/scale/div, <= 200 for recip)"
+value = 0.0
+unit = "u^2 (2^-106) relative"
+kind = "analytic"
+source = "Proved bound of DWDivDW3 (JMP 2017 Alg. 18) with dividend 1: lines 1-6 give m approximating 1/y and line 7 multiplies by (1, 0) exactly, the algorithm ferroastro-real implements. Theorem 7.2 (the final product by 1 is exact, so the quotient bound covers m)."
+citation = "Joldes, M., Muller, J.-M. & Popescu, V. 2017, Tight and rigorous error bounds for basic building blocks of double-word arithmetic, ACM TOMS 44(2), 15res, doi:10.1145/3121432 (HAL hal-01351529v3, PDF sha256 2a820178d2ef079559de9940d7af38258fac24558d406be64779ea901486cbc0)"
+retrieved = "2026-10-15"
+tolerance = { abs = 9.8 }
+tolerance_rationale = "Proved bound, not a fit. Conservative: the bound of the full division, of which the reciprocal is a prefix followed by an exact product."
+verified_by = "WP7 builder agent, 2026-10-15: bound copied from the cited theorem (or derived as stated) and written before the first property-test run; measured maxima are reported in IMPLEMENTATION-NOTES WP7."
+
+[[vector]]
+id = "REAL-DD-SQRT-REL-ERR"
+requirement = ["DEP-012", "NUM-006"]
+quantity = "largest relative error of double-double sqrt over the DEP-012 property-test inputs (positive normalised double-words, |exponent| <= 200)"
+value = 0.0
+unit = "u^2 (2^-106) relative"
+kind = "analytic"
+source = "Proved bound of SQRTDWtoDW (Lefevre et al. 2023 Alg. 8), the algorithm ferroastro-real implements. Theorem 3.6: relative error <= (25/8) u^2 = 3.125 u^2, asymptotically optimal."
+citation = "Lefevre, V., Louvet, N., Muller, J.-M., Picot, J. & Rideau, L. 2023, Accurate calculation of Euclidean norms using double-word arithmetic, ACM TOMS 49(1), doi:10.1145/3568672 (HAL hal-03482567v2, PDF sha256 a60eb7edbf7e6ca4454d97f0c2a1eee89806093a6f487cb429c087678858ac93)"
+retrieved = "2026-10-15"
+tolerance = { abs = 3.125 }
+tolerance_rationale = "Proved bound, not a fit."
+verified_by = "WP7 builder agent, 2026-10-15: bound copied from the cited theorem (or derived as stated) and written before the first property-test run; measured maxima are reported in IMPLEMENTATION-NOTES WP7."
+
+[[vector]]
+id = "REAL-DD-MULADD-ERR"
+requirement = ["DEP-012", "NUM-006"]
+quantity = "largest error of double-double mul_add(a, b, c) = a*b + c, divided by |a*b| + |c|, over the DEP-012 property-test inputs"
+value = 0.0
+unit = "u^2 (2^-106) relative"
+kind = "analytic"
+source = "mul_add is a DWTimesDW3 product (error <= 5u^2 |ab|, JMP 2017 Thm 5.4) followed by an AccurateDWPlusDW sum (error <= 3u^2 |ab + c| <= 3u^2 (|ab| + |c|) plus the propagated product error, Thm 3.1), so |error| <= (5 + 3 + O(u)) u^2 (|ab| + |c|)."
+citation = "Joldes, M., Muller, J.-M. & Popescu, V. 2017, Tight and rigorous error bounds for basic building blocks of double-word arithmetic, ACM TOMS 44(2), 15res, doi:10.1145/3121432 (HAL hal-01351529v3, PDF sha256 2a820178d2ef079559de9940d7af38258fac24558d406be64779ea901486cbc0)"
+retrieved = "2026-10-15"
+tolerance = { abs = 8.0 }
+tolerance_rationale = "Derived from the two proved bounds by the triangle inequality; relative to |ab| + |c| because the sum may cancel."
+verified_by = "WP7 builder agent, 2026-10-15: bound copied from the cited theorem (or derived as stated) and written before the first property-test run; measured maxima are reported in IMPLEMENTATION-NOTES WP7."
+
+[[vector]]
+id = "REAL-DD-EXP-REL-ERR"
+requirement = ["DEP-012", "NUM-006"]
+quantity = "largest relative error of the double-double exp over the DEP-012 property-test inputs, x in [-700, 700]"
+value = 0.0
+unit = "u^2 (2^-106) relative"
+kind = "analytic"
+source = "FerroAstro algorithm (no published bound): Cody-Waite reduction with a three-word ln 2, 14-term Taylor series of expm1 on r/64 and six doublings expm1(2x) = expm1(x)(expm1(x) + 2), then (1 + expm1) * 2^k. Engineering bound from an operation count: the error is dominated by the last few double-word operations (each <= 5u^2, JMP 2017) plus the reduction, about 30-60 u^2; 128 u^2 (1.6e-30 relative) leaves a factor of two."
+citation = "Joldes, M., Muller, J.-M. & Popescu, V. 2017, Tight and rigorous error bounds for basic building blocks of double-word arithmetic, ACM TOMS 44(2), 15res, doi:10.1145/3121432 (HAL hal-01351529v3, PDF sha256 2a820178d2ef079559de9940d7af38258fac24558d406be64779ea901486cbc0); ferroastro-real src/dd_math.rs"
+retrieved = "2026-10-15"
+tolerance = { abs = 128.0 }
+tolerance_rationale = "Pre-registered engineering bound (written before any measurement); not a proof. If a measurement exceeds it, the algorithm is fixed, the bound is not widened without a NEEDS HUMAN REVIEW note."
+verified_by = "WP7 builder agent, 2026-10-15: bound copied from the cited theorem (or derived as stated) and written before the first property-test run; measured maxima are reported in IMPLEMENTATION-NOTES WP7."
+
+[[vector]]
+id = "REAL-DD-EXPM1-REL-ERR"
+requirement = ["DEP-012", "NUM-006"]
+quantity = "largest relative error of the double-double expm1 over the DEP-012 property-test inputs, x in [-30, 30] and |x| in [2^-40, 0.5] log-uniform"
+value = 0.0
+unit = "u^2 (2^-106) relative"
+kind = "analytic"
+source = "FerroAstro algorithm (no published bound): expm1 by the same reduction for |x| <= ln2/2, else exp(x) - 1. Engineering bound from an operation count: the error is dominated by the last few double-word operations (each <= 5u^2, JMP 2017) plus the reduction, about 30-60 u^2; 128 u^2 (1.6e-30 relative) leaves a factor of two."
+citation = "Joldes, M., Muller, J.-M. & Popescu, V. 2017, Tight and rigorous error bounds for basic building blocks of double-word arithmetic, ACM TOMS 44(2), 15res, doi:10.1145/3121432 (HAL hal-01351529v3, PDF sha256 2a820178d2ef079559de9940d7af38258fac24558d406be64779ea901486cbc0); ferroastro-real src/dd_math.rs"
+retrieved = "2026-10-15"
+tolerance = { abs = 128.0 }
+tolerance_rationale = "Pre-registered engineering bound (written before any measurement); not a proof. If a measurement exceeds it, the algorithm is fixed, the bound is not widened without a NEEDS HUMAN REVIEW note."
+verified_by = "WP7 builder agent, 2026-10-15: bound copied from the cited theorem (or derived as stated) and written before the first property-test run; measured maxima are reported in IMPLEMENTATION-NOTES WP7."
+
+[[vector]]
+id = "REAL-DD-LN-REL-ERR"
+requirement = ["DEP-012", "NUM-006"]
+quantity = "largest relative error of the double-double ln over the DEP-012 property-test inputs, x = m 2^k with k in [-500, 500], and x = 1 + d with |d| in [2^-60, 0.1]"
+value = 0.0
+unit = "u^2 (2^-106) relative"
+kind = "analytic"
+source = "FerroAstro algorithm (no published bound): x = 2^k m with m in [sqrt(1/2), sqrt(2)), ln x = k ln2 + 2 atanh((m-1)/(m+1)) with a 22-term atanh series. Engineering bound from an operation count: the error is dominated by the last few double-word operations (each <= 5u^2, JMP 2017) plus the reduction, about 30-60 u^2; 128 u^2 (1.6e-30 relative) leaves a factor of two."
+citation = "Joldes, M., Muller, J.-M. & Popescu, V. 2017, Tight and rigorous error bounds for basic building blocks of double-word arithmetic, ACM TOMS 44(2), 15res, doi:10.1145/3121432 (HAL hal-01351529v3, PDF sha256 2a820178d2ef079559de9940d7af38258fac24558d406be64779ea901486cbc0); ferroastro-real src/dd_math.rs"
+retrieved = "2026-10-15"
+tolerance = { abs = 128.0 }
+tolerance_rationale = "Pre-registered engineering bound (written before any measurement); not a proof. If a measurement exceeds it, the algorithm is fixed, the bound is not widened without a NEEDS HUMAN REVIEW note."
+verified_by = "WP7 builder agent, 2026-10-15: bound copied from the cited theorem (or derived as stated) and written before the first property-test run; measured maxima are reported in IMPLEMENTATION-NOTES WP7."
+
+[[vector]]
+id = "REAL-DD-LN1P-REL-ERR"
+requirement = ["DEP-012", "NUM-006"]
+quantity = "largest relative error of the double-double ln1p over the DEP-012 property-test inputs, x in (-0.9, 100) and |x| in [2^-40, 0.5] log-uniform"
+value = 0.0
+unit = "u^2 (2^-106) relative"
+kind = "analytic"
+source = "FerroAstro algorithm (no published bound): 2 atanh(x/(2+x)) for |x| < 1/2, else ln(1 + x). Engineering bound from an operation count: the error is dominated by the last few double-word operations (each <= 5u^2, JMP 2017) plus the reduction, about 30-60 u^2; 128 u^2 (1.6e-30 relative) leaves a factor of two."
+citation = "Joldes, M., Muller, J.-M. & Popescu, V. 2017, Tight and rigorous error bounds for basic building blocks of double-word arithmetic, ACM TOMS 44(2), 15res, doi:10.1145/3121432 (HAL hal-01351529v3, PDF sha256 2a820178d2ef079559de9940d7af38258fac24558d406be64779ea901486cbc0); ferroastro-real src/dd_math.rs"
+retrieved = "2026-10-15"
+tolerance = { abs = 128.0 }
+tolerance_rationale = "Pre-registered engineering bound (written before any measurement); not a proof. If a measurement exceeds it, the algorithm is fixed, the bound is not widened without a NEEDS HUMAN REVIEW note."
+verified_by = "WP7 builder agent, 2026-10-15: bound copied from the cited theorem (or derived as stated) and written before the first property-test run; measured maxima are reported in IMPLEMENTATION-NOTES WP7."
+
+[[vector]]
+id = "REAL-DD-POWF-REL-ERR"
+requirement = ["DEP-012", "NUM-006"]
+quantity = "largest relative error of the double-double powf over the DEP-012 property-test inputs, x in [1e-3, 1e3], y in [-20, 20]"
+value = 0.0
+unit = "u^2 (2^-106) relative"
+kind = "analytic"
+source = "FerroAstro algorithm (no published bound): exp(y ln x); the condition number |y ln x| <= 140 amplifies the ln error, so twice the elementary-function band. Engineering bound from an operation count: the error is dominated by the last few double-word operations (each <= 5u^2, JMP 2017) plus the reduction, about 30-60 u^2; 128 u^2 (1.6e-30 relative) leaves a factor of two."
+citation = "Joldes, M., Muller, J.-M. & Popescu, V. 2017, Tight and rigorous error bounds for basic building blocks of double-word arithmetic, ACM TOMS 44(2), 15res, doi:10.1145/3121432 (HAL hal-01351529v3, PDF sha256 2a820178d2ef079559de9940d7af38258fac24558d406be64779ea901486cbc0); ferroastro-real src/dd_math.rs"
+retrieved = "2026-10-15"
+tolerance = { abs = 256.0 }
+tolerance_rationale = "Pre-registered engineering bound (written before any measurement); not a proof. If a measurement exceeds it, the algorithm is fixed, the bound is not widened without a NEEDS HUMAN REVIEW note."
+verified_by = "WP7 builder agent, 2026-10-15: bound copied from the cited theorem (or derived as stated) and written before the first property-test run; measured maxima are reported in IMPLEMENTATION-NOTES WP7."
+
+[[vector]]
+id = "REAL-DD-SIN-ABS-ERR"
+requirement = ["DEP-012", "NUM-006"]
+quantity = "largest absolute error (radians or unitless) of the double-double sin over the DEP-012 property-test inputs, x in [-1e4, 1e4]"
+value = 0.0
+unit = "u^2 (2^-106) absolute"
+kind = "analytic"
+source = "FerroAstro algorithm (no published bound): reduction by a three-word pi/2 to |r| <= pi/4, Taylor series to degree 33. Absolute, not relative: near the zeros of the result any finite-precision reduction loses relative accuracy. Engineering bound from an operation count as for exp: 128 u^2 = 1.6e-30."
+citation = "Joldes, M., Muller, J.-M. & Popescu, V. 2017, Tight and rigorous error bounds for basic building blocks of double-word arithmetic, ACM TOMS 44(2), 15res, doi:10.1145/3121432 (HAL hal-01351529v3, PDF sha256 2a820178d2ef079559de9940d7af38258fac24558d406be64779ea901486cbc0); ferroastro-real src/dd_math.rs"
+retrieved = "2026-10-15"
+tolerance = { abs = 128.0 }
+tolerance_rationale = "Pre-registered engineering bound (written before any measurement); not a proof. If a measurement exceeds it, the algorithm is fixed, the bound is not widened without a NEEDS HUMAN REVIEW note."
+verified_by = "WP7 builder agent, 2026-10-15: bound copied from the cited theorem (or derived as stated) and written before the first property-test run; measured maxima are reported in IMPLEMENTATION-NOTES WP7."
+
+[[vector]]
+id = "REAL-DD-COS-ABS-ERR"
+requirement = ["DEP-012", "NUM-006"]
+quantity = "largest absolute error (radians or unitless) of the double-double cos over the DEP-012 property-test inputs, x in [-1e4, 1e4]"
+value = 0.0
+unit = "u^2 (2^-106) absolute"
+kind = "analytic"
+source = "FerroAstro algorithm (no published bound): reduction by a three-word pi/2 to |r| <= pi/4, Taylor series to degree 32. Absolute, not relative: near the zeros of the result any finite-precision reduction loses relative accuracy. Engineering bound from an operation count as for exp: 128 u^2 = 1.6e-30."
+citation = "Joldes, M., Muller, J.-M. & Popescu, V. 2017, Tight and rigorous error bounds for basic building blocks of double-word arithmetic, ACM TOMS 44(2), 15res, doi:10.1145/3121432 (HAL hal-01351529v3, PDF sha256 2a820178d2ef079559de9940d7af38258fac24558d406be64779ea901486cbc0); ferroastro-real src/dd_math.rs"
+retrieved = "2026-10-15"
+tolerance = { abs = 128.0 }
+tolerance_rationale = "Pre-registered engineering bound (written before any measurement); not a proof. If a measurement exceeds it, the algorithm is fixed, the bound is not widened without a NEEDS HUMAN REVIEW note."
+verified_by = "WP7 builder agent, 2026-10-15: bound copied from the cited theorem (or derived as stated) and written before the first property-test run; measured maxima are reported in IMPLEMENTATION-NOTES WP7."
+
+[[vector]]
+id = "REAL-DD-ATAN2-ABS-ERR"
+requirement = ["DEP-012", "NUM-006"]
+quantity = "largest absolute error (radians or unitless) of the double-double atan2 over the DEP-012 property-test inputs, y, x in [-1e3, 1e3]"
+value = 0.0
+unit = "u^2 (2^-106) absolute"
+kind = "analytic"
+source = "FerroAstro algorithm (no published bound): one Newton step on sin/cos from the binary64 atan2 (quadratic convergence 53 -> 106 bits). Absolute, not relative: near the zeros of the result any finite-precision reduction loses relative accuracy. Engineering bound from an operation count as for exp: 128 u^2 = 1.6e-30."
+citation = "Joldes, M., Muller, J.-M. & Popescu, V. 2017, Tight and rigorous error bounds for basic building blocks of double-word arithmetic, ACM TOMS 44(2), 15res, doi:10.1145/3121432 (HAL hal-01351529v3, PDF sha256 2a820178d2ef079559de9940d7af38258fac24558d406be64779ea901486cbc0); ferroastro-real src/dd_math.rs"
+retrieved = "2026-10-15"
+tolerance = { abs = 128.0 }
+tolerance_rationale = "Pre-registered engineering bound (written before any measurement); not a proof. If a measurement exceeds it, the algorithm is fixed, the bound is not widened without a NEEDS HUMAN REVIEW note."
+verified_by = "WP7 builder agent, 2026-10-15: bound copied from the cited theorem (or derived as stated) and written before the first property-test run; measured maxima are reported in IMPLEMENTATION-NOTES WP7."
+
+[[vector]]
+id = "REAL-DD-ASIN-ABS-ERR"
+requirement = ["DEP-012", "NUM-006"]
+quantity = "largest absolute error (radians or unitless) of the double-double asin over the DEP-012 property-test inputs, x in [-0.999, 0.999]"
+value = 0.0
+unit = "u^2 (2^-106) absolute"
+kind = "analytic"
+source = "FerroAstro algorithm (no published bound): atan2(x, sqrt((1-x)(1+x))). Absolute, not relative: near the zeros of the result any finite-precision reduction loses relative accuracy. Engineering bound from an operation count as for exp: 128 u^2 = 1.6e-30."
+citation = "Joldes, M., Muller, J.-M. & Popescu, V. 2017, Tight and rigorous error bounds for basic building blocks of double-word arithmetic, ACM TOMS 44(2), 15res, doi:10.1145/3121432 (HAL hal-01351529v3, PDF sha256 2a820178d2ef079559de9940d7af38258fac24558d406be64779ea901486cbc0); ferroastro-real src/dd_math.rs"
+retrieved = "2026-10-15"
+tolerance = { abs = 128.0 }
+tolerance_rationale = "Pre-registered engineering bound (written before any measurement); not a proof. If a measurement exceeds it, the algorithm is fixed, the bound is not widened without a NEEDS HUMAN REVIEW note."
+verified_by = "WP7 builder agent, 2026-10-15: bound copied from the cited theorem (or derived as stated) and written before the first property-test run; measured maxima are reported in IMPLEMENTATION-NOTES WP7."
+
+[[vector]]
+id = "REAL-DD-ACOS-ABS-ERR"
+requirement = ["DEP-012", "NUM-006"]
+quantity = "largest absolute error (radians or unitless) of the double-double acos over the DEP-012 property-test inputs, x in [-0.999, 0.999]"
+value = 0.0
+unit = "u^2 (2^-106) absolute"
+kind = "analytic"
+source = "FerroAstro algorithm (no published bound): atan2(sqrt((1-x)(1+x)), x). Absolute, not relative: near the zeros of the result any finite-precision reduction loses relative accuracy. Engineering bound from an operation count as for exp: 128 u^2 = 1.6e-30."
+citation = "Joldes, M., Muller, J.-M. & Popescu, V. 2017, Tight and rigorous error bounds for basic building blocks of double-word arithmetic, ACM TOMS 44(2), 15res, doi:10.1145/3121432 (HAL hal-01351529v3, PDF sha256 2a820178d2ef079559de9940d7af38258fac24558d406be64779ea901486cbc0); ferroastro-real src/dd_math.rs"
+retrieved = "2026-10-15"
+tolerance = { abs = 128.0 }
+tolerance_rationale = "Pre-registered engineering bound (written before any measurement); not a proof. If a measurement exceeds it, the algorithm is fixed, the bound is not widened without a NEEDS HUMAN REVIEW note."
+verified_by = "WP7 builder agent, 2026-10-15: bound copied from the cited theorem (or derived as stated) and written before the first property-test run; measured maxima are reported in IMPLEMENTATION-NOTES WP7."
+
+[[vector]]
+id = "REAL-F64-ADD-ULP"
+requirement = ["DEP-012", "NUM-006"]
+quantity = "largest error of the f64 backend add over the DEP-012 property-test inputs, in units of ulp of the exact result (|exponent| <= 100)"
+value = 0.0
+unit = "ulp"
+kind = "analytic"
+source = "IEEE 754 binary64 basic operations (and fusedMultiplyAdd, which f64 mul_add maps to) are correctly rounded in round-to-nearest, so the error is at most half an ulp of the exact result. recip is 1/x, one correctly rounded division."
+citation = "IEEE Std 754-2019, IEEE Standard for Floating-Point Arithmetic, Sec. 5.4.1 (addition, subtraction, multiplication, division, squareRoot and fusedMultiplyAdd are correctly rounded)"
+retrieved = "2026-10-15"
+tolerance = { abs = 0.5 }
+tolerance_rationale = "Exact property of correctly rounded arithmetic, not a fit. A larger error would mean the f64 backend is not the hardware operation (e.g. a software fma that double-rounds)."
+verified_by = "WP7 builder agent, 2026-10-15: bound copied from the cited theorem (or derived as stated) and written before the first property-test run; measured maxima are reported in IMPLEMENTATION-NOTES WP7."
+
+[[vector]]
+id = "REAL-F64-SUB-ULP"
+requirement = ["DEP-012", "NUM-006"]
+quantity = "largest error of the f64 backend sub over the DEP-012 property-test inputs, in units of ulp of the exact result (|exponent| <= 100)"
+value = 0.0
+unit = "ulp"
+kind = "analytic"
+source = "IEEE 754 binary64 basic operations (and fusedMultiplyAdd, which f64 mul_add maps to) are correctly rounded in round-to-nearest, so the error is at most half an ulp of the exact result. recip is 1/x, one correctly rounded division."
+citation = "IEEE Std 754-2019, IEEE Standard for Floating-Point Arithmetic, Sec. 5.4.1 (addition, subtraction, multiplication, division, squareRoot and fusedMultiplyAdd are correctly rounded)"
+retrieved = "2026-10-15"
+tolerance = { abs = 0.5 }
+tolerance_rationale = "Exact property of correctly rounded arithmetic, not a fit. A larger error would mean the f64 backend is not the hardware operation (e.g. a software fma that double-rounds)."
+verified_by = "WP7 builder agent, 2026-10-15: bound copied from the cited theorem (or derived as stated) and written before the first property-test run; measured maxima are reported in IMPLEMENTATION-NOTES WP7."
+
+[[vector]]
+id = "REAL-F64-MUL-ULP"
+requirement = ["DEP-012", "NUM-006"]
+quantity = "largest error of the f64 backend mul over the DEP-012 property-test inputs, in units of ulp of the exact result (|exponent| <= 100)"
+value = 0.0
+unit = "ulp"
+kind = "analytic"
+source = "IEEE 754 binary64 basic operations (and fusedMultiplyAdd, which f64 mul_add maps to) are correctly rounded in round-to-nearest, so the error is at most half an ulp of the exact result. recip is 1/x, one correctly rounded division."
+citation = "IEEE Std 754-2019, IEEE Standard for Floating-Point Arithmetic, Sec. 5.4.1 (addition, subtraction, multiplication, division, squareRoot and fusedMultiplyAdd are correctly rounded)"
+retrieved = "2026-10-15"
+tolerance = { abs = 0.5 }
+tolerance_rationale = "Exact property of correctly rounded arithmetic, not a fit. A larger error would mean the f64 backend is not the hardware operation (e.g. a software fma that double-rounds)."
+verified_by = "WP7 builder agent, 2026-10-15: bound copied from the cited theorem (or derived as stated) and written before the first property-test run; measured maxima are reported in IMPLEMENTATION-NOTES WP7."
+
+[[vector]]
+id = "REAL-F64-DIV-ULP"
+requirement = ["DEP-012", "NUM-006"]
+quantity = "largest error of the f64 backend div over the DEP-012 property-test inputs, in units of ulp of the exact result (|exponent| <= 100)"
+value = 0.0
+unit = "ulp"
+kind = "analytic"
+source = "IEEE 754 binary64 basic operations (and fusedMultiplyAdd, which f64 mul_add maps to) are correctly rounded in round-to-nearest, so the error is at most half an ulp of the exact result. recip is 1/x, one correctly rounded division."
+citation = "IEEE Std 754-2019, IEEE Standard for Floating-Point Arithmetic, Sec. 5.4.1 (addition, subtraction, multiplication, division, squareRoot and fusedMultiplyAdd are correctly rounded)"
+retrieved = "2026-10-15"
+tolerance = { abs = 0.5 }
+tolerance_rationale = "Exact property of correctly rounded arithmetic, not a fit. A larger error would mean the f64 backend is not the hardware operation (e.g. a software fma that double-rounds)."
+verified_by = "WP7 builder agent, 2026-10-15: bound copied from the cited theorem (or derived as stated) and written before the first property-test run; measured maxima are reported in IMPLEMENTATION-NOTES WP7."
+
+[[vector]]
+id = "REAL-F64-SQRT-ULP"
+requirement = ["DEP-012", "NUM-006"]
+quantity = "largest error of the f64 backend sqrt over the DEP-012 property-test inputs, in units of ulp of the exact result (|exponent| <= 100)"
+value = 0.0
+unit = "ulp"
+kind = "analytic"
+source = "IEEE 754 binary64 basic operations (and fusedMultiplyAdd, which f64 mul_add maps to) are correctly rounded in round-to-nearest, so the error is at most half an ulp of the exact result. recip is 1/x, one correctly rounded division."
+citation = "IEEE Std 754-2019, IEEE Standard for Floating-Point Arithmetic, Sec. 5.4.1 (addition, subtraction, multiplication, division, squareRoot and fusedMultiplyAdd are correctly rounded)"
+retrieved = "2026-10-15"
+tolerance = { abs = 0.5 }
+tolerance_rationale = "Exact property of correctly rounded arithmetic, not a fit. A larger error would mean the f64 backend is not the hardware operation (e.g. a software fma that double-rounds)."
+verified_by = "WP7 builder agent, 2026-10-15: bound copied from the cited theorem (or derived as stated) and written before the first property-test run; measured maxima are reported in IMPLEMENTATION-NOTES WP7."
+
+[[vector]]
+id = "REAL-F64-RECIP-ULP"
+requirement = ["DEP-012", "NUM-006"]
+quantity = "largest error of the f64 backend recip over the DEP-012 property-test inputs, in units of ulp of the exact result (|exponent| <= 100)"
+value = 0.0
+unit = "ulp"
+kind = "analytic"
+source = "IEEE 754 binary64 basic operations (and fusedMultiplyAdd, which f64 mul_add maps to) are correctly rounded in round-to-nearest, so the error is at most half an ulp of the exact result. recip is 1/x, one correctly rounded division."
+citation = "IEEE Std 754-2019, IEEE Standard for Floating-Point Arithmetic, Sec. 5.4.1 (addition, subtraction, multiplication, division, squareRoot and fusedMultiplyAdd are correctly rounded)"
+retrieved = "2026-10-15"
+tolerance = { abs = 0.5 }
+tolerance_rationale = "Exact property of correctly rounded arithmetic, not a fit. A larger error would mean the f64 backend is not the hardware operation (e.g. a software fma that double-rounds)."
+verified_by = "WP7 builder agent, 2026-10-15: bound copied from the cited theorem (or derived as stated) and written before the first property-test run; measured maxima are reported in IMPLEMENTATION-NOTES WP7."
+
+[[vector]]
+id = "REAL-F64-MULADD-ULP"
+requirement = ["DEP-012", "NUM-006"]
+quantity = "largest error of the f64 backend muladd over the DEP-012 property-test inputs, in units of ulp of the exact result (|exponent| <= 100)"
+value = 0.0
+unit = "ulp"
+kind = "analytic"
+source = "IEEE 754 binary64 basic operations (and fusedMultiplyAdd, which f64 mul_add maps to) are correctly rounded in round-to-nearest, so the error is at most half an ulp of the exact result. recip is 1/x, one correctly rounded division."
+citation = "IEEE Std 754-2019, IEEE Standard for Floating-Point Arithmetic, Sec. 5.4.1 (addition, subtraction, multiplication, division, squareRoot and fusedMultiplyAdd are correctly rounded)"
+retrieved = "2026-10-15"
+tolerance = { abs = 0.5 }
+tolerance_rationale = "Exact property of correctly rounded arithmetic, not a fit. A larger error would mean the f64 backend is not the hardware operation (e.g. a software fma that double-rounds)."
+verified_by = "WP7 builder agent, 2026-10-15: bound copied from the cited theorem (or derived as stated) and written before the first property-test run; measured maxima are reported in IMPLEMENTATION-NOTES WP7."

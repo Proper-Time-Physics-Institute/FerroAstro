@@ -1,0 +1,33 @@
+# SPDX-FileCopyrightText: 2026 Proper-Time Physics Institute
+# SPDX-License-Identifier: Apache-2.0
+[package]
+name = "ferroastro-real"
+description = "FerroAstro scalar backends: the Real trait with f64, double-double and (nightly) f128 implementations, plus compensated summation"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+authors.workspace = true
+repository.workspace = true
+build = "build.rs"
+
+[features]
+default = ["std"]
+# Use the platform's f64 math (sqrt, sin, ...) through std. Without it the crate is `no_std`
+# and needs the `libm` feature instead (pure-Rust libm, rust-lang).
+std = []
+libm = ["dep:libm"]
+# Nightly-only binary128 backend (DEP-007). On a stable toolchain this feature compiles to nothing
+# (build.rs probes the compiler), so `--all-features` keeps working on stable.
+f128 = []
+
+[dependencies]
+libm = { workspace = true, optional = true }
+
+[dev-dependencies]
+astro-float.workspace = true
+proptest.workspace = true
+ferroastro-vectors.workspace = true
+
+[lints]
+workspace = true

@@ -8,8 +8,8 @@
 > workflow run; run URLs are not written here so that the file stays deterministic.
 
 - Requirements: **119** (draft 119)
-- `verification: test` requirements cited by at least one test: **31 / 92**
-- Citing tests: **188**; vectors referencing a requirement: **104**
+- `verification: test` requirements cited by at least one test: **33 / 92**
+- Citing tests: **193**; vectors referencing a requirement: **154**
 
 | ID | Status | Crit. | Verification | Tests | Vectors |
 |---|---|---|---|---|---|
@@ -58,7 +58,7 @@
 | [NUM-003](NUM.md) | draft | medium | test | — | — |
 | [NUM-004](NUM.md) | draft | medium | test | — | — |
 | [NUM-005](NUM.md) | draft | medium | test | — | — |
-| [NUM-006](NUM.md) | draft | high | test | — | — |
+| [NUM-006](NUM.md) | draft | high | test | `crates/ferroastro-real/src/compensated.rs::neumaier_recovers_cancelled_addends`<br>`crates/ferroastro-real/src/dd.rs::constants_are_normalised_and_identities_hold`<br>`crates/ferroastro-real/src/eft.rs::error_terms_are_exact` | `REAL-DD-ACOS-ABS-ERR`<br>`REAL-DD-ADD-REL-ERR`<br>`REAL-DD-ASIN-ABS-ERR`<br>`REAL-DD-ATAN2-ABS-ERR`<br>`REAL-DD-COS-ABS-ERR`<br>`REAL-DD-DIV-REL-ERR`<br>`REAL-DD-EXP-REL-ERR`<br>`REAL-DD-EXPM1-REL-ERR`<br>`REAL-DD-LN-REL-ERR`<br>`REAL-DD-LN1P-REL-ERR`<br>`REAL-DD-MUL-REL-ERR`<br>`REAL-DD-MULADD-ERR`<br>`REAL-DD-POWF-REL-ERR`<br>`REAL-DD-RECIP-REL-ERR`<br>`REAL-DD-SCALE-REL-ERR`<br>`REAL-DD-SIN-ABS-ERR`<br>`REAL-DD-SQRT-REL-ERR`<br>`REAL-DD-SUB-REL-ERR`<br>`REAL-F64-ADD-ULP`<br>`REAL-F64-DIV-ULP`<br>`REAL-F64-MUL-ULP`<br>`REAL-F64-MULADD-ULP`<br>`REAL-F64-RECIP-ULP`<br>`REAL-F64-SQRT-ULP`<br>`REAL-F64-SUB-ULP` |
 | [NUM-007](NUM.md) | draft | high | test | — | — |
 | [NUM-008](NUM.md) | draft | high | test | — | — |
 | [NUM-009](NUM.md) | draft | medium | test | — | — |
@@ -79,7 +79,7 @@
 | [NUM-024](NUM.md) | draft | medium | demonstration | — | — |
 | [NUM-025](NUM.md) | draft | low | test | — | — |
 | [TST-001](TST.md) | draft | high | test | — | — |
-| [TST-002](TST.md) | draft | high | test | `crates/ferroastro-vectors/tests/schema.rs::bad_values_are_rejected`<br>`crates/ferroastro-vectors/tests/schema.rs::duplicate_ids_across_files_are_rejected`<br>`crates/ferroastro-vectors/tests/schema.rs::every_required_field_is_enforced`<br>`crates/ferroastro-vectors/tests/schema.rs::tolerance_is_the_wider_of_abs_and_rel`<br>`crates/ferroastro-vectors/tests/schema.rs::valid_fixture_loads_and_checks`<br>`crates/ferroastro-vectors/tests/schema.rs::workspace_vectors_all_validate`<br>`tools/tests/test_lints.py::test_allow_marker_needs_reason`<br>`tools/tests/test_lints.py::test_python_literals_flagged`<br>`tools/tests/test_lints.py::test_repository_is_clean`<br>`tools/tests/test_lints.py::test_rust_literals_flagged`<br>`tools/tests/test_lints.py::test_rust_structural_literals_allowed`<br>`tools/tests/test_trace.py::test_vector_schema_is_enforced` | — |
+| [TST-002](TST.md) | draft | high | test | `crates/ferroastro-cli/tests/cli_report.rs::report_refuses_a_vector_directory_override`<br>`crates/ferroastro-vectors/tests/schema.rs::bad_values_are_rejected`<br>`crates/ferroastro-vectors/tests/schema.rs::duplicate_ids_across_files_are_rejected`<br>`crates/ferroastro-vectors/tests/schema.rs::every_required_field_is_enforced`<br>`crates/ferroastro-vectors/tests/schema.rs::tolerance_is_the_wider_of_abs_and_rel`<br>`crates/ferroastro-vectors/tests/schema.rs::valid_fixture_loads_and_checks`<br>`crates/ferroastro-vectors/tests/schema.rs::workspace_vectors_all_validate`<br>`tools/tests/test_lints.py::test_allow_marker_needs_reason`<br>`tools/tests/test_lints.py::test_python_literals_flagged`<br>`tools/tests/test_lints.py::test_repository_is_clean`<br>`tools/tests/test_lints.py::test_rust_literals_flagged`<br>`tools/tests/test_lints.py::test_rust_structural_literals_allowed`<br>`tools/tests/test_trace.py::test_vector_schema_is_enforced` | — |
 | [TST-003](TST.md) | draft | high | test | `crates/ferroastro-vectors/tests/schema.rs::computed_reference_needs_generator_and_engine`<br>`crates/ferroastro-vectors/tests/schema.rs::workspace_vectors_all_validate`<br>`tools/tests/test_trace.py::test_vector_schema_is_enforced` | — |
 | [TST-004](TST.md) | draft | high | inspection | — | — |
 | [TST-005](TST.md) | draft | medium | test | `crates/ferroastro-testdata/src/lib.rs::civil_dates`<br>`crates/ferroastro-testdata/src/lib.rs::sha256_of_empty_input` | — |
@@ -101,7 +101,7 @@
 | [DEP-009](DEP.md) | draft | high | test | — | — |
 | [DEP-010](DEP.md) | draft | high | test | — | — |
 | [DEP-011](DEP.md) | draft | high | test | — | — |
-| [DEP-012](DEP.md) | draft | high | test | — | — |
+| [DEP-012](DEP.md) | draft | high | test | `crates/ferroastro-real/src/dd_math.rs::special_values` | `REAL-DD-ACOS-ABS-ERR`<br>`REAL-DD-ADD-REL-ERR`<br>`REAL-DD-ASIN-ABS-ERR`<br>`REAL-DD-ATAN2-ABS-ERR`<br>`REAL-DD-COS-ABS-ERR`<br>`REAL-DD-DIV-REL-ERR`<br>`REAL-DD-EXP-REL-ERR`<br>`REAL-DD-EXPM1-REL-ERR`<br>`REAL-DD-LN-REL-ERR`<br>`REAL-DD-LN1P-REL-ERR`<br>`REAL-DD-MUL-REL-ERR`<br>`REAL-DD-MULADD-ERR`<br>`REAL-DD-POWF-REL-ERR`<br>`REAL-DD-RECIP-REL-ERR`<br>`REAL-DD-SCALE-REL-ERR`<br>`REAL-DD-SIN-ABS-ERR`<br>`REAL-DD-SQRT-REL-ERR`<br>`REAL-DD-SUB-REL-ERR`<br>`REAL-F64-ADD-ULP`<br>`REAL-F64-DIV-ULP`<br>`REAL-F64-MUL-ULP`<br>`REAL-F64-MULADD-ULP`<br>`REAL-F64-RECIP-ULP`<br>`REAL-F64-SQRT-ULP`<br>`REAL-F64-SUB-ULP` |
 | [DEP-013](DEP.md) | draft | medium | inspection | — | — |
 | [DEP-014](DEP.md) | draft | medium | test | — | — |
 | [DEP-015](DEP.md) | draft | high | inspection | — | — |

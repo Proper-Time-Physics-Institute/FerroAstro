@@ -17,6 +17,7 @@ authors = ["Proper-Time Physics Institute"]
 repository = "https://github.com/Proper-Time-Physics-Institute/FerroAstro"
 
 [workspace.dependencies]
+ferroastro-real = { path = "crates/ferroastro-real", version = "0.0.0", default-features = false, features = ["std"] }
 ferroastro-core = { path = "crates/ferroastro-core", version = "0.0.0" }
 ferroastro-vectors = { path = "crates/ferroastro-vectors", version = "0.0.0" }
 ferroastro-testdata = { path = "crates/ferroastro-testdata", version = "0.0.0" }
@@ -28,6 +29,10 @@ ferroastro-precession = { path = "crates/ferroastro-precession", version = "0.0.
 ferroastro-ladder = { path = "crates/ferroastro-ladder", version = "0.0.0" }
 ferroastro-cli = { path = "crates/ferroastro-cli", version = "0.0.0" }
 serde = { version = "1.0.219", features = ["derive"] }
+# Arbitrary-precision oracle for the DEP-012 property tests (dev-dependency only; MIT).
+astro-float = { version = "0.9.6", default-features = false, features = ["std"] }
+libm = "0.2.16"
+proptest = { version = "1.6.0", default-features = false, features = ["std"] }
 criterion = { version = "0.5.1", default-features = false, features = ["cargo_bench_support"] }
 serde_json = "1.0.140"
 sha2 = "0.10.9"
