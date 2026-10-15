@@ -2314,3 +2314,125 @@ memory of Folkner et al. 2014 (IPN PR 42-196) / Park et al. 2021 Eqs. 1–2 as c
 
 **Review corrections in this WP.** F1–F4 were applied before the crate (commits `e47834c`,
 `78116c2`, `d5ee274`, `011ff7c`); F5 is discussed below.
+
+### What was built (WP11)
+- **`ferroastro-system` (L5, new; builds for wasm32, added to the CI wasm32 build).** Dependencies:
+  core, real, constants, ephem (no `ferroastro-frames` edge yet: nothing in this WP rotates; the
+  CRATE-PLAN edge arrives with the first rotation).
+  - `Catalogue` keyed by NAIF id: `de440_major` (11 major bodies from the committed table) and
+    `from_header` (run-time header.440: the 11 majors, 343 numbered asteroids as `Tier::Minor`
+    with NAIF 2 000 000 + n, and the 66 `MA8001…MA8236` entries as `UnidentifiedMass`, never
+    placed). `Tier::{Major, Minor, Ring}` per body, `set_tier`, `ids_in`, `retain`. GMs use the
+    same conversion arithmetic as `De440`, so both sets agree bit for bit.
+  - `SystemState<F, C, R>`: SoA `Vec<R>` components, typed `push`/`set`/`state`/`states`,
+    `components_mut` for integrators, `cast` between backends, `heliocentric()` on barycentric
+    systems and `barycentric(sun)` on heliocentric ones.
+  - `EarthMoon<F, R>`: EMB + geocentric Moon (`Geocentric` centre added to core, NAIF 399 in
+    ephem), `split(emrat)` and `from_bodies`.
+  - `barycentre` / `rebarycentre` / `mass_weights` with `MassModel::{Newtonian, RelativisticDe440}`
+    (Neumaier-compensated sums).
+  - `InitialConditions<R>`: `from_header` (refuses CENTER ≠ 0, FA-E1101), `from_ephemeris`,
+    `from_states`; provenance string carries `HEADER_STATE_INTERPRETATION`.
+  - Codes FA-E1100 (body), FA-E1101 (initial conditions), FA-E1102 (barycentring); the core
+    range table lists FA-E11xx.
+- **Review corrections:** F1 axis-sign test (frames), F2 cache-substitution tests (Rust + pytest,
+  citing CI-005 and REF-002; `locate_product_in` added), F3 `run_long_local.sh` fetches first and
+  logs provenance, F4 nextest `horizons` test group (max-threads 1) in the data profile.
+
+### WP11 results (PR tier, 2026-10-15, toolchain 1.95.0)
+| check | measured | tolerance | margin |
+|---|---|---|---|
+| 1 header.440 ICs vs de440.bsp at JDEPOC, 11 bodies + EMB + geocentric Moon, f64 | **4.77e-7 km** (Neptune system), **7.1e-15 km/s** (Mercury) | 1e-3 km, 1e-9 km/s | 4.8e-4, 7e-6 |
+| 1, double-double | 5.66e-7 km (Neptune), 5.7e-15 km/s | same | 5.7e-4, 6e-6 |
+| 1, geocentric Moon `XM` vs SPK 301 − 399 | 2.9e-11 km, 5.6e-17 km/s | same | — |
+| 1, wrong readings | heliocentric ≥ **6.735e5 km**; "km, km/s" ≥ **5.41e7 km** | must exceed 1 km | discriminating |
+| 2 GM_E + GM_M vs GMB | **1 ulp** | 2 ulp | 0.5 |
+| 3 header catalogue vs committed table, 11 GMs | **0** (bit-identical) | exact | — |
+| counts | 343 numbered asteroids, 66 unidentified, 409 MA total | exact | — |
+| 4 barycentre of the 11 header bodies (report only) | Newtonian **122.689122 km**, 2.158e-8 km/s; μ* 122.689086 km | — | report |
+| 8 after 2 μ* rebarycentring passes | 7.5e-12 km, 6.3e-19 km/s | 1e-6 km, 1e-12 km/s | ~0 |
+| μ* virial bound | \|μ*/μ − 1\| ≤ 2.9e-10 (Mercury) vs U/(2c²) = 1.3e-8 | < U/(2c²) | — |
+| 5 typed round trips (f64 and DD casts) | exact | exact | — |
+| 6 compile-fail (2 cases) | do not compile (E0308) | — | — |
+
+**OI-23 evidence (for the maintainer, not a closure).** With CENTER = 0, every header.440 state
+equals de440.bsp at JDEPOC to < 1e-6 km and < 1e-14 km/s when read as SSB-centred ICRF in au and
+au/day (AU = 149 597 870.7 km, day = 86 400 s); `XB` is the EMB, `XM` is Moon − Earth, `XS` the
+Sun; the system suffixes 1, 2, 4–9 are NAIF 1, 2, 4–9. The heliocentric reading misses by
+6.7e5 km and the km reading by ≥ 5.4e7 km. `XC…ZDC` are zero and stay unexplained.
+**NEEDS HUMAN REVIEW:** close OI-23 (and unblock REF-002's state part) on this evidence, or not.
+
+### WP11 real-data results (data tier, run 2026-10-15)
+| check | measured | tolerance | note |
+|---|---|---|---|
+| 7 Horizons DE441 vectors at JDEPOC (11 queries, `signature.version` 1.2, source DE441, frame ICRF) vs header ICs | **9.54e-7 km** (Neptune), **1.07e-14 km/s** (Mars) | 10 km, 1e-3 km/s (gross) | DE441 reproduces DE440's ICs at JDEPOC at the 1e-6 km level, i.e. the two ephemerides share their initial conditions at 1969 (consistent with WP10's growing DE440−DE441 difference away from 1969). |
+| 4 with asteroids: all 343 numbered asteroids placed from sb441-n373s.bsp at JDEPOC (Sun-centred segments + header Sun) | barycentre offset **122.650 km** with, 122.689 km without (Newtonian; μ* differs by 3.6e-5 km) | report only (WP15) | the 343 asteroids move it by only 0.04 km. |
+
+**Hypothesis, UNVERIFIED (for WP15):** the remaining ~123 km offset is of the size that the 66
+unidentified `MA8xxx` masses (Σ GM/GMS = 8.46e-8) would produce if they sat at Kuiper-belt
+distances (8.5e-8 × ~45 au ≈ 570 km at most). Nothing here identifies them; OI-24 owns that.
+
+**Long tiers, full run** (`tools/run_long_local.sh`, log `target/long-local/20261015T095648Z-42d1a84643dd.log`,
+commit `42d1a84`, clean tree): the new fetch step verified all 7 manifest products (all cache hits,
+SHA-256 equal to the pins) and logged every provenance sidecar before the nightly tier. Nightly
+4/4 pass (NUM-023 long ensemble still the known failure at 0.629 / 1.590). Data **23/23 pass on
+the first pass**; every earlier number is unchanged to the printed digit (Park17 frame
+575.309163, jack-knife σ 0.001531; SW92 dog-leg 571.968047; D5 42.980085160; GR from DE441
+42.9806442). Caveat: every Horizons answer in this run was a cache hit (52 hits, 0 misses), so it
+does not show that the F4 test group prevents HTTP 503 under live load. The 11 live Horizons
+queries of check 7 were made earlier the same day in a direct `--profile data` run, serially
+through the group, with no error.
+
+### Mutation probes (WP11; each reverted, tree clean afterwards)
+| mutant | result |
+|---|---|
+| EMRAT fractions swapped in `split` | killed (unit, geocentric round trip, check 1) |
+| header velocities not divided by 86 400 s | killed (check 1, rebarycentring) |
+| header `S` block read from `1` | killed (check 1, rebarycentring) |
+| Moon GM with the Earth fraction | killed (catalogue vs table) |
+| `heliocentric()` adds the Sun instead of subtracting | killed (unit) |
+| `translate` skips velocities | killed (rebarycentring residual) |
+| μ* potential sign flipped; μ* v² term dropped | **survived the first suite** (the barycentre is report-only) → added the virial-bound test, which kills both |
+| asteroid NAIF id off by one | **survived the first suite** → the catalogue test now checks 2 000 000 + n for every `MA` symbol; killed |
+| frames: Park17 y = X × z; solar node flipped (F1) | killed by the new axis-sign test |
+| testdata: SHA-256 re-check disabled (F2) | killed by both new cache tests |
+
+### F5 (μ convention) — not applied in WP11, with reasons
+F5 is not a `ferroastro-system` change: it touches `ferroastro-ladder` (`SingleBody`) and the
+callers of `ferroastro-analytic::schwarzschild_advance`. I record the analysis for WP12/WP13, which
+come before WP14's NUM-013(b) differentials as F5 requires:
+- `SingleBody` integrates a test particle in the field of GM☉ alone, so its analytic rate uses the
+  period with μ = GM☉ (the dynamics' own Keplerian period). Every `schwarzschild_advance` caller
+  passes `mu_period = GM☉ + GM☿` (the GM of Horizons' osculating elements). The difference is the
+  3.57e-6 ″/cy the WP10 review measured.
+- Either single choice moves one side away from its own dynamics: GM☉ everywhere makes the
+  Horizons-element helpers inconsistent with the elements' GM; GM☉ + GM☿ everywhere makes the
+  single-body analytic rate inconsistent with its test-particle dynamics (by 3.6e-6 ″/cy, inside
+  every current tolerance).
+- Suggested rule for the human decision: "n uses the μ of the Keplerian problem that produced the
+  elements" (test particle: GM☉; Sun–Mercury relative motion and Horizons elements: GM☉ + GM☿),
+  printed in the rung metadata. The N-body differential runs of WP14 compare FerroAstro runs with
+  each other and need no analytic n at all. **NEEDS HUMAN REVIEW**, since the review asked for one
+  value and this note proposes one rule instead.
+
+### Deviations and NEEDS HUMAN REVIEW (WP11)
+1. **OI-23 closure** on the check-1 evidence above (maintainer decision). REF-002's text still marks
+   CENTER/units UNVERIFIED: a requirement-text change for PR #2.
+2. **μ* transcription** (Park et al. 2021 Eqs. 1–2 / Folkner et al. 2014) was written from memory;
+   no PDF was re-opened. Only its sign and size are tested (virial bound), not its exact form.
+3. **Unidentified MA entries.** `MA8001…MA8236` (66 entries, Σ GM/GMS = 8.46e-8) are kept but not
+   placed. Their identity, and whether they explain the 122.7 km barycentre offset, belongs to OI-24.
+4. **Check-1 velocity tolerance** (1e-9 km/s) was chosen after a disclosed exploration (see the
+   plan); the position tolerance is the plan's.
+5. **Asteroid states are DE441-consistent** (sb441-n373s.bsp), not DE440. Check 7 shows the two
+   share their ICs at JDEPOC to 1e-6 km for the major bodies; the asteroid ICs of DE440 itself are
+   not in any pinned product (OI-24).
+6. **CI job name.** The wasm32 job now also builds `ferroastro-system`, but its display name was
+   left unchanged so that any required-check configuration keeps matching.
+7. **Requirement-text suggestions for PR #2 (not edited here):** REF-002 notes: replace the
+   UNVERIFIED CENTER/units sentence with the check-1 result once OI-23 is closed; NUM-009: say that
+   header.440 has 409 `MA` entries, of which 343 are the numbered asteroids; NUM-018: cite the
+   exact equation numbers of μ* after a PDF check.
+8. **F2 code choice.** A substituted cache file is reported as FA-E0204 ("present but has SHA-256
+   …"), not FA-E0201, because FA-E0201's fix text ("upstream changed, re-pin") would be wrong for a
+   local substitution. The tests assert FA-E0204 plus both digests.
