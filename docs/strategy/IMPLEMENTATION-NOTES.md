@@ -1869,3 +1869,54 @@ Extras:
   passage epochs. The check therefore exercises the typed ecm06 rotation against the independent
   p06e parameterisation, not the integrator. That is the requirement as written; it is recorded
   here so that it is not read as a dynamics test.
+
+## WP10 — [M3, moved from M5] `ferroastro-testdata` + `ferroastro-ephem`: SPK type 2/3 reader validated on de440.bsp
+
+Builder agent, 2026-10-15. Branch `m3-newtonian-nbody`, stacked on `m0-foundation`, draft PR #13.
+
+### Plan and pre-registered checks (written 2026-10-15, before any FerroAstro SPK evaluation)
+Only the products' structure was inspected before this section was written: the de440.bsp segment
+table (14 type-2 segments, read with jplephem 2.24), the testpo.440 layout, the `testeph.f` threshold
+and the first block of `ascp01950.440`. No FerroAstro number exists yet; every bound below is fixed
+before its first run.
+
+**Sources read.** NAIF "DAF Required Reading" (`daf.html`, SHA-256 `6d501ec3…0e095fee`) and "SPK
+Required Reading" (`spk.html`, SHA-256 `d6ef659c…0cdc7dc3`), both retrieved 2026-10-15 from
+naif.jpl.nasa.gov/pub/naif/toolkit_docs/FORTRAN/req/: file record, summary/name records, segment
+descriptor, data precedence ("the latest segment in a file supersedes"), type 2 and 3 layouts; JPL `testeph.f` (SHA-256 `18f32f07…adeb7120`; public JPL software,
+not on the clean-room list) and jplephem 2.24 `spk.py`/`daf.py` (MIT, the REF-004 reference reader).
+No REBOUND/REBOUNDx/ASSIST/Swiftest/Mercury6 source, and no ANISE code.
+
+**Products pinned on first retrieval (2026-10-15).** They go into `tests/data/MANIFEST.toml`, which
+is human-owned: **NEEDS HUMAN REVIEW** of every new pin.
+| product | URL (https://ssd.jpl.nasa.gov/ftp/eph/…) | bytes | SHA-256 | Last-Modified |
+|---|---|---|---|---|
+| `de440-bsp` | `planets/bsp/de440.bsp` | 119 799 808 | `a4ce9bf9…fff7c4b5` | 2020-12-22 |
+| `de440-testpo` | `planets/ascii/de440/testpo.440` | 858 238 | `45084a7f…6693429f` | 2020-12-22 |
+| `sb441-n373s-bsp` | `small_bodies/asteroids_de441/sb441-n373s.bsp` | 982 106 112 | `21431132…ca8da10b` | 2021-09-02 |
+| `de440-ascp01550`, `-01950`, `-02550` | `planets/ascii/de440/ascpNNNNN.440` | 29.2 M each | pinned on first fetch | 2020-12-22 |
+
+`sb441-n373.bsp` itself is 14.13 GB (HEAD request, 2026-10-15). The plan's file name is kept for the
+REF-003 work, but this WP pins the 936.6 M `sb441-n373s.bsp`, which is the one the jpl oracle
+image in journal 03 lists. It holds 374 type-2 segments, all centred on the Sun (10), frame 1,
+1549-12-31 to 2650-01-25. Which file REF-003 should use is OI-24 (human-owned).
+
+**Checks.** Margins are reported as |Δ| / tolerance.
+| # | check | tier | oracle | tolerance (pre-registered) | rationale |
+|---|---|---|---|---|---|
+| 1 | (REF-004, DEP-011) every one of the 14 de440 segments, raw (target wrt its own centre), at ≥ 50 TDB epochs spread over the segment's coverage plus both ends, f64 | PR-fast (cached de440.bsp) | `tools/goldens/jplephem_de440.py`, jplephem==2.24 | position ≤ **1 mm** (1e-6 km), velocity ≤ **1 µm/s** (1e-9 km/s), per component | REF-004's target, copied. jplephem uses the same Clenshaw recurrence and the same three-way `divmod` of the two-part date, so we expect agreement at a few ulp. **Risk stated up front:** 1 ulp of a Pluto or Neptune barycentric coordinate (4–7·10⁹ km) is 0.95 mm, so a 2-ulp difference there would fail the 1 mm target. If that happens it is reported, not widened. |
+| 2 | (REF-001) every testpo.440 point whose target and centre are bodies (1–13); nutations (14) and librations (15) are not in de440.bsp and are skipped, with a count | PR-fast (cached) | testpo.440, threshold of JPL `testeph.f`: "agreement is considered okay if DEL is less than 1e-13" (au, au/day) | **< 1e-13** in au or au/day, per point | JPL's own acceptance for a reader. 1e-13 au = 1.5 cm. AU from header.440 via `ferroastro-constants`. |
+| 3 | (DEP-007) double-double evaluation vs f64 at the check-1 epochs, every segment: ratio ρ = \|x_f64 − x_DD\| / (n·u·Σₖ\|cₖ\|) for positions, and the same with Σₖ k²\|cₖ\|·2/intlen for velocities (u = 2⁻⁵³, n = number of coefficients) | PR-fast (cached) | DD itself | **ρ ≤ 2** | The classical a-priori bound for Clenshaw in floating point is O(n·u·Σ\|cₖ\|); ρ ≤ 2 means "f64 round-off". The time argument is exact for these epochs (half-day + fraction split). |
+| 4 | type 3 and big-endian: a synthetic SPK (deterministic dyadic coefficients, 2 segments, type 2 and type 3) written by Python in both byte orders, evaluated by jplephem; Rust builds the same bytes (SHA-256 must equal the one in the golden header) and evaluates them | PR-fast (no download) | jplephem 2.24 | as check 1 | tests the type-3 layout and BIG-IEEE reading against the reference reader. |
+| 5 | (API-002) proptest: every truncation of a valid synthetic file, random byte corruption, and random garbage give `Err` with an `FA-E10xx` code or a valid result, never a panic; every truncation gives `Err` | PR-fast | — | no panic; truncations → `Err` | API-002 acceptance. |
+| 6 | header/ASCII products: for the 10 SSB-centred bodies, every Chebyshev coefficient in the records covered by `ascp01550/01950/02550.440` printed in the ASCII `0.dddddddddddddddd D±ee` form (16 significant digits) equals the ASCII token | data | JPL DE440 ASCII coefficients + header.440 GROUP 1050 | **0 mismatches** | both products come from the same fit; the ASCII file is a 16-digit rendering. Any record-mapping or layout error gives mismatches. |
+| 6b | geocentric Moon: SPK (301 wrt 3) − (399 wrt 3) vs the ASCII geocentric Moon, at 3 times per 4-day sub-interval | data | as 6 | position ≤ **1e-8 km**, velocity ≤ **1e-12 km/s** | ASCII quantisation (≤ 5e-16 relative per coefficient) on ~4e5 km gives ~2e-10 km, plus the EMRAT scaling round-off in the SPK; 50× margin. |
+| 7 | (DEP-011, replaces ANISE, see below) Horizons DE441 barycentric states of 199, 399 and 301 vs our de440 chain, 21 TDB epochs 1600–2600 | data | JPL Horizons API (`signature.version` printed) | gross-error bound: **10 km**, **1e-3 km/s** | DE441 is not DE440, so the bound only catches convention errors: a UT/TDB mix-up gives ≥ 3000 km for Mercury, a wrong frame ~1e7 km. It does **not** catch TT vs TDB (≤ 80 m); check 2 covers the time argument. The measured DE440−DE441 difference is reported. |
+| 8 | sb441-n373s.bsp: 3 asteroids (Ceres 2000001, Pallas 2000002, Vesta 2000004) at 50 epochs | data | jplephem 2.24 goldens | as check 1 | a second, independent SPK file (374 segments) through the same reader. |
+| 9 | (REF-001, LIC-003, DEP-017) no `.bsp`, DE ASCII (`header.4xx`, `testpo.4xx`, `ascp*`/`ascm*`), SOFA or NOVAS file is tracked by git, and `ferroastro-testdata` is `publish = false` | PR-fast (pytest) | `git ls-files` | 0 files | inspection made executable. |
+
+**ANISE (DEP-011).** The plan asks for an ANISE cross-check from `tools/`. The maintainer decision in
+force says: do not add anise as any dependency (dev or otherwise). This WP therefore adds no
+anise, not even the Python package, and validates against Horizons and the ASCII products
+(checks 6 and 7). DEP-011's acceptance ("CI comparison against ANISE passes") stays **unmet**:
+**NEEDS HUMAN REVIEW**.
