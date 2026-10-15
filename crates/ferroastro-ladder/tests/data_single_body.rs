@@ -9,6 +9,10 @@
 //!   Mercury state in the Sun's IAU body-equator frame (`IAU_SUN`), pole = +z. Oracles: Park17
 //!   Table 3 (1σ as published) and Park17 Eqs. 2–3 (NUM-015).
 //! * D3: the solar spin `G·S` recomputed from a fresh download of DE440 header.440.
+//! * D4 (WP6, pre-registered with vectors NUM013-ISOLATION-DIFF and NUM012-ESTIMATOR-SPREAD
+//!   before the first run): NUM-013(a) isolation and the NUM-012 estimator spread from the real
+//!   DE441 state in the real `IAU_SUN` geometry (inclined orbit, so the J2/LT oracles are the
+//!   inclined Park17 Eqs. 3 and 2).
 //!
 //! Every test prints URL, retrieval date, SHA-256 and the Horizons `signature.version`.
 
@@ -18,6 +22,9 @@ mod horizons;
 use ferroastro_analytic::advance::schwarzschild_advance;
 use ferroastro_constants::header440::Header;
 use ferroastro_core::frames::{EclipticJ2000, Frame, SunEquatorIau};
+use ferroastro_core::time::SECONDS_PER_DAY;
+use ferroastro_core::units::TimeSpan;
+use ferroastro_forces::PnCoefficients;
 use ferroastro_ladder::single_body::{Model, PoleSpec, Rung, SingleBody, de440_solar_spin};
 use ferroastro_testdata::fetch_product;
 
@@ -171,4 +178,86 @@ fn data_solar_spin_from_fresh_header_440() {
         (gs - committed).abs() / committed
     );
     assert!((gs - committed).abs() <= 8.0 * f64::EPSILON * committed); // lint: allow-literal(f64 round-off of a six-factor product, in ulps)
+}
+
+/// D4: NUM-013(a) single-body isolation and the NUM-012 estimator spread, from the Horizons
+/// DE441 J2000 state of Mercury in the real `IAU_SUN` geometry.
+///
+/// Verifies: NUM-013, NUM-012
+#[test]
+#[ignore = "data: downloads a JPL Horizons DE441 state in the IAU_SUN frame (network); run with --profile data"]
+fn data_isolation_and_estimator_spread_from_horizons_de441_state() {
+    let c = common::ctx();
+    let (setup, _h) = iau_sun_setup(&c);
+    let pole = PoleSpec::Fixed([0.0, 0.0, 1.0]);
+    let zero = PnCoefficients {
+        a: 0.0,
+        b: 0.0,
+        c: 0.0,
+        d: 0.0,
+    };
+    let newton = setup
+        .run(&Rung::custom(
+            "N-TP",
+            "Newtonian test particle",
+            Model::Lagrangian(zero),
+        ))
+        .unwrap();
+    println!(
+        "basis: Newtonian test particle from the DE441 state, IC hash {}, rate {:.3e} arcsec/cy (numerical error)",
+        newton.ic_hash,
+        newton.numerical_arcsec_per_century()
+    );
+    let gr = Rung::custom(
+        "GR-REAL",
+        "GR-SCHW from the DE441 state",
+        Model::Schwarzschild {
+            beta: c.de.ppn_beta(),
+            gamma: c.de.ppn_gamma(),
+        },
+    );
+    let j2 = Rung::custom(
+        "J2-REAL",
+        "J2 (Park17 J2), real IAU solar pole",
+        Model::J2 {
+            j2: c.value("PARK17-J2SUN"),
+        },
+    )
+    .with_pole(pole);
+    let lt = Rung::custom(
+        "LT-REAL",
+        "LT (DE440 spin), real IAU solar pole",
+        Model::LenseThirring,
+    )
+    .with_pole(pole);
+    for rung in [&gr, &j2, &lt] {
+        let r = setup.run(rung).unwrap();
+        assert_eq!(r.ic_hash, newton.ic_hash, "{}: identical ICs", rung.id);
+        let delta = r.numerical_arcsec_per_century() - newton.numerical_arcsec_per_century();
+        println!(
+            "NUM-013(a) {}: differential {delta:.9}, analytic {:.9} arcsec/cy (inclination {:.6} deg)",
+            rung.id,
+            r.analytic_arcsec_per_century(),
+            r.inclination.radians().to_degrees()
+        );
+        c.check(
+            "NUM013-ISOLATION-DIFF",
+            delta - r.analytic_arcsec_per_century(),
+        );
+    }
+    let cadence = TimeSpan::from_seconds(2.0 * SECONDS_PER_DAY).unwrap();
+    for rung in [&gr, &j2, &lt] {
+        let s = setup.estimator_spread(rung, cadence).unwrap();
+        println!(
+            "NUM-012 {}: passages {:.9}, LRL {:.9}, Park2017 linear {:.9} (jk {:.1e}), quadratic {:.9}; spread {:.2e} arcsec/cy",
+            s.rung,
+            s.passages,
+            s.lrl,
+            s.park_linear,
+            s.park_linear_jackknife,
+            s.park_quadratic,
+            s.spread()
+        );
+        c.check("NUM012-ESTIMATOR-SPREAD", s.spread());
+    }
 }
