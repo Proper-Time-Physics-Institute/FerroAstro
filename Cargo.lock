@@ -90,6 +90,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "ferroastro-precession"
+version = "0.0.0"
+dependencies = [
+ "ferroastro-constants",
+ "ferroastro-core",
+ "ferroastro-forces",
+ "ferroastro-integrators",
+ "ferroastro-testdata",
+ "ferroastro-vectors",
+ "serde_json",
+ "thiserror",
+]
+
+[[package]]
 name = "ferroastro-testdata"
 version = "0.0.0"
 dependencies = [

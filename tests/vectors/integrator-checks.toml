@@ -1,0 +1,60 @@
+# SPDX-FileCopyrightText: 2026 Proper-Time Physics Institute
+# SPDX-License-Identifier: Apache-2.0
+# Integrator acceptance values (PHY-001, NUM-023) and the Horizons element-conversion agreement. Schema: ADR-0004.
+schema_version = 1
+
+[[vector]]
+id = "PHY001-NEWTON-RATE"
+requirement = ["PHY-001"]
+quantity = "fitted perihelion precession rate of a Newtonian Sun + Mercury point-mass run (rung N-2B)"
+value = 0.0
+unit = "arcsec/cy"
+kind = "analytic"
+source = "Closed Kepler ellipse: the eccentricity (LRL) vector of the Newtonian two-body problem is a constant of motion, so the true rate is exactly 0. PHY-001 acceptance: |varpi_dot| < 1e-6 arcsec/cy over >= 1000 yr."
+citation = "Goldstein, Poole & Safko 2002, Classical Mechanics, 3rd ed., ch. 3 (Laplace-Runge-Lenz vector); FerroAstro docs/requirements/PHY.md PHY-001"
+retrieved = "2026-10-14"
+tolerance = { abs = 1.0e-6 }
+tolerance_rationale = "PHY-001's own bound. 1e-6 arcsec/cy is 1.2e-14 rad/orbit, i.e. about 100 ulp of the eccentricity-vector direction per orbit; red-team section 1 notes the bound is integrator-specific, so the test names IAS15 with Rein & Spiegel default settings. Any non-zero fitted rate is integrator error."
+verified_by = "WP3 builder agent, 2026-10-14: analytic (LRL conservation); bound copied from PHY-001."
+
+[[vector]]
+id = "NUM023-ENERGY-SLOPE"
+requirement = ["NUM-023"]
+quantity = "Brouwer-law exponent of the ensemble RMS relative energy error versus time, IAS15 in f64"
+value = 0.5
+unit = "1"
+kind = "analytic"
+source = "Brouwer 1937: unbiased round-off makes a conserved quantity random-walk, error proportional to t^(1/2). NUM-023 acceptance: within +/-0.1 of the Brouwer value."
+citation = "Brouwer, D. 1937, AJ 46, 149; Rein & Spiegel 2015, MNRAS 446, 1424, doi:10.1093/mnras/stu2164, Sec. 3.5; FerroAstro docs/requirements/NUM.md NUM-023"
+retrieved = "2026-10-14"
+tolerance = { abs = 0.1 }
+tolerance_rationale = "NUM-023's own tolerance (+/-0.1). A systematic (biased) per-step error would give slope 1."
+verified_by = "WP3 builder agent, 2026-10-14: exponent is the random-walk law; tolerance copied from NUM-023."
+
+[[vector]]
+id = "NUM023-PHASE-SLOPE"
+requirement = ["NUM-023"]
+quantity = "Brouwer-law exponent of the ensemble RMS mean-longitude (along-track) error versus time, IAS15 in f64"
+value = 1.5
+unit = "1"
+kind = "analytic"
+source = "Brouwer 1937: the phase error is the time integral of a random-walk mean-motion error, proportional to t^(3/2). NUM-023 acceptance: within +/-0.1 of the Brouwer value."
+citation = "Brouwer, D. 1937, AJ 46, 149; Rein & Spiegel 2015, MNRAS 446, 1424, Sec. 3.5; FerroAstro docs/requirements/NUM.md NUM-023"
+retrieved = "2026-10-14"
+tolerance = { abs = 0.1 }
+tolerance_rationale = "NUM-023's own tolerance (+/-0.1). A systematic per-step energy error would give slope 2."
+verified_by = "WP3 builder agent, 2026-10-14: exponent follows from integrating a t^(1/2) mean-motion error; tolerance copied from NUM-023."
+
+[[vector]]
+id = "HORIZONS-ELEMENTS-AGREEMENT"
+requirement = ["PHY-004"]
+quantity = "relative difference between FerroAstro's osculating e and a and those printed by JPL Horizons for the same heliocentric state and Keplerian GM"
+value = 0.0
+unit = "1"
+kind = "analytic"
+source = "Both sides apply the same two-body formulae to the same state vector and GM, so they agree up to round-off and Horizons' 16 printed significant digits."
+citation = "JPL Horizons API (https://ssd-api.jpl.nasa.gov/doc/horizons.html), EPHEM_TYPE=VECTORS and ELEMENTS for target 199, center 500@10; Murray & Dermott 1999, Solar System Dynamics, ch. 2"
+retrieved = "2026-10-14"
+tolerance = { abs = 1.0e-12 }
+tolerance_rationale = "Horizons prints 16 significant digits (5e-17 relative rounding); the conversion loses a few digits to cancellation in e = |v x h/mu - r_hat| (e ~ 0.2) and in 1/a = 2/r - v^2/mu. 1e-12 relative is far tighter than any physics use and far looser than the few-ulp agreement expected, so a failure means a real formula or frame error."
+verified_by = "WP3 builder agent, 2026-10-14: pre-registered in IMPLEMENTATION-NOTES WP3 before the first Horizons run."

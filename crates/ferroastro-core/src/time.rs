@@ -15,6 +15,15 @@ use std::ops::{Add, Sub};
 /// Seconds per day in the Julian-date convention (exactly 86 400 SI seconds by definition).
 pub const SECONDS_PER_DAY: f64 = 86_400.0;
 
+/// Days per Julian year (exactly 365.25 by definition; IAU Style Manual, Wilkins 1989).
+pub const DAYS_PER_JULIAN_YEAR: f64 = 365.25;
+
+/// Days per Julian century (exactly 36 525; the century of the ″/cy precession rates).
+pub const DAYS_PER_JULIAN_CENTURY: f64 = 36_525.0;
+
+/// Julian date of the standard epoch J2000.0 (2000 January 1, 12h), by definition (IAU 1976).
+pub const J2000_JD: f64 = 2_451_545.0;
+
 mod sealed {
     pub trait Sealed {}
 }
@@ -76,6 +85,16 @@ impl<S: TimeScale> Epoch<S> {
             frac,
             _scale: PhantomData,
         })
+    }
+
+    /// The epoch J2000.0 (JD 2451545.0) on this time scale.
+    #[must_use]
+    pub const fn j2000() -> Self {
+        Self {
+            day: J2000_JD,
+            frac: 0.0,
+            _scale: PhantomData,
+        }
     }
 
     /// The two parts `(day, fraction)` as given or as produced by arithmetic.

@@ -8,8 +8,8 @@
 > workflow run; run URLs are not written here so that the file stays deterministic.
 
 - Requirements: **119** (draft 119)
-- `verification: test` requirements cited by at least one test: **15 / 92**
-- Citing tests: **72**; vectors referencing a requirement: **35**
+- `verification: test` requirements cited by at least one test: **16 / 92**
+- Citing tests: **81**; vectors referencing a requirement: **51**
 
 | ID | Status | Crit. | Verification | Tests | Vectors |
 |---|---|---|---|---|---|
@@ -35,10 +35,10 @@
 | [STD-010](STD.md) | draft | high | test | — | — |
 | [STD-011](STD.md) | draft | low | test | — | — |
 | [STD-012](STD.md) | draft | medium | test | `tools/tests/test_lints.py::test_workflow_lint` | — |
-| [PHY-001](PHY.md) | draft | high | test | `crates/ferroastro-forces/src/newtonian.rs::pairwise_forces_balance_and_follow_inverse_square` | — |
+| [PHY-001](PHY.md) | draft | high | test | `crates/ferroastro-forces/src/newtonian.rs::pairwise_forces_balance_and_follow_inverse_square`<br>`crates/ferroastro-precession/src/kepler.rs::elements_state_round_trip`<br>`crates/ferroastro-precession/src/kepler.rs::kepler_equation_is_solved`<br>`crates/ferroastro-precession/src/lrl.rs::eccentricity_vector_at_periapsis`<br>`crates/ferroastro-precession/tests/phy001_newtonian_two_body.rs::n2b_sun_mercury_has_no_perihelion_precession` | `PHY001-NEWTON-RATE`<br>`SW92-MERCURY-A`<br>`SW92-MERCURY-E`<br>`SW92-MERCURY-I`<br>`SW92-MERCURY-L`<br>`SW92-MERCURY-NODE`<br>`SW92-MERCURY-VARPI` |
 | [PHY-002](PHY.md) | draft | high | test | `crates/ferroastro-constants/src/table.rs::committed_table_parses_and_every_entry_is_cited`<br>`crates/ferroastro-constants/src/table.rs::table_rejects_uncited_or_unknown_citations`<br>`crates/ferroastro-constants/tests/data_de440_table.rs::data_de440_table_matches_header`<br>`crates/ferroastro-constants/tests/phy002_constants.rs::asserted_de440_constants`<br>`crates/ferroastro-constants/tests/phy002_constants.rs::open_item_entries_are_flagged_and_not_exposed`<br>`crates/ferroastro-constants/tests/phy002_constants.rs::planetary_gms_match_park21_table_2`<br>`crates/ferroastro-constants/tests/phy002_constants.rs::table_is_cited_versioned_and_pinned_to_the_manifest`<br>`crates/ferroastro-testdata/tests/data_de440_header.rs::data_de440_header_defined_constants` | `CONST-AU-IAU2012`<br>`CONST-CLIGHT-SI`<br>`DE440-ASUN`<br>`DE440-EMRAT`<br>`DE440-GM-EARTH-KM3S2`<br>`DE440-GM-JUPITER-KM3S2`<br>`DE440-GM-MARS-KM3S2`<br>`DE440-GM-MERCURY-KM3S2`<br>`DE440-GM-MOON-KM3S2`<br>`DE440-GM-NEPTUNE-KM3S2`<br>`DE440-GM-PLUTO-KM3S2`<br>`DE440-GM-SATURN-KM3S2`<br>`DE440-GM-URANUS-KM3S2`<br>`DE440-GM-VENUS-KM3S2`<br>`DE440-GMS-AU3D2`<br>`DE440-GMS-KM3S2`<br>`DE440-J2SUN`<br>`DE440-MOISUN`<br>`DE440-OMGSUN-RADD`<br>`PARK21-OMGSUN-DEGD` |
 | [PHY-003](PHY.md) | draft | high | test | `crates/ferroastro-constants/src/nominal.rs::nominal_differs_from_de440`<br>`crates/ferroastro-constants/src/nominal.rs::nominal_values_match_iau_2015_b3`<br>`crates/ferroastro-constants/tests/nominal_quarantine.rs::ladder_code_never_references_nominal`<br>`crates/ferroastro-constants/tests/nominal_quarantine.rs::scanner_detects_references_and_ignores_prose` | `IAU2015B3-GM-EARTH-N`<br>`IAU2015B3-GM-JUPITER-N`<br>`IAU2015B3-GM-SUN-N`<br>`IAU2015B3-R-SUN-N` |
-| [PHY-004](PHY.md) | draft | high | test | — | — |
+| [PHY-004](PHY.md) | draft | high | test | `crates/ferroastro-precession/src/kepler.rs::elements_state_round_trip`<br>`crates/ferroastro-precession/tests/phy004_gr_analytic.rs::analytic_rejects_unbound_orbits`<br>`crates/ferroastro-precession/tests/phy004_gr_analytic.rs::gr_schw_analytic_rate_from_de440_and_sw92` | `HORIZONS-ELEMENTS-AGREEMENT`<br>`PARK17-GE-RATE`<br>`PHY004-GR-PER-ORBIT`<br>`PHY004-GR-RATE`<br>`PHY004-ORBITS-PER-CY`<br>`SW92-MERCURY-A`<br>`SW92-MERCURY-E` |
 | [PHY-005](PHY.md) | draft | high | test | — | — |
 | [PHY-006](PHY.md) | draft | high | test | — | — |
 | [PHY-007](PHY.md) | draft | high | test | — | — |
@@ -53,7 +53,7 @@
 | [PHY-016](PHY.md) | draft | medium | test | — | — |
 | [PHY-017](PHY.md) | draft | medium | inspection | — | — |
 | [PHY-018](PHY.md) | draft | high | inspection | `crates/ferroastro-vectors/tests/schema.rs::bad_values_are_rejected` | — |
-| [NUM-001](NUM.md) | draft | high | test | `crates/ferroastro-integrators/src/compensated.rs::compensated_sum_keeps_low_order_bits`<br>`crates/ferroastro-integrators/src/radau.rs::newton_and_monomial_forms_agree`<br>`crates/ferroastro-integrators/src/radau.rs::spacings_are_radau_roots_in_order`<br>`crates/ferroastro-integrators/tests/ias15_analytic.rs::damped_oscillator_matches_closed_form`<br>`crates/ferroastro-integrators/tests/ias15_analytic.rs::gyration_conserves_speed_and_is_reversible`<br>`crates/ferroastro-integrators/tests/ias15_analytic.rs::invalid_inputs_are_coded_errors`<br>`crates/ferroastro-integrators/tests/ias15_analytic.rs::kepler_orbits_match_analytic_solution` | — |
+| [NUM-001](NUM.md) | draft | high | test | `crates/ferroastro-integrators/src/compensated.rs::compensated_sum_keeps_low_order_bits`<br>`crates/ferroastro-integrators/src/radau.rs::newton_and_monomial_forms_agree`<br>`crates/ferroastro-integrators/src/radau.rs::spacings_are_radau_roots_in_order`<br>`crates/ferroastro-integrators/tests/ias15_analytic.rs::damped_oscillator_matches_closed_form`<br>`crates/ferroastro-integrators/tests/ias15_analytic.rs::gyration_conserves_speed_and_is_reversible`<br>`crates/ferroastro-integrators/tests/ias15_analytic.rs::invalid_inputs_are_coded_errors`<br>`crates/ferroastro-integrators/tests/ias15_analytic.rs::kepler_orbits_match_analytic_solution`<br>`crates/ferroastro-precession/tests/phy001_newtonian_two_body.rs::n2b_sun_mercury_has_no_perihelion_precession` | — |
 | [NUM-002](NUM.md) | draft | high | test | — | — |
 | [NUM-003](NUM.md) | draft | medium | test | — | — |
 | [NUM-004](NUM.md) | draft | medium | test | — | — |
@@ -75,7 +75,7 @@
 | [NUM-020](NUM.md) | draft | high | inspection | — | — |
 | [NUM-021](NUM.md) | draft | medium | test | — | — |
 | [NUM-022](NUM.md) | draft | low | test | — | — |
-| [NUM-023](NUM.md) | draft | medium | test | `crates/ferroastro-integrators/src/diagnostics.rs::degenerate_inputs_are_errors`<br>`crates/ferroastro-integrators/src/diagnostics.rs::exact_line_and_power_law_are_recovered`<br>`crates/ferroastro-integrators/tests/ias15_analytic.rs::gyration_conserves_speed_and_is_reversible` | — |
+| [NUM-023](NUM.md) | draft | medium | test | `crates/ferroastro-integrators/src/diagnostics.rs::degenerate_inputs_are_errors`<br>`crates/ferroastro-integrators/src/diagnostics.rs::exact_line_and_power_law_are_recovered`<br>`crates/ferroastro-integrators/tests/ias15_analytic.rs::gyration_conserves_speed_and_is_reversible` | `NUM023-ENERGY-SLOPE`<br>`NUM023-PHASE-SLOPE` |
 | [NUM-024](NUM.md) | draft | medium | demonstration | — | — |
 | [NUM-025](NUM.md) | draft | low | test | — | — |
 | [TST-001](TST.md) | draft | high | test | — | — |
@@ -84,7 +84,7 @@
 | [TST-004](TST.md) | draft | high | inspection | — | — |
 | [TST-005](TST.md) | draft | medium | test | `crates/ferroastro-testdata/src/lib.rs::civil_dates`<br>`crates/ferroastro-testdata/src/lib.rs::sha256_of_empty_input` | — |
 | [API-001](API.md) | draft | high | test | `crates/ferroastro-constants/tests/phy002_constants.rs::body_discriminants_follow_all`<br>`crates/ferroastro-core/src/frames.rs::same_frame_and_centre_subtract`<br>`crates/ferroastro-core/src/time.rs::same_scale_difference_is_a_time_span`<br>`crates/ferroastro-core/src/units.rs::arcsec_round_trip`<br>`crates/ferroastro-core/src/units.rs::constructors_reject_non_finite`<br>`crates/ferroastro-core/src/units.rs::dimensional_arithmetic`<br>`crates/ferroastro-core/tests/compile_fail.rs::compile_fail_type_mismatches`<br>`crates/ferroastro-forces/src/newtonian.rs::pack_and_unpack_round_trip` | — |
-| [API-002](API.md) | draft | medium | test | `crates/ferroastro-core/src/error.rs::codes_are_unique_and_well_formed`<br>`crates/ferroastro-core/src/error.rs::messages_name_code_quantity_unit_and_range`<br>`crates/ferroastro-core/src/units.rs::constructors_reject_non_finite`<br>`crates/ferroastro-forces/src/newtonian.rs::invalid_and_singular_inputs_are_coded_errors`<br>`crates/ferroastro-integrators/tests/ias15_analytic.rs::invalid_inputs_are_coded_errors` | — |
+| [API-002](API.md) | draft | medium | test | `crates/ferroastro-core/src/error.rs::codes_are_unique_and_well_formed`<br>`crates/ferroastro-core/src/error.rs::messages_name_code_quantity_unit_and_range`<br>`crates/ferroastro-core/src/units.rs::constructors_reject_non_finite`<br>`crates/ferroastro-forces/src/newtonian.rs::invalid_and_singular_inputs_are_coded_errors`<br>`crates/ferroastro-integrators/tests/ias15_analytic.rs::invalid_inputs_are_coded_errors`<br>`crates/ferroastro-precession/tests/phy004_gr_analytic.rs::analytic_rejects_unbound_orbits` | — |
 | [API-003](API.md) | draft | low | test | — | — |
 | [AGT-001](AGT.md) | draft | medium | inspection | — | — |
 | [AGT-002](AGT.md) | draft | low | inspection | — | — |

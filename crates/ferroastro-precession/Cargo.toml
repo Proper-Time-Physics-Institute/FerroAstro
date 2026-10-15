@@ -1,0 +1,26 @@
+# SPDX-FileCopyrightText: 2026 Proper-Time Physics Institute
+# SPDX-License-Identifier: Apache-2.0
+[package]
+name = "ferroastro-precession"
+description = "Orbital elements, LRL-vector perihelion estimator, secular precession fits and analytic GR advance"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+authors.workspace = true
+repository.workspace = true
+
+[dependencies]
+ferroastro-core.workspace = true
+ferroastro-integrators.workspace = true
+thiserror.workspace = true
+
+[dev-dependencies]
+ferroastro-constants.workspace = true
+ferroastro-forces.workspace = true
+ferroastro-testdata.workspace = true
+ferroastro-vectors.workspace = true
+serde_json.workspace = true
+
+[lints]
+workspace = true
