@@ -102,14 +102,15 @@ fn no_public_symbol_uses_the_sofa_iau_prefix() {
                     .split(|c: char| !(c.is_alphanumeric() || c == '_'))
                     .filter(|w| !w.is_empty())
                     .collect();
-                // pub [(crate)] <kind> <name>
                 let kinds = [
                     "fn", "const", "static", "struct", "enum", "trait", "type", "mod", "use",
                 ];
-                if let Some(k) = words.iter().position(|w| kinds.contains(w))
-                    && let Some(name) = words.get(k + 1)
-                    && name.to_ascii_lowercase().starts_with("iau")
-                {
+                // pub [(crate)] <kind> <name>; no let chains (MSRV 1.85).
+                let name = words
+                    .iter()
+                    .position(|w| kinds.contains(w))
+                    .and_then(|k| words.get(k + 1));
+                if name.is_some_and(|n| n.to_ascii_lowercase().starts_with("iau")) {
                     offenders.push(format!("{}:{}: {t}", path.display(), i + 1));
                 }
             }
