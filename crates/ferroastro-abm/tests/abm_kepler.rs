@@ -471,3 +471,87 @@ fn refusals_carry_stable_codes() {
     let restored = Abm::<f64>::restore(&snap).unwrap();
     assert!(restored.last_step_span().is_none());
 }
+
+/// PECE and PECEC follow their definitions (HNW III.1): one regular step recomputed outside the
+/// integrator from its snapshot, with the exact coefficients of `ferroastro_abm::rational`. The
+/// unit Kepler orbit at 64 steps per orbit makes the predictor error (~1e-9) far larger than the
+/// round-off of the two operation orders (~1e-15), so a mode that corrects with the wrong
+/// derivative is visible.
+///
+/// Verifies: NUM-002
+#[test]
+fn one_regular_step_matches_the_mode_definitions() {
+    const ORDER: u32 = 8;
+    const STEPS_PER_ORBIT: f64 = 64.0; // lint: allow-literal(test design: a coarse step)
+    /// Round-off of two operation orders of the same sums, relative to |y|.
+    const REL: f64 = 1e-13; // lint: allow-literal(round-off bound, ~500 ulp)
+    let vs = vectors();
+    let o = Orbit::<f64>::unit(&vs);
+    let (x0, v0) = o.start();
+    let sys = Kepler { mu: o.mu };
+    let h = o.period / STEPS_PER_ORBIT;
+    let p = usize::try_from(ORDER).unwrap();
+    let ab: Vec<f64> = ferroastro_abm::rational::adams_bashforth(p)
+        .unwrap()
+        .iter()
+        .map(|q| q.to_real().unwrap())
+        .collect();
+    let am: Vec<f64> = ferroastro_abm::rational::adams_moulton(p)
+        .unwrap()
+        .iter()
+        .map(|q| q.to_real().unwrap())
+        .collect();
+    let f = |y: &[f64]| -> Vec<f64> {
+        let mut a = [0.0; 2];
+        sys.acceleration(0.0, &y[..2], &y[2..], &mut a).unwrap();
+        vec![y[2], y[3], a[0], a[1]]
+    };
+    let mut gaps = Vec::new();
+    for corrector in [Corrector::Pece, Corrector::Pecec] {
+        let mut abm = Abm::new(2, 0.0, &x0, &v0, h, config(ORDER, corrector, false)).unwrap();
+        for _ in 0..(p - 1) {
+            abm.step(&sys).unwrap();
+        }
+        let snap = abm.snapshot().unwrap();
+        let hist: Vec<Vec<f64>> = snap
+            .history
+            .iter()
+            .map(|r| r.iter().map(|q| q[0]).collect())
+            .collect();
+        let y0: Vec<f64> = snap.y.iter().map(|q| q[0]).collect();
+        let pred: Vec<f64> = (0..4)
+            .map(|i| h.mul_add((0..p).map(|j| ab[j] * hist[j][i]).sum::<f64>(), y0[i]))
+            .collect();
+        let corr = |fnew: &[f64]| -> Vec<f64> {
+            (0..4)
+                .map(|i| {
+                    let part: f64 = (1..p).map(|j| am[j] * hist[j - 1][i]).sum();
+                    h.mul_add(am[0].mul_add(fnew[i], part), y0[i])
+                })
+                .collect()
+        };
+        let c1 = corr(&f(&pred));
+        let want = match corrector {
+            Corrector::Pece => c1,
+            Corrector::Pecec => corr(&f(&c1)),
+        };
+        abm.step(&sys).unwrap();
+        let got: Vec<f64> = abm
+            .positions()
+            .iter()
+            .chain(abm.velocities())
+            .copied()
+            .collect();
+        let gap = got
+            .iter()
+            .zip(&want)
+            .map(|(g, w)| ((g - w) / w.abs().max(1.0)).abs())
+            .fold(0.0_f64, f64::max);
+        println!(
+            "{}: one regular step vs the definition: max relative gap {gap:.3e}",
+            corrector.label()
+        );
+        gaps.push(gap);
+    }
+    assert!(gaps.iter().all(|&g| g <= REL), "{gaps:?}");
+}

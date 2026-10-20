@@ -261,3 +261,51 @@ fn nightly_abm_vs_ias15_forty_year_mercury_bound() {
     );
     tol.check(mercury).unwrap();
 }
+
+/// A span that is not a multiple of h: ABM's last step passes the end, and the final state,
+/// samples and events at or before the end come from dense output (no step is shortened).
+///
+/// Verifies: NUM-010, CI-010
+#[test]
+fn abm_span_not_a_multiple_of_the_step_ends_on_the_span() {
+    let (h, prov) = header();
+    let data = DataSources::none().with_header(&h, &prov);
+    let mut s = spec(SCENARIO);
+    // One year plus a third of a step (structural: any fraction of a step will do).
+    s.span.years = B1_YEARS * (1.0 + 1.0 / (3.0 * f64::from(u32::try_from(B1_STEPS).unwrap())));
+    // Samples every step: the sample at 5845 h lies inside the last step but after the span.
+    s.output.cadence_days = s.integrator.step_days;
+    s.output.perihelion = vec![ferroastro_scenario::BodyName::Mercury];
+    let out = run(&s, &data).unwrap();
+    let ias = run(&ias15_twin(&s), &data).unwrap();
+    let fin = out.final_state.as_ref().unwrap();
+    println!(
+        "span {} yr: ABM {} steps, final t = {} s (span {} s), {} samples, {} passages (IAS15 {})",
+        s.span.years,
+        out.stats.steps,
+        p(fin.t),
+        s.span_seconds(),
+        out.states.len(),
+        out.passages.len(),
+        ias.passages.len()
+    );
+    assert_eq!(out.stats.steps, B1_STEPS + 1);
+    assert_eq!(p(fin.t).to_bits(), s.span_seconds().to_bits());
+    assert_eq!(out.states.len(), usize::try_from(B1_STEPS).unwrap() + 1);
+    assert!(out.states.iter().all(|r| p(r.t) <= s.span_seconds()));
+    assert_eq!(out.passages.len(), ias.passages.len());
+    assert!(out.passages.iter().all(|r| p(r.t) <= s.span_seconds()));
+    let (rows, _) = differences(&out, &ias);
+    let mercury = rows.iter().find(|r| r.0 == MERCURY).unwrap().1;
+    let dt = out
+        .passages
+        .iter()
+        .zip(&ias.passages)
+        .map(|(a, b)| (p(a.t) - p(b.t)).abs())
+        .fold(0.0_f64, f64::max);
+    println!(
+        "  vs IAS15: Mercury max |dr| {mercury:.3e} km over the samples and the final state; max \
+         perihelion-time difference {dt:.3e} s (reported)"
+    );
+    assert!(mercury.is_finite() && dt.is_finite());
+}
