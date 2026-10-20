@@ -5373,14 +5373,14 @@ Table 1 (max over 40 yr against the full DD run; Mercury and Mars barycentric, t
 | N2 | Moon − Earth mixed: run 1 6.47e-7 km, run 2 **7.43e-7 km** | 2e-6 km | pass (0.37) |
 | N3 | max \|b(t)\|, DD **2.917 µm**, mixed 2.924 µm (run 1 3.180 µm); f64 plain 0.405 mm (reported) | 10 µm | pass (0.29). Subbotin: 3.14 / 2.6 µm / 0.5 mm |
 | N4 (mixed) | \|tiered − all-mutual\| max over 40 yr, run 2: Mercury 8.05 mm, Venus 0.60 mm, Earth 2.44 mm, **Mars 21.8 mm**, Jupiter 0.62 mm, Saturn 0.12 mm, Uranus 52 µm, Neptune 13 µm, Pluto 14 µm, Moon 0.40 mm | 1 cm / 1 mm, if resolvable | **Mars FAIL** (resolvable: round-off 0.66 mm). **Mercury and the Moon UNRESOLVED** (round-off 20 mm and 0.74 mm). The others pass. Run 1 also gave Mars 22.9 mm, with the inner planets and the Moon unresolved |
-| N4 (DD follow-up) | see below | 1 cm / 1 mm | running |
+| N4 (DD follow-up, `nightly_wp25_tiering_double_double`, 15:08–21:25 UTC, all-mutual DD 22 755 s) | \|tiered − all-mutual\| max over 40 yr, both DD: Mercury **1.38 mm**, Venus 0.74 mm, Earth 0.86 mm, **Mars 21.8 mm**, Jupiter 0.60 mm, Saturn 0.11 mm, Uranus 54 µm, Neptune 14 µm, Pluto 13 µm, **Moon 0.030 mm** | 1 cm / 1 mm | **Mars FAIL** (2.2×); every other planet and the Moon pass. The mixed-mode Mars value (21.8 mm) is confirmed in DD to 0.02 mm |
 
 Interpretation:
 - **NUM-007 fails by a factor of 2** with the corrected mixed mode: Mercury round-off is 2.04 cm against 1 cm.
 - The plan predicted 0.7–2 cm from per-term f64 rounding (≈ 1e-16 relative per evaluation, random-walking the mean motion): ~1 cm at 40 yr if the 5-yr value grew as t^1.5 (it grew as ~t^1.9). Subbotin's 8.4 mm is a two-way estimate on a different model; one realisation of a random-walk phase can differ by a factor of 2.
 - What remains is the rounding of the dominant Sun–planet term itself. It can only be removed by computing that term in DD; DE's QIVA computed the Newtonian part in quadruple precision. That would be a "mixed+" mode and needs a maintainer decision.
 - NUM-008 (Moon 0.74 mm ≤ 2 mm) and NUM-018 (2.9 µm) pass. The f64 trend reproduces Table 1 (3.2 m against 2.47 m).
-- **Mars tiering, 2.2 cm in both realisations, is a physical finding,** not round-off. The DE440 asteroid set with 338 Minor bodies changes Mars by more than Subbotin's "sub-centimetre" for their EPM2021 set. The DD follow-up will confirm it.
+- **Mars tiering, 2.2 cm, is a physical finding, not round-off.** It is confirmed in full DD (21.8 mm). The DE440 asteroid set with 338 Minor bodies changes Mars by more than Subbotin's "sub-centimetre" for their EPM2021 set. In DD, Mercury (1.4 mm) and the Moon (0.03 mm) are well inside their bounds. The split between Minor–Minor interactions and the asteroids' own 1PN terms was not separated.
 - The cost ratios are mixed / f64 = 2.5 and DD / f64 = 8 (Subbotin: 3 and 24).
 
 ### Mutation probes (WP25)
@@ -5413,6 +5413,6 @@ Script: scratchpad `wp25/mut/run_mutants.py` and `run_mutants_r2.py`. Restores u
 10. **Taylor terms:** the geocentric Moon uses 12 terms (≥ 4, NUM-008). Subbotin's "4 terms suffice" was not re-tested in the mixed mode.
 
 ### Remaining after WP25
-- The DD N4 follow-up (`nightly_wp25_tiering_double_double`, ≈ 5 h) is running at the time of writing; see the next entry for its result.
+- The DD N4 follow-up ran to completion (6.3 h; table above). It is a long-tier test (`--profile nightly`), and its 10-yr segments resume from `target/wp25-store` if interrupted.
 - V2 and V3 (M4 / CI-008 tooling), WP23, and WP22 (OI-33 signature).
 - NUM-024's criterion benchmark of the mixed mode (WP26 / M5 performance).
