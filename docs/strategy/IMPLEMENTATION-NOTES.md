@@ -4061,3 +4061,13 @@ Published as `docs/validation/speed-tables/run1-20261020T031916Z.{json,md}` (Fer
 | `cargo +1.85.0 check --workspace --all-targets`; `cargo +1.85.0 nextest run --workspace -E 'not binary(compile_fail)'` | pass (251 passed, 41 skipped) |
 | nightly: `nightly_two_consecutive_speed_tables_are_stable_and_complete` (run1 vs run2) | **FAIL** on (d) only (E6, above); E7 and table validity pass |
 | GitHub CI | `55b9bf3` run 39363865757 success; `d8ae6c7` run 39373534072 success; earlier `b2c9f87` 39362406148 failure (missing manifest, concurrent writer) and `6e73c2a` 39362600602 failure (literal lint). The run for the pushed tip is quoted in the PR comment and final report. |
+
+### WP18 adversarial review (2026-10-20, reviewer agent)
+- Re-ran on tip `70436d2`: `tools/pre_push.sh --quick` passes (fmt, clippy, nextest 254 passed / 41 skipped, doctests, deny, doc, ruff, mypy, pytest, reuse, trace, MSRV 1.85 check). The nightly acceptance test on the two committed tables (`FA_BENCH_TABLES=run1…json,run2…json`) fails on (d) only, with the numbers above. Medians and ranges recomputed from the raw `runs_s` in both JSON tables agree with the markdown.
+- **Mutation testing found that the accuracy columns were not tested.** (1) Doubling the kinetic term of `accuracy::com_energy` (the published energy column moved from ~1e-16 to 2.07) passed every test: the stage A test asserted only `is_finite`. (2) Turning `mercury_max_dr`'s maximum into a minimum passed, because `ORACLE-STAGE-A-REBOUND-MAX-DR` is an upper bound and the minimum is 0 km at t = 0. (3) Using the later table's range in the stability criterion passed the synthetic test.
+- **Fixed in `series_and_table.rs`, with no change to the library, the vectors or the tables:**
+  - `com_energy` at the first and last FerroAstro output must equal the propagator's independent `NBodyModel::energy_over_g` (via `run_with_energy`) to within 16 ulp, once the centre-of-mass kinetic energy ½M|v_cm|² = 8.84e-5 km⁵/s⁴ is added back. Without that term the two differ by 6.6e-15 relative. The term is not zero because the DE440 barycentre includes masses this 9-body run omits. With it, they agree to 0 and 1.4e-16.
+  - `mercury_max_dr` must equal a brute-force maximum to within 4 ulp.
+  - A synthetic table must separate `pass` from `pass_reverse`.
+  - All four mutations (kinetic ×2, potential ×½, no CM-velocity removal, max→min) and the stability mutation now fail the tests. Every mutation was reverted.
+- The review agrees with the builder's open items (E6 failed on (d); Orekit on (a) is a refusal row; (c) is FerroAstro-only because every oracle refuses the small-body switches; timer scopes differ per tool; M3 exit not claimed).

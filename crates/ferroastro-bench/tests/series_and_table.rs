@@ -10,7 +10,9 @@
     reason = "test: a failed unwrap is a test failure"
 )]
 
-use ferroastro_bench::accuracy::{mercury_max_dr, mercury_track, relative_energy_change};
+use ferroastro_bench::accuracy::{
+    com_energy, mercury_max_dr, mercury_track, relative_energy_change,
+};
 use ferroastro_bench::series::NAIF_MERCURY;
 use ferroastro_bench::{
     Accuracy, Entry, Host, MIN_RUNS, Measure, ScenarioInfo, Series, SpeedTable, Status, Timing,
@@ -24,6 +26,10 @@ use std::collections::BTreeMap;
 use std::path::PathBuf;
 
 const STAGE_A: &str = "stage-a-sun-8planets-newton-100yr";
+// Two independent sums of the same ~45 energy terms of mixed sign, each rounded once per term.
+const ENERGY_ULPS: f64 = 16.0; // lint: allow-literal(round-off allowance of two energy sums)
+// One distance computed with and without fused multiply-add.
+const DR_ULPS: f64 = 4.0; // lint: allow-literal(round-off allowance of one 3-vector norm)
 
 fn root() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../..")
@@ -128,16 +134,54 @@ fn stage_a_accuracy_columns_from_real_output() {
         .map(|r| (r.naif, r.gm[0]))
         .collect();
     let (fa_e, n) = relative_energy_change(&fa, &gms).unwrap();
+    let model = energy.unwrap();
     println!(
         "ferroastro: |dE/E| from states {fa_e:.3e} ({n} bodies); model {:.3e}",
-        energy.unwrap().relative_change()
+        model.relative_change()
     );
+    // The energy column's formula against the propagator's own model energy (an independent
+    // implementation, `NBodyModel::energy_over_g`) at the first and the last output time: a
+    // wrong kinetic or potential term in `com_energy` fails here.
+    let slices = fa.slices();
+    for (slice, reference) in [
+        (slices.first().unwrap(), model.initial),
+        (slices.last().unwrap(), model.last),
+    ] {
+        // The model energy is taken in the DE440 barycentric frame, `com_energy` in the sampled
+        // system's centre-of-mass frame. They differ by the kinetic energy of that centre of
+        // mass, ½ M |v_cm|², which is not zero because DE440's barycentre includes masses
+        // this run omits.
+        let m: f64 = slice.iter().map(|r| gms[&r.naif]).sum();
+        let p = (0..3).map(|k| slice.iter().map(|r| gms[&r.naif] * r.v[k]).sum::<f64>());
+        let cm_kinetic = 0.5 * p.map(|x| x * x).sum::<f64>() / m;
+        let e = com_energy(slice, fa.center_naif, &gms).unwrap();
+        let rel = ((e + cm_kinetic - reference) / reference).abs();
+        println!(
+            "com_energy {e:.17e} + CM kinetic {cm_kinetic:.3e} vs model {reference:.17e}: rel {rel:.2e}"
+        );
+        assert!(rel <= ENERGY_ULPS * f64::EPSILON, "{rel}");
+    }
     let (_, reb) = golden("rebound", STAGE_A);
     let (dr, t, matched) = mercury_max_dr(&fa, &reb).unwrap();
     println!(
         "ferroastro vs rebound golden: Mercury max |dr| {dr:.4e} km at {t} d ({matched} samples)"
     );
     assert_eq!(matched, out.states.len());
+    // The column is the maximum over the common output times (a brute-force pass over both
+    // heliocentric tracks, which share their sample times here): a minimum, or a single sample,
+    // would pass the upper-bound vector below with 0 km at t = 0.
+    let ha = fa.heliocentric(NAIF_MERCURY).unwrap();
+    let hb = reb.heliocentric(NAIF_MERCURY).unwrap();
+    assert_eq!(ha.len(), hb.len());
+    let brute = ha
+        .iter()
+        .zip(&hb)
+        .map(|((_, ra, _), (_, rb, _))| (0..3).map(|k| (ra[k] - rb[k]).powi(2)).sum::<f64>().sqrt())
+        .fold(0.0, f64::max);
+    assert!(
+        (dr - brute).abs() <= DR_ULPS * f64::EPSILON * brute,
+        "{dr} vs {brute}"
+    );
     VectorSet::load_canonical()
         .unwrap()
         .get("ORACLE-STAGE-A-REBOUND-MAX-DR")
@@ -258,6 +302,10 @@ fn table_rules_markdown_and_stability() {
         !stability(&t1, &far, "ferroastro").unwrap()[0].pass,
         "5 >= 4"
     );
+    // The criterion uses the earlier table's range (pre-registered), not the later one's.
+    let wide = table("r5", "cpu", vec![6.0, 10.0, 17.0, 20.0, 24.0]); // lint: allow-literal(synthetic wall-clock seconds for the table logic)
+    let w = &stability(&t1, &wide, "ferroastro").unwrap()[0];
+    assert!(!w.pass && w.pass_reverse, "|17 - 12| = 5 >= 4 but < 18");
     assert!(stability(&t1, &t1, "ferroastro").is_err(), "same run");
     assert!(
         stability(&t1, &table("r4", "other cpu", five), "ferroastro").is_err(),
