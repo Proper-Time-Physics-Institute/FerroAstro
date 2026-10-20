@@ -4071,3 +4071,192 @@ Published as `docs/validation/speed-tables/run1-20261020T031916Z.{json,md}` (Fer
   - A synthetic table must separate `pass` from `pass_reverse`.
   - All four mutations (kinetic ×2, potential ×½, no CM-velocity removal, max→min) and the stability mutation now fail the tests. Every mutation was reverted.
 - The review agrees with the builder's open items (E6 failed on (d); Orekit on (a) is a refusal row; (c) is FerroAstro-only because every oracle refuses the small-body switches; timer scopes differ per tool; M3 exit not claimed).
+
+## 📈 Progress review: after WP18
+
+I am the independent progress reviewer (an agent, not the builder). I audited `m3-newtonian-nbody` at `0f5ad63` (WP16–WP18 since the last review at `0db40d2`; stacked on `m0-foundation`, merge base `1d36a67`). Everything below ran on 2026-10-20 UTC on the local machine (i9-13900, 32 logical CPUs), toolchain 1.95.0, MSRV 1.85.0. I loosened nothing and committed no mutation: mutants ran in a scratch clone, which was clean afterwards, and the worktree stayed clean.
+
+### Overall health: 🟡 YELLOW
+- **Green:**
+  - All AGENTS.md gates pass locally on `0f5ad63`, and so do the MSRV check and the MSRV test run (`tools/pre_push.sh`, full mode).
+  - **GitHub CI on the tip is green**: run 39383246180, every job including `msrv`. F8 from the last review is fixed and has stayed fixed.
+  - The data tier passes **28/28 on the first pass**. The cache was fresh, Horizons answered 35 live queries with no 503, and every answer carried `signature.version` 1.2 / DE441.
+  - Every number I re-ran equals the builders' reports to the printed digit.
+  - Three key numbers reproduce in independent Python. Two of them are **new independent integrations**:
+    - stage A converges onto REBOUND's golden: 28 m, then **5.7 m** as the step halves;
+    - P-add Venus on the WP17 forward window gives 277.387615, against FerroAstro's 277.387780.
+  - No vector value moved. The one widened tolerance (Swiftest stage A) carries a derivation and a NEEDS HUMAN REVIEW note. There is no `#[ignore]` creep, and the layer check is green (21 crates, 119 edges).
+  - The WP16 corrections (F9–F12) kill their mutants.
+- **Not green:**
+  - **R1 (new evidence for OI-38):** under P-remove, with Park's sign convention, all six Park17 pair rows reproduce to ≤ 1.2e-4 ″/cy. FerroAstro prints its cross terms with the opposite sign, so its "value − reference" column shows spurious misses of up to 0.082.
+  - **R2:** the oracle comparison's "max |Δr|" can be replaced by a minimum and every stage A/B oracle test still passes.
+  - **R3:** the CI-006 all-oracle nightly job has no complete run on record. Three local runs stopped inside Swiftest. With the default output directory, `nightly_oracle_padd_venus_same_estimator_every_tool` **fails** (the Mercury6 series is missing). Against the WP17 series it passes.
+  - The WP18 stability acceptance E6 still fails on (d), as the builder reported. M3 exit is not claimed.
+  - Unchanged from earlier reviews:
+    - PHY-012 under P-add misses 4 of 7 rows (OI-38);
+    - NUM-009 is at 28× (OI-42);
+    - the NUM-023 / NUM-001 known-failure guards still hold;
+    - most of the M3 physics is non-gating while OI-38, OI-24 and OI-42 are open.
+
+### 1. Commands (tip `0f5ad63`)
+| command | result |
+|---|---|
+| `cargo fmt --all --check`; `cargo clippy --workspace --all-targets --all-features -- -D warnings` | pass |
+| `cargo nextest run --workspace` + `cargo test --doc --workspace` | **254 passed, 41 skipped**: the skips are 28 `data_*` and 13 `nightly_*`, which are the only `#[ignore]`s. Doctests pass. |
+| `cargo deny check` | advisories, bans, licenses, sources ok |
+| `RUSTDOCFLAGS="-D warnings" cargo doc --no-deps --workspace` | pass |
+| `ruff check`, `ruff format --check`, `mypy` (strict), `pytest` | pass (60 passed) |
+| `reuse lint` | compliant |
+| `trace.py --check` | pass: 121 requirements, 557 citing tests, 0 errors. `check_layers`: 21 crates, 119 edges, 0 errors. |
+| `cargo +1.85.0 check --workspace --all-targets`; `cargo +1.85.0 nextest run --workspace -E 'not binary(compile_fail)'` | pass (251 passed, 41 skipped) |
+| GitHub CI on `0f5ad63` | run 39383246180 **success** (rust, msrv, wasm32, python, reuse, dco). `data` and `long runs` are skipped by design. |
+| data tier: `tools/run_long_local.sh --data-only` with a fresh `FA_DATA_DIR` | **28/28 pass** (74 s).<br>• de440.bsp, sb441-n373s.bsp and linux_p1550p2650.440 were symlinked from the pinned cache and SHA-verified on load.<br>• Everything else was fetched fresh: 35 cache misses, 0 HTTP 503.<br>• Log: `target/long-local/20261020T070240Z-0f5ad6312b3d.log`. |
+| nightly tier (release), all except the four longest | **7/9 pass, 2 fail, both explained**:<br>• `nightly_two_consecutive_speed_tables_are_stable_and_complete` fails on (d) only (E6, known, NEEDS HUMAN REVIEW).<br>• `nightly_oracle_padd_venus_same_estimator_every_tool` **fails** with "mercury6: oracle series missing under target/oracle-out" (R3). With `FA_ORACLE_OUT_DIR=target/wp17` it **passes**.<br>• The passes: NUM-023 default ensemble, long-ensemble known failure, reversibility, DE440 DD vs f64, f64 1000-yr checkpoint/resume, C-lite Swiftest, and PHY-012 (fully recomputed: the store was empty, 56 legs, 97 s). |
+| nightly PHY-013 (release, 32 threads, empty store) | **pass** (2454 s): N-SUM 532.304907, N-AST P-add 0.001242 / P-remove 0.001245, KBOs + ring +0.000019. Every number is identical to WP15. |
+| not re-run, to stay within about 1 h | WP12 N-body Brouwer ensemble (55 min), DD 1000-yr checkpoint (11 min), NUM-009 timing (noisy, non-gating) |
+
+### 2. Real-data and benchmark results
+Provenance (each SHA-256 equals its manifest pin and was re-verified on load; header.440 and the small products were retrieved 2026-10-20):
+- header.440: `0f4636b6…6ac3359`
+- de440.bsp: `a4ce9bf9…fff7c4b5`
+- sb441-n373s.bsp: `21431132…ca8da10b`
+- linux_p1550p2650.440: `29915576…9ad062` (102 272 352 B, Last-Modified 2021-03-04)
+- Horizons: `signature.version` 1.2, DE441
+
+Margin = |Δ| / tolerance.
+
+| test (tier) | measured | oracle (source) | tolerance | margin |
+|---|---|---|---|---|
+| WP17 `data_de440_linux_binary_constants_equal_header440` (data) | 400/400 record-1 constants bitwise equal | header.440 | exact | 0 |
+| WP16 stage A FerroAstro vs REBOUND golden (PR) | Mercury max \|Δr\| 7.1318e-4 km | REBOUND 5.2.2 IAS15 golden | 1e-3 km (PROVISIONAL) | 0.71 |
+| ↳ **independent scipy DOP853 vs the same goldens** (mine) | REBOUND **5.7 m** (rtol 2.3e-14, max step 0.25 d; 28 m at 0.5 d, converging); Mercury6 **0.105 km** at t = 34 yr; Swiftest **0.37 km** | — | — | reproduces WP17's 0.104 / 0.378 km independently |
+| WP17 stage A FerroAstro vs Mercury6 (PR) | 0.104 km | Mercury6 RA15 golden | 1 km (pre-registered) | 0.10 |
+| WP17 stage A FerroAstro vs Swiftest (PR) | 28.68 km (Mars) | Swiftest WHM golden | **60 km (widened from 1 km after measurement; NEEDS HUMAN REVIEW)** | 0.48 |
+| WP17 stage B FerroAstro vs Orekit (PR) | 0.131 km | Orekit 13.1.9 DP853, **settings tightened after the pre-registered run failed (1.10 km)** | 1 km | 0.13 |
+| WP17 P-add Venus, tool agreement (nightly) | FerroAstro 277.387780; Swiftest −1.4e-8, Mercury6 +1.7e-8, REBOUND +6.9e-9 | each tool, same estimator | 1e-3 ″/cy | ≤ 2e-5 |
+| ↳ **independent scipy run, forward window** (mine; LRL estimator, 2-d samples) | **277.387615** (base drift +0.0003) | FerroAstro 277.387780 | — | Δ −1.65e-4 |
+| WP17 P-add Venus vs Park17 (non-gating, OI-38) | −0.029820 | Park17 Table 3, 277.4176 | ±0.005 | 5.96 OUTSIDE (protocol) |
+| WP17 C-lite Swiftest GR (nightly) | FerroAstro 42.980085, Swiftest 42.980094 | Swiftest `general_relativity` | 1e-3 | 0.009 |
+| **PHY-012 P-add** (nightly, recomputed, non-gating OI-38): V / E+M / Ma / J / S / U / N | 277.394894 / 90.869103 / 2.479384 / 154.028732 / 7.365749 / 0.139602 / 0.042068 | Park17 Table 3 | ±0.005 | 4.5 / 3.8 / 0.40 / 7.8 / 8.6 / 0.58 / 0.07 (identical to WP14) |
+| PHY-012 P-remove (informational) | max \|Δ\| 0.000695 | Park17 Table 3 | ±0.005 | ≤ 0.14, 7/7 within |
+| **↳ Park17 pair rows, P-remove in Park's convention** (mine, from the run's JSON; R1) | V+EM −0.020782, V+J −0.001116, EM+Ma −0.001570, Ma+J +0.000199, J+S +0.041038, S+U +0.000380 | Park17: −0.0209, −0.0012, −0.0016, +0.0002, +0.0411, +0.0004 | (±0.005) | **max \|Δ\| 1.18e-4: 6/6 within Park's print precision** |
+| PHY-013 N-SUM (nightly, gating) | **532.304907** (re-run, 2454 s) | 532.30 (Park17 rows summed: 532.3035) | ±0.01 | 0.49 |
+| WP18 speed table (a) energy / Mercury \|Δr\| vs REBOUND | FerroAstro 4.3e-16 / 52.1 m; Mercury6 4.2e-14 / 1.133 km; Swiftest 5.05e-9 / 35.06 km | pre-registered E1/E2 | expectations only | E1 met; E2 Mercury6 just outside its expected band |
+| ↳ medians and ranges recomputed from the raw `runs_s` (mine) | all 18 entries equal the published tables | — | — | 0 |
+| WP18 E6 stability (nightly acceptance) | (a) 2.19 < 8.10, (b) 0.13 < 0.61, (c) 67.7 < 202.8; **(d) 0.492 ≥ 0.297** | the run-to-run range of table 1 | — | **FAIL on (d)** (known) |
+| Earlier rungs (data tier, all unchanged) | GR from DE441 42.9806442; GR-SCHW header f64 / DD 42.980085159575 / …160105; Park17 DE441 575.309163 (jk 0.001531); J2 0.0284524; LT −0.0020148; NUM-014 +4.431e-4; DE441 osculating GR 42.980669 vs Park GE 42.9799 (+0.000769, 3σ 0.0027) | as before | — | unchanged |
+
+**Independent recomputation.** Python/numpy/scipy only, with no FerroAstro code. I parsed header.440 myself and checked its SHA-256 against the pin.
+1. **PHY-004 GR rate.** SW92 J2000 a and e, GMS and CLIGHT from the header, n from GMS + GM1: **42.980479 ″/cy**, which equals `PHY004-GR-RATE`. At the JDEPOC osculating orbit the formula gives 42.980101, which equals FerroAstro's printed analytic value (its numerical value is 42.980085).
+2. **Stage A benchmark reproduction.** Sun + 8 planets (EMB) from header.440, 100 yr, DOP853.
+   - Against the committed REBOUND golden, Mercury's heliocentric max |Δr| is 28 m at a 0.5-d step cap and **5.7 m** at 0.25 d, so it converges onto REBOUND.
+   - Against Mercury6 it is 0.105 km (t = 34 yr), and against Swiftest 0.37 km. WP17 measured 0.104 and 0.378 km, so both WP17 oracle measurements reproduce with a third integrator.
+3. **P-add Venus, forward window.** Same setup as the WP17 oracle scenarios (JDEPOC → +2000 yr, fit JDEPOC + 30 d … + 730 470 d, Park17 mean-orbit plane, the 14 SW92 Table 2a frequencies):
+   - **277.387615 ″/cy**, against FerroAstro's 277.387780: Δ −1.65e-4 ″/cy with a different integrator and estimator.
+   - Base-run drift: +0.0003 ″/cy (DOP853 truncation).
+4. **Park17 pair rows (R1).** From the PHY-012 JSON this run produced: pair = [full − (full−A−B)] − [full − (full−A)] − [full − (full−B)]. This reproduces all six Park17 interaction rows to ≤ 1.2e-4 ″/cy (table above). FerroAstro's diffrun prints the inclusion–exclusion second difference, which is the *negative* of this, so its reference column shows +0.0417 (V+EM) and −0.0820 (J+S). Under P-add the second difference has the opposite sign to Park in all 6 rows, with similar magnitudes (+0.0223 vs −0.0209; −0.0409 vs +0.0411).
+5. Also checked:
+   - PHY-014 shift −0.000685 → **575.309315** (third confirmation of 575.3093).
+   - The Swiftest drift model (3/4)·n·T·ε·a reproduces the vector's predictions: 57.1, 41.8, 35.5, 28.8, 15.6, 11.5, 8.1, 6.5 km.
+
+### 3. Drift audit
+- **`git log -p 0db40d2..0f5ad63 -- tests/vectors tests/goldens tests/data`:** 5 commits, and no value was moved.
+  - `ORACLE-STAGE-A-SWIFTEST-MAX-DR`: 1 km was pre-registered, the measurement failed it, and the tolerance was widened to 60 km in the commit that introduced the vector. A derivation and NEEDS HUMAN REVIEW are in the rationale.
+    - Reviewer note: the drift model behind 60 km fails for **Mercury** by 150×: it predicts 57.1 km, while the measurement is 0.378 km and my independent run gives 0.37 km.
+    - The 60 km bound is therefore set by the one body the model does not describe. A per-body bound (Mercury ≤ 1 km) would keep the check sharp where it matters. This is a human decision (R5).
+  - `ORACLE-STAGE-B-OREKIT-MAX-DR`: the tolerance did not change, but the **oracle's settings were tightened after the pre-registered run failed**. `ci/oracles/orekit/settings.toml` says so and the WP17 notes have NEEDS HUMAN REVIEW. The vector rationale still says "unchanged… DP853 as in engine.settings" and does not mention the change (R6, provenance gap).
+  - The only removed vector lines are a corrected Mercury6 measurement note (`e5a0067`: "about 0.03 km", which was wrong, became 0.104 km) and `generated_by` refreshes. The goldens under `ci/golden/` were only added, apart from the `62a8068` JPL regeneration (WP16, documented).
+  - **PR #13 carries no `golden-change` label**, although it adds tolerances and widens one after measurement (AGENTS.md rule 1).
+- **`#[ignore]`:** 41 (28 `data_*`, 13 `nightly_*`), up from 37. The 4 new ones are `data_de440_linux_binary`, the 2 oracle differentials and the speed-table acceptance. All are named for their tier and none is gated by `cfg`.
+- **UNVERIFIED values as oracles:** none new. The WP15 notes on `PHY013-N-SUM` (OI-09) and NUM-009 (OI-42) are unchanged.
+- **Circular oracles:** none.
+  - Stage A/B compare against external tools, and my third integrator agrees with them.
+  - The WP18 review's energy pin compares `com_energy` with `NBodyModel::energy_over_g`. Both are FerroAstro, but they are independent code paths.
+  - Note: the Orekit oracle's configuration was chosen after seeing its distance from FerroAstro (R6). The convergence argument is sound, but the oracle was tuned post hoc.
+- **Tests that cannot fail.** The `blocked_by` rows (PHY-012 × 7, N-AST, SSB, NUM-009 2a) still cannot fail, as before, and E6 is weak where the range is 40–60 % of the median ((a), (c)).
+- **Mutation probes.** Scratch clone at `0f5ad63`. Each mutant was applied by script, the named crates' PR tier was run, and the file was restored with `git checkout`. An unmutated baseline passed first (26/26), and the clone was clean afterwards.
+
+| crate | mutant | PR-tier result |
+|---|---|---|
+| oracle | `compare_states` keeps the **minimum** \|Δr\| instead of the maximum | **survived** (7/7). All four stage A/B tests assert only an upper bound, and the minimum is ~0 at t = 0. This is the same class as the WP18 review's bench finding, and it is still open in the oracle crate (R2). |
+| propagate (ephemeris-field) | the last field body (Pluto) is omitted | **survived** (22/22). Stage B's 1 km bound cannot see Pluto, and nothing pins the field body list or the field GMs (R4). |
+| propagate (ephemeris-field) | the indirect term is dropped | killed by `stage_b_ferroastro_matches_the_orekit_golden_in_the_de440_field` |
+| bench | the even-n median takes the upper middle | killed by `stats::tests::odd_even_and_invalid` |
+| bench | the CI-008 minimum of 5 runs is not enforced | killed by `table_rules_markdown_and_stability` and `odd_even_and_invalid` |
+
+- **Layering:** 0 errors (21 crates, 119 edges). `ferroastro-bench` (L11) does not depend on `ferroastro-oracle` (L11) or on test-support crates as normal dependencies. The only listed exception is still `cli → vectors`.
+- **Lib hygiene:** `unsafe_code = "forbid"` and `unwrap_used = "deny"` are inherited by every crate, including the two new ones.
+
+**Findings (new in this review):**
+- **R1 (medium; science; for humans and the builder): the Park17 pair-row sign convention.**
+  - The diffrun cross term is the inclusion–exclusion second difference. Park17's pair rows are "pair removal minus the single removals", which is the negative of it.
+  - With Park's convention, P-remove reproduces all six pair rows to ≤ 1.2e-4 ″/cy. Together with the 7/7 planet rows within 0.0007, this is the strongest evidence so far that Park17 Table 3 uses P-remove (OI-38).
+  - `park2017-table3.toml` already notes that Park's decomposition differs (OI-38). This review identifies the difference: it is this sign and protocol.
+  - The printed "value − reference" for the cross rows is meaningless until the convention is fixed. Only a maintainer may weigh this for OI-38.
+- **R2 (medium): the oracle state comparison's maximum is unpinned.** The min mutant survives stage A (REBOUND, Mercury6, Swiftest) and stage B.
+- **R3 (medium): the CI-006 nightly all-oracle job has never completed end to end.**
+  - `target/oracle-out` (10-15), `target/nightly-20261019` and `target/nightly-review-20261020` each stop inside Swiftest's 2000-yr P-add base run, with only rebound and swiftest rows in `status.tsv`.
+  - So Mercury6, Orekit, ERFA and JPL, and the golden drift check never ran in a nightly. No crontab entry exists.
+  - The default-path P-add differential fails on a missing series. That is a configuration failure, not physics, but it makes the nightly red.
+- **R4 (low):** the ephemeris-field body list and GMs are unpinned, so the Pluto-omitted mutant survives.
+- **R5 (low, for humans):** the Swiftest stage A bound is set by the drift model's worst body, and that model fails for Mercury. A Mercury-only 1 km bound would pass at 0.38.
+- **R6 (low):** the Orekit vector's rationale does not record the post-measurement settings change.
+- **R7 (low):** PR #13 has no `golden-change` label (rule 1).
+- **R8 (low): PHY-019 (Rung N-AST, which arrived with the PR #2 merge) has no citing test**, although `nightly_phy013_n_sum_and_asteroid_differential` computes N-AST against `PARK17-T3-ASTEROIDS`.
+- **R9 (info):** the E6 acceptance tolerates ±40–60 % on (a) and (c), so it is not a regression guard. This joins the builder's NEEDS HUMAN REVIEW on a load gate or a robust spread.
+
+### 4. Requirement coverage
+`trace.py` reports **61/93** `test` requirements cited (54/92 at the last review) and 557 citing tests.
+- **Newly cited:** REF-005, REF-006, REF-007, CI-003, CI-006, CI-008 and DEP-014.
+- **M0, uncited (gate-enforced):** STD-001…011, TST-001, DEP-001/002/003 and ORG-008. DEP-006 (wasm32) is enforced by the CI `wasm32` job but is uncited. Whether `trace.py` may count gate evidence is still a human question.
+- **M1/M2:** every requirement is cited. Acceptance is still unmet for NUM-001 (the 1e9-step clause) and NUM-023.
+- **M3:**
+  - **Uncited: PHY-019 (R8).**
+  - Acceptance not met:
+    - PHY-012 under P-add (OI-38);
+    - NUM-009's < 2× (OI-42);
+    - the N-body half of NUM-023;
+    - CI-008's two-table stability (E6 on (d));
+    - the CI-006 nightly has never completed (R3).
+  - **M3 exit is not met.**
+- **Not yet due, uncited:**
+  - PHY-014 and REF-010 (M4, WP19/WP20/WP22);
+  - NUM-002/003/004/005/007/021/025 (M4/M5);
+  - DEP-005, DEP-016, AGT-004, ORG-002 and ORG-010.
+
+### 5. Corrections for the next builder (WP19 onwards; apply first)
+1. **R2:**
+   - Add PR-tier assertions that `compare_states`' `max_dr_km` equals a brute-force maximum over the golden rows (≤ 4 ulp). Also assert that `t_days_at_max_dr` is the time of that maximum, for stage A (all three goldens) and stage B.
+   - Confirm that the min mutant then fails.
+   - Change no tolerance.
+2. **R1:**
+   - In `ferroastro-diffrun`, report cross terms in Park17's convention (pair contribution minus the single contributions, per protocol), and label the convention in the markdown and JSON. Keeping the second difference as a separate labelled column is acceptable.
+   - Add a PR-tier test on synthetic rates that pins the sign.
+   - Record the 6/6 P-remove pair-row agreement (≤ 1.2e-4) in IMPLEMENTATION-NOTES as **NEEDS HUMAN REVIEW** evidence for OI-38.
+   - **Do not tick OI-38 and do not switch the primary protocol** (F13 still holds).
+3. **R3:**
+   - Run `tools/oracles/nightly.sh` end to end once on the tip (about 1.5 h; Swiftest P-add dominates) and record the report: drift check result, refusals, wall clocks.
+   - Find out why the three earlier runs stopped (a session ended, a timeout, or a Swiftest crash past its retries) and make the script record an explicit failure status rather than ending silently.
+   - In the nightly P-add test, report a missing oracle series as a distinct, named precondition failure.
+   - Installing a cron entry on the maintainer's machine is the maintainer's call: write the suggested line in the notes and do not install it.
+4. **R4:** add a PR-tier test that the ephemeris-field model's field bodies equal the scenario's bodies minus the central body and the particle, and that every field GM equals header.440 bitwise (as F9 did for Minor bodies). The Pluto-omitted mutant must die.
+5. **R6:** add one sentence to `ORACLE-STAGE-B-OREKIT-MAX-DR`'s notes recording that the oracle settings were tightened after the pre-registered run (1.102 km) failed, with a pointer to `ci/oracles/orekit/settings.toml`. Change no value or tolerance.
+6. **R8:** add `/// Verifies: PHY-019` to `nightly_phy013_n_sum_and_asteroid_differential`, add PHY-019 to `PARK17-T3-ASTEROIDS`' requirement list (metadata only), and regenerate TRACE.md.
+7. **R7:** ask the maintainer to apply the `golden-change` label to PR #13 (WP17 widened the Swiftest bound). Do not create or apply it yourself if label policy is unsettled.
+8. **WP19 (EIH), as planned:**
+   - Clean room: work from the typeset DE440 Sec. 3.1 / DE430 Eq. 27 only, and never open REBOUNDx `gr_full.c`, ASSIST or Swiftest sources.
+   - Produce the NUM-020 term-by-term transcription table for the human OI-33 sign-off before any PHY-014 work.
+   - Pre-register every tolerance before the first run, and treat a failed pre-registration as a finding, not a reason to tune (WP17 widened or tuned two oracle checks after measuring them).
+   - Run `tools/pre_push.sh` (full) before every push and quote the GitHub CI run id for the pushed tip.
+9. **WP22, PHY-014:** the oracle stays 575.3093 (DE440 J2). This review reproduced 575.309315 once more.
+10. **Still for humans:**
+    - OI-38, now with R1's 6/6 pair-row evidence;
+    - OI-24 and OI-42;
+    - the WP17 Swiftest 60 km widening and the post-measurement Orekit tightening;
+    - the WP18 E6 failure and the stability criterion;
+    - whether a refusal row satisfies "lists Orekit on (a)";
+    - the M3 exit decision;
+    - the `blocked_by` auto-gating rule (F13);
+    - every earlier NEEDS HUMAN REVIEW item.
+
+Reviewer artefacts are in the local scratchpad (`rev18/`), not committed: `gate.log`, `data.log`, `nightly.log`, `nightly-padd.log`, `nightly-phy013.log`, `mutate.py`, `mutate.log`, `py/stagea.py`, `py/venus_padd_fwd.py`, `py/fit_fwd.py` and `py/recompute.py`.
