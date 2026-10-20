@@ -4968,3 +4968,76 @@ Reviewer artefacts are in the session scratchpad `rev21/`, not committed:
 - `oracle-out/` (the regenerated REBOUNDx series);
 - `py/recompute.py`, `py/stagec.py`, `py/twobody*.py`, `py/lrl.py`;
 - `probe/probe*.py` (black-box REBOUNDx) and `fa2b/` (two-body scenarios).
+
+## WP24 — [M5] `ferroastro-abm`: ABM PECE/PECEC order 8–14 with DP8 start-up
+Branch `m5-performance` (stacked on `m4-eih` at `78d5a4c`), draft PR (opened with the first push).
+
+### Progress-review corrections (status at the start of WP24)
+The orchestrator assigned WP24, not WP23, so this branch does not start the ladder catalogue or the MCP alpha. WP22 stays blocked on the NUM-020 / OI-33 signature; nothing here touches PHY-014.
+- **V1** (N-body LT γ wiring): applied in WP24. It is a small PR-tier test in `ferroastro-propagate`, and its bound is pre-registered below.
+- **V4** (runner `c` pin): applied in WP24 (pytest).
+- **V5** (pre-registration in git): applied. This plan is committed first, then the vectors in their own commit, then the code and the tests that read them. First-run timestamps are quoted from the nextest logs.
+- **V2** (subset-EIH frame report) and **V3** (speed-table selection): not applied in WP24. They belong to the M4 stage C and CI-008 tooling, and are listed under "Remaining".
+- **R7** and the OI-33 signature: these are requests to the maintainer. They are repeated as a PR comment, and nothing is created or signed by the agent.
+
+### Sources (clean room, DEP-008)
+- Adams–Bashforth / Adams–Moulton:
+  - Hairer, Nørsett & Wanner, *Solving Ordinary Differential Equations I* (2nd ed., 1993), §III.1: the explicit and implicit Adams methods, the backward-difference coefficients γ_j and γ*_j, and the P(EC)^m E^{1−t} modes.
+  - The coefficients are not transcribed. They are computed exactly in rational arithmetic by integrating the Lagrange basis polynomials over integer nodes.
+- DP8 start-up:
+  - The 12-stage 8th-order Runge–Kutta formula of DOP853, from Hairer, Nørsett & Wanner I §II.10 and Hairer's published `dop853.f` coefficient table.
+  - The decimal values (30 significant digits) were transcribed from SciPy's BSD-3 `scipy/integrate/_ivp/dop853_coefficients.py`, which reproduces that table.
+  - The values are verified independently: `tools/abm_dp8.py` checks every Butcher order condition up to order 8 (200 rooted trees) in 50-digit arithmetic and generates the Rust `(hi, lo)` table.
+- Subbotin, Kodukov & Pavlov 2023 (CeMDA, doi:10.1007/s10569-023-10139-2) is used only for the configuration: ABM13 PECEC, h = 1/16 d, DP8 start-up at h/8, a 40-yr EIH run, and their Table 1 values. **No ephemeris or N-body integrator source was opened.**
+
+### Design (fixed before any code)
+- **Method.**
+  - The first-order system is y = (x, v), y′ = (v, a(t, x, v)), so velocity-dependent EIH forces need nothing special.
+  - "Order p" is the order of the method. The predictor is the p-step Adams–Bashforth formula (order p, nodes t_n … t_{n−p+1}). The corrector is the Adams–Moulton formula on the p nodes t_{n+1} … t_{n−p+2} (order p).
+  - PECE: P, E, C, E. PECEC is P(EC)²: P, E, C, E, C. **Both use 2 force evaluations per step.** The history keeps f evaluated at the first corrected state, and the state is the second correction (HNW III.1 notation).
+  - p ∈ [8, 14], default 13 (NUM-002).
+- **Start-up.**
+  - The first p − 1 grid points come from DP8 at h/8 (8 substeps per step).
+  - Those steps are reported one at a time, like any step. Their dense output uses the interpolant through the p start-up nodes.
+- **Coefficients.**
+  - The coefficients are exact rationals (i128, reduced). They are converted once per backend (double-double division, then rounded to the backend).
+  - The sums run in R from the oldest term to the newest.
+- **Time.** t_n = t₀ + n·h, exact in n. There is no accumulated time.
+- **State update.**
+  - The default is compensated (Kahan) addition of the increment h·Σ, as IAS15 (NUM-001).
+  - `compensated = false` gives the plain sums of a straightforward f64 implementation. This is the "Subbotin f64" configuration whose round-off WP25 asserts.
+- **Dense output (NUM-010).**
+  - y(t_n + θh) = y_n + h Σ_j w_j(θ) f_j, where w_j(θ) = ∫₀^θ L_j(s) ds over the p nodes of the step's corrector. The values are computed from exact rational polynomial coefficients, evaluated in R.
+  - Event location uses Illinois regula falsi in θ, as IAS15 does.
+- **Fixed step and span ends.** The last step may overshoot the end of the span. The driver then reports the final state, samples and events at or before the end from dense output; it never shortens a step.
+- **Checkpoint (CI-010).**
+  - The snapshot holds the step index, t₀, h, the state and its compensation, the f history (p vectors), the start-up buffer while start-up is running, and the counters, all as exact (hi, lo) pairs.
+  - Restore and continue are bitwise equal to the uninterrupted run.
+- **Scenario (CI-002).**
+  - `integrator = { name = "abm", precision, order?, corrector? ("pece" | "pecec"), step_days? (default 1/16 d), compensated? }`.
+  - The IAS15-only keys (`epsilon`, `pc_tolerance`, `dt0_days`) are refused with `abm`, and the ABM keys are refused with `ias15` (`FA-E1203`).
+  - Existing scenario digests do not change, because the new keys are skipped when absent.
+  - ABM runs in n-body mode only. Test-particle and ephemeris-field modes refuse it by name (REF-011).
+- **Checkpoint format.** `ferroastro-checkpoint v3`: the integrator snapshot becomes an enum (IAS15 | ABM). v2 files are refused with `FA-E1302`; none is committed.
+- **Run output stats.** The ABM counters fill `steps` and `force_evaluations` of the existing stats record. The other fields stay 0, and the model string names the integrator.
+
+### Plan and pre-registered checks (written 2026-10-20 13:10 UTC, before any WP24 code or run)
+Bounds are vectors in `tests/vectors/abm.toml` (plus one in `nbody.toml` for V1). They are committed in their own commit before the tests that read them.
+
+| # | check | tier | bound (vector) | expectation and rationale |
+|---|---|---|---|---|
+| A1 | coefficients | PR | exact | For p = 8…14: AB and AM integrate every polynomial of degree < p exactly (rational identities); Σβ = 1. HNW Table III.1.1/III.1.2 spot values for p = 4 hold exactly. |
+| A2 | DP8 | PR (Rust) + pytest | `ABM-DP8-ORDER-SLOPE` \|slope − 8\| ≤ 0.5 | pytest: all 200 order conditions to ≤ 1e-25 (30-digit inputs), and the Rust table equals the generator's output. Rust: the error on the harmonic oscillator falls as h⁸. |
+| A3 | Kepler orbit, Mercury's e and a (SW92), μ = DE440 GM☉, 1000 orbits, h = 1/16 d, ABM13 PECEC and PECE, f64 compensated, vs ferroastro-analytic | PR | relative energy `ABM-KEPLER-ENERGY-REL` ≤ 1e-10; along-track phase `ABM-KEPLER-PHASE-RAD` ≤ 1e-6 rad | 1.4e6 steps. Truncation is ~(nh)^14 ≈ 1e-30, so round-off dominates: a random walk gives ~1e-13 in energy and ~1e-9 rad in phase, and a fully biased error ~1.4e-10 and ~4e-7 rad. Any coefficient error ≳ 1e-12 would exceed the bounds. The plain f64 and the DD variants (DD over 100 orbits) are reported. |
+| A4 | convergence order, Kepler (GM = a = 1, e from SW92), 10 orbits, step h and h/2, p ∈ {8, 10, 12, 13, 14} × {PECE, PECEC} | PR | `ABM-ORDER-SLOPE` \|log₂(err_h/err_{h/2}) − p\| ≤ 0.5 (task text) | The steps per orbit for each p are chosen by a scan, so that err_{h/2} ≥ 1e3 × the round-off floor and the run stays asymptotic. The scan is reported. This chooses the test design; it does not move the bound. |
+| A5 | NUM-010 events, Kepler from aphelion, 10 orbits, ABM13 PECEC | PR | DD: \|t_event − t_analytic\| ≤ 1e-6 s (`ABM-EVENT-TIME-S`); f64: \|r·v\|/\|d(r·v)/dt\| at the located event ≤ 1e-6 s (same vector) | NUM-010 bound. In DD, truncation and round-off are both ≪ 1e-6 s, so the error is the interpolant's. In f64, the orbit's round-off phase (~1e-12 rad ≈ 1e-6 s) is excluded by using the trajectory's own root, as the IAS15 NUM-010 test does. |
+| A6 | checkpoint/resume bitwise, inside the start-up and after it, f64 and DD | PR | exact | — |
+| B1 | the driver selects ABM from a scenario; refusals of mixed keys and of non-n-body modes | PR | exact | The model string names "ABM13 PECEC h = 0.0625 d". |
+| B2 | (2) EIH Sun + 8 planets + Moon (geocentric), header.440 ICs, 40 yr, ABM13 PECEC h = 1/16 d f64 vs IAS15 (default ε) f64, yearly samples, Mercury max \|Δr\| (SSB) | PR if ≤ 60 s at opt-level 1, else nightly | `ABM-VS-IAS15-MERCURY-40YR-DR` ≤ 1e-3 km (PROVISIONAL, task) | IAS15's own error over 40 yr is a few dm (the WP21 S1 tool difference was 0.85 m over 100 yr), and the compensated ABM error should be smaller. **The bound may fail on round-off alone**; if so, that is a finding. Every body, the Moon (geocentric) and the plain-f64 variant are reported. |
+| B3 | (3) Subbotin configuration: the B2 system and the B2 + 343 Minor variant (REF-003), 40 yr, ABM13 PECEC h = 1/16 d, f64 plain, f64 compensated and full DD | nightly | reported (assertion in WP25) | Subbotin Table 1: f64 2.47 m (Mercury) for their model and hardware. Expect plain f64 0.5–5 m vs DD, and compensated ≲ 0.1 m. |
+| B4 | (4) checkpoint at 20 yr + resume of the 40-yr B2 ABM run equals the uninterrupted run bitwise (every sample and the final state) | PR (with B2) | exact | — |
+| B5 | data tier: header.440 and de440.bsp fetched or re-verified, provenance printed; Sun + 8 planets + Moon EIH + solar J2, 10 yr, 10-d samples; ABM13 PECEC and IAS15, both vs de440.bsp | data | \|max res_ABM − max res_IAS15\| (Mercury, SSB) ≤ 1e-3 km (`ABM-DE440-RESIDUAL-CONSISTENCY`) | Both residuals are ≈ 1.44 km (WP19 C7). The two integrators must agree with the real ephemeris equally well. |
+| V1 | Sun + Mercury N-body, `lense_thirring` on/off, ppn γ = 0.9 and γ = 1, same IC hash, 1 yr: ratio of the LT displacements (on − off, final Mercury position), Δ(0.9)/Δ(1) | PR | `NBODY-LT-GAMMA-WIRING` \|ratio − (1+γ)/2\| ≤ 1e-3; the model string records γ = 0.9 | The LT perturbation is linear at the 1e-8 level. The Δ precision is ~1e-6 relative (Δ ≈ m-level against f64 positions). The reviewer's mutant (`de.ppn_gamma()`) gives a ratio of 1 and must fail. |
+| V4 | pytest: runner c (au/day) = CLIGHT·86400/AU from header.440 within 1 ulp, and equal to each committed stage C MANIFEST's `c_au_per_day` | PR (pytest) | exact / 1 ulp | The c × 1.001 mutant must fail. |
+
+Nothing above is tuned after a run. If a bound fails, the value, the failure and its diagnosis are reported, and the bound is not changed.
