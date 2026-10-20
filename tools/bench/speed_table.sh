@@ -54,9 +54,11 @@ oracle() { # tool scenario n
     code=$?
     echo "$before $(load)" > "$dir/load.txt"
     if [[ $code == 3 ]]; then
-      rm -rf "$out/$tool/$s"/run-*; mkdir -p "$out/$tool/$s"
+      # Keep the runner's message before the run directories (and their logs) are removed.
       grep -E '^REFUSED' "$log" | head -n 3 > "$out/$tool/$s/refused.txt"
       [[ -s "$out/$tool/$s/refused.txt" ]] || tail -n 3 "$log" > "$out/$tool/$s/refused.txt"
+      mv "$log" "$out/$tool/$s/refused.log"
+      rm -rf "${out:?}/$tool/$s"/run-*
       echo "$tool $s: refused" >&2; return 0
     elif [[ $code != 0 ]]; then
       { echo "exit $code"; tail -n 5 "$log"; } > "$out/$tool/$s/failed.txt"
