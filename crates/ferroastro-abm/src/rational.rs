@@ -316,7 +316,7 @@ mod tests {
     fn conversion_to_backends() {
         assert_eq!(
             q(-9, 24).to_real::<f64>().unwrap().to_bits(),
-            (-0.375_f64).to_bits()
+            (-0.375_f64).to_bits() // lint: allow-literal(exact value of -9/24)
         );
         let third: DoubleDouble = q(1, 3).to_real().unwrap();
         let err = (third * DoubleDouble::from_f64(3.0) - DoubleDouble::ONE).abs();

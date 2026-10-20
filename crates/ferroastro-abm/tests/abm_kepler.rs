@@ -48,7 +48,7 @@ const SHORT_ORBITS: u32 = 10;
 /// A4: steps per orbit of the coarser run of each pair (plan check A4; chosen from the scan
 /// reported in IMPLEMENTATION-NOTES WP24 so that the error at h/2 is >= 1e3 x the
 /// double-double floor and the step is inside the stability range).
-const A4_STEPS: [(u32, u32); 5] = [(8, 1024), (10, 1024), (12, 1024), (13, 1024), (14, 512)];
+const A4_STEPS: [(u32, u32); 5] = [(8, 1024), (10, 1024), (12, 1024), (13, 1024), (14, 512)]; // lint: allow-literal(steps per orbit, test design)
 
 fn vectors() -> VectorSet {
     VectorSet::load_canonical().unwrap()
