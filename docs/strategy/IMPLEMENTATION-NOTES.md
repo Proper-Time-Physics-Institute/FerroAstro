@@ -5240,7 +5240,7 @@ Branch `m5-performance` (stacked on `m4-eih`), draft PR #18, continuing after WP
   | epm2021 tiers | 82 s | 182 s | 678 s |
   | all-mutual | 2625 s | 2807 s | — (est. ≳ 7 h) |
 
-### Plan and pre-registered checks (written 2026-10-20 14:30 UTC)
+### Plan and pre-registered checks (written 2026-10-20 before 14:26 UTC, commit `db1fcd9` at 14:26 UTC; vectors `f993f0f` at 14:27 UTC)
 Bounds are vectors in `tests/vectors/ephemeris-mode.toml`, committed in their own commit before the tests that read them. "max over 40 yr" means over the 20-d samples and the final state; Mercury and Mars are barycentric, and the Moon is Moon − Earth.
 
 | # | check | tier | bound (vector) | expectation and rationale |
@@ -5270,3 +5270,149 @@ Nothing above is tuned after a run. If a bound fails, the value, the failure and
 | # | check | tier | bound (vector) | expectation and rationale |
 |---|---|---|---|---|
 | D1 | Setup: header.440 and de440.bsp fetched or re-verified, provenance printed; the reference scenario with a 5-yr span and 10-d samples, mixed and full DD (f64 plain reported). Check: every body's max heliocentric residual against de440.bsp; \|max res_mixed − max res_DD\| for Mercury | data | ≤ 1 cm (`EPH-MIXED-DE440-HELIO-CONSISTENCY-KM`) | Triangle inequality on the mixed-vs-DD distance. The residuals themselves are reported: the model lacks J2, LT, KBOs and ring, so they are km-level and not asserted. |
+
+### What was built (WP25)
+- **`ferroastro-forces`:**
+  - `F64Forces<S>`: any `SecondOrderSystem<f64>` as a `SecondOrderSystem<R>`. It rounds t, x, v once to f64 and widens a exactly; for f64 it is the identity.
+  - `MixedForces<F>`: the mixed mode of the driver. Every `NBodyModel` term is evaluated in f64; the contributions are accumulated with Neumaier's sum and widened as the unevaluated pair (Σ, compensation) into R.
+  - `NBodyModel::acceleration_split`: the (hi, lo) output behind `MixedForces`. The plain and the compensated paths are unchanged bitwise; every IAS15 golden and the PR tier pass.
+- **`ferroastro-eih`:** `mu_star_rate` (μ̇*, Newtonian accelerations) and `relativistic_barycentre_with_rate` (Subbotin Eq. 5).
+- **`ferroastro-scenario` (CI-002):**
+  - `integrator.precision = "mixed"`;
+  - `forces.major_asteroids = none | epm2021 | all`, which joins `SWITCHES` and is refused by name by all four Python oracle runners;
+  - `initial_conditions.barycentre = "relativistic"`.
+  - The schema is regenerated. Existing digests are unchanged, because the new keys are skipped when absent or default.
+- **`ferroastro-propagate`:**
+  - The mixed mode is `NBodyRun<DoubleDouble>` + `MixedForces` over the f64 model. Its checkpoint label is "mixed", so a DD checkpoint is refused.
+  - EPM2021 / all-mutual tiers.
+  - Rebarycentring of the packed ICs in the run's backend (3 passes; every slot except Moon − Earth).
+  - `initial_accelerations()` (DEP-007 / NUM-007 diagnostic).
+- **Scenario:** `ci/scenarios/ephemeris-mixed-epm16-40yr.toml`.
+- **Tests:**
+  - `ferroastro-forces`: `mixed::tests`, `tests/mixed_forces.rs`;
+  - `ferroastro-eih`: `tests/mu_star_rate.rs`;
+  - `ferroastro-propagate`: `tests/ephemeris_mode.rs` (C2–C5), `tests/data_ephemeris_mode_de440.rs` (D1), `tests/nightly_ephemeris_mode.rs` (N1–N4 and the DD N4 follow-up).
+
+### Diagnosis during WP25: the first mixed realisation was summation-limited (design change, disclosed)
+- **The first realisation was the plain one:** it rounded each body's summed acceleration to f64. Its first nightly run started 14:32 UTC with the plan's code (`15cc2e1`) and gave **Mercury 14.2 cm** against DD over 40 yr. The D1 data run at 14:40 UTC showed the same thing earlier: Mercury mixed−DD ≥ 6 mm after 5 yr.
+- **Probes (release, 5 yr, Mercury max |mixed − DD|):**
+
+  | variant | 5 yr |
+  |---|---|
+  | reference (354 bodies) | 9.0e-6 km |
+  | 11 majors | 2.1e-6 km |
+  | 10 majors, no Pluto | 2.9e-7 km |
+  | 11 majors without Neptune | 3.4e-7 km |
+  | 11 majors without Uranus | 5.5e-7 km |
+  | 11 majors without EIH | 4.8e-7 km |
+
+  The error depended strongly on how many small terms enter each body's sum. This is the summation round-off of the f64 accumulator (≈ √N_terms roundings of the large total), not the rounding of the individual terms.
+- **The cause was a misreading of the paper.** Subbotin §4.3 stores "x and its time derivative f" in double-double, with r_ij, the relativistic part and GM in f64. The plan's design rounded f itself to f64 (my reading of "forces in f64").
+- **The fix:**
+  - `MixedForces` keeps the terms in f64 and carries the compensated sum into DD (commit `fa24384`).
+  - After the fix: reference 5-yr Mercury **3.8e-7 km** (24× smaller); 11 majors 3.7e-7 km; D1 0.18 mm.
+- **No bound was changed.** Both realisations' numbers are reported below. Run 1 is the plan's design; run 2 is the corrected design, run after the diagnosis. This is a design correction made after seeing a failing result. **NEEDS HUMAN REVIEW:** accept the corrected design as NUM-007's realisation, or treat run 1 as the result of record.
+
+### WP25 results (local, 2026-10-20, i9-13900, toolchain 1.95.0)
+Data and provenance:
+- header.440 `0f4636b6…6ac3359` and de440.bsp `a4ce9bf9…fff7c4b5` from the pinned cache, SHA-256 re-verified.
+- REF-003 states from sb441-n373s.bsp `21431132…8da10b` (tools/sample_sb441.py@bcc3320).
+- Logs are in the session scratchpad `wp25/`. Times are UTC.
+- Wall times are from runs that shared the machine with up to five other runs, so they are upper bounds.
+
+**PR tier (first valid runs, nextest default profile):**
+
+| # | measured | bound | result |
+|---|---|---|---|
+| C1 | `F64Forces`: f64 identity bitwise; DD inputs with low words → the f64 model's output exactly. `MixedForces` (f64) is bitwise the compensated model; in DD, 33/33 components carry a low word | exact | pass (~14:20 pre-plan for `F64Forces`; 14:48 for `MixedForces`) |
+| C2 | Mixed and test-particle / ephemeris-field refusals by name. `barycentre` refused outside n-body mode. 16 Major + 338 Minor with (7), (324) Major, and `asteroids = 5` refused naming (7). Mixed = DD IC hash `4e2523b6…7e7a87`, f64 `6e6dd086…24f284` (f64 re-barycentres in f64). The model string names the mixed mode. Mixed resume after 1 yr of 2 bitwise; DD checkpoint refused FA-E1302. Rebarycentring moves every slot by the same 122.649586 km and leaves Moon − Earth bitwise | exact | pass (14:31; Moon-slot check 14:37) |
+| C3 | after 3 DD passes: \|b\| = **3.46e-27 km**, \|b′\| (Eq. 5) = **9.5e-35 km/s** (printed by the pre-plan probe too, see V5). As given: 122.649586 km, 2.0e-8 km/s | 1e-19 km, 1e-27 km/s | pass (14:31) |
+| C3b | μ̇* vs central difference at δ = 1 h: **3.93e-6** relative. Halving δ: 9.82e-7, 2.45e-7, 6.14e-8, 1.53e-8 (ratios 4.0000) | **1e-6 → FAIL** | **FAIL** (14:34). The plan's estimate (δ/P)² omitted (2π)²: (2π · 1 h / 88 d)² = 8.9e-6. The convergence ratios show the residual is the difference quotient's δ² truncation, and the analytic μ̇* is right. The bound is unchanged; the assertion is in the nightly tier (`nightly_mu_star_rate_pre_registered_bound`), where it fails. The PR tier asserts the δ² ratio (`EPH-MUSTAR-RATE-CONVERGENCE` = 4 ± 0.1, **added after the first run**, disclosed) |
+| C4 | 2 yr, Mercury vs DD. Run 1: mixed 6.21e-8 km, f64 plain 8.76e-6, f64 compensated 1.13e-6, ratio 141. Run 2 (`MixedForces`): mixed 4.57e-8 km, ratio 192 | ≥ 10 | pass (14:31; 14:48) |
+| C5 | DD vs f64 accelerations, 11 bodies + J2 + LT + EIH + geocentric Moon: max **5.1e-16** relative; mixed vs DD 3.9e-16 | 1e-12 | pass (14:31; 14:48) |
+
+**Data tier (D1, `--profile data`):**
+- de440.bsp, 5 yr, 182 samples, max heliocentric residual (km):
+
+  | body | DD | mixed | f64 plain |
+  |---|---|---|---|
+  | Mercury | 0.784622 | 0.784621 | 0.784623 |
+  | Venus | 0.163439 | | |
+  | Earth | 1.302923 | | |
+  | Moon | 99.3229 | | |
+  | Mars | 0.033261 | | |
+  | Jupiter | 0.202063 | | |
+  | Saturn | 0.314957 | | |
+  | Uranus | 0.747435 | | |
+  | Neptune | 1.825489 | | |
+  | Pluto | 1.830721 | | |
+
+  The Moon's 99 km heliocentric residual reflects a model without the Earth's and Moon's figures and tides; it is reported, not asserted.
+- Mercury \|Δmax\| mixed − DD: run 1 6.09e-6 km, run 2 **1.83e-7 km**. Bound 1e-5 km: pass both (14:40 and 14:50).
+- The whole data tier: **32/32 pass** (15:05).
+
+**Nightly tier (release; N1–N4 in one test, five runs in parallel threads).**
+- Run 1 (`F64Forces`, plan design): 14:32–15:05.
+- Run 2 (`MixedForces`): 15:07–15:42.
+
+Table 1 (max over 40 yr against the full DD run; Mercury and Mars barycentric, the Moon geocentric):
+
+| | Mercury | Mars | Moon | wall |
+|---|---|---|---|---|
+| f64 plain | **3.246 m** | 0.889 m | 0.435 m | 58–75 s |
+| f64 compensated | 2.106 m | 0.059 m | 0.384 m | 58–78 s |
+| mixed, run 1 (`F64Forces`) | 14.23 cm | 2.58 mm | 0.647 mm | 162 s |
+| **mixed, run 2 (`MixedForces`)** | **2.038 cm** | **0.664 mm** | **0.743 mm** | 144 s |
+| DD | truth | truth | truth | 462–508 s |
+| Subbotin et al. 2023 (two-way, EPM2021, their CPU) | f64 2.47 m, mixed 8.4 mm | 0.7 m, 0.44 mm | 0.28 m, 1.2 mm | 81 / 246 s / 32 min |
+
+| # | measured | bound | result |
+|---|---|---|---|
+| N1 | Mercury mixed: run 1 1.42e-4 km, run 2 **2.04e-5 km** | 1e-5 km | **FAIL** both (run 2 at 2.0× the bound) |
+| N1b | f64 plain Mercury 3.246e-3 km | [0.8, 8] m | pass (0.32 of the half-width) |
+| N2 | Moon − Earth mixed: run 1 6.47e-7 km, run 2 **7.43e-7 km** | 2e-6 km | pass (0.37) |
+| N3 | max \|b(t)\|, DD **2.917 µm**, mixed 2.924 µm (run 1 3.180 µm); f64 plain 0.405 mm (reported) | 10 µm | pass (0.29). Subbotin: 3.14 / 2.6 µm / 0.5 mm |
+| N4 (mixed) | \|tiered − all-mutual\| max over 40 yr, run 2: Mercury 8.05 mm, Venus 0.60 mm, Earth 2.44 mm, **Mars 21.8 mm**, Jupiter 0.62 mm, Saturn 0.12 mm, Uranus 52 µm, Neptune 13 µm, Pluto 14 µm, Moon 0.40 mm | 1 cm / 1 mm, if resolvable | **Mars FAIL** (resolvable: round-off 0.66 mm). **Mercury and the Moon UNRESOLVED** (round-off 20 mm and 0.74 mm). The others pass. Run 1 also gave Mars 22.9 mm, with the inner planets and the Moon unresolved |
+| N4 (DD follow-up) | see below | 1 cm / 1 mm | running |
+
+Interpretation:
+- **NUM-007 fails by a factor of 2** with the corrected mixed mode: Mercury round-off is 2.04 cm against 1 cm.
+- The plan predicted 0.7–2 cm from per-term f64 rounding (≈ 1e-16 relative per evaluation, random-walking the mean motion): ~1 cm at 40 yr if the 5-yr value grew as t^1.5 (it grew as ~t^1.9). Subbotin's 8.4 mm is a two-way estimate on a different model; one realisation of a random-walk phase can differ by a factor of 2.
+- What remains is the rounding of the dominant Sun–planet term itself. It can only be removed by computing that term in DD; DE's QIVA computed the Newtonian part in quadruple precision. That would be a "mixed+" mode and needs a maintainer decision.
+- NUM-008 (Moon 0.74 mm ≤ 2 mm) and NUM-018 (2.9 µm) pass. The f64 trend reproduces Table 1 (3.2 m against 2.47 m).
+- **Mars tiering, 2.2 cm in both realisations, is a physical finding,** not round-off. The DE440 asteroid set with 338 Minor bodies changes Mars by more than Subbotin's "sub-centimetre" for their EPM2021 set. The DD follow-up will confirm it.
+- The cost ratios are mixed / f64 = 2.5 and DD / f64 = 8 (Subbotin: 3 and 24).
+
+### Mutation probes (WP25)
+Script: scratchpad `wp25/mut/run_mutants.py` and `run_mutants_r2.py`. Restores use `cp` + `os.utime`; the tree was clean afterwards.
+
+| mutant | result |
+|---|---|
+| M1 the mixed run steps with the DD model (forces64 ignored) | killed (C4: "mixed equals DD bitwise") |
+| M2 rebarycentring leaves the velocities | killed (C3) |
+| M3 μ̇* without the ½ of the potential-rate term | **survived round 1** (only the failing nightly bound caught it); killed after `EPH-MUSTAR-RATE-CONVERGENCE` |
+| M4 epm2021 promotes no asteroid | killed (C2) |
+| M5 rebarycentring also shifts the Moon − Earth slot | **survived round 1**; killed after the Moon-slot invariance check |
+| M6 (an equivalent rewrite of the f64 rounding) | equivalent mutant, no finding |
+
+### Interpretations, deviations and NEEDS HUMAN REVIEW (WP25)
+1. **NEEDS HUMAN REVIEW — N1 (NUM-007) fails:** Mercury 2.04 cm against 1 cm. Options for the maintainer:
+   - (a) accept that the f64-terms scheme cannot meet 1 cm on this model;
+   - (b) add a DD Sun-term ("mixed+") mode, which needs a requirement decision;
+   - (c) define the round-off estimator as Subbotin's two-way integration, which needs a requirement change.
+
+   The vector is unchanged.
+2. **NEEDS HUMAN REVIEW — the mixed design was corrected after the first nightly run** (above). Both runs are reported.
+3. **NEEDS HUMAN REVIEW — C3b's pre-registered bound fails** because of an estimate error ((2π)² omitted). The bound is unchanged, and the assertion runs in the nightly tier. The convergence vector was added after the first run.
+4. **NEEDS HUMAN REVIEW — N4 Mars tiering 2.2 cm > 1 cm** (resolvable, both realisations). NUM-009's notes cite "< 1 cm planets" [V], from Subbotin's EPM2021 model. With DE440's 343 asteroids this does not hold for Mars. NUM-009's notes need a source-specific wording (PR #2).
+5. **NUM-009's 16 Majors:** WP25 uses Subbotin's set (Ceres, Pallas, Vesta, Iris, Bamberga), not WP15's five largest-GM asteroids. The requirement text should name one (PR #2).
+6. **Round-off estimator:** FerroAstro measures against a full-DD run (task text); Subbotin use two-way integration. The numbers are not strictly comparable.
+7. **Model differences from EPM2021:** DE440 GMs and 343 asteroids; no TNOs, annulus or ring; no J2 or LT (they omit both too).
+8. **`forces.major_asteroids`** joins CI-002's `SWITCHES` (PR #2: CI-002's switch list).
+9. **Wall times** are upper bounds (shared machine). NUM-024's benchmark (criterion, quiet machine) is not done here.
+10. **Taylor terms:** the geocentric Moon uses 12 terms (≥ 4, NUM-008). Subbotin's "4 terms suffice" was not re-tested in the mixed mode.
+
+### Remaining after WP25
+- The DD N4 follow-up (`nightly_wp25_tiering_double_double`, ≈ 5 h) is running at the time of writing; see the next entry for its result.
+- V2 and V3 (M4 / CI-008 tooling), WP23, and WP22 (OI-33 signature).
+- NUM-024's criterion benchmark of the mixed mode (WP26 / M5 performance).
