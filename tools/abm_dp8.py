@@ -223,6 +223,7 @@ def rust_table() -> str:
         hi, lo = split(x)
         return f"({hi!r}_f64, {lo!r}_f64)"
 
+    # REUSE-IgnoreStart
     lines = [
         "// SPDX-FileCopyrightText: 2026 Proper-Time Physics Institute",
         "// SPDX-License-Identifier: Apache-2.0",
@@ -231,6 +232,7 @@ def rust_table() -> str:
         "//! sum is the 30-digit published value (Hairer, Norsett & Wanner I, Sec. II.10;",
         "//! `dop853.f`). Every order condition up to order 8 was verified by the generator to",
         "//! <= 1e-25.",
+        # REUSE-IgnoreEnd
         "",
         "/// A coefficient as an unevaluated binary64 pair `hi + lo`.",
         "pub(crate) type Pair = (f64, f64);",
