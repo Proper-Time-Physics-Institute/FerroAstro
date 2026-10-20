@@ -5418,3 +5418,82 @@ Script: scratchpad `wp25/mut/run_mutants.py` and `run_mutants_r2.py`. Restores u
 - The DD N4 follow-up ran to completion (6.3 h; table above). It is a long-tier test (`--profile nightly`), and its 10-yr segments resume from `target/wp25-store` if interrupted.
 - V2 and V3 (M4 / CI-008 tooling), WP23, and WP22 (OI-33 signature).
 - NUM-024's criterion benchmark of the mixed mode (WP26 / M5 performance).
+
+## WP26 — [M5] Safe SIMD SoA kernels, run-level parallelism and bitwise reproducibility
+Branch `m5-performance` (stacked on `m4-eih`), draft PR #18, continuing after WP25.
+
+### Progress-review corrections (status at the start of WP26)
+- **V1, V4:** applied in WP24 (unchanged).
+- **V5** (pre-registration in git): applied. This plan is committed first, the vectors in their own commit next, then the code and the tests that read them. Before this plan, no WP26 code was written or run; only the candidate crates were downloaded and read (DEP-015, below).
+- **V3** (speed-table selection): **applied in WP26**, because it lives in `ferroastro-bench`, one of this WP's crates. The nightly picks the two most recent valid tables that time every E6 scenario (the four WP18 scenarios (a)–(d)); partial tables are listed by name and skipped, and fewer than two complete tables is a named precondition failure. E6 itself is not changed.
+- **V2** (stage C subset-EIH frame report): not applied. It belongs to the M4 stage C tooling, not to this WP's crates, and stays under "Remaining".
+- **WP22:** blocked (OI-33 signature); nothing here touches PHY-014. Check (5) uses a shortened substitute of the WP22 model (below).
+- **R7:** a maintainer request (repeated in the PR comment).
+- **Thin margins:** S1 and the binary 1PN energy are not touched; the default kernels are unchanged bit for bit.
+- **Mutation restores:** use `cp` + `touch`.
+
+### DEP-015 checklist and the SIMD crate choice (recorded 2026-10-20 22:10 UTC, before any code)
+The two candidates of NUM-021 / OI-45, read from their published `.crate` archives (scratchpad `wp26/crates/`):
+
+| item | `wide` 0.7.33 | `pulp` 0.22.3 |
+|---|---|---|
+| licence (file read) | `LICENSE-ZLIB.md` (Zlib text, © 2020 Daniel "Lokathor" Gee) is the only licence file in the archive; the SPDX expression is `Zlib OR Apache-2.0 OR MIT`. No terms beyond the SPDX expression, so no `[[licenses.clarify]]` is needed. | MIT |
+| dependencies | `bytemuck` 1 and `safe_arch` 0.7 (both Lokathor, `Zlib OR Apache-2.0 OR MIT`, all three licence files present) | `bytemuck`, `reborrow`, `num-complex`, `libm`, `pulp-wasm-simd-flag` |
+| last release | 2025-06-21 (16 months; the 0.7 line). Newer `wide` (0.7.34 …1.7.1, 2026-09-14) needs Rust 1.89, above FerroAstro's MSRV 1.85, so the MSRV-aware resolver keeps 0.7.33 | 2026-06-20 |
+| MSRV | 1.61 | undeclared |
+| WASM | builds for wasm32 (`simd128` when enabled, otherwise per-lane `f64` with `std`) | wasm via a flag crate |
+| dispatch | compile time (`cfg(target_feature)`): SSE2 2×f64x2 on the x86-64 baseline, AVX `m256d` with `-C target-cpu`/`target-feature` | run time (x86-v3 / v4 detection) |
+| `unsafe` | inside the crates only; FerroAstro code stays `forbid(unsafe_code)`, so STD-003 needs no ADR | inside the crate only |
+
+**Choice: `wide` 0.7.33**, optional, behind `ferroastro-forces/simd`.
+- It has the smallest dependency tree, a declared MSRV below ours, and compile-time dispatch, so one build has one code path, which suits bitwise reproducibility.
+- The cost is that the baseline x86-64 build gets SSE2 2-lane vectors, and 4-lane AVX needs `-C target-cpu=native`. Both builds are measured.
+- What was checked in the `wide` source: `+ − × ÷` and `sqrt` of `f64x4` map to `addpd/subpd/mulpd/divpd/sqrtpd` (or the AVX forms), or to per-lane `f64` operators. These are correctly rounded IEEE-754 binary64 operations, identical to scalar `f64` operations. `mul_add` is fused only when the `fma` target feature is on, and is `a·b + c` otherwise, so its rounding depends on the build. **The kernels therefore never call `mul_add`.**
+
+### Design (fixed before any code)
+- **Layout and vectorisation.** Every SoA kernel gathers the Major bodies' positions, velocities and GMs into per-component arrays, padded to the lane width. The vectorisation runs **across targets i**: each lane is one body i, and the sources j are a scalar loop broadcast to all lanes.
+  - Each body's sum therefore runs over j = 0, 1, …, m−1 in storage order, whatever the lane width. **There is no cross-lane reduction, so the reduction order is fixed by construction**, and it is the same order as the production pairwise kernel's sum for body i.
+  - Self-terms (and the Earth–Moon pair, which the Newtonian mutual term skips with a geocentric Moon) are removed with a lane select on a group label, never by arithmetic.
+  - The cost is that all m² ordered pairs are evaluated, against m(m−1)/2 for the pairwise kernel.
+- **Lane types.**
+  - A `Lane` trait has two implementations: `Scalar<R>`, width 1, for every `R: Real` and always compiled; and `F64x4` (a `wide::f64x4` newtype), width 4, behind `simd`.
+  - A kernel is written once, generic over `Lane`. For `R = f64` the term dispatches to `F64x4` when the feature is on (a safe `Any` downcast) and to `Scalar<f64>` otherwise, and that is the only difference. Double-double runs use `Scalar<DoubleDouble>`.
+- **FMA policy (TST-005, NUM-021): the SoA kernels contain no fused multiply-add.**
+  - Every operation is one correctly rounded binary64 `+ − × ÷ √`, or an exact select. Rust never contracts `a·b + c`.
+  - The SIMD and scalar kernels are therefore **required to be bitwise identical** on every target: x86-64 with or without AVX, aarch64 and wasm32.
+  - The production kernels (`NewtonianMutual`, `Eih`) keep their explicit `mul_add` (always fused, with a software FMA if needed) and are not changed.
+- **Exact 1/r³ (NUM-021, ≤ 1 ulp).**
+  - s = √r² (correctly rounded). r²·s = p + p′ exactly (Dekker two-product with Veltkamp splitting, no FMA). The square-root residual e = r² − s² is exact (two-product plus a Sterbenz subtraction).
+  - The cube is P = p + p′ + ½ s e (exact to O(u²)). Then y₀ = 1/p, y₀·p = t + t′ exactly, and ε = ((1 − t) − t′) − y₀(p′ + ½ s e). The result is y = y₀ + y₀ ε, a Newton step for 1/P.
+  - The error is the final rounding (≤ ½ ulp) plus O(u²), so it is ≤ 1 ulp, and almost always correctly rounded. The cost is about 60 flops per pair instead of 3, which is the price of "exact" without FMA. The production `1/(r²·√r²)` is ≤ 2 ulp by its own comment, and is measured here.
+- **Kernels.**
+  - `NewtonianMutualSoa` (ferroastro-forces): the `NewtonianMutual` physics, with the same Major tier, pair rule and `add_emb_only` routing.
+  - `EihSoa` (ferroastro-eih, feature `simd` → `ferroastro-forces/simd`): the `Eih` physics (Park et al. 2021 Eq. 27, the same S1/S2/S3 grouping and Newtonian or iterated right-hand-side a_j). Pass A gives U_i and the Newtonian a_i over all Majors; pass B gives the c⁻² correction.
+  - The Minor, Ring, Moon, J2 and LT terms are unchanged; they are O(N) or O(N_minor · N_major) and outside NUM-021's pair-kernel scope.
+- **Selection.** New scenario key `integrator.force_kernel = "pairwise" (default) | "soa"` (CI-002).
+  - It is skipped when absent or default, so every existing digest and golden is unchanged.
+  - It is not a force switch. The oracle runners ignore unknown integrator keys, and the kernel is FerroAstro's implementation choice.
+  - `soa` is refused by name in the test-particle and ephemeris-field modes and with `precision = "mixed"`. The mixed mode's NUM-007 accuracy depends on compensating each pair contribution (WP25), which a per-body SoA sum does not do.
+  - The model string names the kernel ("SoA, exact 1/r^3, no FMA") but not the lane backend, because the backend is bit-identical by design (that is what check P7 tests).
+- **Run-level parallelism (NUM-022).** The existing `run_batch` (rayon, `parallel` feature) is the mechanism. WP26 adds the thread-count checks and the throughput measurement, and a `simd` feature on `ferroastro-propagate`, `ferroastro-cli` and `ferroastro-bench` that forwards to the kernels.
+
+### Plan and pre-registered checks (written 2026-10-20 22:20 UTC, before any WP26 code or run)
+Bounds are vectors in `tests/vectors/simd.toml`, committed in their own commit before the tests that read them. u = 2⁻⁵³.
+
+| # | check | tier | bound (vector) | expectation and rationale |
+|---|---|---|---|---|
+| P1 | Exact 1/r³: max \|y − 1/r³\| / ulp(1/r³) against astro-float (256-bit) over 100 000 seeded log-uniform r² ∈ [1e-6, 1e30] km² plus every header.440 Major pair. The production `1/(r²·√r²)` is reported | PR | `SIMD-INV-R3-MAX-ULP` ≤ 1 | Analysis: ½ ulp + O(u²). A Newton step with a wrong sign or a dropped residual term gives ≥ 1 ulp on a sizeable fraction of inputs. |
+| P2 | (1) SIMD (`F64x4`) vs scalar (`Scalar<f64>`) kernels: Newtonian (barycentric Moon and geocentric pair) and EIH corrections (β = γ = 1, and β = 1, γ = 0.9; Newtonian and iterated right-hand side) on header.440 states for N = 10 (stage C), 11 (DE440 majors) and 16 (11 + EPM2021 five), and on 500 seeded random configurations with N = 1 … 37 | PR (`--features simd`) | exact (0 differing bits) | IEEE-754 correct rounding of every operation, and no FMA. The N not divisible by 4 test the padding. |
+| P3a | Newtonian SoA accuracy against the same term in double-double (`NewtonianMutual<DoubleDouble>` on the same f64 inputs), barycentric Moon: per body and component \|a_soa − a_DD\| ≤ (m + 9) u Σ_j \|t_ij\| | PR | `SIMD-SOA-NEWTON-ERROR-BOUND-RATIO` ≤ 1 | Forward error bound: per term ≤ 10u (difference rounding, 3-rounding r², ≤ 1 ulp 1/r³, 2 products), plus a recursive sum of m − 1 terms. |
+| P3b | EIH SoA accuracy against `Eih<DoubleDouble>`: per body \|c_soa − c_DD\| ≤ 1e-12 \|c_DD\|. The production `Eih<f64>` error is reported | PR | `SIMD-SOA-EIH-REL` ≤ 1e-12 | f64 rounding is ~1e-16 per term. This allows a cancellation factor of 1e4 in the S1/S2/S3 sums. A formula slip (a wrong coefficient or sign) gives ≥ 1e-3. **It may fail if the cancellation is larger; if so, it is reported and the bound is not moved.** |
+| P3c | Geocentric-pair model (Newtonian + GeocentricMoon): SoA vs pairwise model accelerations, per slot \|Δa\| ≤ 1e-13 \|a\| | PR | `SIMD-SOA-GEOCENTRIC-REL` ≤ 1e-13 | Both are ulp-level. A pair-exclusion error is ≥ 6e-3 relative: the Moon's pull on the Earth (GM_Moon/r² ≈ 3.3e-8 km/s²) against the Earth's solar acceleration (≈ 5.9e-6 km/s²). |
+| P4 | Model-level in one process: Sun + 8 planets + geocentric Moon, EIH + solar J2 + LT, header.440, ABM13 PECEC h = 1/16 d, f64, 10 yr. The `soa` model with the `F64x4` backend vs the `Scalar` backend: every step's state | PR (`--features simd`) | exact | Follows from P2. |
+| P5 | (2) `run_batch`: 8 `soa` runs and 8 `pairwise` runs at 1, 2, 4 and N = `available_parallelism` threads, bitwise identical to each other and to single runs | PR | exact | Each run is single-threaded and deterministic; rayon only schedules. |
+| P6 | (3) wasm32-unknown-unknown builds of forces, eih and propagate without `simd` (CI job, plus locally); with `simd`, reported | PR (CI) | builds | — |
+| P7 | (5) WP22 substitute: `ci/scenarios/wp26-headline-substitute-20yr.toml` (16 EIH Majors with EPM2021 tiers, solar J2, LT, 343 asteroids, KBOs and ring, header.440 + REF-003, IAS15 f64, 20 yr, Mercury perihelia, `force_kernel = "soa"`). `tools/simd_identity.py` runs the CLI built without and with `--features simd` and compares the SHA-256 of the encoded outputs; a `-C target-cpu=native` build is reported | nightly (local) | exact (equal digests) | The WP22 run itself is blocked (OI-33). The "within 1e-6 ″/cy" fallback of the task is not needed if the digests are equal. |
+| P8 | (4) Criterion, N = 16 (header.440 + EPM2021 five): SoA Newtonian and EIH kernels, `F64x4` vs `Scalar`, and the production pairwise terms; baseline build and `-C target-cpu=native` | bench (local) | reported against the 2.5× target (NUM-021, not a gate) | Expected: ≤ 2× on the SSE2 baseline (2 lanes), 3–4× with AVX. Against the production pairwise kernel the SoA kernel does 2× the pairs and ~20× the flops for 1/r³, so it may be slower. |
+| P9 | (4) Run-level scaling: 32 runs (≥ 32 logical CPUs) of a 1-yr EIH Sun + 8 planets ABM run on 1, 2, 4, 8, 16, 24 and 32 threads; throughput and efficiency E(T) = thr(T) / (T · thr(1)) | bench (local) | reported (NUM-022) | The i9-13900 has 8 P-cores (16 threads) and 16 E-cores, so efficiency is expected to fall above 8 threads. |
+| D1 | Data tier: the WP24 B5 configuration (EIH + solar J2, Sun + 8 planets + geocentric Moon, header.440, 10 yr, 10-d samples, IAS15) with `pairwise` and with `soa`, both against de440.bsp, provenance printed. \|max res_soa − max res_pairwise\| for Mercury (SSB) | data | `SIMD-SOA-DE440-RESIDUAL-CONSISTENCY` ≤ 1e-3 km | Triangle inequality. The kernels differ at the ulp level, and over 10 yr that grows to ≪ 1 m (WP24 B3: f64 round-off ~ mm over 10 yr). |
+| V3 | The speed-table nightly with the default selection | nightly | E6 unchanged | Expected: run1 and run2 are selected and run3 (row (e) only) is skipped by name; the test then fails on (d) only (known E6, NEEDS HUMAN REVIEW from WP18). |
+
+Nothing above is tuned after a run. If a bound fails, the value, the failure and its diagnosis are reported, and the bound is not changed.
