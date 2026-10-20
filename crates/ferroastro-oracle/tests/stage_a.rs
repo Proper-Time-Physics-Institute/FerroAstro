@@ -209,8 +209,8 @@ fn stage_a_ferroastro_ias15_matches_the_rebound_ias15_golden() {
 }
 
 /// Stage A: FerroAstro IAS15 against the Swiftest 2026.7.1 WHM golden (heliocentric states, the
-/// same scenario file). Asserted against `ORACLE-STAGE-A-SWIFTEST-MAX-DR` (PROVISIONAL 1 km,
-/// WP17 plan: fixed-step symplectic truncation).
+/// same scenario file). Asserted against `ORACLE-STAGE-A-SWIFTEST-MAX-DR` (pre-registered 1 km
+/// FAILED at 28.68 km; widened to 60 km after measurement, NEEDS HUMAN REVIEW, see the vector).
 ///
 /// Verifies: REF-007, CI-002, CI-005
 #[test]
