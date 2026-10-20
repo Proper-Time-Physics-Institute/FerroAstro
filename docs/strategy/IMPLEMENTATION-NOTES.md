@@ -4642,3 +4642,10 @@ The PHY-012 full system under EIH (β = γ = 1), header.440, legs −969.57 and 
 - fmt, clippy `-D warnings`, deny, doc `-D warnings`, ruff, ruff format, mypy, reuse and trace (121 requirements, 613 citing tests, 0 errors): clean.
 
 The notes-only commits that follow change no code.
+
+**Data tier, full** (`tools/run_long_local.sh --data-only`, commit `b9caa52`, clean; log `target/long-local/20261020T102224Z-b9caa52ccfa5.log`): **30/30 pass in 68 s**.
+- `FA_DATA_DIR` was a fresh directory. de440.bsp, sb441-n373s.bsp and linux_p1550p2650.440 were symlinked from the pinned cache and SHA-verified on load; everything else was downloaded, header.440 included (sha256 `0f4636b6…6ac3359`, retrieved 2026-10-20).
+- No HTTP 503s. Every Horizons answer had `signature.version` 1.2 (DE441).
+- D1 and WP19's C7 reproduced their numbers: D1 Mercury 54.88 → 16.35 m, shift 67.24 m; C7 Mercury factor 2364.16.
+
+**GitHub CI:** run **39407461351** on `b9caa52`: success (rust, msrv, wasm32 with eih, python, reuse, dco; data and long runs skipped by design).
