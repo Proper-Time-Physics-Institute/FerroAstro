@@ -25,6 +25,10 @@
 //! compensated accumulation widened into double-double) and the plain [`F64Forces`] adapter, for
 //! an integrator whose state, sums and coefficients are double-double.
 //!
+//! M5 (WP26) adds the [`soa`] structure-of-arrays kernels (NUM-021): [`NewtonianMutualSoa`], with
+//! an exact `1/r³`, no fused multiply-add and a fixed reduction order, whose scalar and SIMD
+//! (feature `simd`, the safe `wide` crate) instantiations are bitwise identical.
+//!
 //! Internal units: positions in km, velocities in km/s, time in TDB seconds, GM in km³/s². The
 //! typed constructors and [`NewtonianPointMasses::pack`] / [`NewtonianPointMasses::unpack`]
 //! convert from and to the [`ferroastro_core`] newtypes, so raw scalars only appear inside the
@@ -39,6 +43,7 @@ mod nbody;
 mod newtonian;
 mod oblateness;
 mod relativity;
+pub mod soa;
 
 pub use central::{CentralTerm, Pole, TestParticle};
 pub use error::ForceError;
@@ -53,6 +58,7 @@ pub use nbody::{
 pub use newtonian::NewtonianPointMasses;
 pub use oblateness::SolarJ2;
 pub use relativity::{LenseThirring, PnCoefficients, PnLagrangian, SchwarzschildPpn, SrKepler};
+pub use soa::{NewtonianMutualSoa, SoaBackend};
 
 /// The coordinate gauge of a force model (AGENTS.md rule 4).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

@@ -56,6 +56,9 @@ schemars = { version = "1.0.4", default-features = false, features = ["derive", 
 postcard = { version = "1.1.1", default-features = false, features = ["alloc"] }
 # Run-level parallelism behind ferroastro-propagate's optional `parallel` feature (NUM-022).
 rayon = "1.10.0"
+# Safe SIMD lanes behind ferroastro-forces' optional `simd` feature (NUM-021, WP26). Zlib OR
+# Apache-2.0 OR MIT; 0.7.33 is the last release within the workspace MSRV (newer ones need 1.89).
+wide = { version = "0.7.33", default-features = false, features = ["std"] }
 sha2 = "0.10.9"
 thiserror = "2.0.12"
 toml = "0.8.23"
