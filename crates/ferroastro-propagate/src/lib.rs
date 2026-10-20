@@ -30,20 +30,20 @@
 //! use ferroastro_scenario::ScenarioSpec;
 //! let spec = ScenarioSpec::parse(r#"
 //! schema_version = 1
-//! name = "eih-canary"
-//! description = "a switch this runner does not implement yet"
+//! name = "lt-nbody-canary"
+//! description = "a switch this runner does not implement yet in n-body mode"
 //! mode = "n-body"
 //! bodies = ["Sun", "Mercury"]
 //! central_body = "Sun"
 //! initial_conditions = { source = "de440-header" }
 //! constants = { gm_set = "de440" }
-//! forces = { newton = true, gr_eih = true }
+//! forces = { newton = true, gr_eih = true, lense_thirring = true }
 //! integrator = { name = "ias15", precision = "f64" }
 //! span = { years = 1.0 }
 //! "#)?;
 //! let err = run(&spec, &DataSources::none()).unwrap_err();
 //! assert!(err.to_string().starts_with("FA-E1201"));
-//! assert!(err.to_string().contains("forces.gr_eih"));
+//! assert!(err.to_string().contains("forces.lense_thirring"));
 //! # Ok::<(), Box<dyn std::error::Error>>(())
 //! ```
 

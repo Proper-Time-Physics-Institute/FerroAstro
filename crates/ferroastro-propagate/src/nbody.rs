@@ -16,7 +16,8 @@ use ferroastro_constants::{Body, De440};
 use ferroastro_core::frames::Barycentric;
 use ferroastro_core::frames::Icrf;
 use ferroastro_core::time::SECONDS_PER_DAY;
-use ferroastro_core::units::Length;
+use ferroastro_core::units::{Length, Velocity};
+use ferroastro_eih::{Eih, HeliocentricSchwarzschild, RhsAcceleration};
 use ferroastro_ephem::NaifId;
 use ferroastro_forces::{
     ForceTerm, GeocentricMoon, MOON_TAYLOR_TERMS_DEFAULT, MinorFromMajors, MinorReaction,
@@ -39,8 +40,60 @@ pub(crate) struct DriverState {
     pub(crate) passages: u64,
 }
 
-/// The model of an N-body scenario (term order: Newtonian mutual, geocentric Moon, solar J2 with
-/// reaction, as WP12) and the body order.
+/// The relativistic term of an N-body scenario (WP19): `gr_eih` gives the EIH term (Park et al.
+/// 2021 Eq. 27, Newtonian right-hand-side accelerations), `gr_1pn_central` the heliocentric
+/// Sun-only 1PN rung; PPN β, γ from `forces.ppn`, else the DE440 values; c from DE440.
+fn relativity<R: Real>(
+    spec: &ScenarioSpec,
+    de: &De440,
+    has_sun: bool,
+) -> Result<Vec<Box<dyn ForceTerm<Icrf, R>>>, PropagateError> {
+    let f = &spec.forces;
+    let value_err = |field: &'static str, problem: &str| -> PropagateError {
+        ScenarioError::Value {
+            name: spec.name.clone(),
+            field,
+            value: "true".into(),
+            problem: problem.into(),
+        }
+        .into()
+    };
+    if f.gr_eih && f.gr_1pn_central {
+        return Err(value_err(
+            "forces.gr_1pn_central",
+            "gr_eih already contains the Sun's 1PN field; gr_1pn_central (the Sun-only rung) is \
+             an alternative to it",
+        ));
+    }
+    let (beta, gamma) = f
+        .ppn
+        .map_or((de.ppn_beta(), de.ppn_gamma()), |p| (p.beta, p.gamma));
+    let c = Velocity::from_km_per_s(R::from_f64(de.speed_of_light().km_per_s()))
+        .map_err(|e| setup(&spec.name, e.to_string(), "check the DE440 table"))?;
+    let (beta, gamma) = (R::from_f64(beta), R::from_f64(gamma));
+    let mut terms: Vec<Box<dyn ForceTerm<Icrf, R>>> = Vec::new();
+    if f.gr_eih {
+        terms.push(Box::new(Eih::new(
+            c,
+            beta,
+            gamma,
+            RhsAcceleration::Newtonian,
+        )?));
+    }
+    if f.gr_1pn_central {
+        if !has_sun {
+            return Err(value_err(
+                "forces.gr_1pn_central",
+                "the Sun-only 1PN rung needs the Sun among the bodies",
+            ));
+        }
+        terms.push(Box::new(HeliocentricSchwarzschild::new(c, beta, gamma)?));
+    }
+    Ok(terms)
+}
+
+/// The model of an N-body scenario (term order: Newtonian mutual, Minor, Ring, geocentric Moon,
+/// the relativistic term (WP19), solar J2 with reaction) and the body order.
 fn model<R: Real>(
     spec: &ScenarioSpec,
     de: &De440,
@@ -89,6 +142,7 @@ fn model<R: Real>(
     } else {
         MoonVariables::Barycentric
     };
+    terms.extend(relativity::<R>(spec, de, has(BodyName::Sun))?);
     if spec.forces.sun_j2 {
         if !has(BodyName::Sun) {
             return Err(ScenarioError::Value {

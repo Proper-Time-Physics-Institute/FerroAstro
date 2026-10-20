@@ -101,7 +101,10 @@ pub fn supports(item: &str, mode: Mode) -> Result<(), String> {
         "initial_conditions.source.de440-bsp",
         "initial_conditions.source.horizons",
     ];
+    // gr_1pn_central: the R3 field in test-particle mode, the heliocentric Sun-only rung in n-body
+    // mode (WP19). lense_thirring: test-particle mode only (n-body: WP20).
     let central_term = matches!(item, "gr_1pn_central" | "lense_thirring");
+    let nbody_relativity = matches!(item, "gr_eih" | "gr_1pn_central");
     let small_bodies = matches!(item, "asteroids" | "kbos" | "kbo_ring");
     if mode == Mode::EphemerisField {
         const FIELD: [&str; 4] = [
@@ -122,16 +125,21 @@ pub fn supports(item: &str, mode: Mode) -> Result<(), String> {
     }
     if ALWAYS.contains(&item)
         || (central_term && mode == Mode::TestParticle)
+        || (nbody_relativity && mode == Mode::NBody)
         || (small_bodies && mode == Mode::NBody)
     {
         return Ok(());
     }
     Err(match item {
         "newton=false" => "every FerroAstro model contains Newtonian gravity".into(),
-        _ if central_term => {
-            "a central-body term in N-body mode; use gr_eih for N-body relativity (WP19)".into()
+        "lense_thirring" => {
+            "solar Lense-Thirring in n-body mode arrives in WP20; test-particle mode has it".into()
         }
-        "gr_eih" => "the EIH N-body equations arrive in WP19 (ferroastro-eih)".into(),
+        "gr_eih" => {
+            "the EIH equations need n-body mode (a test particle has no mutual 1PN terms; use \
+             gr_1pn_central)"
+                .into()
+        }
         _ if small_bodies => "small bodies (Minor/Ring tiers) need n-body mode".into(),
         other if other.starts_with("integrator.") => {
             "only IAS15 is implemented (ABM: WP24; WHFast/IRK16: WP29)".into()

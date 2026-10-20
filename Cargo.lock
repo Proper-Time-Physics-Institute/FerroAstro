@@ -511,6 +511,7 @@ dependencies = [
  "ferroastro-analytic",
  "ferroastro-constants",
  "ferroastro-core",
+ "ferroastro-eih",
  "ferroastro-ephem",
  "ferroastro-forces",
  "ferroastro-frames",

@@ -171,19 +171,22 @@ fn same_scenario_twice_and_batch_thread_counts_are_bitwise() {
 #[test]
 fn run_refuses_unimplemented_switches_by_name() {
     let base = spec("sun-mercury-newton-header440.toml");
-    let mut eih = base.clone();
+    // EIH is N-body only (WP19): refused in test-particle mode.
+    let mut eih = spec("sun-mercury-gr1pn-header440.toml");
+    eih.forces.gr_1pn_central = false;
     eih.forces.gr_eih = true;
     // Small bodies are N-body only (WP15): refused in test-particle mode.
     let mut ast = spec("sun-mercury-gr1pn-header440.toml");
     ast.forces.asteroids = 343; // lint: allow-literal(the DE440 asteroid count, a switch value)
-    let mut pn = base.clone();
-    pn.forces.gr_1pn_central = true;
+    // Solar Lense-Thirring in N-body mode arrives in WP20.
+    let mut lt = base.clone();
+    lt.forces.lense_thirring = true;
     let mut abm = base;
     abm.integrator.name = ferroastro_scenario::IntegratorName::Abm;
     for (s, needle) in [
         (eih, "forces.gr_eih"),
         (ast, "forces.asteroids"),
-        (pn, "forces.gr_1pn_central"),
+        (lt, "forces.lense_thirring"),
         (abm, "integrator.abm"),
     ] {
         let e = run(&s, &DataSources::none()).unwrap_err();
