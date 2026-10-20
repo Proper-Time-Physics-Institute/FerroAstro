@@ -5317,7 +5317,7 @@ Nothing above is tuned after a run. If a bound fails, the value, the failure and
 Data and provenance:
 - header.440 `0f4636b6…6ac3359` and de440.bsp `a4ce9bf9…fff7c4b5` from the pinned cache, SHA-256 re-verified.
 - REF-003 states from sb441-n373s.bsp `21431132…8da10b` (tools/sample_sb441.py@bcc3320).
-- Logs are in the session scratchpad `wp25/`. Times are UTC.
+- Logs are in the session scratchpad `wp25/`. Times are UTC and approximate (nextest logs carry no timestamps; they follow the session and commit sequence).
 - Wall times are from runs that shared the machine with up to five other runs, so they are upper bounds.
 
 **PR tier (first valid runs, nextest default profile):**
