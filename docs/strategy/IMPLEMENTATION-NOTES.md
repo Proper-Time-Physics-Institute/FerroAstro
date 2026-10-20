@@ -4682,3 +4682,53 @@ REBOUNDx is used only through its documented Python API, read from the published
 | S6 | speed table gains an EIH row: `bench-e-sun-8planets-eih-1000yr` (scenario (a) with `gr_eih`), FerroAstro and REBOUNDx gr_full, 5 timed runs; Mercury \|Δr\| vs REBOUND | local harness | reported | FerroAstro ≈ 6–7× REBOUND's time on (a); EIH adds an O(N²) c⁻² term per evaluation to both, so the ratio should stay 3–10×. Mercury \|Δr\| after 1000 yr ≈ (a)'s 52 m. |
 
 Nothing above is tuned after a run. If a bound fails, the value, the failure and its diagnosis are reported, and the bound is not changed.
+
+### What was built (WP21)
+- **`tools/oracles/rebound_runner.py`** (stage C): `gr_eih` → REBOUNDx `gr_full`, `gr_1pn_central` → `gr` plus the `gr_potential` variant series (`<scenario>.rebound.gr_potential.states.csv`, own manifest entry); `c = CLIGHT · 86400 / AU` au/day; header BETA/GAMMA ≠ 1, `ppn`, `lense_thirring`, `sun_j2`, small bodies, test-particle mode, `gr_eih` + `gr_1pn_central` together, and a non-Sun `particles[0]` under `gr` are refused by name. Manifests record `reboundx_effect`, `c_au_per_day` and `force_is_velocity_dependent` (REBOUNDx sets it to 1 for the gr effects). Stage A output is unchanged (drift: data rows bit-identical).
+- **Scenarios** (12): `stage-c-sun-planets-moon-{eih,newton}-100yr`, `oracle-c-planets-moon-{newton,eih}-{back,fwd}`, `oracle-c-sun-mercury-{newton,eih,gr1pn}-{back,fwd}`, `bench-e-sun-8planets-eih-1000yr`. `nightly.sh` runs `stage-c-*`/`oracle-c-*` on REBOUND only.
+- **Goldens** (REF-005, CI-003): `ci/golden/rebound/stage-c-sun-planets-moon-{eih,newton}-100yr/` with MANIFEST.json (1010 rows each, generated from the clean tree at `ffa503b`, image `sha256:dedf4e06…cc75e`).
+- **Tests:** `ferroastro-oracle/tests/stage_c.rs` (PR tier, S1/S1c, with the R2 brute-force maxima), `tests/nightly_stage_c.rs` (nightly, S2–S4), pytest `test_rebound_runner_stage_c_refusals_and_effect_mapping` and the updated REF-011 cases (S5).
+- **Vectors:** `ORACLE-STAGE-C-REBOUNDX-MERCURY-MAX-DR`, `ORACLE-STAGE-C-GR-TOOL-AGREEMENT` (oracles.toml), committed in `ffa503b` before the first stage C run.
+- **Speed table:** row (e) in `ferroastro-bench`'s driver; `tools/bench/speed_table.sh --only <scenario>` runs a subset; published `docs/validation/speed-tables/run3-wp21-e-20261020T110212Z.{md,json}`.
+
+### WP21 results (every check passed on its first run; no bound or expected value changed)
+| # | measured | bound | margin |
+|---|---|---|---|
+| S1 stage C, Mercury max \|Δr\| FerroAstro `gr_eih` vs REBOUNDx `gr_full`, 100 yr | **8.536e-4 km** (t = 100 yr); other bodies: Moon 1.42e-3, Venus 6.90e-4, Earth 5.94e-4, Mars 5.30e-4, Jupiter 2.40e-4, Saturn 1.89e-4, Uranus 1.27e-4, Neptune 1.06e-4, Sun 1.97e-7 km | 1e-3 km (PROVISIONAL) | 0.85 |
+| S1c Newtonian control (same bodies and settings) | Mercury 6.820e-4 km; max 7.025e-4 km (Moon) | reported | — |
+| S1 steps | FerroAstro 51 708 IAS15 steps (both runs); REBOUND 28 675 (both); REBOUND Newtonian relative energy change 3.3e-16 | — | — |
+| S2 full system (Sun, 8 planets, Earth, Moon), GR contribution 1000–3000 CE | FerroAstro **42.978498**, REBOUNDx **42.978498** ″/cy; difference **−2.5e-9** | 1e-3 (PROVISIONAL) | 2.5e-6 |
+| S2 rates | Newtonian 532.303641 (both; Δ +2.7e-9); EIH 575.282140 (both) | reported | — |
+| S3 Sun + Mercury, GR on − off | FerroAstro `gr_eih` **42.980114**, `gr_1pn_central` 42.980112; REBOUNDx `gr_full` **42.980114**, `gr` 42.980119, `gr_potential` 42.980135 | 42.980 ± 0.001 each (PHY-005) | 0.112–0.135 |
+| S3 `gr_full` − `gr_eih` | **+1.9e-9** ″/cy | 1e-3 | 1.9e-6 |
+| S3 variants | `gr` − FerroAstro `gr_1pn_central` +7.1e-6; `gr_potential` − `gr` +1.6e-5 | reported | — |
+| S4 CI-009 | FerroAstro IC hashes equal within each on/off set (Sun + Mercury: 3 configurations, `6d875b67…`; full: `016ceac2…`); REBOUNDx initial rows bitwise equal (4 Sun + Mercury series, 2 full-system series); one estimator id printed for every tool | exact | pass |
+| S5 pytest REF-011 | `test_oracles.py` 21/21 pass, incl. the new stage C refusal/mapping test | exact | pass |
+| S6 speed table (e), 1000 yr, 5 runs, load 1.8–2.7 | FerroAstro **24.33 s** (range 0.13), REBOUNDx gr_full **24.62 s** (range 0.06); Mercury \|Δr\| FerroAstro vs REBOUNDx **67.1 m** after 1000 yr; Swiftest, Mercury6, Orekit refused naming `gr_eih` | reported | — |
+
+Nightly log `target/wp21/nightly-stage-c-1.log` (release, 189 s for the FerroAstro side and the estimator); REBOUNDx series in `target/oracle-out-wp21/` (1.1 GB, not committed; wall clocks: Sun + Mercury legs 6.6–10.3 s, full-system Newtonian 16–17 s, full-system `gr_full` **202 s and 295 s**).
+
+**Notes on the numbers.**
+- **S1 within the pre-registered expectation** (0.5–2 m), and the difference is round-off, not physics: over the first 50 yr the EIH runs differ by ≤ 6 cm for every planet (less than the Newtonian control's ≤ 12 cm), then every body jumps together between 50 and 100 yr (Mercury 0.03 → 0.48 → 0.85 m at 50/75/100 yr). A coefficient error would grow smoothly as t² from the start in each body separately. The margin (0.85) is thin, as predicted: a REBOUND ε change or a different output cadence may cross 1 m (the WP16 stage A situation).
+- **S2/S3 agree to ~2e-9 ″/cy**, as close as the Newtonian P-add comparison: the two codes implement the same 1PN equations (DE440 Eq. 27 vs Newhall et al. 1983 via REBOUNDx) and the estimator is identical.
+- **The full-system GR contribution is 0.0016 ″/cy below the single-body isolation** (42.978498 vs 42.980114), the same in both tools. This is the planets' own 1PN interplay (EIH terms with planetary sources, and GR × planet cross terms) under P-add of GR into the full system; Park17 Table 3's gravitoelectric row is 42.9799 (`PARK17-GE-RATE`, reported only: OI-38 protocol question, and Park's row is not separated this way).
+- **REBOUNDx `gr` and `gr_potential`** are 5e-6 and 2.1e-5 above `gr_full`: `gr` drops mass-ratio terms (Mercury/Sun 1.7e-7 → ~1e-5 ″/cy on 43), and `gr_potential` gets the mean motion wrong by O(GM/ac²) (documented), visible here at 2e-5 ″/cy. All are within PHY-005's ± 0.001.
+- **S6: my expectation (FerroAstro 3–10× REBOUND's time) was wrong.** On (a) (Newtonian) FerroAstro took 6–7× REBOUND's time; under EIH the two are equal (24.3 vs 24.6 s), because REBOUNDx `gr_full` multiplies REBOUND's cost by ~7–9 (24.6 s vs 2.9–3.5 s on (a)) while FerroAstro's EIH costs it ~1.2× (24.3 vs 18.5–20.7 s on (a); different load). The tables are from different invocations; per CI-008 the cross-table ratio is indicative only. The Mercury \|Δr\| (67 m after 1000 yr) matches (a)'s 52 m in kind (round-off random walk).
+
+### Mutation probes (WP21; each applied to a backed-up file and restored from the backup, golden restored with `git checkout`; tree clean afterwards; logs in the session scratchpad `wp21/mut/`)
+| # | mutant | result |
+|---|---|---|
+| P1 | runner maps `gr_eih` to REBOUNDx `gr` instead of `gr_full` (golden regenerated, manifest effect label kept) | **killed** by S1: Mercury 7.03 km vs 1e-3 km. The stage C golden distinguishes gr_full from the single-mass gr. |
+| P2 | runner's c × 1.001 (1PN terms 2e-3 too small) | **killed** by S1: Mercury 70.6 km |
+| (P3) | not run as a separate probe: P1's regenerated manifest said `gr`, and the test's `reboundx_effect` assertion would have stopped it before the physics check, so P1 relabelled the manifest to reach S1 | — |
+
+**Correction to a pre-registered rationale (no bound changed):** the vector says a 1e-3 relative 1PN error moves Mercury "~2 km" over 100 yr. P2 (2e-3 relative) moved it 70.6 km, i.e. ~35 km per 1e-3: the along-track effect of the 1PN mean-motion change dominates the perihelion shift I used. 1 m therefore tests the 1PN terms to ~3e-5 relative, a stronger check than claimed.
+
+### Deviations and NEEDS HUMAN REVIEW (WP21)
+1. **Both stage C tolerances are PROVISIONAL from the task text.** S1's margin is 0.85 and its floor is REBOUND's f64 round-off (as WP16 stage A). S2/S3 pass by six orders. A maintainer may tighten the GR agreement (e.g. 1e-6 ″/cy) on this evidence; not done here (no post-measurement changes).
+2. **`gr_1pn_central` in N-body mode maps to REBOUNDx `gr`**, and the extra `gr_potential` series is written by the same runner call. The scenario switch list (CI-002) has no way to name a REBOUNDx variant, so the variant is a runner convention recorded in each manifest. Requirement text (CI-002 / REF-005) may want to say so (PR #2).
+3. **The 1000–3000 CE window uses legs back and forward from JDEPOC** (two scenario files per configuration), as N3 does; REBOUND writes the leg end time as an extra sample (730 562 vs FerroAstro's 730 560 merged samples). The estimator is unaffected (same passages, 8304).
+4. **The full-system configuration has no Pluto** (stage C body list: Sun, 8 planets, Earth, Moon), unlike PHY-012's template. It is a tool comparison, not a ladder rung.
+5. **`nightly.sh` skips the other N-body oracles on `stage-c-*`/`oracle-c-*`.** Swiftest/Mercury6 would refuse the relativistic files anyway; the two Newtonian legs would cost hours of Swiftest time without a check attached.
+6. **CI-001/CI-004 (carried forward):** the stage C goldens were produced locally by `run_oracles.sh` and enter through this PR; the image is local only.
+7. **Clean room:** only the REBOUNDx documentation pages (effects list, Python quick-start) were read; the GR example notebook was not opened (it lives in the source repository).
