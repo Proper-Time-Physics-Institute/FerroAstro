@@ -5136,7 +5136,7 @@ Round 2 (`run_mutants.py`, all 9 mutants, fresh mtimes on restore): 9/9 killed.
      - (c) compare against a DD truth instead of IAS15.
 2. **NEEDS HUMAN REVIEW — the A4 error metric was chosen after an exploratory scan.**
    - The plan fixed the ±0.5 window but not the error measure.
-   - The scan (13:19–13:21 UTC, before the A4 test was written; logs in `wp24/scan_dd.log` and `wp24/scan_order.rs`) showed two things:
+   - The scan (before 13:21 UTC, before the A4 test was written; logs in `wp24/scan_dd.log` and `wp24/scan_order.rs`) showed two things:
      - in f64, high orders (p ≥ 12) go from unstable (h ≳ 2π/192) to round-off-limited with no asymptotic window, so A4 runs in double-double;
      - the **position**-error slopes run 0.3–0.9 above p for several (p, mode) pairs at every step pair above the DD floor (PECE p = 12: 12.89, PECE p = 14: 14.87), so the asymptotic approach is slow.
    - The **energy** error converges at exactly p (worst deviation 0.17). It was chosen as the asserted metric; the position slopes are printed. With position errors, 5 of the 10 (p, mode) pairs would fail ±0.5.
