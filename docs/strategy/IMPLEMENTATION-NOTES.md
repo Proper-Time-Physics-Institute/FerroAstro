@@ -4556,3 +4556,89 @@ R1, R2, R3, R4, R6 and R8 were applied in WP19 (commits `e6ca3c9`…`746fc95`, `
 Nothing in N3 is tuned: the span, the estimator, the toggles and the base are those above.
 
 **Added to the plan (2026-10-20, before the check's first run): D1, real data.** The WP20 PR-tier checks use the pinned header.440 only. D1 adds a data-tier comparison with the product that contains DE440's own LT: Sun + 8 planets + geocentric Moon from header.440 (fresh download, SHA-verified), EIH + J2 (DE440 J2, WGCCRE pole) with and without LT, through the scenario API, 10 yr every 10 d, against de440.bsp. Reported: every body's barycentric and heliocentric residual for both runs. Asserted (sanity, PROVISIONAL): Mercury's max \|r(LT) − r(no LT)\| lies in [1e-3, 1] km (`LT-DE440-MERCURY-SHIFT-LOG10-KM`, new: log10 of the shift = −1.5 ± 1.5). Rough expectation: −0.002 ″/cy over 0.1 cy is ~1e-9 rad of perihelion, i.e. ~10–50 m at Mercury. The bound catches an LT term that is a no-op or wrong by about 1000×; it does not test the form (L1, L2, I2 do). Whether LT brings Mercury closer to de440.bsp is reported, not asserted, because the omitted asteroids and KBOs act at a similar level.
+
+### What was built (WP20)
+- **`ferroastro-forces`:** `SolarLenseThirring` (N-body `ForceTerm`): DE440 Eqs. 37–39 as written, heliocentric r and v, PPN γ, configurable pole, `LtReaction::{On, Off}`. Exported with `LtReaction`. `LT-TRANSCRIPTION.md` is the OI-35 record, with an unsigned human check.
+- **`ferroastro-propagate`:**
+  - `forces.lense_thirring` is implemented in N-body mode (term order: … J2, LT).
+  - `SolarOverrides` (J2, pole, G·S, provenance) via `DataSources::with_solar_overrides`, in both modes. The overrides are appended to `RunOutput::model`. The checkpoint format is now **v2**: it records them, and a resume under different overrides is refused.
+  - The doc canary, the propagate and the CLI refusal tests move to switches that are still refused (`gr_eih` and `asteroids` in test-particle mode).
+- **`ferroastro-diffrun`:** `Plan::switches_both`: each toggle subset runs once; P-add, P-remove and both cross terms in Park17's convention.
+- **`tools/lt_forms.py`** (sympy) and `tests/test_lt_forms.py`.
+- **Vectors:** `NBODY-LT-REACTION-MOMENTUM-ULPS`, `LT-DE440-VS-R3B-REL` (nbody.toml); `NUM019-ISOLATION-NBODY-DIFF`, `NUM019-NBODY-LT-CONTRIBUTION` (diffrun.toml, `blocked_by = "OI-35"`); `LT-DE440-MERCURY-SHIFT-LOG10-KM` (eih.toml).
+- **Tests:** L1 (forces unit), L3 `nbody_lt_momentum.rs`, I2/I4/I5 `num019_isolation.rs`, synthetic `switch_plan_with_both_protocols…`, the overrides/checkpoint test, D1 `data_lt_de440.rs` (data tier) and N3 `nightly_num019.rs` (nightly).
+
+### WP20 results (PR tier, pinned header.440, 2026-10-20, toolchain 1.95.0)
+Every check passed on its first run. No bound or expected value was changed after a run. Two vectors were corrected **before** their first run: `LT-DE440-VS-R3B-REL` was written as `rel` on a zero value (which allows nothing), so it became `abs` on the already-relative quantity; the D1 window became a log10 vector. Both changes are in the commit history.
+
+| # | measured | bound | margin |
+|---|---|---|---|
+| L1a momentum, LT alone (γ = 1 / 0.999) | 0.245 / 0.218 ε | 8 | 0.03 |
+| L1b DE440 Eq. 37–38 vs R3b (γ = 1 / 0.999) | 2.07e-16 / 1.68e-16 | 1e-13 | 0.002 |
+| L1c reaction off | Sun exactly 0; other bodies bitwise equal | exact | — |
+| L2 sympy DE440 ≡ INPOP21a ≡ R3b | identical; negative control detected | ≡ 0 | — |
+| L3 momentum, J2 + LT, 100 yr (51 757 steps) | 0.009 ε√N | 64 | 1e-4 |
+| L3 (informational) without the LT reaction | 10.6 ε√N | (64) | inside the bound, as the plan predicted; 1000× the reacted run |
+| I2 J2 2.25e-7, equatorial (inclination 0) | 0.028601013 vs analytic 0.028601001: **+1.2e-8**; vs printed 0.0286: +1.0e-6 ″/cy | 1e-4 | 1e-4 / 0.01 |
+| I2 LT, equatorial | −0.002018328 vs analytic −0.002018324: **−4.5e-9**; vs printed −0.00202: +1.7e-6 ″/cy | 1e-4 | 4e-5 / 0.017 |
+| I5 J2 DE440, equatorial | 0.027916343 vs analytic 0.027916346: −2.7e-9; vs 0.02792: **−3.7e-6** ″/cy | 1e-4; 5e-4 | ≈0 / 0.007 |
+| I4 J2 2.25e-7, WGCCRE pole | 0.028452; planar − 1.488e-4; inclined formula + 4.1e-8 ″/cy | reported | — |
+| I4 LT, WGCCRE pole | −0.0020148; planar + 3.5e-6; cos i formula ≈ 0 | reported | — |
+
+- **I2/I5 basis.** The relative orbit at JDEPOC has a = 57 909 228.046 km and e = 0.2056165937, with μ′ = GM☉ + GM_Me = 132 712 462 073.148 km³/s² and GS′ = GS(1 + 1.660e-7).
+- **I4: the solar pole used (PHY-010 metadata).**
+  - It is WGCCRE 2015 (Archinal et al. 2018): RA 286.1300°, Dec 63.8700°, ICRF unit vector (0.122353, −0.423072, 0.897797), the pole DE440 §3.4 quotes.
+  - Mercury's initial orbit is inclined 3.3768° to the solar equator.
+  - The J2 rate in Park's frame is 0.028452: the planar 0.028601 times (1 − 3/2 sin² i). This is the red-team's 0.02846 vs 0.02860 note, measured in N-body.
+  - The inclined formula agrees to 4e-8, but its citation is OI-37 (UNVERIFIED), so it is reported, not asserted.
+
+### WP20 real-data result (D1, data tier; header.440 and de440.bsp re-verified against their pins, cache hit)
+EIH + J2 (DE440), Sun + 8 planets + geocentric Moon from header.440, 10 yr every 10 d, against de440.bsp:
+- **Mercury, heliocentric: 54.88 m without LT → 16.35 m with LT.** Barycentric: 1.442 → 1.401 km.
+- Venus heliocentric 129.2 → 115.0 m; Mars 11.25 → 11.25 km; the outer planets are unchanged.
+- The Mercury LT shift is 67.2 m (pre-registered window [1 m, 1 km]; log10 −1.17 vs −1.5 ± 1.5).
+- Taken together: adding the DE440 LT term brings Mercury 3.4× closer to de440.bsp, whose model contains that term. This is evidence that sign, magnitude and frame match DE440's. It is not a proof: the asteroids and KBOs are still omitted. It is reported, not asserted, as planned.
+
+### WP20 nightly result (N3; release, local, 32 threads; log `target/wp20/nightly-n3-d0cd1e4.log`, evidence `target/diffrun/num019-590794.{md,json}`)
+The PHY-012 full system under EIH (β = γ = 1), header.440, legs −969.57 and +1030.59 yr, Park2017 estimator (daily samples, mean-orbit plane, quadratic + 14 terms, 8304 passages in 1000–3000 CE). J2 = 2.25e-7 (override), WGCCRE pole, DE440 spin. 4 configurations, 8 legs, one IC hash (`1761981f…19dcaa2`), 4.14 M IAS15 steps, **79 s**.
+
+| row | P-add | P-remove | Park17 Table 3 | Δ | bound | result |
+|---|---|---|---|---|---|---|
+| J2 (solar oblateness) | **0.0284515** | 0.0284515 | 0.0286 ± 0.0011 | −0.000149 | 0.0011 | **pass** (margin 0.14) |
+| LT | **−0.0020148** | −0.0020148 | −0.0020 ± 0.0002 | −0.000015 | 0.0002 | within (margin 0.07); **non-gating, OI-35 open** |
+| J2 × LT cross term | +0.0000000 | −0.0000000 | — | — | — | reported |
+
+- Configuration rates: base (EIH planets) 575.282142, +J2 575.310594, +LT 575.280128, +J2+LT 575.308579 ″/cy. The jack-knife σ is 0.0015 for each, but the differences between configurations are far more precise than that, because every configuration shares the same ICs and estimator.
+- **The J2 row is the inclined-geometry value.** It sits 1.5e-4 below Park's 0.0286 for the reason I4 shows: 0.0286 equals the planar formula at 2.25e-7. Park17 (text layer of p. 6, the copy WP4 pinned) computes both rows numerically: "The perihelion precession due to LT was computed by comparing the nominal ephemeris with an integration performed with the solar angular momentum set to zero … The precession rate due to solar oblateness is computed in the same manner (i.e., J2 set to zero)". That is the P-remove protocol in the real geometry, which is what N3's P-remove row does (0.0284515). The 1.5e-4 gap is inside Park's ±0.0011. Its cause (Park's frame or fit, a rounded J2, or something else) is not established. NEEDS HUMAN REVIEW, together with OI-37.
+- **Observation only, not a PHY-014 result** (NUM-020 is unsigned, and WP22 has not started): the planets-only EIH + J2(Park) + LT rate, 575.3086, differs from Park's 575.3100 minus the asteroid row 0.0012 (= 575.3088) by −0.0002 ″/cy. The model includes Pluto and Park's J2 and has no asteroids, KBOs or ring.
+
+### Mutation probes (WP20; each mutant applied to a backed-up file, the WP20 tests run, the file restored from the backup; tree clean afterwards; log `target/wp20/mutate.log`)
+| # | mutant | killed by |
+|---|---|---|
+| T1 | `2 Ω × v` → `Ω × v` | L1b, I2 |
+| T2 | `−J` → `+J` in Ω | L1b, I2 |
+| T3 | `3(J·r)` → `2(J·r)` | L1b only. I2 is equatorial, so J·r ≈ 0 there. |
+| T4 | barycentric instead of heliocentric v | L1b only |
+| T5 | (1+γ) → 2 | L1b only (it runs at γ = 0.999) |
+| T6 | reaction with + sign | L1a |
+| T7 | propagate: LT ignores the pole override | **survived** the first run (I2's LT changed only 3.5e-6 with the WGCCRE pole). Killed after the overrides test was made to assert that both solar terms carry the overridden pole and J2 (structural assertion, no tolerance; commit `1665cbc`). |
+
+### Deviations and NEEDS HUMAN REVIEW (WP20)
+1. **OI-35 is not ticked.** `crates/ferroastro-forces/LT-TRANSCRIPTION.md` holds the transcription of DE440 Eqs. 37–39 and INPOP21a Eq. 1 against R3b (identical on paper, in sympy and numerically to 2e-16), with an unsigned human check. Until a human signs, `NUM019-NBODY-LT-CONTRIBUTION` stays non-gating.
+2. **LT reaction on the Sun (default On).** DE440 §3.4 accelerates "each body other than the Sun" and says nothing about the Sun. On conserves momentum (L1a, L3); Off is the literal reading. The effect on Mercury's rate is a factor 1 + 1.7e-7.
+3. **`v_i` is heliocentric** (INPOP21a's definition; DE440 defines only r_i). Using barycentric v instead changes Mercury's LT acceleration by ~|v☉|/|v_Me| ≈ 3e-4 relative, ~6e-7 ″/cy.
+4. **Solar overrides are an API, not a scenario field.** WP22 Run A (Park's J2 2.25e-7 and spin) needs them in a scenario-driven, reproducible form. Proposal for PR #2's owners: an optional `[constants]` field (e.g. `sun_j2`, `sun_pole_radec`) that the oracle runners refuse by name. The checkpoint (v2) and the model string record overrides, so they never act silently.
+5. **Checkpoint format v1 → v2.** Old v1 checkpoint files no longer decode (FA-E1302 with the format named). No committed artefact holds a v1 checkpoint (`grep` of `tests/goldens` and `ci/`). Interrupted stores under `target/diffrun/store*` from earlier nightlies would refuse to resume and must be deleted.
+6. **Park17's J2 row (0.0286) equals the planar formula at 2.25e-7, but the N-body value in Park's frame with the real pole is 0.02845** (I4, N3), 1.5e-4 lower and inside ±0.0011. Park17 says it computed the row by setting J2 to zero in the nominal (real-geometry) ephemeris, so the planar coincidence is unexplained. Also for humans: should PHY-010's "documented pole" name WGCCRE 2015 as the default (OI-37)?
+9. **OI-38 evidence (J2, LT).** Park17 describes the J2, LT and GR rows as "nominal ephemeris minus the integration with the term set to zero", i.e. P-remove. For J2 and LT, P-add and P-remove agree to < 1e-7 (N3), so the protocol question does not affect these two rows. OI-38 is not ticked.
+7. **Minor and Ring bodies feel neither J2 nor LT** (as WP12 for J2; NUM-009). DE440's "each body other than the Sun" may include the asteroids, whose own LT is irrelevant to Mercury.
+8. **Run-level momentum check (L3) cannot see a missing LT reaction** (10.6 vs the 64 bound). Stated in the plan; L1a is the discriminating check.
+
+### WP20 gate results (local, toolchain 1.95.0 + MSRV 1.85.0)
+`tools/pre_push.sh` (full) passed on `d1a201d` (log `target/wp20/prepush-1.log`):
+- nextest: 271 passed, 44 skipped (`data_*` and `nightly_*`); doctests passed;
+- MSRV nextest: 268 passed;
+- pytest: 67 passed;
+- fmt, clippy `-D warnings`, deny, doc `-D warnings`, ruff, ruff format, mypy, reuse and trace (121 requirements, 613 citing tests, 0 errors): clean.
+
+The notes-only commits that follow change no code.
