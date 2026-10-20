@@ -129,6 +129,10 @@ fn cross_terms_follow_park17_convention_with_the_second_difference_alongside() {
 ///
 /// Verifies: NUM-013, NUM-019
 #[test]
+#[expect(
+    clippy::float_cmp,
+    reason = "small integers combined exactly; equality is the assertion"
+)]
 fn switch_plan_with_both_protocols_has_each_subset_once_and_park17_signs() {
     use ferroastro_diffrun::SwitchToggle;
     let t = common::scenario("sun-mercury-newton-header440.toml");
