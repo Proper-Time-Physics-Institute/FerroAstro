@@ -42,6 +42,8 @@ const P: usize = 256;
 const RM: RoundingMode = RoundingMode::ToEven;
 /// u = 2⁻⁵³.
 const U: f64 = f64::EPSILON / 2.0;
+/// Probability of a zero GM, and of a shared group label, in the random configurations.
+const P_SPECIAL: f64 = 0.1; // lint: allow-literal(probability, test design)
 
 /// `SplitMix64`: a seeded, platform-independent generator (no external RNG in the oracle path).
 struct SplitMix(u64);
@@ -202,7 +204,7 @@ fn simd_and_scalar_newtonian_kernels_are_bitwise_identical() {
             total = (total.0 + d, total.1 + c);
         }
     }
-    let mut rng = SplitMix(2026);
+    let mut rng = SplitMix(2026); // lint: allow-literal(RNG seed, test design)
     let configs = 500; // lint: allow-literal(case count, test design)
     for case in 0..configs {
         let n = 1 + case % 37; // lint: allow-literal(N range 1..37, test design)
@@ -213,7 +215,7 @@ fn simd_and_scalar_newtonian_kernels_are_bitwise_identical() {
         let v: Vec<[f64; 3]> = (0..n).map(|_| [0.0; 3]).collect();
         let g: Vec<f64> = (0..n)
             .map(|_| {
-                if rng.unit() < 0.1 {
+                if rng.unit() < P_SPECIAL {
                     0.0
                 } else {
                     10.0_f64.powf(11.0 * rng.unit()) // lint: allow-literal(GM up to 1e11 km^3/s^2, test design)
@@ -221,7 +223,13 @@ fn simd_and_scalar_newtonian_kernels_are_bitwise_identical() {
             })
             .collect();
         let grp: Vec<usize> = (0..n)
-            .map(|k| if k > 0 && rng.unit() < 0.1 { k - 1 } else { k })
+            .map(|k| {
+                if k > 0 && rng.unit() < P_SPECIAL {
+                    k - 1
+                } else {
+                    k
+                }
+            })
             .collect();
         let (d, c) = compare(&SoaBodies::from_bodies(&p, &v, &g, &grp));
         total = (total.0 + d, total.1 + c);

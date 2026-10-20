@@ -95,7 +95,7 @@ fn simd_and_scalar_eih_kernels_are_bitwise_identical() {
             }
         }
     }
-    let mut rng = SplitMix(1915);
+    let mut rng = SplitMix(1915); // lint: allow-literal(RNG seed, test design)
     let configs: usize = 200; // lint: allow-literal(case count, test design)
     let e = eih::<f64>(&de, de.ppn_beta(), GAMMA_ALT, RhsAcceleration::Iterated);
     for case in 0..configs {
