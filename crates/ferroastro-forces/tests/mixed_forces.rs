@@ -82,4 +82,40 @@ fn mixed_forces_is_the_compensated_model_widened() {
         low_words > 0,
         "the compensation never reaches the double-double result"
     );
+
+    // WP28 T2 (review W2): word for word, every slot of the double-double result is the
+    // unevaluated pair (Σ, compensation) of the f64 model at the rounded inputs, it rounds to the
+    // compensated f64 model's acceleration bit for bit, and the geocentric Moon slot (Moon − Earth)
+    // carries its own non-zero compensation words.
+    let xf: Vec<f64> = xd.iter().map(|z| z.to_f64()).collect();
+    let vf: Vec<f64> = vd.iter().map(|z| z.to_f64()).collect();
+    let (mut hi, mut lo) = (vec![0.0; n], vec![0.0; n]);
+    m64.acceleration_split(0.0, &xf, &vf, &mut hi, &mut lo)
+        .unwrap();
+    let mut a_comp_f = vec![0.0; n];
+    comp.acceleration(0.0, &xf, &vf, &mut a_comp_f).unwrap();
+    for k in 0..n {
+        assert_eq!(
+            a_mx[k].to_parts(),
+            Dd::from_parts(hi[k], lo[k]).to_parts(),
+            "component {k}: the double-double words are not the split (sum, compensation)"
+        );
+        assert_eq!(
+            a_mx[k].to_f64().to_bits(),
+            a_comp_f[k].to_bits(),
+            "component {k}: the double-double result does not round to the compensated model"
+        );
+    }
+    let moon = ids
+        .iter()
+        .position(|&id| id.0 == 301) // lint: allow-literal(NAIF id of the Moon)
+        .unwrap();
+    let moon_lo: Vec<f64> = (0..3)
+        .map(|k| a_mx[k * bodies + moon].to_parts().1)
+        .collect();
+    println!("Moon slot (Moon - Earth) low words: {moon_lo:?}");
+    assert!(
+        moon_lo.iter().all(|&l| l != 0.0),
+        "the Moon slot's compensation words are zero: {moon_lo:?}"
+    );
 }

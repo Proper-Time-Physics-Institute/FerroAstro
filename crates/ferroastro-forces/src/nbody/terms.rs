@@ -82,9 +82,12 @@ fn r2_of<R: Real>(d: [R; 3]) -> R {
     d0.mul_add(d0, d1.mul_add(d1, d2 * d2))
 }
 
-/// `1/r³` from `r²` (one square root, one product, one division; max 2.22 ulp in f64 measured over
-/// 100 120 inputs by WP26 check P1, not the "≤ 2 ulp" stated before; the SoA kernels use the exact
-/// `ferroastro_forces::soa::inv_r3_exact`).
+/// `1/r³` from `r²` (one square root, one product, one division). Error bound: three correctly
+/// rounded operations of ≤ ½ ulp each give ≤ 3 ulp of `r⁻³` in binary64 (each relative ½u, summed,
+/// then doubled by the ulp normalisation at the worst binade position). Observed sample maxima:
+/// 2.22 ulp over 100 120 inputs (WP26 check P1) and 2.343 ulp over 100 000 other inputs (WP26
+/// progress review); both are samples, not bounds. The SoA kernels use the exact
+/// `ferroastro_forces::soa::inv_r3_exact` (≤ 1 ulp).
 #[inline]
 fn inv_r3<R: Real>(r2: R) -> R {
     R::ONE / (r2 * r2.sqrt())
