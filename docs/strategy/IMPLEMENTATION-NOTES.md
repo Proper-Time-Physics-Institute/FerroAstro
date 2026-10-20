@@ -4006,3 +4006,58 @@ While WP18 was in progress, another actor worked in `/home/tmorris/Physics/Ferro
 | energy column from oracle output vs each tool's own report (stage A goldens) | Swiftest **5.043e-10** (own 5.04315e-10); Mercury6 **9.667e-15** (own 9.53057e-15); REBOUND 2.886e-16 (own 1.31e-15, computed by REBOUND internally); FerroAstro 1.443e-16 from states, 2.886e-16 model | printed, not gated | consistent where the signal is above round-off |
 | every committed state golden parses; MANIFEST timing record read | 4 goldens (rebound, swiftest, mercury6 stage A; orekit stage B) | exact row counts | pass |
 | CI-008 table rules, markdown, stability pass/fail/refuse cases (synthetic) | as designed | — | pass |
+
+### WP18 real-data results: the first two speed tables (local machine, 2026-10-20)
+Published as `docs/validation/speed-tables/run1-20261020T031916Z.{json,md}` (FerroAstro commit `5e826ee`) and `run2-20261020T051024Z.{json,md}` (`062d44e`, which changed only the harness's refusal branch), with the stability check in `stability-run1-run2.md`. The machine is an i9-13900 with 32 logical CPUs and flags `fma sse4_2 avx avx2`, **no AVX-512**, kernel 7.0.0-31, rustc 1.95.0, release profile, no RUSTFLAGS. It is shared: the 1-min load average was 42 → 57 over run 1 and 51 → 4 over run 2, and individual runs saw 8–84. Every oracle ran from the WP16/WP17 images (built locally, never pushed). Medians are of 5 runs, and the range is max − min.
+
+**Scenario (a): Sun + 8 planets, Newtonian, 1000 yr** (E7: all five tools listed)
+| tool (settings) | median s, run 1 / run 2 | range s, run 1 / run 2 | rel. energy change | Mercury \|Δr\| vs REBOUND | rate − FerroAstro (″/cy) | rate − ΣPark17 (″/cy) |
+|---|---|---|---|---|---|---|
+| FerroAstro (IAS15 ε 1e-9, 317 636 steps) | 18.467 / 20.654 | 8.100 / 8.874 | 4.33e-16 (model: 5.77e-16, i.e. 4 ulp of E) | **52.1 m** | — (532.323312) | +0.0207 |
+| REBOUND 5.2.2 (IAS15 ε 1e-9, PRS23) | 2.855 / 3.526 | 3.253 / 3.153 | 7.21e-16 | reference | −6.5e-9 | +0.0207 |
+| Mercury6 (RA15, 1e-12) | 1.450 / 1.094 | 1.009 / 0.247 | 4.17e-14 | 1.133 km | −3.8e-7 | +0.0207 |
+| Swiftest 2026.7.1 (WHM, dt 1/128 d) | 145.12 / 130.75 | 86.8 / 85.2 | 5.05e-9 | 35.06 km | +5.3e-7 | +0.0207 |
+| Orekit 13.1.9 | refused (exit 3): "only ephemeris-field mode (stage B) …" | | | | | |
+
+**(b) Sun + Mercury 1PN test particle, 1000 yr:** FerroAstro 1.980 / 2.110 s (range 0.605 / 0.209); Swiftest 33.10 / 26.83 s (range 21.1 / 2.8). Rates are FerroAstro **42.980085** and Swiftest 42.980094 (Δ +9.2e-6); FerroAstro − `PARK17-GE-RATE` = +1.85e-4 (informational). Swiftest's Mercury \|Δr\| vs FerroAstro is 35.8 km. REBOUND (stage C, WP21), Mercury6 (REF-008) and Orekit refused.
+**(c) full Newtonian + 343 Minor + KBOs + ring, 100 yr** (FerroAstro only; every oracle refused the small-body switches): **391.4 / 323.7 s**, range 202.8 / 206.9 s (individual runs 244–444 s, load 8–84). The model energy changed by 5.77e-16 (4 ulp). 51 708 steps.
+**(d) stage B, Mercury in the DE440 field, 100 yr:** FerroAstro 3.233 / 3.725 s (range 0.297 / 1.761); Orekit 470.0 / 399.8 s (range 150 / 73, JVM start-up included). Orekit − FerroAstro is **0.131 km** (WP17's golden reproduced).
+
+**Pre-registered expectations vs outcome**
+| # | expectation | outcome |
+|---|---|---|
+| E1 | energy: FerroAstro/REBOUND ≲ 1e-13, Mercury6 ≲ 1e-12, Swiftest ≈ 5e-9 | **met** (4.3e-16, 7.2e-16, 4.2e-14, 5.05e-9) |
+| E2 | Mercury \|Δr\| vs REBOUND: FerroAstro < 0.1 km, Mercury6 0.1–1 km, Swiftest 1–100 km | FerroAstro 0.052 km met; Swiftest 35 km met; **Mercury6 1.13 km, just outside the expected band** (expectation only, not a gate) |
+| E3 | (a) rate − FerroAstro: REBOUND, Mercury6 < 1e-6; Swiftest < 1e-4 | **met** (−6.5e-9, −3.8e-7, +5.3e-7) |
+| E4 | (b) FerroAstro ≈ 42.980, Swiftest − FerroAstro < 1e-4 | **met** (42.980085, +9.2e-6) |
+| E5 | (d) Orekit − FerroAstro ≈ 0.131 km | **met** (0.1310 km) |
+| E6 | **acceptance**: for every FerroAstro entry, \|median₂ − median₁\| < range₁ | **FAILED on 1 of 4**: (a) 2.19 < 8.10, (b) 0.13 < 0.61, (c) 67.7 < 202.8 pass; **(d) 0.492 ≥ 0.297 fails** (it passes against range₂ = 1.761). The nightly test `nightly_two_consecutive_speed_tables_are_stable_and_complete` fails on exactly this, as pre-registered. |
+| E7 | **acceptance**: (a) lists REBOUND, Swiftest, Mercury6, Orekit, FerroAstro | **met** (Orekit as a refusal with its runner's message) |
+| — | rate − ΣPark17 for (a) | pre-registered as "about −0.03 to −0.1"; **measured +0.0207**. Informational (OI-38, EMB as one body, no Pluto, forward window). My expectation was wrong in sign: the P-add rows miss Park by −0.03 each (WP14/WP17), but the full-system rate also contains the pair interactions, and the sum of Park's listed pair rows does not represent all of them. |
+
+**What the table says about speed (only within each table, CI-008).** On (a), FerroAstro's IAS15 takes **6–7× REBOUND's wall time** (18.5 vs 2.9 s; 20.7 vs 3.5 s) for comparable accuracy (Mercury differs from REBOUND by 52 m after 1000 yr; the energy error of both is at round-off). Part of the gap is the step count: FerroAstro takes 317 636 steps, about twice REBOUND's (WP16 stage A: 31 765 vs 16 017 per 100 yr). The rest is per-step cost. The load average during FerroAstro's (a) runs (41–59) was also higher than during REBOUND's (30–32), and the table records this. Mercury6's RA15 is the fastest on (a) (1.1–1.5 s), at 1.1 km from REBOUND. Speed was not traded for accuracy anywhere without that showing in the columns. FerroAstro's step-size control (2× REBOUND's steps at the same ε) is a performance finding for M5 (WP26), not a correctness issue.
+
+### Interpretations, deviations and NEEDS HUMAN REVIEW (WP18)
+1. **E6 failed (scenario (d)).** The pre-registered criterion (|Δmedian| < the earlier table's range) is not met for the 3-s stage B entry. Its 5 runs in table 1 happened to fall in a quiet 0.3-s window, while the machine's load changed from ~37 to ~3–50 between the tables. I did not change the criterion, the tables or the test. Options for a maintainer: run the tables on a quiet machine (a load gate in the harness, or pinned cores), use a robust spread (e.g. the larger of the two ranges, or a MAD-based bound), or require more runs. **NEEDS HUMAN REVIEW.**
+2. **Runner class.** CI-008 (as amended by PR #2, Journal #10) now names the maintainer's local machine, so `runner_class = "local-workstation …"` follows the requirement. The machine is shared with other users' CI runners and agent sessions, so OI-63 (variance) is visible in every range above. I do not tick OI-63.
+3. **Orekit on (a)** is a refusal row (its runner implements only the ephemeris-field mode), so it has a measured row on (d) instead. A coupled N-body Orekit propagator would need a custom force model (OI-26). **NEEDS HUMAN REVIEW** whether a refusal row satisfies "lists Orekit on scenario (a)".
+4. **Mercury \|Δr\| reference per scenario** is REBOUND for (a) (as planned), and FerroAstro for (b) and (d). The plan named FerroAstro only for (d); (b) was added before any oracle ran (b) because no other tool runs it.
+5. **Timer scopes differ by tool** (stated per row in the tables): Orekit includes JVM start-up and ephemeris loading, Swiftest its output read-back, and Mercury6 the input/output files. FerroAstro excludes the parsing of header.440/SPK and runs its 5 repetitions in one process.
+6. **The daily twins** (rate columns) are separate untimed runs with identical physics and integrator settings. For REBOUND, the output cadence changes the step sequence (`exact_finish_time`), so a rate comes from a trajectory that differs from the timed one at round-off level.
+7. **Pre-push lapses during the timing runs.** While the two harness runs were measuring (about 3.5 h), I pushed `6e73c2a`, `4c5bcd0`, `5e826ee`, `eeec996`, `55b9bf3`, `062d44e` and `d8ae6c7` without the full `tools/pre_push.sh`, so that no workspace build would load the machine during timing. Only clippy, tests and trace for the bench crate ran. GitHub CI caught the `6e73c2a` literal-lint failure (run 39362600602), fixed in `55b9bf3`. The full routine ran after the tables were done (gate table below).
+8. **Criterion benches** compile on every PR through clippy `--all-targets`. They were not measured (OI-69 provisional: measured only on the fixed machine). No `cargo bench --no-run` step was added to CI (a CI workflow change for humans).
+9. **M3 exit check (ROADMAP):** PHY-012 evidence (WP14 notes, nightly results), PHY-013 (WP15 notes: 532.304907 ″/cy) and this speed table (`docs/validation/speed-tables/`) are now all published in the repository. The speed table's acceptance (E6) is not fully met, so **M3 exit is not claimed** by this agent; a maintainer decides (with OI-38 and the other open NEEDS HUMAN REVIEW items).
+10. Requirement-text needs for PR #2 (carried forward): CI-002 (switch list, integrator mapping, `ephemeris-field` mode, `bench-*` scenarios), NUM-009 (16 Majors and the 2× bound), the N-AST requirement, the `blocked_by` schema, and a CI-008 note on how run-to-run spread is defined for the stability acceptance.
+11. **F13 (restated):** OI-38 is untouched; every Park17 column is informational.
+
+### WP18 gate results (2026-10-20, local, toolchain 1.95.0 + MSRV 1.85.0; `tools/pre_push.sh`, log `target/bench/prepush-wp18.log`, code tip `d8ae6c7` + tables/notes)
+| command | result |
+|---|---|
+| `cargo fmt --all --check`; `cargo clippy --workspace --all-targets --all-features -- -D warnings` | pass |
+| `cargo nextest run --workspace` + `cargo test --doc --workspace` | pass: 254 run, 0 failed, 41 skipped (`data_*`, `nightly_*`); doctests pass |
+| `cargo deny check`; `RUSTDOCFLAGS="-D warnings" cargo doc --no-deps --workspace` | pass |
+| `ruff check`, `ruff format --check`, `mypy` (strict), pytest | pass (pytest 60 passed) |
+| `reuse lint`; `trace.py --check` | pass |
+| `cargo +1.85.0 check --workspace --all-targets`; `cargo +1.85.0 nextest run --workspace -E 'not binary(compile_fail)'` | pass (251 passed, 41 skipped) |
+| nightly: `nightly_two_consecutive_speed_tables_are_stable_and_complete` (run1 vs run2) | **FAIL** on (d) only (E6, above); E7 and table validity pass |
+| GitHub CI | `55b9bf3` run 39363865757 success; `d8ae6c7` run 39373534072 success; earlier `b2c9f87` 39362406148 failure (missing manifest, concurrent writer) and `6e73c2a` 39362600602 failure (literal lint). The run for the pushed tip is quoted in the PR comment and final report. |
