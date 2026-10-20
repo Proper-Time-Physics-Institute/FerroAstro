@@ -105,6 +105,26 @@ fn estimator(vs: &VectorSet, window_jd: (f64, f64)) -> Estimator {
     }
 }
 
+/// Precondition of the nightly differentials (progress review after WP18, R3): every oracle
+/// series they read must exist under [`oracle_out`]. A missing series is reported as a distinct,
+/// named **precondition** failure (a configuration problem: the oracle step did not run or wrote
+/// elsewhere), before any FerroAstro run and never as a physics disagreement.
+fn require_oracle_series(series: &[(&str, &str)]) {
+    let missing: Vec<String> = series
+        .iter()
+        .filter(|(tool, scenario)| !oracle_out().join(tool).join(scenario).is_dir())
+        .map(|(tool, scenario)| format!("{tool}/{scenario}"))
+        .collect();
+    assert!(
+        missing.is_empty(),
+        "PRECONDITION FAILED (missing oracle series, not a physics result): {} under {} \
+         (FA_ORACLE_OUT_DIR); run tools/oracles/nightly.sh, or point FA_ORACLE_OUT_DIR at a \
+         complete oracle output directory",
+        missing.join(", "),
+        oracle_out().display()
+    );
+}
+
 /// Mercury relative to the Sun from an oracle's state CSV (heliocentric, or SSB with the Sun's
 /// rows), after verifying its manifest and the inputs it ran on.
 fn oracle_track(tool: &str, scenario: &str, header_sha: &str) -> Option<Track> {
@@ -196,6 +216,14 @@ fn nightly_oracle_padd_venus_same_estimator_every_tool() {
     assert_eq!(win, window(PADD_VENUS, jdepoc));
     let est = estimator(&vs, win);
     println!("estimator: {}", est.id(PassageSource::SampledStates));
+    require_oracle_series(&[
+        ("swiftest", PADD_BASE),
+        ("swiftest", PADD_VENUS),
+        ("mercury6", PADD_BASE),
+        ("mercury6", PADD_VENUS),
+        ("rebound", PADD_BASE),
+        ("rebound", PADD_VENUS),
+    ]);
     let (fb, hash_b) = ferroastro_track(PADD_BASE, &h, &prov);
     let (fv, hash_v) = ferroastro_track(PADD_VENUS, &h, &prov);
     println!(
@@ -235,10 +263,7 @@ fn nightly_oracle_padd_venus_same_estimator_every_tool() {
             oracle_track(tool, PADD_BASE, &header_sha),
             oracle_track(tool, PADD_VENUS, &header_sha),
         ) else {
-            panic!(
-                "{tool}: oracle series missing under {}; run tools/oracles/nightly.sh first",
-                oracle_out().display()
-            );
+            unreachable!("{tool}: checked by require_oracle_series");
         };
         assert_eq!(tb.t.len(), fb.t.len(), "{tool}: sample count");
         let ob = est.estimate(&tb, PassageSource::SampledStates).unwrap();
@@ -273,6 +298,7 @@ fn nightly_oracle_clite_swiftest_gr_contribution() {
     let jdepoc = h.value("JDEPOC").unwrap();
     let win = window(CLITE_OFF, jdepoc);
     let est = estimator(&vs, win);
+    require_oracle_series(&[("swiftest", CLITE_OFF), ("swiftest", CLITE_ON)]);
     let (f_off, hash_off) = ferroastro_track(CLITE_OFF, &h, &prov);
     let (f_on, hash_on) = ferroastro_track(CLITE_ON, &h, &prov);
     assert_eq!(

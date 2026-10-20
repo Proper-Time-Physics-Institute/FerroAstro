@@ -14,7 +14,8 @@
 )]
 #![expect(
     clippy::unwrap_used,
-    reason = "test helper: a failed unwrap is a test failure"
+    clippy::indexing_slicing,
+    reason = "test helper: a failed unwrap or index is a test failure; indices are 0..3"
 )]
 
 use ferroastro_oracle::{GoldenStates, StateComparison, TIME_MATCH_S};

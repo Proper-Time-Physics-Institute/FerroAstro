@@ -256,11 +256,6 @@ pub(crate) fn run(
 mod tests {
     //! Progress review after WP18, R4: the field bodies and GMs of the stage B model are pinned
     //! (PR tier: the pinned header.440 and de440.bsp from the JPL cache).
-    #![expect(
-        clippy::unwrap_used,
-        clippy::indexing_slicing,
-        reason = "test: a failed unwrap or index is a test failure"
-    )]
 
     use super::{Field, field_bodies};
     use ferroastro_constants::De440;
