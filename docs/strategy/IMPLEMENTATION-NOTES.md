@@ -4518,3 +4518,39 @@ GitHub CI:
   - Every new test carries a `Verifies:` tag.
   - Clean-room declarations are present.
   - `ferroastro-eih` depends only on lower layers. `ferroastro-analytic` was added as a dev-dependency for `ppn_scaling`.
+
+## WP20 — [M4] Solar J2 and Lense–Thirring in the N-body model; contributions vs Park 2017
+Branch `m4-eih` (stacked on `m3-newtonian-nbody`), draft PR #17, after WP19.
+
+### Progress-review corrections (status at the start of WP20)
+R1, R2, R3, R4, R6 and R8 were applied in WP19 (commits `e6ca3c9`…`746fc95`, `52205e9`, `c56a0e3`; see the WP19 table). R7 was requested on PR #13 and is still the maintainer's. R5, R9 and the M3 exit stay with humans. The WP19 items (clean room, NUM-020 table, pre-registration, `tools/pre_push.sh` before every push with the CI run id) apply to WP20 too. WP22 keeps the 575.3093 oracle; nothing in WP20 touches it.
+
+### Sources read (clean room, DEP-008)
+- **DE440** (Park et al. 2021, AJ 161, 105), §3.4, **Eqs. 37–39**, p. 7, read from a 300-dpi page image of the typeset PDF (the text layer garbles the equations): `a_i,LT = 2 Ω_i × v_i`, `Ω_i = (1+γ)G/(2c²r_i³) [−J + 3(J·r_i) r_i / r_i²]`, `J = C☉ M☉ R☉² ω☉ p̂`, "the acceleration of each body other than the Sun", `r_i` the position of the body with respect to the Sun, C☉ = 0.06884, R☉ = 696 000 km, ω☉ = 14.1844 deg/day, pole RA 286.13°, Dec 63.87°. `v_i` is not defined there.
+- **INPOP21a** (Fienga et al. 2021, IMCCE scientific note), §1.2, **Eq. 1**, p. 5, read from a 300-dpi page image; URL `https://www.imcce.fr/content/medias/recherche/equipes/asd/inpop/inpop21a.pdf`, sha256 `5fc3b7295a9664dadb25867cdc5893ce91cff0205bd03c972a2a8d67fffb89a5`, retrieved 2026-10-20 (kept in the session scratchpad, not committed): `a_LT = (γ+1)G/(c²r³) S [3 (k·r)/r² (r ∧ v) − (k ∧ v)]`, "r and v are the position and velocity vectors of the planet relative to the central body (here the Sun)".
+- The existing R3b form (`LenseThirring`, Journal #4): `δa = (1+γ) GS/(c²r³)[(3/r²)(r×v)(r·ŝ) + v×ŝ]`.
+- Expanding 2Ω×v in Eq. 37–38 gives `(1+γ)GS/(c²r³)[−ŝ×v + 3(ŝ·r)(r×v)/r²]`, and `−ŝ×v = v×ŝ = −(k∧v)`: on paper the three forms are the same expression. WP20 checks this symbolically and numerically (L1, L2) and records it for OI-35; **OI-35 is not ticked** (a human confirms the transcription).
+- No REBOUND/REBOUNDx (`gr_full.c`, `lense_thirring` effects), ASSIST, Swiftest or Mercury6 source was opened.
+
+### Plan and pre-registered checks (written 2026-10-20 10:07 UTC, before any WP20 code or run)
+**Model.**
+- `SolarLenseThirring` (`ferroastro-forces`, an N-body `ForceTerm`): DE440 Eqs. 37–39 evaluated literally (Ω first, then 2Ω×v) on every Major body other than the Sun, with `r_i`, `v_i` relative to the Sun (INPOP21a's definition; DE440 does not define `v_i`). G·S = GM☉ · MOISUN · ASUN² · OMGSUN from header.440 (the single-body rungs' `de440_solar_spin`), PPN γ from the scenario, pole configurable (default WGCCRE 2015, as J2). Gauge PPN isotropic/harmonic. Minor and Ring bodies do not feel it (as J2; NUM-009).
+- **Reaction on the Sun:** `LtReaction::On` (default) gives the Sun `−(GMᵢ/GM☉) aᵢ`, as the J2 term, so total momentum is conserved (WP20 task, test 1). DE440's text gives the acceleration of the non-Sun bodies only; `LtReaction::Off` is that literal reading. The reaction changes Mercury's heliocentric LT acceleration by the factor 1 + GM_Me/GM☉ = 1 + 1.7e-7, far below every bound. Interpretation, NEEDS HUMAN REVIEW.
+- **Solar overrides** (`ferroastro-propagate::SolarOverrides`, passed with `DataSources::with_solar_overrides`): J2, pole and G·S replace the DE440 values in both modes. The scenario schema is not changed: CI-002's switch list is the spec owners' (a `constants` field for WP22 Run A is a NEEDS HUMAN REVIEW item). Because overrides are invisible to the scenario digest, they are written into the run's `model` string, and a checkpoint records them and refuses to resume under different overrides (CI-010).
+- `ferroastro-diffrun` gains a switch plan with P-add, P-remove and the cross term, for the J2/LT contributions.
+
+**Checks.** Every bound is fixed here, before any run. A failure is a finding.
+
+| # | check | tier | bound (vector) | rationale |
+|---|---|---|---|---|
+| L1a | `SolarLenseThirring` alone, synthetic 5 bodies (as U2): \|Σ GMᵢaᵢ\|/(ε Σ GMᵢ\|aᵢ\|) | PR | ≤ 8 (`NBODY-LT-REACTION-MOMENTUM-ULPS`, new) | as `NBODY-J2-REACTION-MOMENTUM-ULPS` |
+| L1b | each non-Sun body's acceleration vs the single-body R3b `LenseThirring` at (rᵢ − r☉, vᵢ − v☉), at γ = 1 and γ = 0.999 | PR | relative ≤ 1e-13 (`LT-DE440-VS-R3B-REL`, new) | the same expression in two operation orders (~15 operations; as `EIH-R3-LIMIT-CORRECTION-REL`) |
+| L1c | `LtReaction::Off`: the Sun gets exactly 0; the other bodies are bitwise those of `On` | PR | exact | — |
+| L2 | sympy (`tools/lt_forms.py`): DE440 Eq. 37–38 ≡ INPOP21a Eq. 1 ≡ R3b, general γ; a negative control (sign of −J flipped) is detected | PR (pytest) | ≡ 0 | exact algebra |
+| L3 | Sun + 8 planets + geocentric Moon, Newtonian + J2 + LT with reactions, header.440, 100 yr: max \|P(t) − P(0)\|/(Σ GM\|v\|)/(ε√N) | PR | ≤ 64 (`NBODY-MOMENTUM-ROUNDOFF-ULPS`, existing) | NUM-019 acceptance. Stated limit: this run cannot see a missing LT reaction (its momentum effect over 100 yr is ~1e-12 relative and mostly periodic); L1a is the discriminating check. |
+| I2 | **isolation, N-body, equatorial**: Sun + Mercury N-body from header.440, 1001 passages, pole = Mercury's initial heliocentric orbit normal; J2 = 2.25e-7 (`PARK17-J2SUN`) and LT (DE440 spin) each toggled against the Newtonian run through the harness (one IC hash, asserted), Park2017 estimator on the passages | PR | \|Δrate − analytic\| ≤ 1e-4 ″/cy for J2 and LT (`NUM019-ISOLATION-NBODY-DIFF`, new, bound copied from NUM-013(a)); analytic = 3πJ₂R²/p² per orbit and −4GS′/(c²a³(1−e²)^{3/2}) for the initial osculating orbit with μ′ = GM☉ + GM_Me, GS′ = GS(1 + GM_Me/GM☉) (the relative motion with reactions); the same bound against the requirement's printed 0.0286 (`PHY010-J2-PARK-ANALYTIC-RATE`) and −0.00202 (`PHY011-LT-ANALYTIC-RATE`) | NUM-013(a). The base run's rate is the estimator floor and cancels in the difference. |
+| I5 | as I2 with the DE440 J2 = 2.19613915165298248e-7 | PR | \|Δrate − 0.02792\| ≤ 5e-4 (`PHY010-J2-NUM-MINUS-ANALYTIC` around `PHY010-J2-DE440-ANALYTIC-RATE`) and ≤ 1e-4 against the osculating analytic (`NUM019-ISOLATION-NBODY-DIFF`) | PHY-010 |
+| I4 | as I2 with the real WGCCRE 2015 solar pole (J2 2.25e-7 and LT) | PR | reported, not asserted: Δrate, the planar analytic, the inclined analytic (`j2_inclined_rate`; its citation is OI-37, UNVERIFIED, so it is not an oracle), the inclination, the pole (RA, Dec, ICRF unit vector) | PHY-010 metadata, red-team NUM-015 note (0.02846 vs 0.02860) |
+| N3 | **nightly**: the PHY-012 full system (Sun, 8 planets with Earth and Moon resolved, Pluto) under EIH (β = γ = 1), header.440, legs back and forward over 1000–3000 CE, Park2017 estimator (daily samples, mean-orbit plane, quadratic + 14 Table-2 terms); toggles J2 (2.25e-7, WGCCRE pole) and LT (DE440 spin, which is Park17's S = 190e39 kg m²/s to 0.01%); P-add, P-remove and the J2×LT cross term; one IC hash | nightly | J2 P-add within 0.0286 ± 0.0011 (`PARK17-J2-RATE`, gating); LT P-add within −0.0020 ± 0.0002 (`NUM019-NBODY-LT-CONTRIBUTION`, new, `blocked_by = "OI-35"`: reported, gating only once OI-35 is closed); P-remove and cross term reported | NUM-019, PHY-010, PHY-011. Expected: J2 ≈ 0.0285 (inclined geometry, Park's mean-orbit frame), LT ≈ −0.0020, cross term ≲ 1e-6. |
+
+Nothing in N3 is tuned: the span, the estimator, the toggles and the base are those above.
