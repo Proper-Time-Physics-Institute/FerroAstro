@@ -29,7 +29,7 @@ step cargo nextest run --workspace
 step cargo test --doc --workspace
 step cargo deny check
 RUSTDOCFLAGS="-D warnings" step cargo doc --no-deps --workspace
-(cd tools && step uv run ruff check && step uv run ruff format --check && step uv run mypy .)
+(cd tools && step uv run ruff check && step uv run ruff format --check && step uv run mypy . && step uv run pytest -q)
 step reuse lint
 (cd tools && step uv run python trace.py --check)
 step cargo "+${msrv}" check --workspace --all-targets
