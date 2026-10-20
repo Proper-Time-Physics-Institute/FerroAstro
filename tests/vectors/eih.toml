@@ -146,3 +146,31 @@ retrieved = "2026-10-20"
 tolerance = { abs = 1.0e-9 }
 tolerance_rationale = "About 100 x epsilon^2. A wrong coefficient in a velocity-dependent term gives O(epsilon) ~ 1e-6. Added after mutation probe E3 (T6 coefficient) survived the advance check too (a radial force proportional to rdot^2 gives no secular precession); fixed before this check's first run."
 verified_by = "WP19 builder agent, 2026-10-20: written before the first run of the energy check."
+
+[[vector]]
+id = "EIH-BINARY-PPN-ENERGY-REL"
+requirement = ["NUM-017", "NUM-020", "PHY-006"]
+quantity = "max over the samples of |E(t) - E(0)| / |E_N(0)| for the equal-mass binary of EIH-BINARY-ADVANCE-REL run at beta = 1.1, gamma = 0.9 (test point, not a physical value), E = the 1PN energy of the PPN two-body Lagrangian of a fully conservative theory (alpha_i = zeta_i = 0), E_N its Newtonian part"
+value = 0.0
+unit = "1"
+kind = "analytic"
+source = "The PPN n-body Lagrangian with only beta, gamma (Will, TEGP 2nd ed. 2018, Sec. 6.3; L = sum m(v^2/2 + v^4/8c^2) + (m1 m2/r)[1 + ((2gamma+1)/2)(v1^2+v2^2)/c^2 - ((4gamma+3)/2) v1.v2/c^2 - (n.v1)(n.v2)/(2c^2) - ((2beta-1)/2)(m1+m2)/(c^2 r)]; at beta = gamma = 1 it is Landau & Lifshitz Eq. 106.17) generates Eq. 27 for general beta, gamma, so its energy is conserved to O(c^-4). Unlike every other WP19 check, this one exercises the beta and gamma dependence of the source terms (U_j, v_j^2, v_i.v_j, S2, S3) at O(1) mass ratio."
+citation = "Will, C. M. 2018, Theory and Experiment in Gravitational Physics, 2nd ed., Sec. 6.3; Park et al. 2021, AJ 161, 105, Eq. 27; WP19 review mutation probes M2 (S2 1+2gamma -> 3gamma) and M3 (2beta-1 -> beta), which survived every builder check"
+retrieved = "2026-10-20"
+tolerance = { abs = 1.0e-9 }
+tolerance_rationale = "The bound of EIH-BINARY-ENERGY-REL (about 100 x epsilon^2, epsilon = 2.3e-6). A beta/gamma coefficient error of size 0.1 in a source term gives O(0.1 epsilon) ~ 1e-7. Fixed by the WP19 adversarial reviewer before this check's first run."
+verified_by = "WP19 reviewer agent, 2026-10-20: written before the first run of this check."
+
+[[vector]]
+id = "EIH-BINARY-PPN-ADVANCE-REL"
+requirement = ["NUM-017", "PHY-006"]
+quantity = "relative deviation of the per-orbit periastron advance of the equal-mass binary of EIH-BINARY-PPN-ENERGY-REL (beta = 1.1, gamma = 0.9) from ((2 + 2 gamma - beta)/3) 6 pi G M_tot / (c^2 p)"
+value = 0.0
+unit = "1"
+kind = "analytic"
+source = "For a fully conservative PPN theory (alpha_i = zeta_i = 0) the 1PN relative periastron advance of two point masses is ((2 + 2gamma - beta)/3) 6 pi G M/(c^2 p) for any mass ratio (Will 2018, TEGP 2nd ed., Sec. 7.3; the eta-dependent term carries only alpha_1, alpha_2, alpha_3, zeta_2)."
+citation = "Will, C. M. 2018, Theory and Experiment in Gravitational Physics, 2nd ed., Sec. 7.3; Will 2014, Living Rev. Relativ. 17, 4, Eq. 59; WP19 review"
+retrieved = "2026-10-20"
+tolerance = { abs = 1.0e-4 }
+tolerance_rationale = "The bound of EIH-BINARY-ADVANCE-REL (2PN and gauge terms O(epsilon) relative). Fixed by the WP19 adversarial reviewer before this check's first run."
+verified_by = "WP19 reviewer agent, 2026-10-20: written before the first run of this check."

@@ -371,6 +371,7 @@ dependencies = [
 name = "ferroastro-eih"
 version = "0.0.0"
 dependencies = [
+ "ferroastro-analytic",
  "ferroastro-constants",
  "ferroastro-core",
  "ferroastro-ephem",

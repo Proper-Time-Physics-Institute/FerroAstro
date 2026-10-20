@@ -19,10 +19,13 @@
 mod common;
 
 use common::{Gr, epochs, header, ids, model, name, norm, propagator, sub, vectors};
+use ferroastro_analytic::advance::ppn_scaling;
 use ferroastro_constants::De440;
 use ferroastro_core::frames::{Barycentric, Icrf, State};
 use ferroastro_core::time::SECONDS_PER_DAY;
-use ferroastro_eih::{BarycentreBody, Eih, RhsAcceleration, relativistic_barycentre};
+use ferroastro_eih::{
+    BarycentreBody, Eih, HeliocentricSchwarzschild, RhsAcceleration, relativistic_barycentre,
+};
 use ferroastro_ephem::NaifId;
 use ferroastro_forces::{
     CentralTerm, ForceTerm, MoonVariables, NBody, NBodyModel, NewtonianMutual, SchwarzschildPpn,
@@ -92,6 +95,11 @@ fn eih_reduces_to_the_schwarzschild_test_particle_numerically() {
         let eih = || Eih::new(c, beta, gamma, RhsAcceleration::Newtonian).unwrap();
         let (total, _) = accel(vec![Box::new(NewtonianMutual), Box::new(eih())]);
         let (corr, sun_corr) = accel(vec![Box::new(eih())]);
+        // Review addition: the heliocentric rung term (gr_1pn_central) equals R3 at the same
+        // (beta, gamma); kills review mutant M4 (2(1+gamma) -> 2(1+beta) in the r.v term).
+        let (central, _) = accel(vec![Box::new(
+            HeliocentricSchwarzschild::new(c, beta, gamma).unwrap(),
+        )]);
         let r3 = SchwarzschildPpn::new(mu, c, beta, gamma).unwrap();
         let tp = TestParticle::<Icrf>::new(mu, vec![Box::new(r3)]).unwrap();
         let mut tp_total = [0.0; 3];
@@ -117,6 +125,13 @@ fn eih_reduces_to_the_schwarzschild_test_particle_numerically() {
             .get("EIH-R3-LIMIT-CORRECTION-REL")
             .unwrap()
             .check(rel_corr)
+            .unwrap();
+        let rel_central = norm(sub(central, tp_corr)) / norm(tp_corr);
+        println!("C2 gr_1pn_central correction rel diff {rel_central:.3e}");
+        vectors()
+            .get("EIH-R3-LIMIT-CORRECTION-REL")
+            .unwrap()
+            .check(rel_central)
             .unwrap();
         assert!(sun_corr.iter().all(|z| z.to_bits() == 0), "{sun_corr:?}");
     }
@@ -388,18 +403,15 @@ const BINARY_E: f64 = 0.5; // lint: allow-literal(synthetic binary geometry)
 const BINARY_ORBITS: u32 = 100; // lint: allow-literal(run length, PR-tier cost)
 const SAMPLES_PER_ORBIT: u32 = 2000; // lint: allow-literal(sampling of the periastron search)
 
-/// Added after mutation probe E3 (T6 coefficient) survived: an equal-mass eccentric binary, where
-/// the source-velocity terms of Eq. 27 act at O(1). Its 1PN periastron advance is
-/// 6π G M / (c² p) for any mass ratio (Damour & Deruelle 1985).
-///
-/// Verifies: NUM-017, NUM-020
-#[test]
+/// The equal-mass binary under Newton + EIH at PPN (β, γ): returns the worst relative change of
+/// the 1PN energy, the relative deviation of the periastron advance from
+/// ((2 + 2γ − β)/3) 6π G M / (c² p), and the number of periastra.
 #[expect(
     clippy::too_many_lines,
     clippy::suboptimal_flops,
-    reason = "one evidence test read top to bottom; the energy terms are written as typeset"
+    reason = "one evidence run read top to bottom; the energy terms are written as typeset"
 )]
-fn equal_mass_binary_advance_is_mass_ratio_independent() {
+fn binary(beta: f64, gamma: f64) -> (f64, f64, usize) {
     use ferroastro_core::frames::Position;
     use ferroastro_core::time::{Epoch, J2000_JD, Tdb};
     use ferroastro_core::units::{Length, TimeSpan, Velocity};
@@ -426,7 +438,9 @@ fn equal_mass_binary_advance_is_mass_ratio_independent() {
         MoonVariables::Barycentric,
         vec![
             Box::new(NewtonianMutual),
-            Box::new(Eih::new(de.speed_of_light(), 1.0, 1.0, RhsAcceleration::Newtonian).unwrap()),
+            Box::new(
+                Eih::new(de.speed_of_light(), beta, gamma, RhsAcceleration::Newtonian).unwrap(),
+            ),
         ],
     )
     .unwrap();
@@ -457,8 +471,9 @@ fn equal_mass_binary_advance_is_mass_ratio_independent() {
         let e = [0, 1].map(|k| ((v2 - m_tot / rn) * r[k] - rv * v[k]) / m_tot);
         e[1].atan2(e[0])
     };
-    // The 1PN energy of the EIH two-body Lagrangian (Landau & Lifshitz 106.17; G folded into the
-    // GMs), checked symbolically by tools/eih_limit.py::check_lagrangian, and its Newtonian part.
+    // The 1PN energy of the PPN two-body Lagrangian with only beta, gamma (Will, TEGP 2nd ed.,
+    // Sec. 6.3; at beta = gamma = 1 Landau & Lifshitz 106.17, checked symbolically by
+    // tools/eih_limit.py::check_lagrangian; G folded into the GMs), and its Newtonian part.
     let c2 = c * c;
     let energy = |p: &NBodyPropagator<Icrf>| {
         let s = p.state().unwrap();
@@ -471,8 +486,11 @@ fn equal_mass_binary_advance_is_mass_ratio_independent() {
         let (va2, vb2) = (d(va, va), d(vb, vb));
         let newton = 0.5 * gm * (va2 + vb2) - gm * gm / r;
         let pn = 3.0 / 8.0 * gm * va2.mul_add(va2, vb2 * vb2)
-            + gm * gm / (2.0 * r) * (3.0 * (va2 + vb2) - 7.0 * d(va, vb) - d(nn, va) * d(nn, vb))
-            + gm * gm * (2.0 * gm) / (2.0 * r * r);
+            + gm * gm / (2.0 * r)
+                * ((2.0 * gamma + 1.0) * (va2 + vb2)
+                    - (4.0 * gamma + 3.0) * d(va, vb)
+                    - d(nn, va) * d(nn, vb))
+            + (2.0 * beta - 1.0) * gm * gm * (2.0 * gm) / (2.0 * r * r);
         (newton + pn / c2, newton)
     };
     let (e0, en0) = energy(&p);
@@ -524,7 +542,8 @@ fn equal_mass_binary_advance_is_mass_ratio_independent() {
     let advance = sxy / sxx;
     let h = rp * vp;
     let p_semi = h * h / m_tot;
-    let expected = 3.0 * std::f64::consts::TAU * m_tot / (c * c * p_semi); // lint: allow-literal(6 pi = 3 tau, the 1PN advance)
+    let expected =
+        ppn_scaling(beta, gamma) * 3.0 * std::f64::consts::TAU * m_tot / (c * c * p_semi); // lint: allow-literal(6 pi = 3 tau, the 1PN advance)
     let rel_dev = advance / expected - 1.0;
     println!(
         "binary: G M_tot/(c^2 p) = {:.4e}; {} periastra; advance {advance:.10e} rad/orbit, \
@@ -537,7 +556,18 @@ fn equal_mass_binary_advance_is_mass_ratio_independent() {
         "binary: max |E(t) - E(0)| / |E_N| = {worst_energy:.3e} (1PN energy of the EIH \
          Lagrangian, sampled 20 times per orbit)"
     );
-    assert!(peri.len() >= BINARY_ORBITS as usize);
+    (worst_energy, rel_dev, peri.len())
+}
+
+/// Added after mutation probe E3 (T6 coefficient) survived: an equal-mass eccentric binary, where
+/// the source-velocity terms of Eq. 27 act at O(1). Its 1PN periastron advance is
+/// 6π G M / (c² p) for any mass ratio (Damour & Deruelle 1985).
+///
+/// Verifies: NUM-017, NUM-020
+#[test]
+fn equal_mass_binary_advance_is_mass_ratio_independent() {
+    let (worst_energy, rel_dev, n) = binary(1.0, 1.0);
+    assert!(n >= BINARY_ORBITS as usize);
     vectors()
         .get("EIH-BINARY-ENERGY-REL")
         .unwrap()
@@ -545,6 +575,38 @@ fn equal_mass_binary_advance_is_mass_ratio_independent() {
         .unwrap();
     vectors()
         .get("EIH-BINARY-ADVANCE-REL")
+        .unwrap()
+        .check(rel_dev)
+        .unwrap();
+}
+
+/// PPN test point of the binary at general β, γ (not physical values): large enough that a β or γ
+/// coefficient error in a source term shows at O(0.1 ε).
+const BINARY_PPN: (f64, f64) = (1.1, 0.9); // lint: allow-literal(PPN test point, not a physical value)
+
+/// Review addition: the same binary at β ≠ γ ≠ 1. Every other check exercises the β, γ dependence
+/// of Eq. 27 only through terms driven by the static Sun (`U_i`, `v_i²`); here the source terms
+/// (`U_j`, `v_j²`, `v_i·v_j`, S2, S3) act at O(1). The PPN two-body Lagrangian's energy is
+/// conserved, and the advance is ((2 + 2γ − β)/3) 6π G M / (c² p) for any mass ratio in a fully
+/// conservative theory (Will, TEGP 2nd ed., Secs. 6.3, 7.3). Kills review mutants M2
+/// (S2 `1+2γ → 3γ`) and M3 (`2β−1 → β`), which survive every β = γ = 1 check.
+///
+/// Verifies: NUM-017, NUM-020, PHY-006
+#[test]
+fn equal_mass_binary_at_general_beta_gamma_conserves_the_ppn_energy() {
+    let (beta, gamma) = BINARY_PPN;
+    let (worst_energy, rel_dev, n) = binary(beta, gamma);
+    println!(
+        "binary at beta = {beta}, gamma = {gamma}: energy {worst_energy:.3e}, advance {rel_dev:+.3e}"
+    );
+    assert!(n >= BINARY_ORBITS as usize);
+    vectors()
+        .get("EIH-BINARY-PPN-ENERGY-REL")
+        .unwrap()
+        .check(worst_energy)
+        .unwrap();
+    vectors()
+        .get("EIH-BINARY-PPN-ADVANCE-REL")
         .unwrap()
         .check(rel_dev)
         .unwrap();

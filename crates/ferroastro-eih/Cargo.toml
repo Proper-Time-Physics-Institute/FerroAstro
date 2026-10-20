@@ -18,6 +18,7 @@ ferroastro-real.workspace = true
 ferroastro-system.workspace = true
 
 [dev-dependencies]
+ferroastro-analytic.workspace = true
 ferroastro-constants.workspace = true
 ferroastro-frames.workspace = true
 ferroastro-integrators.workspace = true

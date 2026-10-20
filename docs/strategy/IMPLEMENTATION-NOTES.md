@@ -4498,3 +4498,23 @@ GitHub CI:
 - run **39394141110** on `ab46110`: success (rust, msrv, wasm32 with eih, python, reuse, dco; data and long runs skipped by design);
 - run **39397046266** on `b152939`: success;
 - the notes-only tip that follows is reported in the PR.
+
+### WP19 adversarial review (reviewer agent, 2026-10-20, at `0c9f4b5`)
+- **Re-run by the reviewer.** The full AGENTS.md gate passed: fmt, clippy `-D warnings`, nextest (263 passed, 42 skipped), doctests, deny, doc `-D warnings`, ruff, ruff format, mypy, pytest (65), reuse, trace. The data tier was re-run with `FA_DATA_DIR=target/fa-data-wp19` (`--profile data --run-ignored only`) and passed 29/29 in 162 s. C7 reproduced exactly: Mercury's barycentric residual against de440.bsp went from 3408.93 km to 1.442 km (factor 2364.16). The pins were header.440 sha256 `0f4636b6…6ac3359` and de440.bsp sha256 `a4ce9bf9…fff7c4b5`, both retrieved 2026-10-20.
+- **Gap found: the β and γ dependence of the source terms was untested.** Three review mutants survived every builder check. Each leaves β = γ = 1 unchanged:
+  - **M2:** S2 `1+2γ → 3γ`;
+  - **M3:** U_j coefficient `2β−1 → β`;
+  - **M4:** in `HeliocentricSchwarzschild`, the r·v coefficient `2(1+γ) → 2(1+β)`.
+
+  They survived because C2 has a massless partner (U_j = 0 and no source velocity). C4 (PHY-006) runs at mass ratio 1.7e-7, where the source terms are invisible. The binary and the sympy Lagrangian checks ran at β = γ = 1 only. The gap was closed as follows:
+  - **The binary now runs at a PPN test point (β, γ) = (1.1, 0.9).** It checks the energy of the PPN two-body Lagrangian of a fully conservative theory (Will, TEGP 2nd ed., §6.3) and the advance ((2+2γ−β)/3)·6πGM/(c²p) (§7.3). The two new vectors, `EIH-BINARY-PPN-ENERGY-REL` (1e-9) and `EIH-BINARY-PPN-ADVANCE-REL` (1e-4), were written before the first run.
+  - **The heliocentric term is compared with R3 at (1+1e-3, 1−1e-3) in C2.** It uses the existing `EIH-R3-LIMIT-CORRECTION-REL` bound.
+  - **Results on the unmutated code:** energy 4.909e-10, advance −1.678e-5, and a heliocentric-vs-R3 difference of exactly 0. That an independently written Lagrangian agrees with the Rust Eq. 27 at general β and γ is evidence for the NUM-020 transcription, but it does not replace the human sign-off.
+  - **The mutants now fail:** M2 gives energy 4.4e-7 and advance −1.9e-2; M3 gives 3.5e-7 and +9.2e-3. Two further γ-only mutants also fail: M5 (`1+γ → 2γ` on v_j²) gives 2.2e-7, and M6 (`(3+4γ)/2 → (5+2γ)/2`) gives 3.5e-7. M4 fails C2. M1 (`3+4γ → 3+3γ`) was already killed by C6 and the binary.
+- **NEEDS HUMAN REVIEW:** both new bounds copy the β = γ = 1 binary bounds. The Lagrangian is the fully conservative PPN form (α_i = ζ_i = 0), which is the model Eq. 27 assumes. The human NUM-020 check should confirm the TEGP Lagrangian coefficients quoted in the vector source text.
+- **Other checks:**
+  - No tolerance or golden value changed in this work package. The edit to `oracles.toml` adds rationale text only, and its bound is unchanged.
+  - There is no `unwrap`, `unsafe` or `panic!` in library code; the only `unwrap`s are in `#[cfg(test)]` code in `field.rs`.
+  - Every new test carries a `Verifies:` tag.
+  - Clean-room declarations are present.
+  - `ferroastro-eih` depends only on lower layers. `ferroastro-analytic` was added as a dev-dependency for `ppn_scaling`.
