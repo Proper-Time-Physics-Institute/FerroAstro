@@ -1,0 +1,57 @@
+# SPDX-FileCopyrightText: 2026 Proper-Time Physics Institute
+# SPDX-License-Identifier: Apache-2.0
+#
+# WP28 (NUM-024): the published Subbotin, Kodukov & Pavlov 2023 wall times that the speed table
+# lists next to FerroAstro's measured medians. They are context for a cross-hardware comparison,
+# never a gate: the CPU of the published timings is unspecified, so hardware normalisation is open
+# (OI-44), and each vector is blocked_by OI-44. Fixed in the WP28 plan
+# (docs/strategy/IMPLEMENTATION-NOTES.md, "WP28 ... Plan and pre-registered checks") on
+# 2026-10-20 23:55 UTC, before any WP28 run, and committed before the code that reads them.
+# Source read: arXiv:2304.04458v1 (sha256 e65d152ab556a0a379bd2dc6dcf4f1b92bdd1d24a984fe2f42ba5b4fbb2025b5,
+# fetched 2026-10-20 by WP25), Table 1, row "wall time".
+schema_version = 1
+
+[[vector]]
+id = "SUBBOTIN23-T1-WALL-F64-S"
+requirement = ["NUM-024"]
+quantity = "wall time of the 40-yr EIH ephemeris integration (16 Major + Minor bodies, ABM13 PECEC, h = 1/16 d) in binary64, as published"
+value = 81.0
+unit = "s"
+kind = "measured"
+source = "Subbotin, Kodukov & Pavlov 2023, Table 1, column 'double' (f64), row 'wall time': 81 s. Their CPU is not specified in the paper as read (OI-44)."
+citation = "Subbotin, Kodukov & Pavlov 2023, 'Reducing roundoff errors in numerical integration of planetary ephemeris', CeMDA, doi:10.1007/s10569-023-10139-2 (arXiv:2304.04458v1), Table 1; FerroAstro NUM-024"
+retrieved = "2026-10-20"
+tolerance = { abs = 0.5 }
+tolerance_rationale = "Transcription check only (the value is printed as an integer number of seconds). Never a timing gate: comparisons cross hardware (CI-008, OI-44)."
+verified_by = "WP28 builder agent, 2026-10-20: transcribed from the WP25 reading of Table 1 (IMPLEMENTATION-NOTES WP25, Sources)."
+blocked_by = "OI-44"
+
+[[vector]]
+id = "SUBBOTIN23-T1-WALL-MIXED-S"
+requirement = ["NUM-024"]
+quantity = "wall time of the same 40-yr integration in the mixed double-double scheme (DD state and sums, f64 forces), as published"
+value = 246.0
+unit = "s"
+kind = "measured"
+source = "Subbotin, Kodukov & Pavlov 2023, Table 1, column 'mixed', row 'wall time': 246 s. Their CPU is not specified in the paper as read (OI-44)."
+citation = "Subbotin, Kodukov & Pavlov 2023, CeMDA, doi:10.1007/s10569-023-10139-2 (arXiv:2304.04458v1), Table 1 and Sec. 4.3; FerroAstro NUM-024"
+retrieved = "2026-10-20"
+tolerance = { abs = 0.5 }
+tolerance_rationale = "Transcription check only. Never a timing gate: comparisons cross hardware (CI-008, OI-44)."
+verified_by = "WP28 builder agent, 2026-10-20: transcribed from the WP25 reading of Table 1 (IMPLEMENTATION-NOTES WP25, Sources)."
+blocked_by = "OI-44"
+
+[[vector]]
+id = "SUBBOTIN23-T1-WALL-DD-S"
+requirement = ["NUM-024"]
+quantity = "wall time of the same 40-yr integration in full double-double, as published"
+value = 1920.0
+unit = "s"
+kind = "measured"
+source = "Subbotin, Kodukov & Pavlov 2023, Table 1, column 'double-double', row 'wall time': 32 min = 1920 s. Their CPU is not specified in the paper as read (OI-44)."
+citation = "Subbotin, Kodukov & Pavlov 2023, CeMDA, doi:10.1007/s10569-023-10139-2 (arXiv:2304.04458v1), Table 1; FerroAstro NUM-024"
+retrieved = "2026-10-20"
+tolerance = { abs = 30.0 }
+tolerance_rationale = "Transcription check only: the value is printed in whole minutes (+/- 0.5 min). Never a timing gate (CI-008, OI-44)."
+verified_by = "WP28 builder agent, 2026-10-20: transcribed from the WP25 reading of Table 1 (IMPLEMENTATION-NOTES WP25, Sources)."
+blocked_by = "OI-44"

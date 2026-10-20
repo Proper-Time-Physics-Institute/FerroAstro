@@ -104,3 +104,20 @@ retrieved = "2026-10-20"
 tolerance = { abs = 1.0e-3 }
 tolerance_rationale = "The B2 bound (1 m) carried over to the 10-yr data-tier comparison; by the triangle inequality the residual maxima differ by at most the ABM-IAS15 distance."
 verified_by = "WP24 builder agent, 2026-10-20: fixed in the WP24 plan before the first run."
+
+# WP28 / progress-review W1 after WP26: pins the Kahan-compensated state update. Fixed in the WP28
+# plan (IMPLEMENTATION-NOTES, "WP28 ... Plan and pre-registered checks", 2026-10-20 23:55 UTC)
+# before the test that reads it was written or run.
+[[vector]]
+id = "ABM-COMPENSATION-GAIN-MIN"
+requirement = ["NUM-002", "NUM-007"]
+quantity = "max over samples of |r_plain - r_DD| / max over samples of |r_comp - r_DD| for a Mars-like Kepler orbit (test design: a = 1.5 au, e = 0.09, mu = DE440 GM_Sun), ABM13 PECEC h = 1/16 d, 10 orbits; f64 plain and f64 Kahan-compensated state updates against the same ABM in double-double"
+value = 10.0
+unit = "1"
+kind = "analytic"
+source = "Round-off model: the plain update rounds y_{n+1} = y_n + h S to binary64 each step (error ~ u |y|); the compensated update carries that rounding and leaves the rounding of the increment's history sum (~ u sum|alpha_j| |h f|, sum|alpha| = 51.6 for AM13). Ratio ~ |y| / (51.6 |h y'|): ~ 33 for the position of a Mars-like orbit and ~ 340 for its velocity. WP24 B3 measured ~ 100 for Mars in the N-body run (2.58 m plain vs 2.55 cm compensated over 40 yr)."
+citation = "Kahan 1965, CACM 8, 40 (compensated summation); Higham 2002, Accuracy and Stability of Numerical Algorithms, 2nd ed., SIAM, Sec. 4.3; IMPLEMENTATION-NOTES WP24 B3 and progress review after WP26 (W1); WP28 plan check T1"
+retrieved = "2026-10-20"
+tolerance = { abs = 0.0 }
+tolerance_rationale = "A lower bound: the test asserts ratio >= value (10), the k suggested by the WP26 review from B3's ~100 and about 3x below the position-error estimate (~33). An anti-compensated or uncompensated update gives a ratio <= 1."
+verified_by = "WP28 builder agent, 2026-10-20: fixed in the WP28 plan before the first run."
