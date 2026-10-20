@@ -4741,3 +4741,230 @@ Nightly log `target/wp21/nightly-stage-c-1.log` (release, 189 s for the FerroAst
 `tools/pre_push.sh` (full) passed before both pushes (logs `target/wp21/prepush-1.log` on `9f90666`, `target/wp21/prepush-2.log` on `4b27edc`): nextest 273 passed, 45 skipped (`data_*` and `nightly_*`); doctests pass; MSRV nextest 270 passed; pytest 68 passed; fmt, clippy `-D warnings`, deny, doc `-D warnings`, ruff, ruff format, mypy (strict), reuse and trace (121 requirements, 626 citing tests, 0 errors): clean.
 
 GitHub CI: run **39410722663** on `9f90666`: success; run **39419057855** on `4b27edc`: success (rust, msrv, wasm32, python, reuse, dco; data and long runs skipped by design). The notes-only commit that follows changes no code.
+
+## 📈 Progress review: after WP21
+
+I am the independent progress reviewer (an agent, not the builder). I audited `m4-eih` at `734dcf3`: WP19–WP21, stacked on `m3-newtonian-nbody` at `5a05b88`, since the last review at `0f5ad63`. Everything below ran on 2026-10-20 between 12:27 and 13:05 UTC on the local machine (i9-13900, 32 logical CPUs), with toolchain 1.95.0 and MSRV 1.85.0.
+- I loosened nothing and committed no mutation. Mutants ran in a scratch clone, which was clean afterwards.
+- The worktree stayed clean apart from this section.
+
+### Overall health: 🟡 YELLOW
+- **Green:**
+  - Every AGENTS.md gate passes on `734dcf3`, and so does the MSRV run (`tools/pre_push.sh`, full mode). **GitHub CI on the tip is green:** run 39419717520, every job.
+  - The data tier passes **30/30 on the first pass**. `FA_DATA_DIR` was fresh, with 35 live downloads, no HTTP 503, and Horizons `signature.version` 1.2 / DE441 throughout.
+  - **Every nightly number I re-ran equals the builders' reports to the printed digit.** For stage C, I regenerated all 12 REBOUNDx `oracle-c-*` series in the oracle image; they are bit-identical to WP21's.
+  - Four key results reproduce in independent Python (numpy/scipy, my own header.440 parser, no FerroAstro code). Two of them are new:
+    - **A clean-room EIH integration** (my own DE440 Eq. 27) reproduces the committed **REBOUNDx `gr_full` stage C golden: Mercury 3.8 m** after 100 yr. The GR signal is 35 367 km, and my Newtonian control against REBOUND's golden is 10.4 m.
+    - **The analytic J2, LT and GR rates** reproduce from header.440 alone, including the C3 `EIH − R3` shift of +2.90e-5.
+  - No vector value or tolerance moved; every vector change is an addition. There is no `#[ignore]` creep. The layer check is green: 22 crates, 131 edges.
+  - The R1–R4, R6 and R8 corrections from the last review hold.
+  - Mutation probes: 7 of 8 new mutants die.
+- **Not green:**
+  - **V1:** the N-body Lense–Thirring term's PPN γ wiring is untested. My mutant that makes `forces.lense_thirring` ignore the scenario's γ survives every PR-tier test.
+  - **V2 (science, informational):** in a two-body Sun + Mercury run, FerroAstro and REBOUNDx `gr_full` differ by **2.86 km after 100 yr**, against 0.13 km for the Newtonian control. I traced this to the subset's 9.79 m/s bulk velocity in the SSB frame (see §2). Perihelion rates agree to 2e-9 ″/cy, so no check is affected, but the frame convention for subset EIH runs is undocumented.
+  - **V3:** the CI-008 speed-table nightly now fails for a new reason: it picks WP21's row-(e)-only table as "the latest table" ("rebound missing on (a)"). Against the two full tables it fails on (d) as before (E6).
+  - **M4 exit is blocked by humans:**
+    - **NUM-020 / OI-33 is unsigned**: the signature block of `crates/ferroastro-eih/TRANSCRIPTION.md` is empty. WP22 (PHY-014) must not start.
+    - OI-35 (LT) is unsigned too.
+  - Unchanged from earlier reviews:
+    - OI-38: PHY-012 under P-add misses 4 of 7 rows, while P-remove matches 7/7 rows and 6/6 pairs;
+    - E6 fails on (d);
+    - NUM-009 is at 28× (OI-42);
+    - M3 exit is not claimed.
+
+### 1. Commands (tip `734dcf3`)
+| command | result |
+|---|---|
+| `tools/pre_push.sh` (fmt, clippy `-D warnings`, nextest, doctests, deny, doc `-D warnings`, ruff, ruff format, mypy strict, pytest, reuse, trace, MSRV check and MSRV nextest) | **pass**.<br>• nextest: **273 passed, 45 skipped**. The 45 are 30 `data_*` and 15 `nightly_*`, which are exactly the 45 `#[ignore]`s.<br>• doctests pass.<br>• pytest: 68 passed.<br>• `trace --check`: 121 requirements, 626 citing tests, 0 errors.<br>• MSRV nextest: 270 passed.<br>• deny: advisories, bans, licenses and sources ok. |
+| `check_layers.py` | 22 crates, 131 edges, 0 errors. The only allowed exception is still `cli → vectors`. |
+| GitHub CI on `734dcf3` | run **39419717520 success**: rust, msrv, wasm32 (now with eih), python, reuse, dco. `data` and `long runs` are skipped by design. |
+| data tier: `tools/run_long_local.sh --data-only`, fresh `FA_DATA_DIR=target/fa-data-rev21` | **30/30 pass** (66 s).<br>• de440.bsp, sb441-n373s.bsp and linux_p1550p2650.440 were symlinked from the pinned cache and SHA-verified on load.<br>• Everything else was fetched live: 35 cache misses, 0 HTTP 503.<br>• header.440 sha256 `0f4636b6…6ac3359` (retrieved 2026-10-20, Last-Modified 2020-12-22).<br>• Every Horizons answer carried `signature.version` 1.2 / DE441. |
+| REBOUNDx stage C series, regenerated by me (`run_oracles.sh rebound` on the 10 `oracle-c-*` scenarios, image `sha256:dedf4e06…cc75e`) | 10/10 exit 0 (the `gr_full` full-system legs took 251 s and 230 s). **All 12 CSVs are bit-identical to WP21's `target/oracle-out`.** |
+| nightly (release): `nightly_stage_c` against my regenerated series | **pass** (173 s). Every S2, S3 and S4 number equals WP21's. |
+| nightly (release): everything else except the N-body Brouwer ensemble (55 min), PHY-013 (41 min) and the NUM-009 timing | **10/11 pass, 1 fail** (394 s). The passes include N3 (138 s), PHY-012, the P-add Venus and C-lite differentials, NUM-023 ×3, DE440 DD vs f64, and both 1000-yr checkpoint resumes (f64, and DD with the v2 checkpoint format). The **fail is the speed table (V3)**. With `FA_BENCH_TABLES=run1,run2` it fails on (d) only, the known E6. |
+
+### 2. Real-data and benchmark results
+Provenance (each SHA-256 equals its manifest pin and was re-verified on load):
+- header.440 `0f4636b6…6ac3359`
+- de440.bsp `a4ce9bf9…fff7c4b5`
+- REBOUND 5.2.2 + REBOUNDx 5.1.0, image `dedf4e06…`
+- Horizons `signature.version` 1.2, DE441
+
+Margin = |Δ| / tolerance.
+
+| test (tier) | measured | oracle (source) | tolerance | margin |
+|---|---|---|---|---|
+| WP19 C7 `data_eih_ten_years_from_header_ics_vs_de440_bsp` (data) | Mercury, barycentric: Newtonian + J2 3408.93 km → **EIH + J2 1.442 km** (heliocentric 0.055 km); **factor 2364.16** | de440.bsp (JPL) | ≥ 10 (PROVISIONAL) | pass, 236× above the floor |
+| WP20 D1 `data_lense_thirring_ten_years…` (data) | LT shift on Mercury 67.24 m (log10 −1.17); Mercury heliocentric residual vs de440.bsp **54.88 m → 16.35 m** with LT | de440.bsp | log10 −1.5 ± 1.5 | 0.22 |
+| WP19 C3 PHY-005 via `gr_eih` (PR) | 42.980114172; EIH − R3 = +2.901e-5 | 42.980 (PHY-005); R3 run | ±1e-3; ±1e-4 | 0.11; 0.29 |
+| ↳ **independent: analytic GR rate with μ = GMS vs GMS + GM1** (mine) | **Δ = +2.902e-5** (d ln rate/d ln μ = 4.07) | — | — | reproduces C3's +2.901e-5 and its explanation |
+| WP19 C4 PHY-006 ratio via EIH (PR) | max \|dev\| 4.16e-10 | (2+2γ−β)/3 | 1e-6 | 4e-4 |
+| WP19 C6 relativistic SSB (PR) | 3.20e-10 km | — | 1e-5 km | 3e-5 |
+| WP19 binary 1PN energy, β = γ = 1 / PPN point (PR) | 5.27e-10 / 4.91e-10 | EIH Lagrangian / TEGP PPN Lagrangian | 1e-9 | **0.53** / 0.49 (thinnest margins of M4) |
+| WP20 I2 J2 2.25e-7, equatorial N-body (PR) | +1.2e-8 vs analytic 0.028601001 | 3πJ₂R²/p² | 1e-4 | 1e-4 |
+| WP20 I2 LT, equatorial N-body (PR) | −4.5e-9 vs analytic −0.002018324 | Park17 Eq. 2 | 1e-4 | 4e-5 |
+| WP20 I5 J2 DE440 (PR) | 0.027916343 vs 0.02792 | PHY-010 | 5e-4 | 0.007 |
+| ↳ **independent analytic from header.440** (mine) | a = 57 909 228.046 km, e = 0.2056165937; J2 0.028601001 / **0.027916346**; LT **−0.002018324**; S = 1.8999e41 kg m²/s; i(WGCCRE) = **3.3768°**; inclined J2 0.0284522 | — | — | every digit equals WP20's |
+| WP20 N3 nightly, J2 P-add (EIH, 1000–3000 CE) | **0.0284515** (P-remove the same) | Park17 Table 3, 0.0286 | ±0.0011 | 0.14 |
+| WP20 N3 nightly, LT P-add (non-gating, OI-35) | −0.0020148 | Park17, −0.0020 | ±0.0002 | 0.07 |
+| WP20 N3 J2 × LT cross term | +0.0000000 | — | reported | — |
+| WP21 S1 stage C, Mercury FerroAstro `gr_eih` vs REBOUNDx `gr_full` (PR) | 8.536e-4 km (Moon 1.42e-3 km, reported) | REBOUNDx golden | 1e-3 km (PROVISIONAL) | **0.85** |
+| ↳ **independent clean-room EIH (DOP853, rtol 2.3e-14) vs the same golden** (mine) | Mercury **3.8 m** at a 0.05-d step (24 m at 0.5 d, 35 m at 0.125 d); Newtonian control vs REBOUND golden 10.4 m; GR signal 35 367 km | — | — | REBOUNDx golden = textbook Eq. 27 to 1e-7 of the GR signal |
+| WP21 S2 nightly, full-system GR contribution | FerroAstro 42.978498, REBOUNDx 42.978498; Δ −2.46e-9 | REBOUNDx | 1e-3 (PROVISIONAL) | 2.5e-6 |
+| WP21 S3 nightly, Sun + Mercury GR on − off | `gr_eih` 42.980114, `gr_1pn_central` 42.980112, `gr_full` 42.980114, `gr` 42.980119, `gr_potential` 42.980135; `gr_full` − `gr_eih` = +1.86e-9 | PHY-005 42.980; REBOUNDx | ±1e-3; 1e-3 | 0.11–0.13; 1.9e-6 |
+| ↳ **two-body position check** (mine; V2) | FerroAstro vs REBOUNDx `gr_full`, 100 yr: **2.859 km** (Newtonian control 0.126 km). Independent EIH (converged, 2 cm between 0.25-d and 0.1-d steps) vs REBOUNDx: 2.85 km. **In the subset's COM frame, independent vs REBOUNDx: 11 m.** | — | not asserted anywhere | see V2 |
+| WP21 S6 speed table (e), 1000 yr | FerroAstro 24.33 s, REBOUNDx `gr_full` 24.62 s; Mercury \|Δr\| 67 m | — | reported | — |
+| PHY-012 nightly (re-run) | P-add V/EM/J/S outside, as before; **P-remove 7/7 within 0.0007**; P-remove pairs in Park's convention −0.020782, −0.001116, −0.001570, +0.000199, +0.041038, +0.000380 | Park17 Table 3 | ±0.005 | identical to WP19 |
+| P-add Venus differential (nightly) | 277.387780; Swiftest −1.4e-8, Mercury6 +1.7e-8, REBOUND +6.9e-9 | each tool | 1e-3 | ≤ 2e-5 |
+| Earlier rungs (data tier, unchanged) | PHY-005 42.980085160 (DD agreement 5.3e-10); GR from DE441 42.9806442 vs Park GE 42.9799 (+7.4e-4, 3σ 2.7e-3); Park17 J2-REAL 0.028452375 (−1.48e-4 / 1.1e-3); **DE441 total, Park17 frame: 575.309163** (jk 0.00153) | Park17 | — | unchanged |
+
+**Independent recomputation** (scripts in the scratchpad `rev21/py/`; header.440 is parsed by my own reader and checked against its pin):
+1. **Analytic rates from header.440 constants.** The relative orbit at JDEPOC with μ′ = GMS + GM1 gives a = 57 909 228.046 km and e = 0.2056165937, equal to the WP20 basis.
+   - J2 (2.25e-7) = **0.028601001** and J2 (DE440) = **0.027916346** ″/cy, equal to I2 and I5.
+   - LT = −4GS′/(c²a³(1−e²)^{3/2}) = **−0.002018324**, equal to I2. G·S = GMS·MOISUN·ASUN²·OMGSUN gives S = 1.8999e41 kg m²/s, which is Park17's 190e39.
+   - The WGCCRE 2015 pole gives an inclination of **3.3768°**, and the inclined J2 is 0.0284522, against N3's 0.0284515.
+2. **The GR shift EIH − R3.** The analytic 1PN rate at a fixed initial state with μ = GMS + GM1, minus the rate with GMS, is **+2.902e-5** ″/cy. WP19 C3 measured +2.901e-5, and the builder's d ln(rate)/d ln μ ≈ 4 argument is confirmed (4.07).
+3. **Stage C benchmark.** My own EIH (DE440 Eq. 27, β = γ = 1, Newtonian a_j), Sun + 8 planets + Earth + Moon from header.440, DOP853, 100 yr, against the committed REBOUNDx `gr_full` golden:
+   - Mercury 3.8 m, Venus 3.2 m, Earth 1.2 m, Moon 67 m at a 0.05-d step;
+   - the same integrator, Newtonian, against REBOUND's Newtonian golden: Mercury 10.4 m.
+
+   So the golden FerroAstro is tested against agrees with an independent transcription of Eq. 27 at the f64 / DOP853 floor (1e-7 of the 35 367 km GR signal). S1's 0.85 margin is round-off, as WP21 argued.
+4. **PHY-014 oracle arithmetic.** The J2 shift 2.25e-7 → DE440 is −0.000685 in planar geometry and **−0.000681** in the real geometry (factor 1 − 3/2 sin² i). Both give 575.3093 to the printed digit (575.309315 / 575.309319).
+   - For context, DE441 itself measured in the Park frame gives 575.309163 (data tier), which is −0.00014 from the PHY-014 oracle.
+
+**V2 in detail (black-box REBOUNDx, documented Python API only, in the local oracle image, `--network none`; no REBOUND or REBOUNDx source opened).**
+- Sun + Mercury from header.440 SSB states, 36 520 d:
+  - REBOUNDx `gr_full` with daily outputs, with a single output, and with ε = 1e-11 agrees with itself to 0.13 km;
+  - **its heliocentric result moves by 1 mm when the system is first moved to its centre-of-mass frame** (`sim.move_to_com()`);
+  - my Eq. 27 code moves by 2.84 km under the same shift.
+- In the COM frame the two agree to 11 m; in the SSB frame they differ by 2.85 km, and FerroAstro (2.86 km) sides with Eq. 27.
+- The two-body subset of the SSB-centred header states has a bulk velocity of **9.79 m/s**, mostly the Sun's reflex motion to the omitted planets. Eq. 27 is evaluated with barycentric velocities, so a boost changes the coordinate solution at O(V·v/c²), about 1e-11 of the mean motion. `gr_full` behaves as if it were boost-insensitive.
+- In the full-system series the bulk velocity is small, and the daily series agree (EIH 93 m vs a Newtonian 54 m at 100 yr).
+- **Rates are unaffected** (S3: 1.9e-9 ″/cy), because the effect is along-track.
+
+Nothing failed. But any future position-level use of two-body or subset EIH series, and the choice of frame for subset EIH rungs (SSB-centred header states, the subset's COM, or the NUM-018 relativistic COM), needs a written convention.
+
+### 3. Drift audit
+- **`git log -p 0f5ad63..734dcf3 -- tests/vectors ci/golden`:** 9 commits.
+  - Every vector change is an **addition**: eih.toml (13 vectors), nbody.toml (+2), diffrun.toml (+2), oracles.toml (+2) and 2 stage C goldens with MANIFEST.json.
+  - The only edits to existing lines are R6 (rationale text only; the Orekit bound is unchanged) and R8 (PHY-019 added to `PARK17-T3-ASTEROIDS`' requirement list).
+  - `LT-DE440-VS-R3B-REL` changed from `rel` to `abs` in the commit that first used it. A `rel` bound on a value of 0 allows nothing, so this is documented as a pre-run correction.
+  - **No expected value moved and no tolerance widened.**
+- **Pre-registration ordering in git:**
+  - the WP21 vectors (`ffa503b`) precede the stage C goldens and test (`755a80a`);
+  - the WP20 vectors (`e78fbee`) precede the LT code (`aa1655f`);
+  - the WP19 plan (`8330165`) precedes the EIH commit (`a383e2b`) by 4 minutes. The EIH vectors arrived in the same commit as the code that reads them, as did the binary-check vectors (`01a6e82`).
+
+  "Before the first run" is therefore attested by the builder's statement only (V5).
+- **`#[ignore]`:** 45 (30 `data_*`, 15 `nightly_*`), up from 41. The 4 new ones are C7, D1, N3 and the stage C nightly. All are named for their tier, and none is gated by `cfg`.
+- **UNVERIFIED values as oracles:** none.
+  - The LT N-body contribution carries `blocked_by = "OI-35"`.
+  - The inclined-J2 formula (OI-37) is reported, not asserted.
+  - The I2 LT isolation asserts against Park17 Eq. 2 (a primary source, independent of the OI-35 acceleration transcription), so it is not circular.
+- **Circular oracles:** none found.
+  - Stage C is checked against REBOUNDx, and independently by me against my own Eq. 27.
+  - C7 and D1 are checked against de440.bsp.
+  - N3 is checked against Park17.
+- **Tests that cannot fail.** The `blocked_by` rows are unchanged. The stage C Newtonian control asserts only finiteness, which is its design ("reported"). The speed-table test now reads a partial table (V3).
+- **Mutation probes.** Scratch clone at `734dcf3`, FA_DATA_DIR = the pinned cache, PR tier of eih, ladder, propagate, diffrun, forces and oracle (101 tests). The unmutated baseline passed 101/101.
+  - **Incident (mine, contained):** my first attempt restored files with their original mtime, so cargo reused the mutated artefacts and the "baseline" failed. I re-ran everything with fresh mtimes on restore. The builders' scripts use plain `cp` / `shutil.copy`, so their probes were not affected.
+
+| crate | mutant | PR-tier result |
+|---|---|---|
+| eih | B_ij: `U_j → U_i` | killed (C2 limit, C6, PHY-005/006 via EIH, stage C) |
+| eih | relativistic SSB μ*: `(v² − U) → (v² + U)` | killed (C6 only) |
+| eih | S3 multiplies a_i instead of a_j | killed (7 tests) |
+| eih | `½(r_j − r_i)·a_j → 1×` | killed (C5, C6, binary ×2, stage C) |
+| propagate | **N-body LT ignores the scenario's PPN γ (uses DE440's)** | **survived 101/101 (V1)** |
+| propagate | EIH receives (γ, β) swapped | killed (PHY-006 via EIH) |
+| propagate | N-body LT reaction Off | killed (overrides/model-string test) |
+| tools (pytest) | runner maps `gr_1pn_central` to `gr_potential` | killed (`test_rebound_runner_stage_c_refusals_and_effect_mapping`) |
+| tools (pytest) | runner's c × 1.001 | **survived pytest** (V4). Only the stage C golden (PR tier, if regenerated) or the nightly drift check catches it. |
+
+- **Layering and hygiene:**
+  - `ferroastro-eih` is L7 and depends only on core, ephem, forces, real and system. `analytic` is a dev-dependency.
+  - The library code has no `unwrap`, `unsafe` or `panic!`.
+  - Every new test has a `Verifies:` tag.
+  - No requirement or ADR text was edited (only the generated TRACE.md). No anise and no GPL crate was added; `cargo deny` is clean.
+- **Labels:** neither PR #13 nor PR #17 has the `golden-change` label. #17 adds tolerances and goldens (rule 1); R7 is still open.
+
+**Findings (new in this review):**
+- **V1 (medium): the PPN γ of the N-body Lense–Thirring term is unpinned.**
+  - `propagate::nbody::model` passes `spec.forces.ppn`'s γ to `SolarLenseThirring`, but no test runs N-body LT with γ ≠ 1, so replacing it with DE440's γ survives.
+  - The forces-level L1b checks γ = 0.999 on the term itself, but not the scenario wiring.
+- **V2 (low, science; for humans): EIH subset runs depend on the frame.**
+  - FerroAstro and REBOUNDx `gr_full` differ along-track by 2.86 km in 100 yr for Sun + Mercury from SSB states, and by 11 m in the subset's COM frame.
+  - Rates agree to 2e-9 ″/cy and no bound is affected.
+  - The convention for subset EIH rungs (PHY-005 via `gr_eih`, S3) is not written down, and the S3 nightly compares rates only, so the 2.86 km is invisible in every log. **NEEDS HUMAN REVIEW:** which frame is canonical for subset EIH runs.
+- **V3 (low): the speed-table acceptance picks the wrong tables.**
+  - The "two most recent valid tables" default now selects WP21's row-(e)-only table, and the test fails on "rebound missing on (a)" before it reaches E6.
+  - This is a configuration failure, not a performance regression; R3 was the same class.
+- **V4 (low): the runner's c conversion is pinned only by the goldens.**
+  - A c × 1.001 runner mutant passes pytest. The committed stage C golden would catch it only after a regeneration, and the nightly drift check would catch it.
+  - A one-line pytest would pin `speed_of_light_au_per_day(header) == CLIGHT·86400/AU` and the committed manifests' `c_au_per_day`.
+- **V5 (low, process): pre-registration is attested by statement.**
+  - The WP19 vectors share a commit with the code, and the plan was committed 4 minutes before 662 lines of EIH code and 613 lines of tests.
+  - Nothing suggests tuning: no bound moved, and the margins are uneven (0.003–0.85). But git cannot show "before the first run".
+- **V6 (info): thin margins to watch, without widening.**
+  - S1 is at 0.85. My independent integration shows the floor is f64 / step noise, not physics.
+  - The binary 1PN energy is at 0.53 / 0.49. Its ×4 scaling with 2a shows O(c⁻⁴).
+
+### 4. Requirement coverage
+`trace.py` reports **63/93** `test` requirements cited (61 at the last review) and 626 citing tests.
+- **Newly cited:** PHY-019 (R8) and REF-010.
+- NUM-018, NUM-019 and NUM-020 (inspection) now carry WP19/WP20 tests.
+- **M4** (ROADMAP: PHY-014, PHY-019, NUM-005, NUM-018, NUM-020, REF-003, REF-010, DEP-013, AGT-004):
+  - cited: PHY-019, NUM-018, NUM-020, REF-003 and REF-010;
+  - **uncited: PHY-014** (WP22, blocked on OI-33) and **AGT-004** (WP23);
+  - NUM-005 is in the M4 row, but the crate plan schedules it for WP29;
+  - DEP-013 is verified by inspection.
+- **M0, uncited (gate-enforced):** STD-001…011, TST-001, DEP-001/002/003, ORG-002/008/010 and DEP-006 (enforced by the CI wasm32 job). Whether trace may count gate evidence is still a human question.
+- **M1–M3:** every requirement is cited. Acceptance is still unmet for:
+  - NUM-001 (the 1e9-step clause) and NUM-023 (N-body half);
+  - PHY-012 under P-add (OI-38);
+  - NUM-009 < 2× (OI-42);
+  - CI-008 (E6 on (d); V3).
+- **Not yet due, uncited:** NUM-002/003/004/005/007/021/025, DEP-005 and DEP-016.
+
+### 5. Corrections for the next builder (apply first)
+1. **WP22 is blocked: do not start PHY-014 work.**
+   - NUM-020 / OI-33 is unsigned: the `TRANSCRIPTION.md` signature block is empty (crate plan: "Do not start until NUM-020 is signed").
+   - Proceed with **WP23** (ladder catalogue, MCP alpha, AGT-004) and return to WP22 only after a human signs.
+   - Ask for the signature in a PR #17 comment. Do not sign it yourself.
+2. **V1:**
+   - Add a PR-tier test: Sun + Mercury N-body, `lense_thirring = true`, `ppn = {beta = 1, gamma = 0.9}` against `gamma = 1`, same IC hash.
+   - Assert that the LT term's recorded γ equals the scenario's (from the model string).
+   - Assert that the ratio of the LT contributions (on − off rates, or the term's acceleration at t = 0) equals (1+γ)/2 within a pre-registered bound.
+   - Confirm that my mutant (`let gamma = de.ppn_gamma();`) then fails.
+3. **V2 (record, do not tune):**
+   - Add a *reported* position comparison of the two-body `oracle-c-sun-mercury-eih-*` series to the stage C nightly (max |Δr| at the first 100 yr against FerroAstro).
+   - Add one COM-frame variant, a scenario whose ICs are shifted to the subset's COM if the schema allows it; otherwise document the black-box probe.
+   - Write the frame question into IMPLEMENTATION-NOTES as **NEEDS HUMAN REVIEW**, with my numbers: 2.86 km SSB vs 11 m COM, 9.79 m/s bulk velocity, rates unaffected.
+   - Do not change PHY-005, S1 or S3 bounds.
+4. **V3:**
+   - Make the speed-table nightly select the two most recent tables that **contain every scenario of the E6 set**, or skip partial tables.
+   - Alternatively, write partial (`--only`) runs where the default glob does not see them.
+   - Report a partial or missing table as a named precondition failure.
+   - Then confirm that E6 still fails on (d) only. Do not change E6.
+5. **V4:** add a pytest pinning the runner's `c` (au/day) to CLIGHT·86400/AU from header.440 (≤ 1 ulp) and to each committed stage C MANIFEST's `c_au_per_day`. The c × 1.001 mutant must die in pytest.
+6. **V5:**
+   - From WP23 on, commit pre-registered vectors in their own commit before the commit that adds the test reading them.
+   - Quote the UTC timestamp and commit of each check's first run (from the nextest log) in the notes.
+7. **R7:** ask the maintainer to apply `golden-change` to PR #13 and PR #17 (#17 adds two stage C goldens and 19 new toleranced vectors). Do not create or apply the label.
+8. **When WP22 resumes:** state in the PHY-014 vector which geometry the −0.000684 J2 shift uses (planar −0.000685, inclined −0.000681; both give 575.3093), and keep 575.3093. My data-tier run measured DE441 at 575.309163 in the Park frame.
+9. **Still for humans:**
+   - OI-33 (NUM-020) and OI-35 signatures;
+   - OI-38 (the P-remove evidence keeps growing: 7/7 rows, 6/6 pairs, and J2/LT protocol-independent);
+   - OI-24 and OI-42;
+   - the EIH Major-only sums, the LT reaction default and heliocentric v_i (WP19/WP20 NEEDS HUMAN REVIEW);
+   - V2's frame convention;
+   - the WP17 Swiftest 60 km widening and the Orekit tightening;
+   - E6 and the stability criterion;
+   - M3 exit;
+   - the cron line for `nightly.sh` (not installed).
+
+Reviewer artefacts are in the session scratchpad `rev21/`, not committed:
+- logs: `gate.log`, `data.log`, `nightly-stagec.log`, `nightly-rest.log`, `mutate.log`, `mut-baseline.log`;
+- `oracle-out/` (the regenerated REBOUNDx series);
+- `py/recompute.py`, `py/stagec.py`, `py/twobody*.py`, `py/lrl.py`;
+- `probe/probe*.py` (black-box REBOUNDx) and `fa2b/` (two-body scenarios).
