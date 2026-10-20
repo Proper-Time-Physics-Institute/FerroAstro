@@ -161,3 +161,17 @@ retrieved = "2026-10-20"
 tolerance = { abs = 1.0e-6 }
 tolerance_rationale = "The cited bound, with the same pre-registered resolvability condition (sqrt(2) x the measured mixed lunar round-off <= bound/3)."
 verified_by = "WP25 builder agent, 2026-10-20: fixed in the WP25 plan before the first run."
+
+[[vector]]
+id = "EPH-MUSTAR-RATE-CONVERGENCE"
+requirement = ["NUM-018"]
+quantity = "ratio of the C3b residual (max_i |mu*_i' - central difference| / max_i |mu*_i'|) at half-width d to that at d/2, for d = 450 s -> 225 s (header.440 Sun + 8 planets + Moon, double-double)"
+value = 4.0
+unit = "1"
+kind = "analytic"
+source = "A central difference of a smooth function has truncation C d^2 + O(d^4), so halving d divides the residual by 4 when the analytic derivative is right; a wrong derivative leaves an O(1) floor (ratio -> 1)."
+citation = "Standard numerical analysis (central-difference truncation, e.g. Hairer, Norsett & Wanner 1993, Sec. II.4 on error expansions); WP25 C3b"
+retrieved = "2026-10-20"
+tolerance = { abs = 0.1 }
+tolerance_rationale = "The O(d^4) correction at d = 450 s is ~(n d)^2 ~ 1e-5 relative for Mercury, and DD round-off is ~1e-22 of the residual; 0.1 separates 4 from the floor case (a mu*' error of even 1e-9 relative gives a ratio < 3.9 at these residuals). ADDED AFTER THE FIRST RUN of C3b (which printed ratios of 4.000) to kill the mutant 'mu*' drops the 1/2', which survived the PR tier; disclosed in IMPLEMENTATION-NOTES WP25."
+verified_by = "WP25 builder agent, 2026-10-20: added after the first C3b run (disclosed); the bound follows from the d^2 law, not from the run."
