@@ -137,6 +137,38 @@ fn ic_records(
     records
 }
 
+/// The central body, the particle, the field bodies (every scenario body except those two, in
+/// scenario order), μ of the central body and each field body's NAIF id and GM (km³/s²).
+type FieldBodies = (BodyName, BodyName, Vec<BodyName>, f64, Vec<(NaifId, f64)>);
+
+fn field_bodies(spec: &ScenarioSpec, de: &De440) -> Result<FieldBodies, PropagateError> {
+    let central = spec.central_body;
+    let particle = spec
+        .bodies
+        .iter()
+        .copied()
+        .find(|&b| b != central)
+        .ok_or_else(|| {
+            setup(
+                &spec.name,
+                "no particle",
+                "list the central body, the particle and the field",
+            )
+        })?;
+    let names: Vec<BodyName> = spec
+        .bodies
+        .iter()
+        .copied()
+        .filter(|&b| b != central && b != particle)
+        .collect();
+    let mu = gm_of(de, central)?;
+    let mut bodies = Vec::with_capacity(names.len());
+    for &b in &names {
+        bodies.push((NaifId(b.naif()), gm_of(de, b)?));
+    }
+    Ok((central, particle, names, mu, bodies))
+}
+
 /// Run an ephemeris-field scenario (f64, samples at the output cadence).
 pub(crate) fn run(
     spec: &ScenarioSpec,
@@ -149,30 +181,7 @@ pub(crate) fn run(
         .ok_or_else(|| setup(n, "no SPK", "pass DataSources::with_spk (de440.bsp)"))?;
     let (_, jd) = epoch::<f64>(spec, data)?;
     let (r0, v0, source) = relative_state(spec, data, jd)?;
-    let central = spec.central_body;
-    let particle = spec
-        .bodies
-        .iter()
-        .copied()
-        .find(|&b| b != central)
-        .ok_or_else(|| {
-            setup(
-                n,
-                "no particle",
-                "list the central body, the particle and the field",
-            )
-        })?;
-    let field_bodies: Vec<BodyName> = spec
-        .bodies
-        .iter()
-        .copied()
-        .filter(|&b| b != central && b != particle)
-        .collect();
-    let mu = gm_of(&de, central)?;
-    let mut bodies = Vec::with_capacity(field_bodies.len());
-    for &b in &field_bodies {
-        bodies.push((NaifId(b.naif()), gm_of(&de, b)?));
-    }
+    let (central, particle, field_bodies, mu, bodies) = field_bodies(spec, &de)?;
     let field = Field {
         spk,
         jd0: jd,
@@ -241,4 +250,131 @@ pub(crate) fn run(
         stats: ferroastro_integrators::Ias15Stats::default(),
         finished: true,
     })
+}
+
+#[cfg(test)]
+mod tests {
+    //! Progress review after WP18, R4: the field bodies and GMs of the stage B model are pinned
+    //! (PR tier: the pinned header.440 and de440.bsp from the JPL cache).
+    #![expect(
+        clippy::unwrap_used,
+        clippy::indexing_slicing,
+        reason = "test: a failed unwrap or index is a test failure"
+    )]
+
+    use super::{Field, field_bodies};
+    use ferroastro_constants::De440;
+    use ferroastro_constants::header440::Header;
+    use ferroastro_core::time::{Epoch, SECONDS_PER_DAY, Tdb};
+    use ferroastro_ephem::{Ephemeris, NaifId, Spk};
+    use ferroastro_integrators::SecondOrderSystem;
+    use ferroastro_scenario::ScenarioSpec;
+
+    /// Relative tolerance of the field acceleration against the independent sum below: the same
+    /// formula in another operation order (round-off ~1e-15 relative). Omitting any field body
+    /// changes the acceleration at the probe points by >= 1 %.
+    const ACC_REL_TOL: f64 = 1e-12; // lint: allow-literal(round-off bound of two summation orders)
+    /// Probe points sit this fraction of a field body's distance from it, so that its term is a
+    /// percent-level share of the acceleration.
+    const PROBE_OFFSET: f64 = 1e-3; // lint: allow-literal(probe geometry, not physics)
+
+    fn spec() -> ScenarioSpec {
+        let p = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("../../ci/scenarios/oracle-stage-b-mercury-de440-field-100yr.toml");
+        ScenarioSpec::parse(&std::fs::read_to_string(p).unwrap()).unwrap()
+    }
+
+    /// The header.440 symbol(s) of a body's GM, converted to km³/s² with the header's AU and
+    /// 86400 s/d; Earth and Moon split `GMB` with `EMRAT` (DE440 convention).
+    fn header_gm(h: &Header, naif: i32) -> f64 {
+        let au = h.value("AU").unwrap();
+        let emrat = h.value("EMRAT").unwrap();
+        let au3d2 = match naif {
+            10 => h.value("GMS").unwrap(),
+            399 => h.value("GMB").unwrap() * (emrat / (1.0 + emrat)),
+            301 => h.value("GMB").unwrap() * (1.0 / (1.0 + emrat)),
+            n => h.value(&format!("GM{n}")).unwrap(),
+        };
+        au3d2 * (au * au * au / (SECONDS_PER_DAY * SECONDS_PER_DAY))
+    }
+
+    /// R4: the field bodies are the scenario's bodies minus the central body and the particle,
+    /// in scenario order; μ and every field GM equal header.440 bitwise; and the acceleration at
+    /// a probe point next to each field body equals an independent direct + indirect sum over
+    /// exactly those bodies (kills an omitted body in the acceleration loop, e.g. Pluto).
+    ///
+    /// Verifies: REF-006, CI-002
+    #[test]
+    fn field_bodies_and_gms_equal_the_scenario_and_header440() {
+        let s = spec();
+        let de = De440::load().unwrap();
+        let hf = ferroastro_testdata::locate_product("de440-header").unwrap();
+        println!("de440-header: {}", hf.provenance());
+        let h = Header::parse(&std::fs::read_to_string(&hf.path).unwrap()).unwrap();
+        let (central, particle, names, mu, bodies) = field_bodies(&s, &de).unwrap();
+        let expected: Vec<i32> = s
+            .bodies
+            .iter()
+            .filter(|&&b| b != s.central_body && b != particle)
+            .map(|b| b.naif())
+            .collect();
+        assert_eq!(central, s.central_body);
+        assert_eq!(
+            particle.naif(),
+            s.bodies[1].naif(),
+            "the particle is listed second"
+        );
+        assert_eq!(bodies.iter().map(|b| b.0.0).collect::<Vec<_>>(), expected);
+        assert_eq!(names.len(), expected.len());
+        assert_eq!(mu.to_bits(), header_gm(&h, central.naif()).to_bits(), "mu");
+        for &(id, gm) in &bodies {
+            let want = header_gm(&h, id.0);
+            println!(
+                "field NAIF {:>3}: GM {gm:e} km3/s2, header.440 {want:e}",
+                id.0
+            );
+            assert_eq!(gm.to_bits(), want.to_bits(), "GM of NAIF {}", id.0);
+        }
+
+        let bsp = ferroastro_testdata::locate_product("de440-bsp").unwrap();
+        println!("de440-bsp: {}", bsp.provenance());
+        let bytes = std::fs::read(&bsp.path).unwrap();
+        let spk = Spk::parse(&bytes).unwrap();
+        let jd0 = s.initial_conditions.epoch_jd_tdb.unwrap();
+        let field = Field {
+            spk: &spk,
+            jd0,
+            central: NaifId(central.naif()),
+            mu,
+            bodies: bodies.clone(),
+        };
+        let e: Epoch<Tdb> = Epoch::from_jd_parts(jd0, 0.0).unwrap();
+        let rel = |id: i32| {
+            spk.relative_state_km::<f64>(NaifId(id), NaifId(central.naif()), e)
+                .unwrap()
+                .0
+                .position
+        };
+        let n3 = |x: [f64; 3]| x[0].mul_add(x[0], x[1].mul_add(x[1], x[2] * x[2])).sqrt();
+        for &probe_id in &expected {
+            let rk = rel(probe_id);
+            let x = rk.map(|c| c * (1.0 + PROBE_OFFSET));
+            let mut a = [0.0; 3];
+            field.acceleration(0.0, &x, &[0.0; 3], &mut a).unwrap();
+            // Independent sum over the expected list, GMs from the header.
+            let r = n3(x);
+            let mut want = x.map(|c| -header_gm(&h, central.naif()) * c / (r * r * r));
+            for &j in &expected {
+                let rj = rel(j);
+                let d = [rj[0] - x[0], rj[1] - x[1], rj[2] - x[2]];
+                let (dn, jn, g) = (n3(d), n3(rj), header_gm(&h, j));
+                for c in 0..3 {
+                    want[c] += g * d[c] / (dn * dn * dn) - g * rj[c] / (jn * jn * jn);
+                }
+            }
+            let err = n3([a[0] - want[0], a[1] - want[1], a[2] - want[2]]) / n3(want);
+            println!("probe next to NAIF {probe_id:>3}: |da|/|a| = {err:.2e}");
+            assert!(err <= ACC_REL_TOL, "probe next to NAIF {probe_id}: {err}");
+        }
+    }
 }

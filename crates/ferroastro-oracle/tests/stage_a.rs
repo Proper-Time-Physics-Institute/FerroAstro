@@ -9,6 +9,8 @@
     reason = "test: a failed unwrap is a test failure"
 )]
 
+mod common;
+
 use ferroastro_constants::header440::Header;
 use ferroastro_core::ErrorCode;
 use ferroastro_oracle::{GoldenStates, MANIFEST_NAME, Manifest, compare_states, sha256_hex};
@@ -170,6 +172,8 @@ fn stage_a_against(tool: &str) -> ferroastro_oracle::StateComparison {
         GoldenStates::parse(&csv, &std::fs::read_to_string(dir.join(&csv)).unwrap()).unwrap();
     let center = golden.center_naif().unwrap();
     let cmp = compare_states(&golden, &out).unwrap();
+    // Review R2: the reported maxima are the brute-force maxima over every golden row.
+    common::check_against_brute_force(&golden, &out, &cmp);
     println!(
         "FerroAstro: {} IAS15 steps, IC hash {}; compared {} rows at {} times (centre NAIF {center})",
         out.stats.steps, out.ic_hash, cmp.rows, cmp.times
