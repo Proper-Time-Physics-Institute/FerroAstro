@@ -8,7 +8,7 @@
 #
 #   tools/oracles/nightly.sh [--open-issue] [--skip-rust]
 #
-# 1. Every N-body oracle (rebound, swiftest, mercury6) on every ci/scenarios/*.toml: a scenario a
+# 1. Every N-body oracle (rebound, swiftest, mercury6, orekit) on every ci/scenarios/*.toml: a scenario a
 #    runner does not implement is refused (exit 3, REF-011) and recorded as such; plus the erfa
 #    and jpl images. Outputs: $FA_ORACLE_OUT_DIR/<tool>/<scenario>/ (default target/oracle-out),
 #    plain files with MANIFEST.json. Images are built locally and never pushed (LIC-002); no
@@ -42,11 +42,11 @@ status="$out/status.tsv"
 fail=0
 R=tools/oracles/run_oracles.sh
 
-for tool in rebound swiftest mercury6 erfa jpl; do
+for tool in rebound swiftest mercury6 orekit erfa jpl; do
   $R build "$tool" > "$out/build-$tool.log" 2>&1 || { echo -e "$tool\t(build)\t1\tbuild failed" >> "$status"; fail=1; }
 done
 
-for tool in rebound swiftest mercury6; do
+for tool in rebound swiftest mercury6 orekit; do
   for s in ci/scenarios/*.toml; do
     name="$(basename "$s" .toml)"
     rm -rf "${out:?}/$tool/$name"

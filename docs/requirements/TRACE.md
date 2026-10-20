@@ -9,7 +9,7 @@
 
 - Requirements: **119** (draft 119)
 - `verification: test` requirements cited by at least one test: **59 / 92**
-- Citing tests: **545**; vectors referencing a requirement: **600**
+- Citing tests: **546**; vectors referencing a requirement: **600**
 
 | ID | Status | Crit. | Verification | Tests | Vectors |
 |---|---|---|---|---|---|
@@ -123,7 +123,7 @@
 | [CI-003](CI.md) | draft | high | test | `crates/ferroastro-oracle/tests/jpl_pins.rs::jpl_image_verified_the_ref001_pins`<br>`crates/ferroastro-oracle/tests/stage_a.rs::every_committed_golden_has_a_complete_manifest`<br>`crates/ferroastro-oracle/tests/stage_a.rs::tampered_goldens_and_incomplete_manifests_are_refused`<br>`tools/tests/test_oracles.py::test_manifest_round_trip_and_validation`<br>`tools/tests/test_oracles.py::test_runner_identity_is_required` | — |
 | [CI-004](CI.md) | draft | high | inspection | — | — |
 | [CI-005](CI.md) | draft | medium | test | `crates/ferroastro-oracle/tests/stage_a.rs::stage_a_ferroastro_ias15_matches_the_mercury6_ra15_golden`<br>`crates/ferroastro-oracle/tests/stage_a.rs::stage_a_ferroastro_ias15_matches_the_rebound_ias15_golden`<br>`crates/ferroastro-oracle/tests/stage_a.rs::stage_a_ferroastro_ias15_matches_the_swiftest_whm_golden`<br>`crates/ferroastro-oracle/tests/stage_b.rs::stage_b_ferroastro_matches_the_orekit_golden_in_the_de440_field`<br>`crates/ferroastro-testdata/tests/ci005_cache_verification.rs::a_cached_file_with_the_wrong_content_is_refused`<br>`crates/ferroastro-testdata/tests/ci005_cache_verification.rs::child_locate_probe`<br>`crates/ferroastro-testdata/tests/ci005_cache_verification.rs::fa_data_dir_override_is_reverified`<br>`tools/tests/test_fetch_jpl.py::test_verify_only_refuses_wrong_content_under_fa_data_dir`<br>`tools/tests/test_sample_sb441.py::test_substituted_cache_file_is_refused` | `ORACLE-STAGE-A-REBOUND-MAX-DR` |
-| [CI-006](CI.md) | draft | medium | test | `tools/tests/test_oracles.py::test_drift_check_flags_changed_missing_and_ignores_run_dates` | — |
+| [CI-006](CI.md) | draft | medium | test | `tools/tests/test_oracles.py::test_drift_check_flags_changed_missing_and_ignores_run_dates`<br>`tools/tests/test_oracles.py::test_nightly_runs_every_tool_that_has_a_committed_golden` | — |
 | [CI-007](CI.md) | draft | high | demonstration | — | — |
 | [CI-008](CI.md) | draft | medium | test | — | — |
 | [CI-009](CI.md) | draft | high | test | `crates/ferroastro-diffrun/tests/data_diffrun_ic_sources.rs::data_diffrun_header_and_spk_ics_are_distinct_sources_with_equal_contributions`<br>`crates/ferroastro-diffrun/tests/harness.rs::fit_window_selects_exactly_the_passages_inside_it`<br>`crates/ferroastro-diffrun/tests/harness.rs::plan_shares_identical_ics_and_rows_are_signed_sums`<br>`crates/ferroastro-diffrun/tests/nightly_phy012.rs::nightly_phy012_park17_table3_newtonian_contributions`<br>`crates/ferroastro-diffrun/tests/nightly_phy013.rs::nightly_phy013_n_sum_and_asteroid_differential`<br>`crates/ferroastro-diffrun/tests/num013a_scenario.rs::single_body_toggles_through_the_harness_match_their_analytic_rates`<br>`crates/ferroastro-oracle/tests/nightly_oracle_differentials.rs::nightly_oracle_clite_swiftest_gr_contribution`<br>`crates/ferroastro-oracle/tests/nightly_oracle_differentials.rs::nightly_oracle_padd_venus_same_estimator_every_tool`<br>`crates/ferroastro-propagate/tests/sampled_modes.rs::test_particle_cadence_samples_lie_on_the_exact_grid` | `DIFFRUN-IC-SOURCE-AGREEMENT`<br>`ORACLE-CLITE-SWIFTEST-GR-AGREEMENT`<br>`ORACLE-PADD-VENUS-TOOL-AGREEMENT` |

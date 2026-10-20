@@ -436,3 +436,18 @@ def test_drift_check_flags_changed_missing_and_ignores_run_dates(tmp_path: Path)
     report = drift.render(drift.check_drift(cand, golden, tg), [["t", "s", "3", "x"]], cand)
     assert "DRIFT (blocking)" in report
     assert "refused (REF-011)" in report
+
+
+# Verifies: CI-006
+def test_nightly_runs_every_tool_that_has_a_committed_golden() -> None:
+    """A tool with a committed golden but no nightly run would report drift every night."""
+    script = (ROOT / "tools" / "oracles" / "nightly.sh").read_text(encoding="utf-8")
+    loops = re.findall(r"^for tool in ([a-z0-9 ]+); do$", script, flags=re.MULTILINE)
+    assert len(loops) == 2, loops
+    built, scenario_tools = (set(loop.split()) for loop in loops)
+    golden_tools = {p.name for p in (ROOT / "ci" / "golden").iterdir() if p.is_dir()}
+    single_shot = {"erfa", "jpl"}  # run once each, outside the scenario loop
+    assert golden_tools - single_shot <= scenario_tools, golden_tools - scenario_tools
+    assert golden_tools | scenario_tools <= built
+    for tool in single_shot:
+        assert re.search(rf"^\$R {tool} ", script, flags=re.MULTILINE), tool
