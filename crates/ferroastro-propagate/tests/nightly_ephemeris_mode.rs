@@ -386,3 +386,57 @@ fn nightly_wp25_subbotin_table1_mixed_mode() {
     }
     assert!(failures.is_empty(), "{} check(s) failed", failures.len());
 }
+
+/// N4 follow-up (pre-registered in the WP25 plan): the tiering error in full double-double, where
+/// round-off does not limit the comparison. The reference (EPM2021 tiers) and the all-mutual run
+/// (every asteroid Major), both double-double, 40 yr; the all-mutual run in checkpointed 10-yr
+/// segments through the store (≈ 5 h on the reference machine; an interrupted run resumes).
+///
+/// Verifies: NUM-009
+#[test]
+#[ignore = "nightly (long): two 40-yr double-double runs with 354 bodies, one all-mutual (~5 h)"]
+fn nightly_wp25_tiering_double_double() {
+    let vs = VectorSet::load_canonical().unwrap();
+    let (h, prov) = header();
+    let file = small_body_file();
+    let data = DataSources::none()
+        .with_header(&h, &prov)
+        .with_small_bodies(&file);
+    let mut tiered = spec(REFERENCE);
+    tiered.integrator.precision = Precision::Dd;
+    let mut all = tiered.clone();
+    all.forces.major_asteroids = MajorAsteroids::All;
+    all.name = format!("{}-all-mutual", tiered.name);
+    let store = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../target/wp25-store");
+    let ((t_out, w_t, _), (a_out, w_a, segs)) = std::thread::scope(|sc| {
+        let a = sc.spawn(|| segmented(&tiered, &data, &store));
+        let b = sc.spawn(|| segmented(&all, &data, &store));
+        (a.join().unwrap(), b.join().unwrap())
+    });
+    assert_eq!(t_out.ic_hash, a_out.ic_hash);
+    println!(
+        "N4 (double-double): tiered {w_t:.1} s, all-mutual {w_a:.1} s ({segs} segment(s) in this call)"
+    );
+    let tp = vs.get("EPH-TIERING-PLANETS-40YR-KM").unwrap();
+    let tm = vs.get("EPH-TIERING-MOON-40YR-KM").unwrap();
+    let mut failures = Vec::new();
+    for (id, name, bound) in PLANETS
+        .iter()
+        .map(|&(id, n)| (id, n, tp))
+        .chain(std::iter::once((MOON, "Moon", tm)))
+    {
+        let d = max_diff(&t_out, &a_out, id);
+        println!(
+            "  {name:<8} |tiered - all-mutual| = {:.4e} m (bound {:.0e} m)",
+            d * 1e3,                            // lint: allow-literal(km to m)
+            bound.tolerance.allowed(0.0) * 1e3  // lint: allow-literal(km to m)
+        );
+        if let Err(e) = bound.check(d) {
+            failures.push(format!("N4 {name}: {e}"));
+        }
+    }
+    for f in &failures {
+        println!("  FAIL {f}");
+    }
+    assert!(failures.is_empty(), "{} check(s) failed", failures.len());
+}
