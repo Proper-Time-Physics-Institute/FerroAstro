@@ -4260,3 +4260,105 @@ Margin = |Δ| / tolerance.
     - every earlier NEEDS HUMAN REVIEW item.
 
 Reviewer artefacts are in the local scratchpad (`rev18/`), not committed: `gate.log`, `data.log`, `nightly.log`, `nightly-padd.log`, `nightly-phy013.log`, `mutate.py`, `mutate.log`, `py/stagea.py`, `py/venus_padd_fwd.py`, `py/fit_fwd.py` and `py/recompute.py`.
+
+## WP19 — [M4] `ferroastro-eih`: EIH 1PN N-body with PPN β, γ (clean-room)
+Branch `m4-eih`, stacked on `m3-newtonian-nbody`; draft PR #17.
+
+### Progress-review corrections (applied first; commits `e6ca3c9`…`746fc95`)
+| item | status |
+|---|---|
+| **R2** compare_states maximum | **Done** (`e6ca3c9`). Stage A (REBOUND, Mercury6, Swiftest) and stage B call `tests/common::check_against_brute_force`, which recomputes \|Δr\| for every golden row with its own loop and norm. It asserts, per body and overall, that `max_dr_km` equals the brute-force maximum (≤ 4 ulp; measured ≤ 0.97 ulp) and that `t_days_at_max_dr` is that maximum's time. The max→min mutant now fails 8 tests (it survived 7/7 before). No tolerance changed. |
+| **R4** ephemeris-field bodies and GMs | **Done** (`e6ca3c9`). `field::tests::field_bodies_and_gms_equal_the_scenario_and_header440` (PR tier) checks three things: (1) the field bodies are the scenario bodies minus the central body and the particle, in scenario order; (2) μ and all nine field GMs equal header.440 bitwise (GMn, GMS, and GMB split with EMRAT); (3) the acceleration at a probe point next to each field body equals an independent direct + indirect sum (≤ 7e-16 measured, 1e-12 allowed). The Pluto-omitted mutant (the reviewer's exact edit) now fails 2 tests. |
+| **R6** Orekit provenance | **Done** (`564b415`). The vector's `notes` already said the settings were tightened after the measurement. The stale text was in `tolerance_rationale` ("unchanged … DP853 as in engine.settings"), so the sentence went there: the pre-registered run (1.102 km) failed, the settings changed, and a pointer to `ci/oracles/orekit/settings.toml` is given. No value or tolerance changed. |
+| **R8** PHY-019 | **Done** (`564b415`). The test cites PHY-019, `PARK17-T3-ASTEROIDS` lists it, and TRACE.md is regenerated. PHY-019 is now cited. |
+| **R3** nightly job | Script **done** (`52205e9`). The end-to-end run is reported below under "R3 nightly run". |
+| **R1** Park17 cross-term convention | **Done** (`5ef804d`, `5f39630`). See the R1 subsection below. |
+| **R7** golden-change label on PR #13 | **Requested** in a PR #13 comment (issuecomment-6286423943). No label was created or applied. |
+| R5, R9, M3 exit | Left for humans, as instructed. |
+
+**Incident (mine, contained).** My first mutation script restored files with `git checkout --`, which also wiped my uncommitted R4 refactor of `field.rs`. I re-applied it from the session before committing. Mutation scripts now back files up and restore from the backup, and I commit before mutating.
+
+### R3: why the earlier nightly runs stopped, and what changed
+The three earlier runs (`target/oracle-out` 10-15, `target/nightly-20261019`, `target/nightly-review-20261020`) all show the same pattern:
+- `status.tsv` ends with the Swiftest rows;
+- the in-flight log ends right after the Swiftest image build, about 1–2 s after the leg started;
+- the driver log (`target/nightly-20261019.log`) is empty, because the summary is printed only at the end.
+
+The 10-15 run was further along when it stopped: it had completed the Swiftest P-add base leg (1131.7 s) and stopped inside the Venus leg. No container or Swiftest error was recorded.
+
+That pattern fits the script being killed together with its controlling agent session or tool call (agent tool calls time out after at most 10 min, and the Swiftest P-add legs take about 19 min each). It does not fit a Swiftest crash, which would have left an exit code and a log tail. **This is an inference from the artefacts; nothing recorded the cause, which is the defect.**
+
+`tools/oracles/nightly.sh` now records the cause:
+- It writes `run-status.txt` with `state=RUNNING` from the start and the step in progress.
+- It ends with an explicit `PASS`, `FAIL`, `INTERRUPTED` (plus the signal and step) or `ABORTED` (any other premature exit).
+- Each step's wall clock goes into `status.tsv`.
+- Steps run as waited-for children, so SIGHUP, SIGINT and SIGTERM reach the trap at once. The containers this run started carry a `fa.oracle.run` label and are killed on interrupt.
+- Tested with `timeout -s TERM 12`: the run recorded `INTERRUPTED` during `rebound|oracle-padd-sun-mercury-2000yr`, exit 143, and no container was left.
+
+The nightly differentials check every oracle series they read before any FerroAstro run. A missing series fails as `PRECONDITION FAILED (missing oracle series, not a physics result)` and names each tool/scenario.
+
+**Suggested cron line (not installed; the maintainer's call):**
+`17 2 * * *  cd /home/tmorris/Physics/FerroAstro-m0 && setsid tools/oracles/nightly.sh >> target/nightly.log 2>&1`
+With `setsid`, a closing terminal or session does not kill the job, and `run-status.txt` says how the run ended.
+
+### R1: cross terms in Park17's convention
+`ferroastro-diffrun` cross-term rows are now "the pair's contribution minus the single contributions" under their own protocol, the convention of Park et al. 2017 Table 3.
+- **P-add:** `[ϖ̇(b+X+Y) − ϖ̇(b)] − [ϖ̇(b+X) − ϖ̇(b)] − [ϖ̇(b+Y) − ϖ̇(b)]`. This is identical to the inclusion–exclusion second difference, so the value is unchanged.
+- **P-remove:** `[ϖ̇(f) − ϖ̇(f−X−Y)] − [ϖ̇(f) − ϖ̇(f−X)] − [ϖ̇(f) − ϖ̇(f−Y)]`. This is the **negative** of the second difference, which is what the row printed until now.
+- Each `Row` carries its `convention` string and, for cross terms, `second_difference` as its own field. The markdown states the convention per protocol and prints the second difference in a separate column.
+- `cross_term_convention.rs` (PR tier, synthetic rates) pins both signs and the labels.
+
+**NEEDS HUMAN REVIEW, evidence for OI-38.** The reviewer recomputed the six Park17 pair rows from the WP14/WP18 PHY-012 JSON under P-remove, in Park's convention. The table below quotes that recomputation; I did not re-run the 56-leg nightly.
+
+| pair | FerroAstro (P-remove, Park convention) | Park17 Table 3 | Δ |
+|---|---|---|---|
+| Venus + Earth/Moon | −0.020782 | −0.0209 | +1.2e-4 |
+| Venus + Jupiter | −0.001116 | −0.0012 | +8.4e-5 |
+| Earth/Moon + Mars | −0.001570 | −0.0016 | +3.0e-5 |
+| Mars + Jupiter | +0.000199 | +0.0002 | −1e-6 |
+| Jupiter + Saturn | +0.041038 | +0.0411 | −6.2e-5 |
+| Saturn + Uranus | +0.000380 | +0.0004 | −2.0e-5 |
+
+All six agree within 1.2e-4 ″/cy. Under P-remove the seven single rows also agree (max \|Δ\| 0.000695). Under P-add the cross terms have the opposite sign to Park in all six rows, and 4 of 7 single rows miss.
+
+Together this is the strongest evidence so far that Park17 Table 3 uses P-remove. **OI-38 is not ticked and the primary protocol stays P-add** (maintainer decision, F13). The nightly PHY-012 test now prints its P-remove pair rows in this convention, so its "value − reference" column is meaningful.
+
+### Clean-room record (DEP-008, AGENTS.md rule 7)
+Sources used:
+- the typeset PDF of Park, Folkner, Williams & Boggs 2021, AJ 161, 105 (DE440/DE441): **Eq. 27 (§3.1, p. 5)** for the point-mass acceleration, and **Eqs. 1–2 (§2.2, p. 2)** for the relativistic barycentre;
+- the PPN background in Will 2014 (Living Rev. Relativ. 17, 4).
+
+I read the equations from page images of the PDF rendered at 300 dpi; the text extraction garbles them. I did not open REBOUND, REBOUNDx (`gr_full.c`), ASSIST, Swiftest or Mercury6 source.
+
+DE430 (Folkner et al. 2014, IPN PR 42-196) Eq. 27 is cited by NUM-020, but its PDF is not in the local corpus, so I did not read it. The DE440 paper says it repeats the DE430 material "so that this paper can be self-contained". **NUM-020's second check should compare against both PDFs.**
+
+### Plan and pre-registered checks (written 2026-10-20 ~08:20 UTC, before any WP19 code or run)
+**Model.**
+- **`Eih` term** (`ferroastro-eih`, a `ForceTerm`). It adds only the c⁻² part of Eq. 27 to every Major body. The Newtonian part stays in `NewtonianMutual`, so `gr_eih` = `NewtonianMutual` + `Eih`.
+- **Sums.** The Eq. 27 sums (sources j, potentials k) run over the Major bodies. Minor and Ring bodies stay Newtonian: they neither feel nor source 1PN terms (interpretation, NEEDS HUMAN REVIEW for WP22).
+- **RHS accelerations (NUM-018).** The aⱼ on the right-hand side are by default the Newtonian point-mass accelerations from the Majors. Option `Iterated`: one fixed-point step, aⱼ = Newtonian + the default 1PN correction.
+- **Gauge and time.** The term declares `Gauge::PpnIsotropicHarmonic` and lists β, γ, c, the RHS mode and "time argument TDB" among its parameters (NUM-017).
+- **Geocentric Moon pair.** The 1PN corrections of Earth and Moon enter through `Accelerations::add`, i.e. the EMB and Moon − Earth by difference. This is safe: the corrections are ~1e-8 of the accelerations.
+- **`gr_1pn_central` in N-body mode** (the "Sun-only 1PN rung"): the heliocentric R3 Schwarzschild correction with μ = GM☉, applied to every non-Sun Major body. The Sun gets no reaction, so 1PN momentum is not conserved; this is a rung, not a production EOM. Interpretation, NEEDS HUMAN REVIEW.
+- **Relativistic SSB (NUM-018, Eqs. 1–2).** `mu_star` and `relativistic_barycentre` evaluate μᵢ* = GMᵢ(1 + vᵢ²/2c² − Σⱼ GMⱼ/(2c² rᵢⱼ)).
+
+**Checks.** Tolerances are fixed here, before any run. A failure is a finding, not a reason to tune.
+
+| # | check | tier | pre-registered bound | rationale |
+|---|---|---|---|---|
+| C1 | R5 → R3 limit, **symbolic** (`tools/eih_limit.py`, sympy): one massless body i, static source j (vⱼ = aⱼ = 0), only the pair; general β, γ | PR (pytest) | difference ≡ 0 | exact algebra (NUM-017) |
+| C2a | the same limit **numerically**: Mercury at its header.440 state relative to the Sun, GM_Me = 0, Sun at rest; total acceleration Newton + EIH vs Newton + `SchwarzschildPpn`; at β = γ = 1 and at (β, γ) = (1 + 1e-3, 1 − 1e-3) | PR | relative difference ≤ **1e-15** | WP19 task text; a few roundings of a 4e-5 km/s² vector |
+| C2b | as C2a, correction parts only | PR | ≤ **1e-13** relative | about 450 ulp: the two forms order ~15 operations differently. Any coefficient error is O(1). |
+| C2c | the Sun's 1PN correction in C2a (massless partner) | PR | exactly 0 | every term carries GM_Me = 0 |
+| C3 | PHY-005 via `gr_eih`: Sun + Mercury N-body, header.440, 1001 passages, per-orbit fit | PR | 42.980 ± 0.001 (`PHY005-GR-NUM-RATE`); and \|rate_EIH − rate_R3\| ≤ **1e-4** ″/cy (NUM-013a) | predicted Δ ≈ 1e-5: μ = GM☉ + GM_Me vs GM☉ (red-team §1: 7e-6) |
+| C3b | the same with `gr_1pn_central` in N-body mode | PR | \|rate − rate_R3\| ≤ 1e-4 | same physics up to the Sun's reflex motion |
+| C4 | PHY-006 via `gr_eih`: the WP4 points (β, γ) ∈ {1 ± 1e-3} and the combined point, identical IC hashes | PR | \|ratio/((2+2γ−β)/3) − 1\| ≤ **1e-6** (`PHY006-RATIO-REL-DEV`) | the two-body 1PN advance of a fully conservative PPN theory scales exactly as (2+2γ−β)/3 (Will 2014); the mass-ratio terms do not depend on β, γ |
+| C5a | NUM-018 iteration at the header.440 epoch (Sun + 8 planets + geocentric Moon) | PR | for every body \|Δaᵢ\| ≤ (2+2γ)/c² Σⱼ GMⱼ\|δaⱼ\|/rᵢⱼ · (1 + 1e-9) + 8 ulp(δaᵢ) | exact triangle bound: aⱼ enters Eq. 27 linearly, through ½(rⱼ−rᵢ)·aⱼ (coefficient ≤ ½ after the r⁻³ factor) and (3+4γ)/2 · GMⱼaⱼ/rᵢⱼ |
+| C5b | the same, magnitude | PR | maxᵢ \|Δaᵢ\|/\|a_N,ᵢ\| ≤ **100 ε²**, with ε = maxᵢ Uᵢ/c² (≈ 2.5e-8, Mercury) | O(c⁻⁴) by construction; feeding the full aⱼ (instead of δaⱼ) into the iteration would give ~ε |
+| C5c | 10-yr runs, default vs iterated, same ICs | PR | Mercury max \|Δr\| ≤ **1e-3 km** | c⁻⁴ physics ≲ 1 cm; the rest is round-off divergence |
+| C6 | relativistic barycentre conservation: EIH Sun + 8 planets + geocentric Moon, β = γ = 1, header.440, 10 yr, every 10 d; deviation of R* = Σμ*r/Σμ* from its least-squares linear fit | PR | max ≤ **1e-5 km**; the same deviation of the Newtonian barycentre ≥ **10×** larger | the 1PN centre of mass is conserved by EIH to O(c⁻⁴). The Newtonian one oscillates at about (m_J/M)(v_J/c)² r_J ≈ 1.5 m. A wrong sign or coefficient in Eq. 27 breaks conservation at the c⁻² level. |
+| C7 | **real data**: EIH + solar J2, Sun + 8 planets + geocentric Moon from header.440, 1969-06-28 → +10 yr every 10 d, vs de440.bsp; same ICs and settings as the WP12 Newtonian + J2 run, which is re-run in the same test | data (`#[ignore]`, fresh download) | Mercury improvement factor (Newtonian residual / EIH residual) ≥ **10** (PROVISIONAL sanity, WP19 task); all residuals published | WP12 measured Mercury at 3409 km. The remaining EIH residual should come from omitted asteroids, KBOs, ring, lunar and terrestrial figure and LT. |
+
+**Vectors.** New file `tests/vectors/eih.toml`: C2a, C2b, C3 (Δ vs R3), C5b factor, C5c, C6 (both parts), C7 factor. C3 and C4 reuse `PHY005-GR-NUM-RATE` and `PHY006-RATIO-REL-DEV`.
+
+**PHY-014 gate.** The NUM-020 transcription table is `crates/ferroastro-eih/TRANSCRIPTION.md`, with an unsigned review block for OI-33. No PHY-014 work starts in WP19.
