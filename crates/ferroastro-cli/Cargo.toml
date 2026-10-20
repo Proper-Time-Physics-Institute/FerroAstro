@@ -22,6 +22,7 @@ ferroastro-vectors.workspace = true
 ferroastro-ephem.workspace = true
 ferroastro-propagate = { workspace = true, features = ["parallel"] }
 ferroastro-scenario.workspace = true
+ferroastro-system.workspace = true
 sha2.workspace = true
 
 [features]
