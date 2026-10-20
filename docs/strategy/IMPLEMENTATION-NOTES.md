@@ -3944,3 +3944,42 @@ Wall clock (this machine, single-threaded oracles): Swiftest stage A 17 s, P-add
 8. **The 100-MB oracle series are not committed** (CI-004, size); their manifests (image digest, runner commit, input/output SHA-256s) are verified by the nightly test. One of them (Swiftest P-add Venus) was produced by an image built while unrelated runner files (`drift.py`, `orekit_runner.py`) were uncommitted, so its manifest says `8a73faa…-dirty`; the Swiftest runner itself was unchanged. The scheduled nightly regenerates all of them from the committed tree.
 9. Requirement-text needs for PR #2 (carried forward plus new): CI-001 (GHCR → local images), CI-002 (switch list, integrator mapping, `ephemeris-field` mode), REF-006 notes (OI-27 path answered; the Sun frame rotation), REF-007 notes (Swiftest wheels; `j2rp2` documented), REF-008 notes (mirror licence state, double-precision fork), CI-006 (local nightly; blocking-issue mechanism), NUM-009, the N-AST requirement, the `blocked_by` schema.
 10. **F13 (restated):** never tick OI-38 from an agent PR. The four-tool agreement to 2e-8 on P-add Venus, with every tool missing Park17 by −0.0298, is further evidence for OI-38 that only a maintainer may weigh.
+
+
+## WP18 — [M3 exit] `ferroastro-bench`: first published speed table vs reference codes
+
+Builder agent, 2026-10-20 (UTC). Branch `m3-newtonian-nbody` (PR #13, stacked on `m0-foundation`), local machine as in WP16/WP17 (i9-13900, 32 logical CPUs, flags include `avx2`/`fma`, **no AVX-512**).
+
+### Progress-review corrections (status at the start of WP18)
+F8 (MSRV; `fa16571`), F9/F10 (small-body GMs bitwise vs header.440), F11 (IC hash GM ulp) and F12 (diffrun fit window) were applied in WP16 (`be7fa6e`); see the WP16 table. The F9 note (N-AST protocol dependence ≈ 3e-6 ″/cy, so `PARK17-T3-ASTEROIDS` could gate independently of OI-38; a maintainer decision) stands. F13 stands: nothing in WP18 touches OI-38, and the Park17 columns of the speed table are informational. The WP16/WP17 container rules apply unchanged (the bench harness only calls `tools/oracles/run_oracles.sh`, which stages contexts without FerroAstro builds and never pushes). The WP22 PHY-014 correction is not in this WP's scope. The PR #13 review comment (`rev15/comment.md`) is still for the user to post. `tools/pre_push.sh` (AGENTS.md list + the 1.85 check and MSRV nextest) runs before every push; the gate table quotes the GitHub CI run of the pushed tip. Last CI before WP18: run 39360150636 **success** on `a1a02cc` (the tip `e5a0067` is a docs-only commit pushed with it; no separate run was listed).
+
+### Plan and pre-registered checks (written 2026-10-20 02:58 UTC, before any WP18 code or run)
+**Where it runs (interpretation; NEEDS HUMAN REVIEW).** CI-008 asks for one fixed GitHub paid larger-runner class. Paid larger runners are not authorised (unsettled decision 3), and the maintainer decision puts long and nightly runs on this local machine. The "fixed runner class" is therefore this workstation, recorded as `runner_class = "local-workstation"` with its CPU model, flags, logical CPU count, kernel, rustc version and the 1-min load average before and after every timed run. The machine is shared (at 02:57 UTC the load average was 64 on 32 logical CPUs from other users' CI runners and sessions), so run-to-run spread is expected to be large; this is exactly OI-63, and the table records it rather than hiding it.
+
+**Scenarios** (new files `ci/scenarios/bench-*.toml`, skipped by the nightly all-oracle loop because the bench harness runs them; the timed files sample coarsely so output I/O does not dominate, and a `-daily` twin with identical physics and integrator settings, run once and untimed, supplies the perihelion-rate accuracy column):
+- (a) `bench-a-sun-8planets-newton-1000yr`: stage A's physics and IAS15 settings (ε 1e-9, dt0 0.1 d), 1000 Julian yr, all bodies yearly. Twin `-daily`: Sun + Mercury daily.
+- (b) `bench-b-sun-mercury-tp-gr1pn-1000yr`: the C-lite test particle (1PN central), 1000 Julian yr, yearly. Twin `-daily`.
+- (c) `bench-c-full-newton-minor343-100yr`: the PHY-012 full system + `asteroids = 343`, `kbos`, `kbo_ring`, 100 Julian yr, all bodies every 10 yr (FerroAstro only: every oracle runner refuses the small-body switches, REF-011).
+- (d) the existing `oracle-stage-b-mercury-de440-field-100yr` (Orekit's only mode), so Orekit has a measured row.
+
+**Tools per scenario.** Every tool is run on every scenario; a runner's refusal (exit 3, REF-011) is a table row with the runner's own message. Expected: (a) REBOUND, Swiftest, Mercury6, FerroAstro timed, Orekit refused (it implements only the ephemeris-field mode); (b) FerroAstro and Swiftest timed, REBOUND (stage C, WP21), Mercury6 (REF-008) and Orekit refused; (c) FerroAstro only; (d) Orekit and FerroAstro.
+
+**Timing.** Each timed entry is the median of **5** runs in one harness invocation (one "workflow run", CI-008), with the run-to-run spread recorded as the range (max − min). Timer scope: each oracle runner's own `wall_clock_s` (integration and the tool's in-process set-up, excluding container start-up and output writing by our runner); FerroAstro: `ferroastro_propagate::run` in-process in a release build (IC assembly, model build and integration; header.440/SPK parsing outside the timer). The scopes differ slightly and the table says so. No timing is gated against another tool.
+
+**Accuracy columns** (every timed row carries them; "–" always comes with a reason):
+1. relative energy change |E(T) − E(0)| / |E(0)|: for (a), computed by `ferroastro-bench` from each tool's own first and last output states (all 9 bodies, Newtonian, the system's centre-of-mass frame, header.440 GMs), identically for every tool; for (c), FerroAstro's model energy (`NBodyModel::energy_over_g`, all terms); (b) and (d) have none (1PN test particle; time-dependent field).
+2. Mercury heliocentric |Δr| against REBOUND's run of the same scenario in the same harness invocation (max over the samples) for (a); against FerroAstro for (d) (no REBOUND run exists there).
+3. Mercury perihelion rate from the `-daily` twin with the WP14/WP17 Park2017 estimator (sampled-state passages, Park17 mean-orbit plane, 14 Table-2 terms, window epoch + 30 d … end − 30 d): the tool's rate minus FerroAstro's, and FerroAstro's rate minus a Park17 reference: for (a), the sum of the Park17 Table 3 planet rows and listed pair rows (informational: OI-38, EMB as one body, no Pluto, a different window); for (b), `PARK17-GE-RATE` (informational: a test particle, not Park's N-body GE).
+
+**Pre-registered expectations** (margins are reported; nothing here is a new gating tolerance):
+| # | quantity | expectation |
+|---|---|---|
+| E1 | (a) relative energy change | FerroAstro and REBOUND ≲ 1e-13; Mercury6 ≲ 1e-12; Swiftest ≈ 5e-9 (WP17's linear drift of −5.04e-10 per 100 yr, × 10) |
+| E2 | (a) Mercury \|Δr\| vs REBOUND | FerroAstro < 0.1 km (round-off walk from 0.7 m at 100 yr); Mercury6 0.1–1 km; Swiftest 1–100 km |
+| E3 | (a) rate − FerroAstro | REBOUND, Mercury6 < 1e-6 ″/cy; Swiftest < 1e-4 ″/cy |
+| E4 | (b) rate | FerroAstro ≈ 42.980 (C-lite 252 yr gave 42.980085); Swiftest − FerroAstro < 1e-4 ″/cy |
+| E5 | (d) Orekit − FerroAstro | ≈ 0.131 km (WP17 golden) |
+| E6 | **acceptance**: two consecutive harness runs | for every FerroAstro entry, \|median₂ − median₁\| < range₁ (the run-to-run spread recorded in the first table); reported both ways (also < range₂). Risk: the shared machine's load changes between runs. |
+| E7 | **acceptance**: the table lists REBOUND, Swiftest, Mercury6, Orekit and FerroAstro on (a) | Orekit as a refusal row (above) |
+
+**Layering.** `ferroastro-bench` is L11 and may not depend on `ferroastro-oracle` (also L11) or on the test-support crates (`ferroastro-vectors`, `ferroastro-testdata`) as normal dependencies. The library therefore reads the oracle CSV/MANIFEST format itself and takes every reference value as a parameter; the speed-table driver is an example target (`cargo run --release -p ferroastro-bench --example speed_table`), which may use dev-dependencies, so Park17 and SW92 values come from `tests/vectors` by id.

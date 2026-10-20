@@ -32,7 +32,7 @@ use ferroastro_forces::{
 use ferroastro_integrators::Ias15Config;
 use ferroastro_propagate::{
     Checkpoint, DataSources, RunOutput, initial_conditions, resume, resume_until, run, run_batch,
-    run_until,
+    run_until, run_with_energy,
 };
 use ferroastro_scenario::{BodyName, Precision, ScenarioSpec};
 use ferroastro_system::{Catalogue, InitialConditions, Tier};
@@ -713,4 +713,53 @@ fn small_body_gms_equal_their_header_values_bitwise() {
             expected.len()
         );
     }
+}
+
+const ENERGY_YEARS: f64 = 10.0; // lint: allow-literal(run length, PR-tier cost)
+// A sum of ~50 terms of mixed sign, each rounded once: a few tens of ulp relative to |E|.
+const ENERGY_ULPS: f64 = 64.0; // lint: allow-literal(round-off allowance of two energy sums)
+
+/// WP18: `run_with_energy` returns `run`'s output bit for bit, and its initial model energy equals
+/// an independent `Σ ½ μ v² − Σ μᵢ μⱼ / r` over the initial records (stage A system, Newtonian);
+/// the test-particle mode has none.
+///
+/// Verifies: NUM-023, CI-008
+#[test]
+fn run_with_energy_returns_the_run_and_the_model_energy() {
+    let (h, prov) = header();
+    let data = DataSources::none().with_header(&h, &prov);
+    let mut s = spec("stage-a-sun-8planets-newton-100yr.toml");
+    s.span.years = ENERGY_YEARS;
+    let plain = run(&s, &data).unwrap();
+    let (out, energy) = run_with_energy(&s, &data).unwrap();
+    assert_eq!(out.differing_words(&plain), Some(0));
+    let e = energy.expect("an N-body Newtonian model has an energy");
+    let recs = initial_conditions(&s, &data).unwrap().records;
+    let mut kinetic = 0.0;
+    let mut potential = 0.0;
+    for (i, a) in recs.iter().enumerate() {
+        let v2: f64 = a.velocity.iter().map(|w| w[0] * w[0]).sum();
+        kinetic += 0.5 * a.gm[0] * v2;
+        for b in &recs[i + 1..] {
+            let r2: f64 = (0..3)
+                .map(|k| (a.position[k][0] - b.position[k][0]).powi(2))
+                .sum();
+            potential -= a.gm[0] * b.gm[0] / r2.sqrt();
+        }
+    }
+    let independent = kinetic + potential;
+    let rel = ((e.initial - independent) / independent).abs();
+    println!(
+        "E/G initial {:.17e}, independent {independent:.17e} (rel {rel:.2e}); last {:.17e}; |dE/E| over {ENERGY_YEARS} yr = {:.3e}",
+        e.initial,
+        e.last,
+        e.relative_change()
+    );
+    assert!(rel <= ENERGY_ULPS * f64::EPSILON, "{rel}");
+    assert!(e.relative_change().is_finite());
+
+    let mut tp = spec("oracle-clite-sun-mercury-tp-gr1pn-252yr.toml");
+    tp.span.years = 1.0; // lint: allow-literal(run length, PR-tier cost)
+    let (_, none) = run_with_energy(&tp, &data).unwrap();
+    assert!(none.is_none());
 }

@@ -16,6 +16,8 @@
 //!   (CI-010); a long run can be cut into any number of such segments.
 //! * [`initial_conditions`]: the initial conditions a scenario assembles, per body, exactly as
 //!   hashed, so that differential runs can prove they share them (NUM-013).
+//! * [`run_with_energy`]: [`run`] plus the N-body model energy at the start and the end
+//!   (WP18 speed-table accuracy column).
 //! * [`run_batch`]: independent scenarios on `threads` worker threads (rayon, behind the
 //!   optional `parallel` feature; sequential without it, and on wasm32). Results do not depend
 //!   on the thread count (TST-005).
@@ -198,6 +200,55 @@ pub fn run(spec: &ScenarioSpec, data: &DataSources<'_>) -> Result<RunOutput, Pro
         (Mode::NBody, Precision::Dd) => {
             NBodyRun::<DoubleDouble>::new(spec, data, None)?.advance(None)
         }
+    }
+}
+
+/// The model energy of an N-body run at its initial conditions and at its end (energy divided
+/// by G, km⁵/s⁴; Neumaier-summed over every term's potential).
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct EnergyCheck {
+    /// Energy / G at the initial conditions.
+    pub initial: f64,
+    /// Energy / G at the end of the run.
+    pub last: f64,
+}
+
+impl EnergyCheck {
+    /// `|E(T) − E(0)| / |E(0)|`.
+    #[must_use]
+    pub fn relative_change(&self) -> f64 {
+        ((self.last - self.initial) / self.initial).abs()
+    }
+}
+
+/// [`run`], plus the model energy at the start and the end of an N-body run (`None` for the
+/// test-particle and ephemeris-field modes, whose Newtonian energy is not a conserved quantity of
+/// the model, and for a model with a non-conservative term). The output is [`run`]'s, bit for
+/// bit: the energy is evaluated outside the integration (WP18 speed-table accuracy column).
+///
+/// # Errors
+/// As [`run`].
+pub fn run_with_energy(
+    spec: &ScenarioSpec,
+    data: &DataSources<'_>,
+) -> Result<(RunOutput, Option<EnergyCheck>), PropagateError> {
+    fn nbody<R: ferroastro_real::Real>(
+        spec: &ScenarioSpec,
+        data: &DataSources<'_>,
+    ) -> Result<(RunOutput, Option<EnergyCheck>), PropagateError> {
+        let mut r = NBodyRun::<R>::new(spec, data, None)?;
+        let initial = r.energy_over_g();
+        let out = r.advance(None)?;
+        let energy = initial
+            .zip(r.energy_over_g())
+            .map(|(initial, last)| EnergyCheck { initial, last });
+        Ok((out, energy))
+    }
+    prepare(spec)?;
+    match (spec.mode, spec.integrator.precision) {
+        (Mode::NBody, Precision::F64) => nbody::<f64>(spec, data),
+        (Mode::NBody, Precision::Dd) => nbody::<DoubleDouble>(spec, data),
+        _ => Ok((run(spec, data)?, None)),
     }
 }
 

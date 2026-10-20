@@ -555,6 +555,14 @@ impl<R: Real> NBodyRun<R> {
         Ok(out)
     }
 
+    /// The model's total energy divided by G (km⁵/s⁴) at the integrator's current state, or
+    /// `None` if a term is not conservative (NUM-023 diagnostic; WP18 speed-table accuracy).
+    pub(crate) fn energy_over_g(&self) -> Option<f64> {
+        self.model
+            .energy_over_g(self.ias.positions(), self.ias.velocities())
+            .map(R::to_f64)
+    }
+
     /// The integrator snapshot and the driver state, for a checkpoint.
     pub(crate) fn checkpoint_parts(
         &self,

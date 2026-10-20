@@ -22,6 +22,7 @@
 //! | `FA-E1300`–`FA-E1399` | run driver, outputs, checkpoints and batches (`ferroastro-propagate`) |
 //! | `FA-E1400`–`FA-E1499` | differential-run plans, initial-condition identity and run stores (`ferroastro-diffrun`) |
 //! | `FA-E1500`–`FA-E1599` | oracle goldens, `MANIFEST.json` provenance and comparisons (`ferroastro-oracle`) |
+//! | `FA-E1600`–`FA-E1699` | benchmark runs, speed tables and their accuracy columns (`ferroastro-bench`) |
 
 use std::fmt;
 
@@ -171,11 +172,16 @@ pub enum ErrorCode {
     OracleGolden,
     /// `FA-E1503`: a FerroAstro run and a golden cannot be compared (missing time or body).
     OracleComparison,
+    /// `FA-E1600`: a benchmark run directory, timing record or oracle output cannot be read or
+    /// is inconsistent (CI-008).
+    BenchInput,
+    /// `FA-E1601`: a speed table is malformed or two tables cannot be compared (CI-008).
+    BenchTable,
 }
 
 impl ErrorCode {
     /// Every code, in numeric order (used to prove codes are unique).
-    pub const ALL: [ErrorCode; 65] = [
+    pub const ALL: [ErrorCode; 67] = [
         ErrorCode::NonFinite,
         ErrorCode::OutOfRange,
         ErrorCode::VectorIo,
@@ -241,6 +247,8 @@ impl ErrorCode {
         ErrorCode::OracleChecksum,
         ErrorCode::OracleGolden,
         ErrorCode::OracleComparison,
+        ErrorCode::BenchInput,
+        ErrorCode::BenchTable,
     ];
 
     /// The stable textual code, e.g. `"FA-E0001"`.
@@ -312,6 +320,8 @@ impl ErrorCode {
             ErrorCode::OracleChecksum => "FA-E1501",
             ErrorCode::OracleGolden => "FA-E1502",
             ErrorCode::OracleComparison => "FA-E1503",
+            ErrorCode::BenchInput => "FA-E1600",
+            ErrorCode::BenchTable => "FA-E1601",
         }
     }
 }
