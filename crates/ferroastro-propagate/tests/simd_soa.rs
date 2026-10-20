@@ -161,7 +161,20 @@ fn soa_scenario_builds_the_soa_model() {
         out.model
     );
     assert_eq!(differing, 0);
-    assert!(out.model.contains("SoA kernel"), "{}", out.model);
+    // Both pair terms name the SoA kernel (the EIH correction is too small to show in the
+    // total accelerations above: a pairwise Eih left in place survived the first mutation round).
+    assert!(
+        out.model
+            .contains("newtonian-mutual (SoA kernel, exact 1/r^3, no FMA)"),
+        "{}",
+        out.model
+    );
+    assert!(
+        out.model
+            .contains("eih-1pn (Park et al. 2021 Eq. 27; SoA kernel, exact 1/r^3, no FMA)"),
+        "{}",
+        out.model
+    );
 }
 
 /// P4 (feature `simd`): the SoA model with the SIMD and the scalar backend, ABM13 PECEC

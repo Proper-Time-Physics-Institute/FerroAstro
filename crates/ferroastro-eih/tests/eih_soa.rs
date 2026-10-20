@@ -133,8 +133,9 @@ fn simd_and_scalar_eih_kernels_are_bitwise_identical() {
 }
 
 /// P3b: `EihSoa` (f64, preferred backend) against `Eih<DoubleDouble>` on the same inputs, per
-/// body `|c_soa − c_DD| / |c_DD|` (Newtonian right-hand side, the pre-registered cases); the
-/// production `Eih<f64>` and the iterated right-hand side are reported.
+/// body `|c_soa − c_DD| / |c_DD|`, for both right-hand-side modes; the production `Eih<f64>` is
+/// reported. (The iterated mode was first only reported; it is asserted since the WP26 mutation
+/// round, where a mutant that ignored the iterated right-hand side survived.)
 ///
 /// Verifies: NUM-021, DEP-007
 #[test]
@@ -178,9 +179,7 @@ fn soa_eih_correction_agrees_with_double_double() {
                      {r_soa:.3e}, production Eih {r_pw:.3e}",
                     sys.label
                 );
-                if rhs == RhsAcceleration::Newtonian {
-                    worst = worst.max(r_soa);
-                }
+                worst = worst.max(r_soa);
             }
         }
     }
