@@ -118,3 +118,31 @@ retrieved = "2026-10-20"
 tolerance = { abs = 0.0 }
 tolerance_rationale = "One-sided threshold (measured factor must be >= the value; PROVISIONAL, NEEDS HUMAN REVIEW). The remaining EIH residual is expected from omitted asteroids, KBOs, ring, lunar and terrestrial figure, tides and Lense-Thirring."
 verified_by = "WP19 builder agent, 2026-10-20: bound from the WP19 task text, fixed in the plan before the first run."
+
+[[vector]]
+id = "EIH-BINARY-ADVANCE-REL"
+requirement = ["NUM-017", "NUM-020"]
+quantity = "relative deviation of the per-orbit periastron advance of an equal-mass eccentric binary under EIH (beta = gamma = 1; each GM = DE440 GM_sun, a = 0.01 au, e = 0.5, 100 orbits; advance from the Newtonian LRL vector of the relative orbit at successive periastra) from 6 pi G M_tot / (c^2 p), p = h^2 / (G M_tot) from the initial state"
+value = 0.0
+unit = "1"
+kind = "analytic"
+source = "At 1PN the relative periastron advance of two point masses is 6 pi G M / (c^2 a (1 - e^2)) for any mass ratio (Damour & Deruelle 1985; Will 2014, Living Rev. Relativ. 17, 4, for beta = gamma = 1). Unlike the Sun + Mercury rungs (mass ratio 1.7e-7), an equal-mass binary exercises the terms driven by the source's velocity and acceleration (T2, T4-T7, T9, T10 of TRANSCRIPTION.md) at O(1)."
+citation = "Damour, T., & Deruelle, N. 1985, Ann. Inst. Henri Poincare A 43, 107; Will, C. M. 2014, Living Rev. Relativ. 17, 4; Park et al. 2021, AJ 161, 105, Eq. 27; WP19 mutation probe E3"
+retrieved = "2026-10-20"
+tolerance = { abs = 1.0e-4 }
+tolerance_rationale = "2PN corrections are O(epsilon) relative with epsilon = G M_tot/(c^2 p) = 2.3e-6 here (times coefficients ~10), and the gauge-dependent difference between the osculating and 1PN p is O(epsilon); 1e-4 leaves margin. A wrong coefficient in a velocity term changes the advance by O(eta) = O(1/4). Added after mutation probe E3 (T6 coefficient) survived every other WP19 check; fixed here before this check's first run."
+verified_by = "WP19 builder agent, 2026-10-20: written before the first run of the binary check."
+
+[[vector]]
+id = "EIH-BINARY-ENERGY-REL"
+requirement = ["NUM-017", "NUM-020"]
+quantity = "max over the samples of |E(t) - E(0)| / |E_N(0)| for the equal-mass binary of EIH-BINARY-ADVANCE-REL, E = the 1PN energy of the EIH two-body Lagrangian (Landau & Lifshitz Eq. 106.17), E_N its Newtonian part"
+value = 0.0
+unit = "1"
+kind = "analytic"
+source = "E = sum v.dL/dv - L of the EIH Lagrangian is conserved by Eq. 27 at O(c^-2) (tools/eih_limit.py check_lagrangian: the eps^1 part of dE/dt vanishes identically); the remainder is O(c^-4) ~ epsilon^2 = 7e-12 plus round-off."
+citation = "Landau, L. D., & Lifshitz, E. M., The Classical Theory of Fields, 4th ed., Eq. 106.17; Park et al. 2021, AJ 161, 105, Eq. 27; WP19 mutation probe E3"
+retrieved = "2026-10-20"
+tolerance = { abs = 1.0e-9 }
+tolerance_rationale = "About 100 x epsilon^2. A wrong coefficient in a velocity-dependent term gives O(epsilon) ~ 1e-6. Added after mutation probe E3 (T6 coefficient) survived the advance check too (a radial force proportional to rdot^2 gives no secular precession); fixed before this check's first run."
+verified_by = "WP19 builder agent, 2026-10-20: written before the first run of the energy check."

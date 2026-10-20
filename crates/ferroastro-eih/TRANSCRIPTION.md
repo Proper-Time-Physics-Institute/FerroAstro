@@ -79,6 +79,19 @@ correction. A negative control (T3's sign flipped) is detected. This checks T1, 
 T11 in the limit. **It cannot see T2, T4–T7 or T10**: they vanish when v_j = a_j = 0 and the
 partner is massless.
 
+**Symbolic, two bodies at β = γ = 1** (`check_lagrangian` in `tools/eih_limit.py`). This check
+was added after mutation probe E3 (T6's coefficient −3/2 → −1) survived every other check. It
+compares Eq. 27 for two bodies with the order-reduced Euler–Lagrange equations of the EIH
+Lagrangian (Landau & Lifshitz, *The Classical Theory of Fields*, Eq. 106.17), a source
+independent of the DE papers.
+- They agree to 60 significant digits at three random configurations with general masses,
+  positions and velocities, for **every** term T1–T10.
+- The Lagrangian's energy is conserved at O(c⁻²) under Eq. 27.
+- A negative control (T6 at −1) is detected.
+
+β and γ enter only T1–T5 and T9–T10, linearly. The β, γ dependence is checked by the R5 → R3
+limit and by the PPN ratio test, not by the Lagrangian.
+
 **Numerical, PR tier** (`crates/ferroastro-eih/tests/eih_checks.rs`, `crates/ferroastro-ladder/tests/phy005_eih.rs`):
 
 | check | result |
@@ -88,6 +101,10 @@ partner is massless.
 | PPN ratio (2+2γ−β)/3 | to 4e-10 |
 | RHS iteration | O(c⁻⁴) |
 | **Relativistic barycentre conservation** | 3.2e-10 km over 10 yr, vs 2.0e-5 km for the Newtonian barycentre |
+| Equal-mass binary: periastron advance vs 6πGM/(c²p) | −1.5e-5 relative |
+| Equal-mass binary: 1PN Lagrangian energy | conserved to 5.3e-10 of \|E_N\|, scaling as c⁻⁴ |
+
+Eight coefficient and sign mutants of `eih.rs` (IMPLEMENTATION-NOTES WP19) are all killed.
 
 The conservation check is the main test of T2 and T4–T10 together. It involves every term with
 v_j and a_j. A sign or coefficient error in any of them would break the conservation of the 1PN

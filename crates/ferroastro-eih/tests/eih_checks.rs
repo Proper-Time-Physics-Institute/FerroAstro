@@ -232,6 +232,13 @@ fn rhs_iteration_changes_the_accelerations_at_order_c_minus_four() {
             bound,
             factor
         );
+        // The iteration must act (added after the first run; not a tolerance): a no-op
+        // `Iterated` would pass the bounds trivially.
+        assert!(
+            dn > 0.0,
+            "{}: the iteration changed nothing",
+            name(s.ids[i])
+        );
         assert!(
             dn <= bound + slack,
             "{}: |Delta a| {dn:e} > bound {bound:e}",
@@ -372,4 +379,173 @@ fn eih_conserves_the_relativistic_barycentre() {
         .value()
         .unwrap();
     assert!(d_newt / d_rel >= min_ratio, "ratio {}", d_newt / d_rel);
+}
+
+/// Binary geometry: semi-major axis in au and eccentricity of the synthetic equal-mass binary,
+/// and its length (not physical values of any solar-system body).
+const BINARY_A_AU: f64 = 0.01; // lint: allow-literal(synthetic binary geometry)
+const BINARY_E: f64 = 0.5; // lint: allow-literal(synthetic binary geometry)
+const BINARY_ORBITS: u32 = 100; // lint: allow-literal(run length, PR-tier cost)
+const SAMPLES_PER_ORBIT: u32 = 2000; // lint: allow-literal(sampling of the periastron search)
+
+/// Added after mutation probe E3 (T6 coefficient) survived: an equal-mass eccentric binary, where
+/// the source-velocity terms of Eq. 27 act at O(1). Its 1PN periastron advance is
+/// 6π G M / (c² p) for any mass ratio (Damour & Deruelle 1985).
+///
+/// Verifies: NUM-017, NUM-020
+#[test]
+#[expect(
+    clippy::too_many_lines,
+    clippy::suboptimal_flops,
+    reason = "one evidence test read top to bottom; the energy terms are written as typeset"
+)]
+fn equal_mass_binary_advance_is_mass_ratio_independent() {
+    use ferroastro_core::frames::Position;
+    use ferroastro_core::time::{Epoch, J2000_JD, Tdb};
+    use ferroastro_core::units::{Length, TimeSpan, Velocity};
+    use ferroastro_forces::NBodyPropagator;
+
+    let de = De440::load().unwrap();
+    let gm = de.gm_sun().km3_per_s2();
+    let m_tot = 2.0 * gm; // lint: allow-literal(two equal masses)
+    let c = de.speed_of_light().km_per_s();
+    let a = BINARY_A_AU * de.au().km();
+    let rp = a * (1.0 - BINARY_E);
+    let vp = (m_tot * (1.0 + BINARY_E) / rp).sqrt();
+    let ids = [NaifId::SUN, NaifId::MERCURY_BARYCENTER];
+    let bodies: Vec<NBody> = ids
+        .iter()
+        .map(|&id| NBody {
+            id,
+            gm,
+            tier: Tier::Major,
+        })
+        .collect();
+    let m = NBodyModel::<Icrf>::new(
+        &bodies,
+        MoonVariables::Barycentric,
+        vec![
+            Box::new(NewtonianMutual),
+            Box::new(Eih::new(de.speed_of_light(), 1.0, 1.0, RhsAcceleration::Newtonian).unwrap()),
+        ],
+    )
+    .unwrap();
+    // Centre-of-mass frame: each body at -/+ half the relative state (equal masses).
+    let mut states = SystemState::<Icrf, Barycentric>::new();
+    for (id, s) in [(ids[0], -0.5), (ids[1], 0.5)] {
+        let l = |x: f64| Length::from_km(x).unwrap();
+        let w = |x: f64| Velocity::from_km_per_s(x).unwrap();
+        let st = State::new(
+            Position::new(l(s * rp), l(0.0), l(0.0)),
+            [w(0.0), w(s * vp), w(0.0)],
+        );
+        states.push(id, &st).unwrap();
+    }
+    let epoch: Epoch<Tdb> = Epoch::from_jd_parts(J2000_JD, 0.0).unwrap();
+    let period = std::f64::consts::TAU * (a * a * a / m_tot).sqrt();
+    let dt0 = TimeSpan::from_seconds(period / 1000.0).unwrap(); // lint: allow-literal(initial step, fraction of the period)
+    let mut p = NBodyPropagator::new(m, &states, None, epoch, dt0, Ias15Config::default()).unwrap();
+    let rel = |p: &NBodyPropagator<Icrf>| {
+        let s = p.state().unwrap();
+        let (a0, b0) = (s.state(ids[0]).unwrap(), s.state(ids[1]).unwrap());
+        (sub(pos(&b0), pos(&a0)), sub(vel(&b0), vel(&a0)))
+    };
+    let lrl_angle = |r: [f64; 3], v: [f64; 3]| {
+        let rn = norm(r);
+        let v2 = v[0].mul_add(v[0], v[1].mul_add(v[1], v[2] * v[2]));
+        let rv = r[0].mul_add(v[0], r[1].mul_add(v[1], r[2] * v[2]));
+        let e = [0, 1].map(|k| ((v2 - m_tot / rn) * r[k] - rv * v[k]) / m_tot);
+        e[1].atan2(e[0])
+    };
+    // The 1PN energy of the EIH two-body Lagrangian (Landau & Lifshitz 106.17; G folded into the
+    // GMs), checked symbolically by tools/eih_limit.py::check_lagrangian, and its Newtonian part.
+    let c2 = c * c;
+    let energy = |p: &NBodyPropagator<Icrf>| {
+        let s = p.state().unwrap();
+        let (sa, sb) = (s.state(ids[0]).unwrap(), s.state(ids[1]).unwrap());
+        let (va, vb) = (vel(&sa), vel(&sb));
+        let rv = sub(pos(&sa), pos(&sb));
+        let r = norm(rv);
+        let nn = rv.map(|x| x / r);
+        let d = |x: [f64; 3], y: [f64; 3]| x[0].mul_add(y[0], x[1].mul_add(y[1], x[2] * y[2]));
+        let (va2, vb2) = (d(va, va), d(vb, vb));
+        let newton = 0.5 * gm * (va2 + vb2) - gm * gm / r;
+        let pn = 0.375 * gm * va2.mul_add(va2, vb2 * vb2)
+            + gm * gm / (2.0 * r) * (3.0 * (va2 + vb2) - 7.0 * d(va, vb) - d(nn, va) * d(nn, vb))
+            + gm * gm * (2.0 * gm) / (2.0 * r * r);
+        (newton + pn / c2, newton)
+    }; // lint: allow-literal(coefficients of the EIH Lagrangian energy, Landau & Lifshitz 106.17)
+    let (e0, en0) = energy(&p);
+    let mut worst_energy: f64 = 0.0;
+    let dt = period / f64::from(SAMPLES_PER_ORBIT);
+    let mut prev: Option<(f64, f64, f64)> = None; // (r.v, |r|, angle)
+    let mut peri: Vec<f64> = Vec::new();
+    let total = SAMPLES_PER_ORBIT * BINARY_ORBITS + SAMPLES_PER_ORBIT / 2;
+    for k in 1..=total {
+        p.advance_to(epoch + TimeSpan::from_seconds(f64::from(k) * dt).unwrap())
+            .unwrap();
+        let (r, v) = rel(&p);
+        let rv = r[0].mul_add(v[0], r[1].mul_add(v[1], r[2] * v[2]));
+        let ang = lrl_angle(r, v);
+        if k % (SAMPLES_PER_ORBIT / 20) == 0 {
+            worst_energy = worst_energy.max((energy(&p).0 - e0).abs() / en0.abs());
+        }
+        if let Some((rv0, r0, a0)) = prev {
+            if rv0 < 0.0 && rv >= 0.0 {
+                // The sample closer to periastron.
+                peri.push(if r0 < norm(r) { a0 } else { ang });
+            }
+        }
+        prev = Some((rv, norm(r), ang));
+    }
+    // Unwrap, then fit angle = alpha + k * advance (least squares over the orbit index).
+    let mut unwrapped = Vec::with_capacity(peri.len());
+    let mut offset = 0.0;
+    for (i, &x) in peri.iter().enumerate() {
+        if i > 0 {
+            let d = x + offset - unwrapped[i - 1];
+            if d > std::f64::consts::PI {
+                offset -= std::f64::consts::TAU;
+            } else if d < -std::f64::consts::PI {
+                offset += std::f64::consts::TAU;
+            }
+        }
+        unwrapped.push(x + offset);
+    }
+    let n = unwrapped.len() as f64;
+    let km = (n - 1.0) / 2.0;
+    let ym = unwrapped.iter().sum::<f64>() / n;
+    let (mut sxy, mut sxx) = (0.0, 0.0);
+    for (i, y) in unwrapped.iter().enumerate() {
+        let x = i as f64 - km;
+        sxy = x.mul_add(y - ym, sxy);
+        sxx = x.mul_add(x, sxx);
+    }
+    let advance = sxy / sxx;
+    let h = rp * vp;
+    let p_semi = h * h / m_tot;
+    let expected = 3.0 * std::f64::consts::TAU * m_tot / (c * c * p_semi); // lint: allow-literal(6 pi = 3 tau, the 1PN advance)
+    let rel_dev = advance / expected - 1.0;
+    println!(
+        "binary: G M_tot/(c^2 p) = {:.4e}; {} periastra; advance {advance:.10e} rad/orbit, \
+         6 pi GM/(c^2 p) = {expected:.10e}; relative deviation {rel_dev:+.3e}; {} IAS15 steps",
+        m_tot / (c * c * p_semi),
+        peri.len(),
+        p.stats().steps
+    );
+    println!(
+        "binary: max |E(t) - E(0)| / |E_N| = {worst_energy:.3e} (1PN energy of the EIH \
+         Lagrangian, sampled 20 times per orbit)"
+    );
+    assert!(peri.len() >= BINARY_ORBITS as usize);
+    vectors()
+        .get("EIH-BINARY-ENERGY-REL")
+        .unwrap()
+        .check(worst_energy)
+        .unwrap();
+    vectors()
+        .get("EIH-BINARY-ADVANCE-REL")
+        .unwrap()
+        .check(rel_dev)
+        .unwrap();
 }
