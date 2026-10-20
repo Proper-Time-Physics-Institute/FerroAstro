@@ -555,3 +555,172 @@ fn one_regular_step_matches_the_mode_definitions() {
     }
     assert!(gaps.iter().all(|&g| g <= REL), "{gaps:?}");
 }
+
+/// T1 (WP28, progress review W1): Mars-like orbit, semi-major axis in au (test design).
+const T1_A_AU: f64 = 1.5; // lint: allow-literal(test design: a Mars-like orbit)
+/// T1: eccentricity (test design).
+const T1_E: f64 = 0.09; // lint: allow-literal(test design: a Mars-like orbit)
+/// T1: run length in orbits (PR-tier cost).
+const T1_ORBITS: f64 = 10.0; // lint: allow-literal(run length, PR-tier cost)
+
+/// Positions every `SAMPLE_EVERY` steps over `orbits` periods, as double-double.
+/// The run starts from `start` (the f64 initial state, widened exactly when `R` is wider), so
+/// that every run of T1 starts from bit-identical initial conditions.
+fn sampled_positions<R: Real>(
+    o: &Orbit<R>,
+    start: ([f64; 2], [f64; 2]),
+    h: R,
+    orbits: R,
+    cfg: AbmConfig,
+) -> Vec<[D; 2]> {
+    let x0 = start.0.map(R::from_f64);
+    let v0 = start.1.map(R::from_f64);
+    let sys = Kepler { mu: o.mu };
+    let mut abm = Abm::new(2, R::ZERO, &x0, &v0, h, cfg).unwrap();
+    let mut out = Vec::new();
+    abm.integrate_to(&sys, o.period * orbits, |s, _| {
+        if s.stats().steps % SAMPLE_EVERY == 0 {
+            let x = s.positions();
+            let (h0, l0) = x[0].to_parts();
+            let (h1, l1) = x[1].to_parts();
+            out.push([D::from_parts(h0, l0), D::from_parts(h1, l1)]);
+        }
+        Ok(())
+    })
+    .unwrap();
+    out
+}
+
+fn max_distance(a: &[[D; 2]], b: &[[D; 2]]) -> f64 {
+    a.iter()
+        .zip(b)
+        .map(|(p, q)| {
+            let d0 = (p[0] - q[0]).to_f64();
+            let d1 = (p[1] - q[1]).to_f64();
+            d0.hypot(d1)
+        })
+        .fold(0.0, f64::max)
+}
+
+/// T1: the Kahan-compensated state update reduces the f64 round-off of a Mars-like Kepler orbit
+/// by at least `ABM-COMPENSATION-GAIN-MIN` against the plain update, both measured against the
+/// same ABM13 PECEC in double-double.
+///
+/// Verifies: NUM-002, NUM-007
+#[test]
+fn compensated_update_beats_the_plain_update_on_a_mars_like_orbit() {
+    let vs = vectors();
+    let gain = vs.get("ABM-COMPENSATION-GAIN-MIN").unwrap();
+    let au_km = value(&vs, "CONST-AU-IAU2012");
+    let mu = value(&vs, "DE440-GMS-KM3S2");
+    let h = SECONDS_PER_DAY / STEPS_PER_DAY;
+    let o = Orbit::<f64>::new(mu, T1_A_AU * au_km, T1_E);
+    let od = Orbit::<D>::new(D::from_f64(mu), D::from_f64(T1_A_AU * au_km), D::from_f64(T1_E));
+    let cfg = |c: bool| config(13, Corrector::Pecec, c);
+    // One f64 initial state for all three runs: the double-double truth starts from the same
+    // bits, so the comparison measures integration round-off, not the rounding of the ICs.
+    let start = o.start();
+    let truth = sampled_positions(
+        &od,
+        start,
+        D::from_f64(h),
+        D::from_f64(T1_ORBITS),
+        cfg(true),
+    );
+    let comp = sampled_positions(&o, start, h, T1_ORBITS, cfg(true));
+    let plain = sampled_positions(&o, start, h, T1_ORBITS, cfg(false));
+    let (e_comp, e_plain) = (max_distance(&comp, &truth), max_distance(&plain, &truth));
+    let ratio = e_plain / e_comp;
+    println!(
+        "T1: Mars-like orbit a = {T1_A_AU} au, e = {T1_E}, P = {:.3} d, {T1_ORBITS} orbits, {} samples: \
+         max |r - r_DD| compensated {e_comp:.4e} km, plain {e_plain:.4e} km, ratio {ratio:.2} (bound >= {})",
+        o.period / SECONDS_PER_DAY,
+        truth.len().min(comp.len()),
+        gain.value().unwrap()
+    );
+    assert!(
+        ratio >= gain.value().unwrap(),
+        "ABM-COMPENSATION-GAIN-MIN: plain/compensated round-off ratio {ratio:.3} < {}",
+        gain.value().unwrap()
+    );
+}
+
+/// T1b (WP28, added after the W1 mutant survived T1; see IMPLEMENTATION-NOTES WP28): one
+/// compensated ABM13 PECEC regular step reproduces, bit for bit, the documented operation sequence
+/// of `regular_step`: the evaluation base `y0 = y − c` (the Kahan-compensated state), the
+/// predictor and corrector sums oldest-first with fused multiply-adds, and the Kahan update of the
+/// state and its compensation word. A wrong sign of `c` in the base, or a dropped compensation,
+/// changes the new state's compensation word.
+///
+/// Verifies: NUM-002, NUM-007
+#[test]
+fn one_compensated_step_is_the_documented_sequence_bit_for_bit() {
+    const ORDER: u32 = 13;
+    /// Regular steps before the checked one, so that the compensation words are non-zero.
+    const WARM_STEPS: usize = 200;
+    let vs = vectors();
+    let au_km = value(&vs, "CONST-AU-IAU2012");
+    let mu = value(&vs, "DE440-GMS-KM3S2");
+    let h = SECONDS_PER_DAY / STEPS_PER_DAY;
+    let o = Orbit::<f64>::new(mu, T1_A_AU * au_km, T1_E);
+    let (x0, v0) = o.start();
+    let sys = Kepler { mu: o.mu };
+    let p = usize::try_from(ORDER).unwrap();
+    let coeffs = |v: Vec<ferroastro_abm::rational::Rational>| -> Vec<f64> {
+        v.iter().map(|q| q.to_real().unwrap()).collect()
+    };
+    let ab = coeffs(ferroastro_abm::rational::adams_bashforth(p).unwrap());
+    let am = coeffs(ferroastro_abm::rational::adams_moulton(p).unwrap());
+    let f = |y: &[f64]| -> Vec<f64> {
+        let mut a = [0.0; 2];
+        sys.acceleration(0.0, &y[..2], &y[2..], &mut a).unwrap();
+        vec![y[2], y[3], a[0], a[1]]
+    };
+    let mut abm = Abm::new(2, 0.0, &x0, &v0, h, config(ORDER, Corrector::Pecec, true)).unwrap();
+    for _ in 0..(p - 1 + WARM_STEPS) {
+        abm.step(&sys).unwrap();
+    }
+    let snap = abm.snapshot().unwrap();
+    let first = |v: &[[f64; 2]]| -> Vec<f64> { v.iter().map(|q| q[0]).collect() };
+    let hist: Vec<Vec<f64>> = snap.history.iter().map(|r| first(r)).collect();
+    let (y, c) = (first(&snap.y), first(&snap.y_comp));
+    let nonzero = c.iter().filter(|z| **z != 0.0).count();
+    let y0: Vec<f64> = y.iter().zip(&c).map(|(s, c)| s - c).collect();
+    // |c| <= ulp(y)/2 (it is the rounding error of the last update), so y - c rounds back to y
+    // except at an exact tie: the base's compensation has no effect in binary64 (reported).
+    let moved = y0.iter().zip(&y).filter(|(a, b)| a != b).count();
+    println!("T1b: components where fl(y - c) != y: {moved} of 4");
+    let fold = |range: Vec<usize>, coef: &[f64], shift: usize, i: usize| -> f64 {
+        range
+            .into_iter()
+            .fold(0.0, |acc, j| hist[j - shift][i].mul_add(coef[j], acc))
+    };
+    let pred: Vec<f64> = (0..4)
+        .map(|i| h.mul_add(fold((0..p).rev().collect(), &ab, 0, i), y0[i]))
+        .collect();
+    let part: Vec<f64> = (0..4)
+        .map(|i| fold((1..p).rev().collect(), &am, 1, i))
+        .collect();
+    let corr = |fnew: &[f64]| -> Vec<f64> {
+        (0..4)
+            .map(|i| h.mul_add(fnew[i].mul_add(am[0], part[i]), y0[i]))
+            .collect()
+    };
+    let f1 = f(&corr(&f(&pred)));
+    let (mut want_y, mut want_c) = (y.clone(), c.clone());
+    for i in 0..4 {
+        let inc = h * f1[i].mul_add(am[0], part[i]);
+        ferroastro_integrators::compensated::kahan_add(&mut want_y[i], &mut want_c[i], inc);
+    }
+    abm.step(&sys).unwrap();
+    let after = abm.snapshot().unwrap();
+    let bits = |v: &[f64]| v.iter().map(|z| z.to_bits()).collect::<Vec<_>>();
+    println!(
+        "T1b: {nonzero} of 4 compensation words non-zero before the step; after: y {:?}, c {:?}",
+        first(&after.y),
+        first(&after.y_comp)
+    );
+    assert_eq!(nonzero, 4, "the warm-up left a zero compensation word");
+    assert_eq!(bits(&first(&after.y)), bits(&want_y), "state");
+    assert_eq!(bits(&first(&after.y_comp)), bits(&want_c), "compensation");
+}
