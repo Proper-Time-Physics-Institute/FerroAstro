@@ -52,8 +52,10 @@ fn ppn_cases(de: &De440) -> [(f64, f64); 2] {
 }
 
 /// `SplitMix64` (seeded, platform independent).
+#[cfg(feature = "simd")]
 struct SplitMix(u64);
 
+#[cfg(feature = "simd")]
 impl SplitMix {
     fn unit(&mut self) -> f64 {
         self.0 = self.0.wrapping_add(0x9e37_79b9_7f4a_7c15); // lint: allow-literal(SplitMix64 increment)

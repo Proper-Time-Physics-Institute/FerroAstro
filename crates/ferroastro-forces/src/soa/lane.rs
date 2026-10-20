@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2026 Proper-Time Physics Institute
 // SPDX-License-Identifier: Apache-2.0
 //! The [`Lane`] abstraction: a kernel is written once, generic over the lane type, and runs with
-//! [`Scalar`] (width 1, every [`Real`] backend) or, with the `simd` feature, [`F64x4`] (four
+//! [`Scalar`] (width 1, every [`Real`] backend) or, with the `simd` feature, `F64x4` (four
 //! binary64 lanes, the safe `wide` crate).
 //!
 //! **Bitwise contract (TST-005, NUM-021).** Every operation of the trait is either one IEEE-754

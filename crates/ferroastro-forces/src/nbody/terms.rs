@@ -82,7 +82,9 @@ fn r2_of<R: Real>(d: [R; 3]) -> R {
     d0.mul_add(d0, d1.mul_add(d1, d2 * d2))
 }
 
-/// `1/r³` from `r²` (one square root, one product, one division: ≤ 2 ulp in f64).
+/// `1/r³` from `r²` (one square root, one product, one division; max 2.22 ulp in f64 measured over
+/// 100 120 inputs by WP26 check P1, not the "≤ 2 ulp" stated before; the SoA kernels use the exact
+/// `ferroastro_forces::soa::inv_r3_exact`).
 #[inline]
 fn inv_r3<R: Real>(r2: R) -> R {
     R::ONE / (r2 * r2.sqrt())

@@ -29,8 +29,11 @@ use common::{FlatSystem, flat_model, flat_systems, vectors};
 use ferroastro_constants::De440;
 use ferroastro_core::ErrorCode;
 use ferroastro_core::frames::Icrf;
+#[cfg(feature = "simd")]
 use ferroastro_ephem::NaifId;
-use ferroastro_forces::soa::{SoaBackend, SoaBodies, inv_r3_exact_scalar, newtonian_soa};
+use ferroastro_forces::soa::inv_r3_exact_scalar;
+#[cfg(feature = "simd")]
+use ferroastro_forces::soa::{SoaBackend, SoaBodies, newtonian_soa};
 use ferroastro_forces::{
     ForceTerm, GeocentricMoon, MOON_TAYLOR_TERMS_DEFAULT, MoonVariables, NewtonianMutual,
     NewtonianMutualSoa, SecondOrderSystem,
@@ -43,6 +46,7 @@ const RM: RoundingMode = RoundingMode::ToEven;
 /// u = 2⁻⁵³.
 const U: f64 = f64::EPSILON / 2.0;
 /// Probability of a zero GM, and of a shared group label, in the random configurations.
+#[cfg(feature = "simd")]
 const P_SPECIAL: f64 = 0.1; // lint: allow-literal(probability, test design)
 
 /// `SplitMix64`: a seeded, platform-independent generator (no external RNG in the oracle path).
@@ -108,6 +112,7 @@ fn bodies(sys: &FlatSystem) -> (Vec<[f64; 3]>, Vec<[f64; 3]>, Vec<f64>) {
     )
 }
 
+#[cfg(feature = "simd")]
 /// Group labels: each body its own, or the Earth and the Moon sharing one (the geocentric pair).
 fn groups(sys: &FlatSystem, pair: bool) -> Vec<usize> {
     let e = sys.ids.iter().position(|&i| i == NaifId::EARTH).unwrap();

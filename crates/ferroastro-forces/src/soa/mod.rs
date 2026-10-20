@@ -15,7 +15,7 @@
 //! # FMA policy
 //! The SoA kernels contain **no fused multiply-add** and no negation (see [`Lane`]); every
 //! operation is one correctly rounded binary64 `+ − × ÷ √` or an exact select. The [`Scalar`] and
-//! [`F64x4`] (feature `simd`) instantiations are therefore bitwise identical on every target, and
+//! `F64x4` (feature `simd`) instantiations are therefore bitwise identical on every target, and
 //! a run with the feature on reproduces the run with it off bit for bit. The production pairwise
 //! kernels ([`crate::NewtonianMutual`], `ferroastro_eih::Eih`) keep their explicit `mul_add`
 //! (always fused) and are unchanged.
@@ -47,13 +47,13 @@ pub const PAD: usize = 4;
 pub enum SoaBackend {
     /// One value at a time ([`Scalar`]).
     Scalar,
-    /// Four binary64 lanes ([`F64x4`], the `wide` crate).
+    /// Four binary64 lanes (`F64x4`, the `wide` crate).
     #[cfg(feature = "simd")]
     Simd,
 }
 
 impl SoaBackend {
-    /// [`SoaBackend::Simd`] when the `simd` feature is on, [`SoaBackend::Scalar`] otherwise. The
+    /// `SoaBackend::Simd` when the `simd` feature is on, [`SoaBackend::Scalar`] otherwise. The
     /// two give identical bits.
     #[must_use]
     pub const fn preferred() -> Self {
