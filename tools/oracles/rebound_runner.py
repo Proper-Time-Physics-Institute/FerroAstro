@@ -1,6 +1,6 @@
 # SPDX-FileCopyrightText: 2026 Proper-Time Physics Institute
 # SPDX-License-Identifier: Apache-2.0
-"""REBOUND/REBOUNDx oracle runner (REF-005, stage A; REF-011 refusals).
+"""REBOUND/REBOUNDx oracle runner (REF-005, stages A and C; REF-011 refusals).
 
 Runs inside ``ci/oracles/rebound`` only. REBOUND 5.2.2 and REBOUNDx 5.1.0 are GPL-3.0: they are
 used as black boxes through their documented Python API (``Simulation``, ``add``, ``integrate``,
@@ -11,9 +11,20 @@ FerroAstro build (red-team L4).
 
 Implemented (everything else is refused by name, exit status 3):
 
-* ``mode = "n-body"``, ``[forces] newton = true`` only (stage A). ``ppn{beta,gamma}`` is refused
-  permanently: REBOUNDx ``gr_full`` has only the parameter ``c`` (beta = gamma = 1, REF-005 notes);
-  ``gr_eih`` arrives with stage C (WP21) and is refused until then;
+* ``mode = "n-body"`` with ``[forces] newton = true`` (stage A), plus (stage C, WP21) ``gr_eih``,
+  mapped to the REBOUNDx effect ``gr_full`` ("first-order post-newtonian effects from all bodies",
+  Newhall et al. 1983), and ``gr_1pn_central``, mapped to ``gr`` (single dominant mass,
+  Anderson et al. 1975; the Sun must be ``particles[0]``). A ``gr_1pn_central`` scenario also
+  yields a second series with ``gr_potential`` (Nobili & Roxburgh 1986), written next to the
+  primary one as ``<scenario>.rebound.gr_potential.states.csv`` with its own manifest entry. The
+  speed of light is ``c = CLIGHT * 86400 / AU`` au/day from header.440, and the runner refuses a
+  header whose BETA or GAMMA is not 1. Only the documented API is used: ``reboundx.Extras``,
+  ``load_force``, ``add_force`` and ``params["c"]`` (REBOUNDx docs, "Astrophysical Effects" and
+  the Python quick-start);
+* ``ppn{beta,gamma}`` is refused permanently: REBOUNDx ``gr_full`` has only the parameter ``c``
+  (beta = gamma = 1, REF-005 notes; beta, gamma != 1 is validated analytically, REF-010).
+  ``lense_thirring``, ``sun_j2`` and the small-body switches are refused, and so is test-particle
+  mode with any switch;
 * ``initial_conditions.source = "de440-header"`` (the runner reads ``header.440`` itself);
 * ``integrator.name = "ias15"`` in ``f64`` with ``epsilon`` and ``dt0_days``;
 * ``output.cadence_days`` samples (exact output times) and ``output.sample_bodies``.
@@ -41,8 +52,11 @@ from oracles import common
 from oracles.header440 import BODIES, NAIF, Header440
 
 TOOL = "rebound"
-#: Switches this runner implements (stage A).
-SUPPORTED_SWITCHES = frozenset({"newton"})
+#: Switches this runner implements (stage A: newton; stage C: the two relativistic switches).
+SUPPORTED_SWITCHES = frozenset({"newton", "gr_eih", "gr_1pn_central"})
+#: REBOUNDx effect of each relativistic switch (primary series), and the extra variants per switch.
+REBOUNDX_EFFECT: dict[str, str] = {"gr_eih": "gr_full", "gr_1pn_central": "gr"}
+EXTRA_VARIANTS: dict[str, tuple[str, ...]] = {"gr_eih": (), "gr_1pn_central": ("gr_potential",)}
 SECONDS_PER_DAY = 86400.0
 DAYS_PER_JULIAN_YEAR = 365.25
 STATE_COLUMNS = ("t_days", "naif", "x_km", "y_km", "z_km", "vx_km_s", "vy_km_s", "vz_km_s")
@@ -57,7 +71,19 @@ def unsupported_options(s: Mapping[str, Any]) -> list[tuple[str, bool, str]]:
     known_bodies = set(BODIES) | {"Earth", "Moon"}
     bodies = [str(b) for b in s.get("bodies", [])]
     forces = s.get("forces", {})
+    central_gr = forces.get("gr_1pn_central") is True
     return [
+        (
+            "forces.gr_1pn_central",
+            not (central_gr and forces.get("gr_eih") is True),
+            "gr_eih already contains the Sun's 1PN field; REBOUNDx gr and gr_full are not combined",
+        ),
+        (
+            "forces.gr_1pn_central",
+            not central_gr or (bodies[:1] == ["Sun"] and s.get("central_body") == "Sun"),
+            "REBOUNDx gr treats particles[0] as the dominant mass: the Sun must be the first body "
+            "and the central body",
+        ),
         (
             "forces.newton",
             forces.get("newton") is True,
@@ -100,8 +126,6 @@ def unsupported_options(s: Mapping[str, Any]) -> list[tuple[str, bool, str]]:
 SWITCH_REASONS: dict[str, str] = {
     "ppn": "REBOUNDx gr_full has only the parameter c (beta = gamma = 1); "
     "beta, gamma != 1 is validated analytically (REF-010)",
-    "gr_eih": "REBOUNDx gr_full is wired with stage C (WP21)",
-    "gr_1pn_central": "REBOUNDx gr/gr_potential are wired with stage C (WP21)",
     "sun_j2": "REBOUNDx gravitational_harmonics is not wired yet",
     "lense_thirring": "REBOUNDx has no solar Lense-Thirring term in this runner",
     "asteroids": "the REF-003 small-body states are not an input of this runner",
@@ -135,15 +159,43 @@ def sample_times(span_days: float, cadence_days: float | None) -> list[float]:
     return times
 
 
+def relativity_switch(scenario: Mapping[str, Any]) -> str | None:
+    """Return the relativistic switch a (checked) scenario requests, if any."""
+    forces = scenario.get("forces", {})
+    on = [sw for sw in REBOUNDX_EFFECT if forces.get(sw) is True]
+    return on[0] if on else None
+
+
+def speed_of_light_au_per_day(header: Header440) -> float:
+    """``c`` in au/day from header.440 (CLIGHT km/s, AU km), refusing BETA, GAMMA != 1."""
+    for name in ("BETA", "GAMMA"):
+        if header.value(name) != 1.0:
+            raise common.Refusal(
+                TOOL,
+                "header.440",
+                [
+                    (
+                        name,
+                        f"REBOUNDx gr effects assume {name} = 1; "
+                        f"header.440 has {header.value(name)}",
+                    )
+                ],
+            )
+    return header.value("CLIGHT") * SECONDS_PER_DAY / header.value("AU")
+
+
 def fmt(x: float) -> str:
     """Shortest round-trip decimal of a binary64 (``repr``)."""
     return repr(float(x))
 
 
 def run(
-    scenario: Mapping[str, Any], header: Header440
+    scenario: Mapping[str, Any], header: Header440, effect: str | None = None
 ) -> tuple[list[list[str]], dict[str, str], str]:
-    """Integrate; return the CSV rows, extra manifest fields and the engine version string."""
+    """Integrate with the REBOUNDx ``effect`` (``None``: Newtonian).
+
+    Return the CSV rows, the extra manifest fields and the engine version string.
+    """
     import rebound  # noqa: PLC0415 - GPL engine, present only inside the oracle image
     import reboundx  # noqa: PLC0415
 
@@ -162,6 +214,14 @@ def run(
     for b in bodies:
         gm, p, v = header.state(b)
         sim.add(m=gm, x=p[0], y=p[1], z=p[2], vx=v[0], vy=v[1], vz=v[2])
+    c_au_day: float | None = None
+    rebx: Any = None
+    if effect is not None:
+        c_au_day = speed_of_light_au_per_day(header)
+        rebx = reboundx.Extras(sim)
+        force = rebx.load_force(effect)
+        rebx.add_force(force)
+        force.params["c"] = c_au_day
     out = scenario.get("output", {})
     keep = [str(b) for b in out.get("sample_bodies", bodies)]
     cadence = out.get("cadence_days")
@@ -197,9 +257,19 @@ def run(
         "steps_done": str(getattr(sim, "steps_done", "n/a")),
         "relative_energy_change": fmt((e1 - e0) / abs(e0)),
         "gravity": str(getattr(sim, "gravity", "n/a")),
+        "reboundx_effect": effect or "none",
+        "c_au_per_day": "n/a" if c_au_day is None else fmt(c_au_day),
+        "force_is_velocity_dependent": str(getattr(sim, "force_is_velocity_dependent", "n/a")),
     }
+    del rebx  # the Extras object must outlive the integration
     version = f"rebound {rebound.__version__}, reboundx {reboundx.__version__}"
     return rows, extra, version
+
+
+def series_name(scenario_name: str, variant: str | None) -> str:
+    """File name of a series: the primary one, or a named REBOUNDx variant next to it."""
+    infix = "" if variant is None else f".{variant}"
+    return f"{scenario_name}.rebound{infix}.states.csv"
 
 
 def main(argv: Sequence[str] | None = None) -> int:
@@ -209,14 +279,21 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument("--header", type=Path, required=True)
     parser.add_argument("--out-dir", type=Path, required=True)
     args = parser.parse_args(argv)
+    # (file variant, REBOUNDx effect): the primary series first, then the extra variants.
+    runs: list[tuple[str | None, str | None]]
+    results: list[tuple[str | None, list[list[str]], dict[str, str], str, float]] = []
     try:
         scenario = common.load_scenario(args.scenario)
         check(scenario)
         digest, runner_sha = common.runner_identity()
         header = Header440.read(args.header)
-        started = time.perf_counter()
-        rows, extra, version = run(scenario, header)
-        wall = time.perf_counter() - started
+        sw = relativity_switch(scenario)
+        runs = [(None, None if sw is None else REBOUNDX_EFFECT[sw])]
+        runs += [(v, v) for v in (EXTRA_VARIANTS[sw] if sw is not None else ())]
+        for variant, effect in runs:
+            started = time.perf_counter()
+            rows, extra, version = run(scenario, header, effect)
+            results.append((variant, rows, extra, version, time.perf_counter() - started))
     except common.Refusal as r:
         print(r, file=sys.stderr)
         return common.REFUSAL_EXIT
@@ -224,48 +301,56 @@ def main(argv: Sequence[str] | None = None) -> int:
         print(f"SETUP ERROR: {e}", file=sys.stderr)
         return common.SETUP_EXIT
     args.out_dir.mkdir(parents=True, exist_ok=True)
-    name = f"{scenario['name']}.rebound.states.csv"
-    path = args.out_dir / name
-    # REUSE-IgnoreStart (licence lines written into the CSV, not this file's licence)
-    lines = [
-        "# SPDX-FileCopyrightText: 2026 Proper-Time Physics Institute",
-        "# SPDX-License-Identifier: Apache-2.0",
-        # REUSE-IgnoreEnd
-        f"# REBOUND IAS15 states of scenario {scenario['name']} (REF-005 stage A oracle output)",
-        f"# engine: {version}",
-        f"# header_sha256: {common.sha256_file(args.header)}",
-        f"# epoch_jd_tdb: {fmt(header.value('JDEPOC'))}",
-        f"# au_km: {fmt(header.value('AU'))}",
-        "# units: t_days TDB days since epoch; position km; velocity km/s; SSB-centred ICRF axes",
-        ",".join(STATE_COLUMNS),
-    ]
-    path.write_text("\n".join(lines + [",".join(r) for r in rows]) + "\n", encoding="utf-8")
     here = Path(__file__).resolve().parent
-    entry = common.ManifestEntry(
-        file=name,
-        tool=TOOL,
-        version=version,
-        image_digest=digest,
-        runner_sha=runner_sha,
-        runner_sha256=common.sha256_files(sorted(here.glob("*.py"))),
-        input_sha256={
-            args.scenario.name: common.sha256_file(args.scenario),
-            args.header.name: common.sha256_file(args.header),
-        },
-        cpu=common.cpu_model(),
-        wall_clock_s=round(wall, 3),
-        output_sha256=common.sha256_file(path),
-        units="t_days: TDB days since epoch_jd_tdb; position: km; velocity: km/s",
-        frame="ICRF axes, solar-system-barycentric (DE440 header.440 frame)",
-        time_scale="TDB",
-        scenario=str(scenario["name"]),
-        generated_utc=common.utc_now(),
-        command="python -m oracles.rebound_runner "
-        + " ".join(sys.argv[1:] if argv is None else argv),
-        extra=extra,
-    )
-    common.write_manifest(args.out_dir, [entry])
-    print(f"wrote {path} ({len(rows)} rows, {wall:.2f} s); {extra}")
+    entries: list[common.ManifestEntry] = []
+    for variant, rows, extra, version, wall in results:
+        name = series_name(str(scenario["name"]), variant)
+        path = args.out_dir / name
+        stage = "C" if extra["reboundx_effect"] != "none" else "A"
+        # REUSE-IgnoreStart (licence lines written into the CSV, not this file's licence)
+        lines = [
+            "# SPDX-FileCopyrightText: 2026 Proper-Time Physics Institute",
+            "# SPDX-License-Identifier: Apache-2.0",
+            # REUSE-IgnoreEnd
+            f"# REBOUND IAS15 states of scenario {scenario['name']} "
+            f"(REF-005 stage {stage} oracle output)",
+            f"# engine: {version}",
+            f"# reboundx_effect: {extra['reboundx_effect']}",
+            f"# header_sha256: {common.sha256_file(args.header)}",
+            f"# epoch_jd_tdb: {fmt(header.value('JDEPOC'))}",
+            f"# au_km: {fmt(header.value('AU'))}",
+            "# units: t_days TDB days since epoch; position km; velocity km/s; "
+            "SSB-centred ICRF axes",
+            ",".join(STATE_COLUMNS),
+        ]
+        path.write_text("\n".join(lines + [",".join(r) for r in rows]) + "\n", encoding="utf-8")
+        entries.append(
+            common.ManifestEntry(
+                file=name,
+                tool=TOOL,
+                version=version,
+                image_digest=digest,
+                runner_sha=runner_sha,
+                runner_sha256=common.sha256_files(sorted(here.glob("*.py"))),
+                input_sha256={
+                    args.scenario.name: common.sha256_file(args.scenario),
+                    args.header.name: common.sha256_file(args.header),
+                },
+                cpu=common.cpu_model(),
+                wall_clock_s=round(wall, 3),
+                output_sha256=common.sha256_file(path),
+                units="t_days: TDB days since epoch_jd_tdb; position: km; velocity: km/s",
+                frame="ICRF axes, solar-system-barycentric (DE440 header.440 frame)",
+                time_scale="TDB",
+                scenario=str(scenario["name"]),
+                generated_utc=common.utc_now(),
+                command="python -m oracles.rebound_runner "
+                + " ".join(sys.argv[1:] if argv is None else argv),
+                extra=extra,
+            )
+        )
+        print(f"wrote {path} ({len(rows)} rows, {wall:.2f} s); {extra}")
+    common.write_manifest(args.out_dir, entries)
     return 0
 
 

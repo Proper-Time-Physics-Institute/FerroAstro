@@ -9,7 +9,8 @@
 #   tools/oracles/nightly.sh [--open-issue] [--skip-rust]
 #
 # 1. Every N-body oracle (rebound, swiftest, mercury6, orekit) on every ci/scenarios/*.toml: a scenario a
-#    runner does not implement is refused (exit 3, REF-011) and recorded as such; plus the erfa
+#    runner does not implement is refused (exit 3, REF-011) and recorded as such (stage-c-* and
+#    oracle-c-* run on rebound only, WP21); plus the erfa
 #    and jpl images. Outputs: $FA_ORACLE_OUT_DIR/<tool>/<scenario>/ (default target/oracle-out),
 #    plain files with MANIFEST.json. Images are built locally and never pushed (LIC-002); no
 #    FerroAstro build enters them (run_oracles.sh stages the contexts).
@@ -114,6 +115,9 @@ for tool in rebound swiftest mercury6 orekit; do
     name="$(basename "$s" .toml)"
     # bench-* scenarios belong to the speed-table harness (tools/bench/speed_table.sh, WP18).
     [[ "$name" == bench-* ]] && continue
+    # Stage C (WP21) is REBOUNDx's: the other N-body oracles' GR is covered by the C-lite pair, and
+    # their Newtonian runs of the 2000-yr stage C legs would add hours without adding a check.
+    [[ "$tool" != rebound && ( "$name" == stage-c-* || "$name" == oracle-c-* ) ]] && continue
     rm -rf "${out:?}/$tool/$name"
     log="$out/$tool-$name.log"
     t0=$SECONDS
