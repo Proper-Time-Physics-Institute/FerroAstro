@@ -1,0 +1,78 @@
+# SPDX-FileCopyrightText: 2026 Proper-Time Physics Institute
+# SPDX-License-Identifier: Apache-2.0
+#
+# WP26 (SoA / SIMD force kernels, NUM-021, NUM-022, TST-005): pre-registered bounds of the WP26
+# checks, fixed in the WP26 plan (docs/strategy/IMPLEMENTATION-NOTES.md, "WP26 ... Plan and
+# pre-registered checks") on 2026-10-20 22:20 UTC, before any WP26 code or run, and committed
+# before the tests that read them. Upper bounds: value 0 with tolerance abs = bound.
+schema_version = 1
+
+[[vector]]
+id = "SIMD-INV-R3-MAX-ULP"
+requirement = ["NUM-021"]
+quantity = "max over inputs of |y - r^-3| / ulp(r^-3) for the SoA kernels' exact inverse cube (Newton-refined 1/(r2 sqrt r2) with Dekker two-products, no FMA), against a 256-bit astro-float reference, over 100000 seeded log-uniform r2 in [1e-6, 1e30] km^2 and every header.440 Major pair"
+value = 0.0
+unit = "ulp"
+kind = "analytic"
+source = "Error analysis of the refinement: y0 = RN(1/p) with p + p' = r2 s exactly and the sqrt residual e = r2 - s^2 exact; one Newton step for 1/(p + p' + s e / 2) leaves O(u^2) relative error before the final rounding (<= 1/2 ulp)."
+citation = "FerroAstro NUM-021 (exact 1/r^3 <= 1 ulp); Dekker 1971, Numer. Math. 18, 224 (two-product with Veltkamp splitting); Higham 2002, Accuracy and Stability of Numerical Algorithms, 2nd ed., SIAM, Sec. 2.2 and 4.2"
+retrieved = "2026-10-20"
+tolerance = { abs = 1.0 }
+tolerance_rationale = "NUM-021's statement: <= 1 ulp. The analysis gives 1/2 ulp + O(u^2); the bound is the requirement's, not the analysis's, so a correctly rounded-or-faithful result passes and a dropped correction term (>= 1 ulp on many inputs) fails."
+verified_by = "WP26 builder agent, 2026-10-20: fixed in the WP26 plan before the first run."
+
+[[vector]]
+id = "SIMD-SOA-NEWTON-ERROR-BOUND-RATIO"
+requirement = ["NUM-021", "DEP-007"]
+quantity = "max over bodies i and components k of |a_soa - a_DD| / ((m + 9) u sum_j |t_ij|), the SoA Newtonian mutual acceleration against NewtonianMutual evaluated in double-double on the same f64 inputs (barycentric Moon), u = 2^-53, t_ij the DD pair terms, m the number of Major bodies"
+value = 0.0
+unit = "1"
+kind = "analytic"
+source = "Forward error bound of the SoA kernel: each pair term carries <= 10 u relative error (difference rounding, three-rounding r^2, <= 1 ulp inverse cube, two products) and the recursive sum of m - 1 terms adds <= (m - 1) u sum |t|; total < (m + 9) u sum |t|."
+citation = "Higham 2002, Accuracy and Stability of Numerical Algorithms, 2nd ed., SIAM, Sec. 3.1 (products) and 4.2 (recursive summation); FerroAstro NUM-021, DEP-007"
+retrieved = "2026-10-20"
+tolerance = { abs = 1.0 }
+tolerance_rationale = "A rigorous forward bound, so the ratio must not exceed 1. A formula error in the SoA kernel (wrong GM, sign or exponent) is O(1) relative and exceeds it by ~1e13."
+verified_by = "WP26 builder agent, 2026-10-20: fixed in the WP26 plan before the first run."
+
+[[vector]]
+id = "SIMD-SOA-EIH-REL"
+requirement = ["NUM-021", "DEP-007"]
+quantity = "max over Major bodies of |c_soa - c_DD| / |c_DD|, the SoA EIH c^-2 correction (Park et al. 2021 Eq. 27 minus its Newtonian part) against Eih evaluated in double-double on the same f64 inputs, header.440 states (N = 10, 11, 16) and PPN (1, 1), (1, 0.9)"
+value = 0.0
+unit = "1"
+kind = "analytic"
+source = "f64 rounding ~1e-16 per term of the S1/S2/S3 sums; the bound admits a cancellation factor of 1e4 between the summed terms and the correction."
+citation = "Park et al. 2021, AJ 161, 105, Eq. 27; FerroAstro NUM-021, DEP-007; WP26 plan check P3b"
+retrieved = "2026-10-20"
+tolerance = { abs = 1.0e-12 }
+tolerance_rationale = "Ulp-level kernels on both sides; a coefficient or sign slip in the SoA transcription is >= 1e-3 relative. Pre-registered without a measured cancellation factor: if the cancellation exceeds 1e4 the check fails and is reported, the bound is not moved."
+verified_by = "WP26 builder agent, 2026-10-20: fixed in the WP26 plan before the first run."
+
+[[vector]]
+id = "SIMD-SOA-GEOCENTRIC-REL"
+requirement = ["NUM-021", "NUM-008"]
+quantity = "max over storage slots of |a_soa - a_pairwise| / |a_pairwise|, model accelerations of Newtonian mutual (SoA vs pairwise) + GeocentricMoon with the geocentric Earth-Moon pair, header.440 states, f64"
+value = 0.0
+unit = "1"
+kind = "analytic"
+source = "Both kernels evaluate the same sums to ulp level (relative ~1e-15 with modest cancellation); skipping the Earth-Moon pair wrongly changes the EMB slot by >= GM_Moon / r_EM^2 / |a_E| ~ 6e-3 relative."
+citation = "FerroAstro NUM-008 (geocentric Moon variables), NUM-021; WP12 NewtonianMutual pair rule; WP26 plan check P3c"
+retrieved = "2026-10-20"
+tolerance = { abs = 1.0e-13 }
+tolerance_rationale = "Two orders above the expected ulp-level difference and ten orders below a pair-rule error."
+verified_by = "WP26 builder agent, 2026-10-20: fixed in the WP26 plan before the first run."
+
+[[vector]]
+id = "SIMD-SOA-DE440-RESIDUAL-CONSISTENCY"
+requirement = ["NUM-021", "REF-001"]
+quantity = "| max_t |r_soa - r_de440| - max_t |r_pairwise - r_de440| | for Mercury (barycentric), EIH + solar J2 Sun + 8 planets + geocentric Moon from header.440, 10 Julian years, 10-day samples, IAS15 f64, force_kernel soa vs pairwise, against de440.bsp"
+value = 0.0
+unit = "km"
+kind = "analytic"
+source = "Both runs integrate the same model from the same ICs; the kernels differ at the ulp level, which grows by round-off to << 1 m over 10 yr (WP24 B3 f64 round-off); by the triangle inequality the residual maxima differ by at most the soa-pairwise distance."
+citation = "JPL de440.bsp (Park et al. 2021, AJ 161, 105); WP24 check B5 (same configuration and bound); WP26 plan check D1"
+retrieved = "2026-10-20"
+tolerance = { abs = 1.0e-3 }
+tolerance_rationale = "The WP24 B5 consistency bound (1 m) for the same configuration, carried over."
+verified_by = "WP26 builder agent, 2026-10-20: fixed in the WP26 plan before the first run."
