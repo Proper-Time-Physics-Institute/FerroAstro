@@ -1,0 +1,106 @@
+# SPDX-FileCopyrightText: 2026 Proper-Time Physics Institute
+# SPDX-License-Identifier: Apache-2.0
+#
+# WP24 (ferroastro-abm): pre-registered bounds of the ABM checks, fixed in the WP24 plan
+# (docs/strategy/IMPLEMENTATION-NOTES.md, "WP24 ... Plan and pre-registered checks") on
+# 2026-10-20 13:10 UTC, before any ABM code or run, and committed before the tests that read them.
+# Upper bounds: value 0 with tolerance abs = bound.
+schema_version = 1
+
+[[vector]]
+id = "ABM-DP8-ORDER-SLOPE"
+requirement = ["NUM-002"]
+quantity = "observed order minus 8 of the DP8 (DOP853 8th-order, 12-stage) start-up formula: log2(err(h)/err(h/2)) - 8 for the unit harmonic oscillator integrated over one period"
+value = 0.0
+unit = "1"
+kind = "analytic"
+source = "An order-8 Runge-Kutta formula has global error C h^8 + O(h^9); halving h divides it by 2^8 in the asymptotic range."
+citation = "Hairer, Norsett & Wanner 1993, Solving Ordinary Differential Equations I, 2nd ed., Springer, Sec. II.3 (order) and II.10 (DOP853); Subbotin, Kodukov & Pavlov 2023, CeMDA, doi:10.1007/s10569-023-10139-2 (DP8 start-up at h/8)"
+retrieved = "2026-10-20"
+tolerance = { abs = 0.5 }
+tolerance_rationale = "The +/-0.5 order window of the WP24 task text for the ABM convergence test, applied to the start-up formula too. A wrong coefficient drops the order to <= 7 (slope 7 or less); pre-asymptotic or round-off-limited step pairs are excluded by the test design (errors >= 1e3 x round-off)."
+verified_by = "WP24 builder agent, 2026-10-20: fixed in the WP24 plan before the first run."
+
+[[vector]]
+id = "ABM-ORDER-SLOPE"
+requirement = ["NUM-002"]
+quantity = "observed order minus configured order p of fixed-step ABM (p-step Adams-Bashforth predictor, Adams-Moulton corrector of order p, PECE and P(EC)^2) on a dimensionless Kepler orbit with Mercury's eccentricity: log2(err(h)/err(h/2)) - p, p in {8, 10, 12, 13, 14}"
+value = 0.0
+unit = "1"
+kind = "analytic"
+source = "A convergent linear multistep method of order p with an order-p predictor-corrector pair has global error C h^p in the asymptotic range (Dahlquist; HNW I Sec. III.2-III.4)."
+citation = "Hairer, Norsett & Wanner 1993, Solving ODEs I, Sec. III.1 (Adams methods, P(EC)^m E^(1-t) modes) and III.4 (convergence); FerroAstro NUM-002; WP24 task text"
+retrieved = "2026-10-20"
+tolerance = { abs = 0.5 }
+tolerance_rationale = "WP24 task text: slope within +/-0.5 of the configured order. Steps per orbit are chosen (scan reported in IMPLEMENTATION-NOTES WP24) so that err(h/2) >= 1e3 x the f64 round-off floor and the pair is asymptotic; the bound is not moved by that choice."
+verified_by = "WP24 builder agent, 2026-10-20: fixed in the WP24 plan before the first run."
+
+[[vector]]
+id = "ABM-KEPLER-ENERGY-REL"
+requirement = ["NUM-002", "DEP-007"]
+quantity = "max |E(t) - E(0)| / |E(0)| of a Keplerian orbit with Mercury's SW92 a and e and mu = DE440 GM_Sun over 1000 orbits, ABM13 (PECEC and PECE), h = 1/16 d, f64, compensated state update"
+value = 0.0
+unit = "1"
+kind = "analytic"
+source = "Two-body energy is conserved exactly; the integrated error is truncation plus round-off. Truncation ~ (n h)^14 ~ 1e-30 per step at h = 1/16 d, so round-off dominates: random walk ~ sqrt(1.4e6) x 1e-16 ~ 1e-13, fully biased ~ 1.4e6 x 1e-16 ~ 1.4e-10."
+citation = "Brouwer 1937, AJ 46, 149; Hairer, Norsett & Wanner 1993, Solving ODEs I, Sec. III.1; WP24 plan check A3"
+retrieved = "2026-10-20"
+tolerance = { abs = 1.0e-10 }
+tolerance_rationale = "Below the fully biased round-off estimate (1.4e-10) and 1000x above the random-walk estimate; any coefficient error >~ 1e-12 relative or an order defect produces a truncation error far above it."
+verified_by = "WP24 builder agent, 2026-10-20: fixed in the WP24 plan before the first run."
+
+[[vector]]
+id = "ABM-KEPLER-PHASE-RAD"
+requirement = ["NUM-002", "DEP-007"]
+quantity = "max along-track angle between the integrated and the analytic (ferroastro-analytic Kepler) position of the A3 orbit over 1000 orbits, ABM13 (PECEC and PECE), h = 1/16 d, f64, compensated"
+value = 0.0
+unit = "rad"
+kind = "analytic"
+source = "Brouwer 1937: the phase error is the time integral of the mean-motion error. Random walk: ~ 1e-16 x sqrt(N) x n T ~ 1e-9 rad; fully biased: ~ 1e-16 x N x n T / 2 ~ 4e-7 rad (N = 1.4e6 steps, n T = 2 pi x 1000)."
+citation = "Brouwer 1937, AJ 46, 149; Murray & Dermott 1999, Solar System Dynamics, ch. 2 (Kepler propagation); WP24 plan check A3"
+retrieved = "2026-10-20"
+tolerance = { abs = 1.0e-6 }
+tolerance_rationale = "2.5x the fully biased round-off estimate (about 58 m along-track at Mercury's a); truncation is ~1e-30 per step, so a failure means a coefficient, history or dense-output defect."
+verified_by = "WP24 builder agent, 2026-10-20: fixed in the WP24 plan before the first run."
+
+[[vector]]
+id = "ABM-EVENT-TIME-S"
+requirement = ["NUM-010"]
+quantity = "perihelion event-time error of ABM13 PECEC dense output: double-double run, |t_event - t_analytic| over 10 orbits; f64 run, |r.v| / |d(r.v)/dt| of the dense-output state at the located event"
+value = 0.0
+unit = "s"
+kind = "analytic"
+source = "NUM-010 acceptance: event location for r.v = 0 to <= 1e-6 s. Kepler perihelion times from aphelion are P/2 + kP exactly."
+citation = "FerroAstro NUM-010 (docs/requirements/NUM.md); Murray & Dermott 1999, ch. 2; WP24 plan check A5"
+retrieved = "2026-10-20"
+tolerance = { abs = 1.0e-6 }
+tolerance_rationale = "NUM-010's own bound. In double-double, truncation (~(n h)^14) and round-off are far below 1e-6 s over 10 orbits, so the error measured is the interpolant's; in f64 the orbit's own round-off phase (~1e-12 rad ~ 1e-6 s) is excluded by measuring against the trajectory's own root, as the IAS15 NUM-010 test does."
+verified_by = "WP24 builder agent, 2026-10-20: fixed in the WP24 plan before the first run."
+
+[[vector]]
+id = "ABM-VS-IAS15-MERCURY-40YR-DR"
+requirement = ["NUM-002", "NUM-018"]
+quantity = "max over yearly samples of Mercury's barycentric |r_ABM - r_IAS15|, EIH Sun + 8 planets + geocentric Moon from header.440 at JDEPOC, 40 Julian years, ABM13 PECEC h = 1/16 d compensated f64 vs IAS15 (epsilon 1e-9) f64"
+value = 0.0
+unit = "km"
+kind = "analytic"
+source = "Both integrate the same model from the same ICs (same IC hash); the difference is the sum of both integrators' truncation and round-off. IAS15's tool-level difference to REBOUNDx gr_full was 0.85 m over 100 yr (WP21 S1)."
+citation = "WP24 task text (PROVISIONAL <= 1 m); Subbotin, Kodukov & Pavlov 2023, CeMDA, doi:10.1007/s10569-023-10139-2 (ABM13 PECEC, h = 1/16 d); WP24 plan check B2"
+retrieved = "2026-10-20"
+tolerance = { abs = 1.0e-3 }
+tolerance_rationale = "PROVISIONAL, from the WP24 task text. Expected a few dm (IAS15 round-off); may fail on round-off alone, which would be reported as a finding, not widened."
+verified_by = "WP24 builder agent, 2026-10-20: fixed in the WP24 plan before the first run."
+
+[[vector]]
+id = "ABM-DE440-RESIDUAL-CONSISTENCY"
+requirement = ["NUM-002", "REF-001"]
+quantity = "| max_t |r_ABM - r_de440| - max_t |r_IAS15 - r_de440| | for Mercury (barycentric), EIH + solar J2 Sun + 8 planets + geocentric Moon from header.440, 10 Julian years, 10-day samples, ABM13 PECEC h = 1/16 d and IAS15 default, against de440.bsp"
+value = 0.0
+unit = "km"
+kind = "analytic"
+source = "Both integrators solve the same model from the same ICs; their residuals against the real ephemeris (~1.44 km, WP19 C7) can differ only by their mutual difference, which B2 bounds at 1 m over 40 yr."
+citation = "JPL de440.bsp (Park et al. 2021, AJ 161, 105); WP19 check C7; WP24 plan check B5"
+retrieved = "2026-10-20"
+tolerance = { abs = 1.0e-3 }
+tolerance_rationale = "The B2 bound (1 m) carried over to the 10-yr data-tier comparison; by the triangle inequality the residual maxima differ by at most the ABM-IAS15 distance."
+verified_by = "WP24 builder agent, 2026-10-20: fixed in the WP24 plan before the first run."
