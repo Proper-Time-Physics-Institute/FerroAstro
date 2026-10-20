@@ -22,8 +22,10 @@ statement: >-
   process boundaries only.
 acceptance: >-
   cargo-deny bans (DEP-003) pass. A repository scan finds no GPL-licensed
-  source file (e.g. gr_full.c, swiftest_gr.f90) outside ci/oracles/ scripts.
-  Oracle runners exchange only files.
+  source file (e.g. gr_full.c, swiftest_gr.f90) anywhere in the repository,
+  ci/oracles/ included: ci/oracles/ holds only FerroAstro's own Apache-2.0
+  Dockerfiles and scripts, which download and install GPL software at image
+  build time. Oracle runners exchange only files.
 source: >-
   docs/strategy/journal/03-reference-implementations-ci.md §3 items 1–2 and
   LIC-001; GNU GPL FAQ.
@@ -31,31 +33,43 @@ parent: null
 related: [DEP-003, DEP-008, REF-005, REF-007, REF-008]
 notes: >-
   Golden outputs produced by GPL tools may be committed (GPL FAQ: program
-  output is not generally covered). The CI-only Dockerfiles under ci/oracles/
-  are FerroAstro's own Apache-2.0 files. Mercury6's original license is
-  UNVERIFIED and is treated as GPL.
+  output is not generally covered). The CI-only Dockerfiles and install
+  scripts under ci/oracles/ are FerroAstro's own Apache-2.0 files; GPL source is
+  never vendored there either. Mercury6's original license is UNVERIFIED and is
+  treated as GPL. Python under tools/ SHALL NOT take GPL runtime dependencies
+  (e.g. rebound); a pip-licenses guard in the tools/ CI job enforces this
+  (STD-009).
 ```
 
 ### LIC-002 — GPL oracle images are not release artifacts
 
 ```yaml
 id: LIC-002
-title: "GPL oracle images are never published as FerroAstro release artifacts"
+title: "GPL oracle images are never published publicly or as FerroAstro release artifacts"
 status: draft
 criticality: high
 verification: inspection
 statement: >-
-  GPL oracle images SHALL NOT be published as FerroAstro release artifacts,
-  and no combined FerroAstro + GPL-oracle image SHALL be released.
+  GPL oracle images SHALL NOT be published publicly or as FerroAstro release
+  artifacts. They SHALL be kept in a private GHCR registry or rebuilt (with
+  caching) in CI (maintainer decision 2026-10-14). No combined FerroAstro +
+  GPL-oracle image SHALL be built or released (LIC-005).
 acceptance: >-
-  The release workflow's artifact list contains no ci/oracles/ image; GHCR
-  oracle images are tagged and documented as CI-only.
+  The release workflow's artifact list contains no ci/oracles/ image; every
+  GHCR oracle package has private visibility, or CI rebuilds the image from
+  its cached layers instead of pulling a public one; oracle images are
+  documented as CI-only.
 source: >-
   docs/strategy/journal/03-reference-implementations-ci.md §3 item 1 and
-  LIC-002.
+  LIC-002; docs/strategy/journal/09-red-team-review.md (L3).
 parent: null
-related: [CI-001, DEP-005]
-notes: null
+related: [CI-001, DEP-005, LIC-005]
+notes: >-
+  A public image would distribute compiled REBOUND/REBOUNDx/ASSIST/Swiftest
+  and trigger GPLv3 §6 obligations (Corresponding Source or a written offer).
+  It would also redistribute Mercury6, the SOFA tarball and de440.bsp, whose
+  terms are UNVERIFIED (OI-18, OI-25). Engineering guidance, not legal
+  advice.
 ```
 
 ### LIC-003 — No JPL, SOFA or NOVAS files in the repository
@@ -94,10 +108,16 @@ criticality: high
 verification: inspection
 statement: >-
   Any routine ported into Rust from a time/frame library SHALL come from ERFA
-  (BSD-3-Clause), not from SOFA. Attribution SHALL go in NOTICE.
+  (BSD-3-Clause), not from SOFA. Each ported file SHALL carry
+  an SPDX license-identifier tag of `Apache-2.0 AND BSD-3-Clause`, the ERFA (NumFOCUS
+  Foundation) copyright and the BSD-3-Clause disclaimer; attribution SHALL also
+  go in NOTICE, and LICENSES/BSD-3-Clause.txt SHALL exist before the first
+  port lands. SOFA/IAU names SHALL NOT be used to promote FerroAstro (BSD-3
+  clause 3).
 acceptance: >-
-  Each ported routine cites its ERFA source; NOTICE carries the ERFA BSD-3
-  attribution.
+  Each ported routine cites its ERFA source and its file carries the SPDX
+  expression, ERFA copyright and disclaimer; NOTICE carries the ERFA BSD-3
+  attribution; `reuse lint` passes with LICENSES/BSD-3-Clause.txt present.
 source: >-
   docs/strategy/journal/03-reference-implementations-ci.md §3 item 4 and
   LIC-004.
@@ -107,4 +127,35 @@ notes: >-
   OVERLAP with DEP-009, which is AUTHORITATIVE (adds no-iau-prefix naming and
   ERFA test-vector reproduction). SOFA Fortran remains usable as an oracle
   only. The SOFA licence (SPDX SOFA) requires derived works to be renamed.
+  Per-file notice added 2026-10-14 (red-team L8, Journal #9).
+```
+
+### LIC-005 — GPL oracle containers never contain a FerroAstro build
+
+```yaml
+id: LIC-005
+title: "A GPL oracle container never contains a FerroAstro build; exchange is files between separate jobs"
+status: draft
+criticality: high
+verification: inspection
+statement: >-
+  No container image or CI job that runs GPL oracle code SHALL contain,
+  install, import or execute a FerroAstro build (crate, binary or PyO3 wheel).
+  GPL oracle runs and FerroAstro runs SHALL be separate jobs that exchange only
+  files (scenario in; state vectors and goldens out) passed as workflow
+  artifacts.
+acceptance: >-
+  Inspection of every ci/oracles/ Dockerfile and oracle workflow finds no
+  FerroAstro artifact installed, mounted or imported in a GPL oracle image or
+  job; each oracle job and each FerroAstro job is separate and passes data only
+  as files.
+source: >-
+  docs/strategy/journal/09-red-team-review.md (L4);
+  docs/strategy/journal/03-reference-implementations-ci.md §3; GNU GPL FAQ.
+parent: null
+related: [LIC-001, LIC-002, CI-001, CI-002, REF-005, REF-007]
+notes: >-
+  The process-boundary argument of LIC-001 fails if one runner imports both
+  rebound and a FerroAstro PyO3 wheel: that makes a combined GPLv3 work.
+  Engineering guidance, not legal advice.
 ```

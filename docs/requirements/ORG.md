@@ -113,7 +113,7 @@ parent: ORG-003
 related: [AGT-001]
 notes: >-
   Journal #6: start with tools/trace.py (to be built in M0, ~150 lines per
-  Journal #5) and write ADR 000x-requirements-tooling.md evaluating StrictDoc
+  Journal #5) and write ADR-0010 (docs/adr/0010-requirements-tooling.md) evaluating StrictDoc
   and OpenFastTrace, revisited at M2. Their fit is UNVERIFIED. Test citation
   syntax is `/// Verifies: <ID>` (Rust) and `# Verifies: <ID>` (Python);
   Journal #5's TL;DR form `// REQ: <ID>` is superseded.
@@ -139,11 +139,17 @@ source: >-
 parent: null
 related: [ORG-003]
 notes: >-
-  Seed ADRs (Journal #5): 0000 use-madr, 0001 units-and-frames (Journal #6:
-  home-grown newtypes, uom not used), 0002 time scales, 0003 reference
-  implementations, 0004 test-vector provenance, 0005 CLA mechanism (now: DCO
-  now, CLA deferred), 0006 MSRV, 0007 AGENTS.md canonical. Journal #6 adds
-  000x-requirements-tooling.md.
+  ADRs as filed in docs/adr/: 0000 use-madr, 0001
+  units-frames-time-scales-as-newtypes (Journal #6: home-grown newtypes, uom
+  not used), 0002 real-scalar-and-precision-modes, 0003
+  time-scales-hifitime-plus-erfa-port, 0004 test-vector-provenance-format,
+  0005 contributions-dco-now-cla-later, 0006 toolchain-and-msrv, 0007
+  agents-md-canonical, 0008 integrator-strategy, 0009
+  reference-oracles-and-gpl-isolation, 0010 requirements-tooling (the
+  "000x-requirements-tooling" placeholder of Journal #6), 0011
+  precession-observable-and-frames, 0012 special-relativity-rungs, 0013
+  benchmark-and-long-run-infrastructure. Journal #5's proposed seed numbering
+  (e.g. 0002 time scales, 0003 reference implementations) is superseded.
 ```
 
 ### ORG-006 — Milestones and label taxonomy

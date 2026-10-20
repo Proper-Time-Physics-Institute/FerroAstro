@@ -31,7 +31,8 @@ notes: >-
   DEP-001 to DEP-003 are AUTHORITATIVE for license policy content; STD-006 is
   the CI gate that enforces it. cargo-deny must check the actual license files,
   not only the crates.io SPDX field (rmcp: GitHub reports NOASSERTION; sofars:
-  LICENSE carries extra SOFA text).
+  LICENSE carries extra SOFA text). cargo-deny reads LICENSE files only when
+  Cargo.toml declares no `license`, so this needs the DEP-015 clarify entries.
 ```
 
 ### DEP-002 — License allow-list
@@ -44,25 +45,32 @@ criticality: high
 verification: test
 statement: >-
   The license allow-list SHALL be Apache-2.0, Apache-2.0 WITH LLVM-exception,
-  MIT, BSD-2-Clause, BSD-3-Clause, ISC, Zlib, Unicode-3.0 / Unicode-DFS-2016,
-  CC0-1.0 and MPL-2.0. MPL-2.0 SHALL be allowed only for crates named in a
-  reviewed exception list, initially `hifitime` (production) and `anise`
-  (**dev-dependency / test oracle only** until the SOFA terms reaching it via
-  `sofars` are cleared, OI-16; maintainer decision 2026-10-14).
+  MIT, BSD-2-Clause, BSD-3-Clause, ISC, Zlib, Unicode-3.0 / Unicode-DFS-2016
+  and CC0-1.0. MPL-2.0 SHALL NOT be on the allow-list; it SHALL be permitted
+  only through per-crate exceptions for reviewed crates, initially `hifitime`
+  (production) only.
 acceptance: >-
-  deny.toml contains exactly this allow-list and an MPL-2.0 exception list of
-  {hifitime, anise}. A canary MPL-2.0 crate not on the exception list fails
-  `cargo deny check`.
+  deny.toml `allow` contains exactly this list (no MPL-2.0) and the MPL-2.0
+  exception list is {hifitime}. A canary MPL-2.0 crate not on the exception
+  list fails `cargo deny check`.
 source: >-
   docs/strategy/journal/02-rust-ecosystem-licenses.md DEP-002.
 parent: DEP-001
 related: [STD-006, DEP-004, DEP-009]
 notes: >-
   Journal #5 §3.4 shows a shorter illustrative allow-list ending in "..."; this
-  list is authoritative. anise depends on sofars, whose LICENSE carries the
-  SOFA Board header; whether SOFA terms bind sofars and hence anise users is
-  UNVERIFIED and needs a legal read before the anise exception is approved.
-  lox-* and erfa are MPL-2.0 but not on the initial exception list.
+  list is authoritative. anise is not a dependency; decision deferred to M5
+  (OI-16, OI-72, and red-team L2, Journal #9: anise 0.10.6 brings in
+  BlueOak-1.0.0 via minicbor and CDLA-Permissive-2.0 via webpki-roots, has a
+  RustSec advisory (proc-macro-error2 unmaintained), and its build.rs has a
+  build-time network path via the ureq build-dependency). anise depends on
+  sofars, whose LICENSE carries the SOFA Board header; whether SOFA terms bind
+  sofars and hence anise users is UNVERIFIED. The earlier "anise dev-only"
+  exception was removed 2026-10-14: cargo-deny licence exceptions ignore
+  dependency kind, so dev-only cannot be enforced by an exception (red-team
+  L1); adopting anise at M5 would need a second config with
+  `[graph] exclude-dev = true` and no anise exception. lox-* and erfa are
+  MPL-2.0 but not on the initial exception list.
 ```
 
 ### DEP-003 — Named crate bans
@@ -76,10 +84,10 @@ verification: test
 statement: >-
   cargo-deny SHALL ban by name, whatever their declared license:
   nyx-space / nyx_space, rug, gmp-mpfr-sys, cspice-sys, librebound-sys,
-  libassist-sys, adam_assist, rebound-rs, and thor-rs-assist (the last until
-  DEP-015 clears its provenance).
+  libassist-sys, adam_assist, rebound-rs, thor-rs-assist (until DEP-015 clears
+  its provenance) and erfars (archived, DEP-015).
 acceptance: >-
-  deny.toml [bans] lists all nine names. A canary PR adding any one fails CI.
+  deny.toml [bans] lists all ten names. A canary PR adding any one fails CI.
 source: >-
   docs/strategy/journal/02-rust-ecosystem-licenses.md Audit table, License
   risks and DEP-003.
@@ -88,8 +96,10 @@ related: [LIC-001, DEP-008, DEP-015]
 notes: >-
   nyx-space is AGPL-3.0 and would impose source-offer obligations on the
   network-served MCP server and web demo. Whether thor-rs-assist derives from
-  GPL REBOUND code is UNVERIFIED. rug may appear only as an opt-in, out-of-tree
-  dev oracle that is never shipped.
+  GPL REBOUND code is UNVERIFIED. rug is banned in every dependency graph of
+  this workspace, including dev-dependencies (cargo-deny bans apply to dev
+  deps). An arbitrary-precision oracle built on rug may live only in a separate
+  repository or in a crate excluded from the workspace, never shipped.
 ```
 
 ### DEP-004 — No vendor-and-modify of MPL files
@@ -203,7 +213,10 @@ verification: inspection
 statement: >-
   The IAS15/Gauss-Radau and symplectic integrators SHALL be clean-room
   implementations from the published papers. Contributors SHALL NOT consult
-  GPL REBOUND/ASSIST source, and the PR template SHALL say so.
+  GPL REBOUND/ASSIST source, and the PR template SHALL say so. A human or agent
+  session that has read GPL source (e.g. the Journal #3 research session that
+  read Swiftest's swiftest_gr.f90) SHALL NOT implement GR force terms or
+  integrators; that work goes to a session with no GPL source in its context.
 acceptance: >-
   The PR template contains the clean-room attestation; integrator source files
   cite only the published papers.
@@ -213,7 +226,9 @@ source: >-
 parent: null
 related: [LIC-001, DEP-003, NUM-001, NUM-004]
 notes: >-
-  No permissive, maintained IAS15 exists in Rust as of 2026-10-14.
+  No permissive, maintained IAS15 exists in Rust as of 2026-10-14. The
+  session rule was added 2026-10-14 after the red-team review (L11, Journal #9);
+  no GPL code is quoted in docs/.
 ```
 
 ### DEP-009 — ERFA-derived routines
@@ -225,13 +240,21 @@ status: draft
 criticality: high
 verification: test
 statement: >-
-  SOFA-equivalent routines SHALL be ported from ERFA (BSD-3-Clause) with its
-  copyright notice kept in NOTICE. Function names SHALL NOT use the SOFA `iau`
-  prefix. Each ported routine SHALL have a test reproducing ERFA's reference
-  values.
+  SOFA-equivalent routines SHALL be ported from ERFA (BSD-3-Clause). Each
+  ported file SHALL carry an SPDX license-identifier tag of
+  `Apache-2.0 AND BSD-3-Clause`, the ERFA copyright line (NumFOCUS Foundation, copied from the
+  ERFA LICENSE at the pinned version) and the BSD-3-Clause conditions and
+  disclaimer; NOTICE SHALL also carry the ERFA notice. LICENSES/BSD-3-Clause.txt
+  SHALL be added before the first ported file lands. Per BSD-3 clause 3, the
+  SOFA Board, IAU and ERFA contributor names SHALL NOT be used to endorse or
+  promote FerroAstro (factual attribution only). Function names SHALL NOT use
+  the SOFA `iau` prefix. Each ported routine SHALL have a test reproducing
+  ERFA's reference values.
 acceptance: >-
-  NOTICE contains the ERFA BSD-3 notice; no public symbol starts with `iau`;
-  every ported routine has a test citing its ERFA reference values.
+  Every ported file carries the SPDX expression, ERFA copyright and BSD-3
+  disclaimer; LICENSES/BSD-3-Clause.txt exists and `reuse lint` passes; NOTICE
+  contains the ERFA BSD-3 notice; no public symbol starts with `iau`; every
+  ported routine has a test citing its ERFA reference values.
 source: >-
   docs/strategy/journal/02-rust-ecosystem-licenses.md Build vs. reuse item 5
   and DEP-009.
@@ -241,7 +264,9 @@ notes: >-
   OVERLAP with LIC-004: DEP-009 is AUTHORITATIVE (more specific: NOTICE, naming,
   test vectors); LIC-004 states the same ERFA-not-SOFA policy at license level.
   sofars is a test oracle only until its SOFA-terms status is cleared
-  (UNVERIFIED).
+  (UNVERIFIED). Per-file notice requirement added 2026-10-14 (red-team L8,
+  Journal #9): BSD-3 clause 1 needs the notice, conditions and disclaimer in
+  source redistributions, so NOTICE alone is not enough.
 ```
 
 ### DEP-010 — Time-scale coverage and cross-validation
@@ -280,8 +305,8 @@ criticality: high
 verification: test
 statement: >-
   JPL DE440/DE441 SPK type-2 reading SHALL be implemented in-crate and generic
-  over `Real`. In CI it SHALL be cross-validated against ANISE (and optionally
-  satkit) to within a documented tolerance.
+  over `Real`. In CI it SHALL be cross-validated against ANISE (if adopted at
+  M5, OI-72; optionally satkit) to within a documented tolerance.
 acceptance: >-
   CI comparison against ANISE passes at the documented tolerance; REF-004's
   jplephem comparison (≤ 1 mm / 1 µm s⁻¹ target) also passes.
@@ -292,6 +317,8 @@ parent: null
 related: [REF-004, DEP-007]
 notes: >-
   ANISE evaluates in f64, so the extended-precision path needs this reader.
+  anise is not a dependency; whether to adopt it is deferred to M5 (OI-72).
+  Until then the jplephem comparison (REF-004) is the cross-check.
 ```
 
 ### DEP-012 — Extended precision validated against an arbitrary-precision oracle
@@ -385,15 +412,24 @@ statement: >-
   file read (not only the crates.io SPDX field), maintenance status (last
   release under 24 months or a justification) and WASM compatibility. Archived
   crates (e.g. erfars) and crates with unresolved provenance (e.g.
-  thor-rs-assist) SHALL be rejected.
+  thor-rs-assist) SHALL be rejected. For any crate whose LICENSE file carries
+  terms beyond its declared SPDX expression (e.g. sofars' SOFA Board text),
+  deny.toml SHALL carry a [[licenses.clarify]] entry pinned to that LICENSE
+  file's hash, so a changed file fails `cargo deny check` and forces review.
 acceptance: >-
   The PR template has the provenance checklist, and every PR that changes
-  Cargo.lock dependencies has it completed.
+  Cargo.lock dependencies has it completed. Every dependency whose LICENSE file
+  adds terms to its declared license has a hash-pinned [[licenses.clarify]]
+  entry in deny.toml.
 source: >-
   docs/strategy/journal/02-rust-ecosystem-licenses.md DEP-015.
 parent: null
-related: [DEP-003, STD-006]
-notes: null
+related: [DEP-003, STD-006, DEP-001]
+notes: >-
+  cargo-deny ignores LICENSE files when Cargo.toml declares a license
+  (confirmed with cargo-deny 0.19.8: sofars passed as plain MIT, its SOFA text
+  invisible to the gate; red-team L5, Journal #9). Hence the hash-pinned
+  clarify rule.
 ```
 
 ### DEP-016 — No native-library features

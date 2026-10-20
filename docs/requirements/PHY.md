@@ -7,7 +7,7 @@
 
 Evidence labels carried over from the journal: **[P]** read in the primary source, **[C]** computed from [P] constants, **[S]** secondary transcription, **UNVERIFIED** not yet confirmed. See [OPEN-ITEMS.md](OPEN-ITEMS.md) for everything that still has to be checked.
 
-Rungs in the Journal #1 table that have no dedicated requirement yet: N-SELF (0.0050, meaning UNVERIFIED), N-AST (0.0012), N-X cross terms (Σ = +0.0127), N-MOON (no primary value), J2-DE440 (0.02792, covered inside PHY-010) and GR-1PN-2B (finite-mass-ratio shift ≈ 7×10⁻⁶ ″/cy, covered by the μ note in PHY-001/PHY-004). N-SELF, N-AST and N-X enter PHY-013 as part of the N-SUM total.
+Rungs in the Journal #1 table that have no dedicated requirement yet: N-SELF (0.0050, meaning UNVERIFIED), N-X cross terms (Σ = +0.0127), N-MOON (no primary value), J2-DE440 (0.02792, covered inside PHY-010) and GR-1PN-2B (finite-mass-ratio shift ≈ 7×10⁻⁶ ″/cy, covered by the μ note in PHY-001/PHY-004). N-AST (0.0012) has its own differential rung, PHY-019 (added 2026-10-14 after the red-team review, Journal #9). N-SELF, N-AST and N-X enter PHY-013 as part of the N-SUM total.
 
 ---
 
@@ -24,8 +24,11 @@ statement: >-
   fitted perihelion precession rate indistinguishable from zero. Any nonzero
   fitted rate SHALL be reported as integrator error, not as physics.
 acceptance: >-
-  Over an integration span of at least 1000 yr, the fitted |ϖ̇| < 1×10⁻⁶ ″/cy.
-  The test output labels any residual rate as numerical error.
+  Integrator: IAS15 (NUM-001) in f64 with compensated summation and its
+  default adaptive step control; the integrator name and its settings are
+  recorded in the output metadata. Over an integration span of at least
+  1000 yr, the fitted |ϖ̇| < 1×10⁻⁶ ″/cy. The test output labels any residual
+  rate as numerical error.
 source: >-
   docs/strategy/journal/01-physics-truth-data.md §2 (rung N-2B, analytic closed
   Kepler ellipse) and Requirements implied PHY-001.
@@ -35,6 +38,15 @@ notes: >-
   Caveat C7: the gravitational parameter may be μ = GM☉ + GM_Mercury or GM☉
   alone, but the choice SHALL be documented. The two-body mass correction
   (≈7×10⁻⁶ ″/cy) does not affect this rung, which is exactly zero either way.
+  Bound rationale (red-team review 2026-10-14, Journal #9): 1×10⁻⁶ ″/cy
+  (≈1.2×10⁻¹⁴ rad/orbit) is far below the smallest asserted rung (N-AST
+  0.0012 ± 0.0003, PHY-019; LT −0.0020, PHY-011), so integrator drift cannot
+  masquerade as physics in any rung. The bound is integrator-specific: other
+  integrators (e.g. DOP853 at rtol 10⁻¹²) can show secular truncation drift
+  near 10⁻⁵ ″/cy and need their own stated bound. Integrators that propagate
+  the Kepler problem analytically (Wisdom–Holman / WHFast Kepler drift,
+  analytic Kepler propagators) are EXCLUDED from this test: they pass
+  trivially, so a pass proves nothing.
 ```
 
 ### PHY-002 — DE440 canonical constants table
@@ -128,11 +140,16 @@ source: >-
 parent: ORG-002
 related: [PHY-005, PHY-006, NUM-015, NUM-017, REF-010]
 notes: >-
-  The 0.0006 ″/cy gap to Park17 comes from mean versus osculating a and e.
-  Journal #4 §4 quotes 42.981 ″/cy computed from different elements
-  (a = 0.38709893 au, e = 0.20563069); the ±0.0001 tolerance here holds only for
-  the SW92 elements named above. The μ choice (GM☉ alone or GM☉ + GM_Mercury)
-  SHALL be documented (caveat C7).
+  HYPOTHESIS (UNVERIFIED): the 0.0006 ″/cy gap to Park17 comes from mean versus
+  osculating a and e. Closing it needs a shifted by ≈ +312 km (8×10⁻⁶
+  relative), the right order for Venus-driven short-period terms but not shown;
+  other candidates are Park's fit/projection procedure and the element source.
+  Journal #4 §4 quoted 42.981 ″/cy; that is a rounding error (42.98048 rounds to
+  42.980), not an effect of its different elements (a = 0.38709893 au,
+  e = 0.20563069), which change the result by only 2×10⁻⁶ ″/cy (corrected
+  2026-10-14, red-team review, Journal #9). The ±0.0001 tolerance here is
+  stated for the SW92 elements named above. The μ choice (GM☉ alone or
+  GM☉ + GM_Mercury) SHALL be documented (caveat C7).
 ```
 
 ### PHY-005 — Rung GR-SCHW, numerical
@@ -171,9 +188,11 @@ statement: >-
   With β and γ as free parameters, the GR-SCHW precession rate SHALL scale as
   (2+2γ−β)/3 relative to the γ = β = 1 value.
 acceptance: >-
-  For |γ−1| ≤ 10⁻³ and |β−1| ≤ 10⁻³ the numerical rate matches
-  42.98 × (2+2γ−β)/3 to within 10⁻⁶ relative. Example check: γ = 1,
-  β = 1 + 3.9×10⁻⁵ shifts the rate by −0.00056 ″/cy.
+  For |γ−1| ≤ 10⁻³ and |β−1| ≤ 10⁻³, differential runs from identical
+  initial conditions give rate(β, γ) / rate(1, 1) = (2+2γ−β)/3 to within 10⁻⁶
+  relative. No absolute rate literal (e.g. 42.98) enters the assertion.
+  Illustration only, not asserted: γ = 1, β = 1 + 3.9×10⁻⁵ shifts the rate by
+  about −0.00056 ″/cy.
 source: >-
   docs/strategy/journal/01-physics-truth-data.md §2 rung PPN-βγ and PHY-006;
   Will 2014, Living Rev. Relativ. 17, 4, Eq. 65.
@@ -182,7 +201,10 @@ related: [REF-010, NUM-015, NUM-017]
 notes: >-
   No external N-body code exposes PPN β/γ (Journal #3), so this rung is
   validated analytically only (REF-010). Sensitivity scale: β ±0.00056 ″/cy per
-  Park17 σ_β; γ ±0.00066 ″/cy per Cassini σ_γ.
+  Park17 σ_β; γ ±0.00066 ″/cy per Cassini σ_γ. Acceptance corrected 2026-10-14
+  (red-team review, Journal #9): the earlier form "42.98 × (2+2γ−β)/3 to 10⁻⁶
+  relative" could not pass, because 42.98 differs from the computed 42.98048 by
+  1.1×10⁻⁵ relative.
 ```
 
 ### PHY-007 — Rung SR-a: special-relativistic Kepler gives GR/6
@@ -236,14 +258,17 @@ parent: ORG-002
 related: [PHY-009, PHY-015]
 notes: >-
   Journal values: 50.1439 (harmonic) and 35.8171 (areal). Only the full 1PN sum
-  (2+2γ−β)/3 × 42.98 is coordinate-independent.
+  (2+2γ−β)/3 × GR-SCHW is coordinate-independent ("42.98" is shorthand for the
+  GR-SCHW rate, never a test value; PHY-004 holds the asserted value). The
+  areal-gauge run is a labelled exemption from NUM-017's
+  no-Schwarzschild-coordinate rule.
 ```
 
 ### PHY-009 — Term-by-term 1PN coefficient check
 
 ```yaml
 id: PHY-009
-title: "Each 1PN Lagrangian coefficient A, B, C, D reproduces 1, 4, 2, 2 units"
+title: "Per unit coefficient, 1PN Lagrangian terms A, B, C, D give 8, 4, 2, 2 units"
 status: draft
 criticality: high
 verification: test
@@ -252,15 +277,20 @@ statement: >-
   D U (n·v)²], each coefficient switched on alone SHALL reproduce its
   per-orbit advance in units of πGM/(c²p).
 acceptance: >-
-  A, B, C and D individually give 1, 4, 2 and 2 × πGM/(c²p) per orbit (A with
-  8A = 1) to within 10⁻³ relative.
+  Per unit of coefficient, A, B, C and D individually give 8, 4, 2 and 2 ×
+  πGM/(c²p) per orbit (so the SR kinetic value A = 1/8 gives 1) to within 10⁻³
+  relative.
 source: >-
   docs/strategy/journal/01-physics-truth-data.md §5 [C] and PHY-009 (numerically
-  confirmed in-session with sympy + DOP853 at e = 0.2, ε = 10⁻⁴: 1.000, 3.999,
-  2.000, 2.000).
+  confirmed in-session with sympy + DOP853 at e = 0.2, ε = 10⁻⁴: 1.000 at
+  A = 1/8, then 3.999, 2.000, 2.000 for unit B, C, D).
 parent: ORG-002
-related: [PHY-007, PHY-008]
-notes: null
+related: [PHY-007, PHY-008, NUM-017]
+notes: >-
+  Corrected 2026-10-14 (red-team review, Journal #9): the earlier text listed
+  A → 1, which holds only at A = 1/8; a test that sets A = 1 must expect 8.
+  The D term U(n·v)² is the areal-gauge form, so the D-term check is a labelled
+  exemption from NUM-017's no-Schwarzschild-coordinate rule.
 ```
 
 ### PHY-010 — Rung J2: solar quadrupole
@@ -333,9 +363,11 @@ statement: >-
   computed with the Park17 procedure: Mercury mean-orbit frame, 1000–3000 CE
   span, quadratic + periodic fit.
 acceptance: >-
-  Each value within ±0.005 ″/cy of: Venus 277.4176, Earth/Moon 90.8881,
-  Mars 2.4814, Jupiter 153.9899, Saturn 7.3227, Uranus 0.1425,
-  Neptune 0.0424.
+  PROVISIONAL protocol: each contribution is the differential rate of
+  Sun + Mercury + planet X minus Sun + Mercury, both Newtonian, from identical
+  initial conditions (NUM-013 harness). Each value within ±0.005 ″/cy of:
+  Venus 277.4176, Earth/Moon 90.8881, Mars 2.4814, Jupiter 153.9899,
+  Saturn 7.3227, Uranus 0.1425, Neptune 0.0424.
 source: >-
   docs/strategy/journal/01-physics-truth-data.md §2 and PHY-012; Park et al.
   2017, AJ 153, 121, Table 3 [P].
@@ -344,9 +376,14 @@ related: [NUM-011, NUM-013, CI-009]
 notes: >-
   AUTHORITATIVE over NUM-013 for expected values and tolerances of the
   per-planet contributions; NUM-013 is authoritative for the differential-run
-  harness that produces them. Park's exact switch-on/switch-off protocol is
-  UNVERIFIED (Journal #4 §3.1), and cross terms reach 0.0411 (J+S) and −0.0209
-  (V+E/M), so the decomposition definition SHALL be documented. Clemence 1947
+  harness that produces them. BLOCKED until OI-38 confirms Park 2017's
+  switch-on/switch-off protocol (UNVERIFIED, Journal #4 §3.1). Without a fixed
+  protocol the oracle is ill-posed: cross terms reach 0.0411 (J+S) and −0.0209
+  (V+E/M), so toggling a planet off from the full model versus on from
+  Sun + Mercury can differ by up to ~0.04 ″/cy, 8× the tolerance (red-team
+  review 2026-10-14, Journal #9). The provisional protocol above is the most
+  likely reading, since Park lists cross terms separately as pairs; it SHALL
+  NOT be tuned to make a test pass. Clemence 1947
   per-planet values are [S] and are not asserted. Journal #5's illustrative
   example used "PHY-012" for the 1PN Schwarzschild advance; that example is
   superseded: the Schwarzschild rung is PHY-004/PHY-005.
@@ -385,7 +422,7 @@ notes: >-
 
 ```yaml
 id: PHY-014
-title: "Rung EIH-FULL: DE440-equivalent physics reproduces 575.310 ″/cy"
+title: "Rung EIH-FULL: DE440-equivalent physics reproduces 575.3093 ″/cy (DE440 J2)"
 status: draft
 criticality: high
 verification: test
@@ -394,13 +431,18 @@ statement: >-
   343 asteroids, 30 KBOs and the 36-point KBO ring) SHALL reproduce Park17's
   total secular perihelion rate in the Park17 mean-orbit frame.
 acceptance: >-
-  575.310 ± 0.005 ″/cy (Park17: 575.3100 ± 0.0015). The tolerance is 3× Park's
-  σ plus margin for the DE430-to-DE440 model difference.
+  Run with the DE440 constants (J2 = 2.19614×10⁻⁷), the rate is
+  575.3093 ± 0.005 ″/cy. Derivation (maintainer decision 2026-10-15): Park17's
+  575.3100 ± 0.0015 used its fitted J2 = 2.25×10⁻⁷; the J2 term is 0.028601 at
+  Park's J2 vs 0.027917 at DE440's, Δ = −0.000684 ″/cy (PHY-010), so the
+  expected value is 575.3100 − 0.0007 = 575.3093. Run metadata records the J2/S☉
+  set. The tolerance is 3× Park's σ plus margin for the DE430-to-DE440 model
+  difference.
 source: >-
   docs/strategy/journal/01-physics-truth-data.md §1, §2 rung EIH-FULL and
   PHY-014; Park et al. 2017 Table 3; Park et al. 2021 (body set).
 parent: ORG-002
-related: [NUM-011, NUM-017, NUM-020, CI-007, REF-001, REF-003]
+related: [NUM-011, NUM-017, NUM-020, CI-007, REF-001, REF-003, PHY-011, PHY-019]
 notes: >-
   AUTHORITATIVE tolerance for the 575.31 headline; NUM-011 quotes ±0.01 as the
   estimator-level acceptance. The PHY-014 journal text names "343 asteroids, KBO
@@ -408,7 +450,12 @@ notes: >-
   included here. Frame pole: α ≈ 280.9876°, δ ≈ 61.4481° (ICRF). Fit model
   B + ϖ̇t + Qt² + 14 periodic terms, Q ≈ −0.04478132 ″/cy². Depends on the R5 EIH
   transcription check (NUM-020) and on asteroid initial conditions (REF-003,
-  UNVERIFIED).
+  UNVERIFIED). PHY-014 cannot detect a dropped component smaller than its
+  tolerance: LT (−0.0020), N-AST (0.0012) and most cross terms lie inside
+  ±0.005. Missing LT is caught by the differential rung PHY-011 and missing
+  asteroids by PHY-019, not by PHY-014 (red-team review 2026-10-14, Journal #9).
+  The Park17 "Mercury" self row (0.0050) equals the whole tolerance and its
+  meaning is UNVERIFIED (OI-09).
 ```
 
 ### PHY-015 — Mandatory metadata on every reported rate
@@ -442,7 +489,7 @@ notes: >-
 id: PHY-016
 title: "Horizons DE441 cross-check of the EIH-FULL rate within 0.01 ″/cy"
 status: draft
-criticality: medium
+criticality: high
 verification: test
 statement: >-
   A fetcher SHALL retrieve DE441 Mercury osculating elements
@@ -473,7 +520,7 @@ notes: >-
 id: PHY-017
 title: "The ≈5600 ″/cy figure is built explicitly from a cited precession model"
 status: draft
-criticality: medium
+criticality: high
 verification: inspection
 statement: >-
   When the 5600 ″/cy-class equinox-referred number is displayed, it SHALL be
@@ -517,4 +564,35 @@ parent: ORG-002
 related: [NUM-020, TST-002, TST-003]
 notes: >-
   Tracked in docs/requirements/OPEN-ITEMS.md.
+```
+
+### PHY-019 — Rung N-AST: asteroid differential contribution
+
+```yaml
+id: PHY-019
+title: "Rung N-AST: asteroid differential contribution reproduces 0.0012 ″/cy"
+status: draft
+criticality: high
+verification: test
+statement: >-
+  The Newtonian contribution of the DE440 asteroid set to Mercury's perihelion
+  rate (rung N-AST) SHALL be computed as a differential run and SHALL reproduce
+  the Park17 Table 3 value in the Park17 mean-orbit frame with the Park17 fit.
+acceptance: >-
+  PROVISIONAL protocol, as PHY-012: Sun + Mercury + asteroid set minus
+  Sun + Mercury, both Newtonian, from identical initial conditions (NUM-013
+  harness). The differential rate is 0.0012 ± 0.0003 ″/cy.
+source: >-
+  docs/strategy/journal/01-physics-truth-data.md §2 rung N-AST; Park et al.
+  2017, AJ 153, 121, Table 3 [P]; docs/strategy/journal/09-red-team-review.md
+  (PHY-014 finding).
+parent: ORG-002
+related: [PHY-012, PHY-013, PHY-014, NUM-013, REF-003]
+notes: >-
+  Added 2026-10-14 after the red-team review (Journal #9): PHY-014's ±0.005
+  cannot detect a dropped asteroid set, so this differential rung catches it.
+  BLOCKED until OI-38 confirms Park 2017's switch-on/switch-off protocol (same
+  caveat as PHY-012) and until asteroid initial conditions exist (REF-003,
+  OI-24). Which bodies Park's asteroid row covers (343 asteroids only, or also
+  the 30 KBOs and the ring) is UNVERIFIED (OI-24).
 ```
