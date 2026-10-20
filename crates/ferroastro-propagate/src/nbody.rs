@@ -22,20 +22,25 @@ use ferroastro_core::frames::Barycentric;
 use ferroastro_core::frames::Icrf;
 use ferroastro_core::time::SECONDS_PER_DAY;
 use ferroastro_core::units::{Length, Velocity};
-use ferroastro_eih::{Eih, HeliocentricSchwarzschild, RhsAcceleration};
+use ferroastro_eih::{
+    BarycentreBody, Eih, HeliocentricSchwarzschild, RhsAcceleration,
+    relativistic_barycentre_with_rate,
+};
 use ferroastro_ephem::NaifId;
 use ferroastro_forces::{
-    ForceTerm, GeocentricMoon, LtReaction, MOON_TAYLOR_TERMS_DEFAULT, MinorFromMajors,
+    F64Forces, ForceTerm, GeocentricMoon, LtReaction, MOON_TAYLOR_TERMS_DEFAULT, MinorFromMajors,
     MinorReaction, MoonVariables, NBody, NBodyModel, NewtonianMutual, RingMasses,
     SolarJ2WithReaction, SolarLenseThirring,
 };
 use ferroastro_integrators::Ias15;
 use ferroastro_real::Real;
 use ferroastro_scenario::{
-    BodyName, IcRecord, IntegratorName, ScenarioError, ScenarioSpec, ic_hash,
+    BodyName, IcBarycentre, IcRecord, IntegratorName, MajorAsteroids, Precision, ScenarioError,
+    ScenarioSpec, ic_hash,
 };
 use ferroastro_system::{
-    Catalogue, KBO_IDENTIFICATION, KBO_RING, SystemState, Tier, kbo_ring_states, place_small_bodies,
+    ASTEROID_NAIF_BASE, Catalogue, KBO_IDENTIFICATION, KBO_RING, SystemState, Tier,
+    kbo_ring_states, place_small_bodies,
 };
 use serde::{Deserialize, Serialize};
 
@@ -272,13 +277,25 @@ fn small_bodies<R: Real>(
             )
         })?;
         let placed = place_small_bodies(file, &minor, &sun)?;
+        let major = major_asteroid_filter(spec, &minor)?;
+        let mut promoted = 0_usize;
         for (id, st) in placed.states()? {
             states.push(id, &st)?;
-            list.push((id, cat.gm(id)?.km3_per_s2(), Tier::Minor));
+            let tier = if major(id) {
+                promoted += 1;
+                Tier::Major
+            } else {
+                Tier::Minor
+            };
+            list.push((id, cat.gm(id)?.km3_per_s2(), tier));
         }
         prov.push(format!(
-            "{} Minor bodies placed from {} + the header Sun",
+            "{} small bodies ({} Major: forces.major_asteroids = {}, {} Minor) placed from {} + \
+             the header Sun",
             minor.len(),
+            promoted,
+            f.major_asteroids.label(),
+            minor.len() - promoted,
             file.provenance()
         ));
     }
@@ -296,6 +313,99 @@ fn small_bodies<R: Real>(
         ));
     }
     Ok((list, states, prov.join("; ")))
+}
+
+/// Which placed asteroids are Major under `forces.major_asteroids` (WP25), after checking that
+/// every EPM2021 asteroid is among `minor`.
+fn major_asteroid_filter(
+    spec: &ScenarioSpec,
+    minor: &[NaifId],
+) -> Result<impl Fn(NaifId) -> bool, PropagateError> {
+    let f = &spec.forces;
+    let naif = |k: u32| i64::from(ASTEROID_NAIF_BASE) + i64::from(k);
+    if f.major_asteroids == MajorAsteroids::Epm2021 {
+        for k in MajorAsteroids::EPM2021 {
+            if !minor.iter().any(|id| i64::from(id.0) == naif(k)) {
+                return Err(ScenarioError::Value {
+                    name: spec.name.clone(),
+                    field: "forces.major_asteroids",
+                    value: "epm2021".into(),
+                    problem: format!(
+                        "asteroid ({k}) is not among the first {} numbered asteroids of header.440",
+                        f.asteroids
+                    ),
+                }
+                .into());
+            }
+        }
+    }
+    let which = f.major_asteroids;
+    Ok(move |id: NaifId| match which {
+        MajorAsteroids::None => false,
+        MajorAsteroids::All => true,
+        MajorAsteroids::Epm2021 => MajorAsteroids::EPM2021
+            .iter()
+            .any(|&k| i64::from(id.0) == naif(k)),
+    })
+}
+
+/// Fixed-point passes of [`rebarycentre`] (μ* depends on the velocities; translation leaves
+/// every rᵢⱼ unchanged).
+const REBARYCENTRE_PASSES: usize = 3;
+
+/// Translate the packed initial conditions to the relativistic SSB (NUM-018; Subbotin et al.
+/// 2023 Eq. 5), in `R`. Every slot moves by the same position and velocity except the geocentric
+/// Moon slot (Moon − Earth). Returns the offset left after the last pass (km, km/s).
+fn rebarycentre<R: Real>(
+    model: &NBodyModel<Icrf, R>,
+    gms: &[IcRecordGm],
+    de: &De440,
+    x: &mut [R],
+    v: &mut [R],
+) -> Result<(f64, f64), PropagateError> {
+    let n = model.layout().len();
+    let moon = model.layout().moon_pair().map(|p| p.moon);
+    let c = Velocity::from_km_per_s(R::from_f64(de.speed_of_light().km_per_s()))
+        .map_err(|e| setup("rebarycentre", e.to_string(), "check the DE440 table"))?;
+    let offset = |x: &[R], v: &[R]| -> Result<([R; 3], [R; 3]), PropagateError> {
+        let s = model.unpack(x, v)?;
+        let bodies = s
+            .states()?
+            .iter()
+            .zip(gms)
+            .map(|(b, &(_, gm))| {
+                let (p, w) = crate::setup::raw(&b.1);
+                BarycentreBody {
+                    gm: R::from_f64(gm),
+                    position: p,
+                    velocity: w,
+                }
+            })
+            .collect::<Vec<_>>();
+        Ok(relativistic_barycentre_with_rate(&bodies, c)?)
+    };
+    for _ in 0..REBARYCENTRE_PASSES {
+        let (r, w) = offset(x, v)?;
+        for i in (0..n).filter(|&i| Some(i) != moon) {
+            for k in 0..3 {
+                if let (Some(xs), Some(vs), Some(&rk), Some(&wk)) = (
+                    x.get_mut(k * n + i),
+                    v.get_mut(k * n + i),
+                    r.get(k),
+                    w.get(k),
+                ) {
+                    *xs -= rk;
+                    *vs -= wk;
+                }
+            }
+        }
+    }
+    let (r, w) = offset(x, v)?;
+    let norm = |a: [R; 3]| {
+        let [p, q, z] = a.map(R::to_f64);
+        p.hypot(q).hypot(z)
+    };
+    Ok((norm(r), norm(w)))
 }
 
 /// Position and velocity of storage slot `i` in component-major flat vectors.
@@ -326,6 +436,8 @@ struct Event {
 pub(crate) struct NBodyRun<R: Real> {
     spec: ScenarioSpec,
     model: NBodyModel<Icrf, R>,
+    /// The f64 force model of the NUM-007 mixed mode (`precision = "mixed"`); `None` otherwise.
+    forces64: Option<NBodyModel<Icrf, f64>>,
     ias: Stepper<R>,
     n: usize,
     t_end: R,
@@ -370,9 +482,24 @@ impl<R: Real> NBodyRun<R> {
         if !small_source.is_empty() {
             source = format!("{source}; {small_source}");
         }
+        let forces64 = if spec.integrator.precision == Precision::Mixed {
+            Some(model::<f64>(spec, data, &de, &small)?.0)
+        } else {
+            None
+        };
         let (model, gms) = model::<R>(spec, data, &de, &small)?;
-        let (x0, v0) = model.pack(&states, pair.as_ref())?;
+        let (mut x0, mut v0) = model.pack(&states, pair.as_ref())?;
         let n = model.layout().len();
+        if spec.initial_conditions.barycentre == Some(IcBarycentre::Relativistic) {
+            let residual = rebarycentre(&model, &gms, &de, &mut x0, &mut v0)?;
+            source = format!(
+                "{source}; re-barycentred to the relativistic SSB (Park et al. 2021 Eqs. 1-2, \
+                 Subbotin et al. 2023 Eq. 5) in {}, residual {:.3e} km, {:.3e} km/s",
+                R::NAME,
+                residual.0,
+                residual.1
+            );
+        }
         let records: Vec<IcRecord> = gms
             .iter()
             .enumerate()
@@ -491,7 +618,16 @@ impl<R: Real> NBodyRun<R> {
             ic_source: source,
             epoch_jd_tdb: parts(R::from_f64(jd)),
             model: tag_overrides(
-                format!("{}; {integrator}, {}", model.describe(), R::NAME),
+                format!(
+                    "{}; {integrator}, {}",
+                    model.describe(),
+                    if spec.integrator.precision == Precision::Mixed {
+                        "mixed (NUM-007): double-double state, integrator sums and coefficients, \
+                         f64 forces"
+                    } else {
+                        R::NAME
+                    }
+                ),
                 data,
             ),
             states: Vec::new(),
@@ -503,6 +639,7 @@ impl<R: Real> NBodyRun<R> {
         Ok(Self {
             spec: spec.clone(),
             model,
+            forces64,
             ias,
             n,
             t_end: R::from_f64(spec.span_seconds()),
@@ -584,7 +721,10 @@ impl<R: Real> NBodyRun<R> {
         }
         let wanted = self.spec.span.stop_after_passages.map(u64::from);
         loop {
-            let rep = self.ias.step(&self.model, self.t_end)?;
+            let rep = match &self.forces64 {
+                Some(f) => self.ias.step(&F64Forces::new(f), self.t_end)?,
+                None => self.ias.step(&self.model, self.t_end)?,
+            };
             if !rep.moved {
                 out.finished = true;
                 break;
@@ -671,6 +811,20 @@ impl<R: Real> NBodyRun<R> {
         });
         out.stats = self.ias.stats();
         Ok(out)
+    }
+
+    /// The accelerations of the integration variables at the integrator's current state (km/s²,
+    /// storage order; with a geocentric pair the Earth slot is the EMB and the Moon slot Moon −
+    /// Earth), as the integrator sees them: through [`F64Forces`] in the mixed mode.
+    pub(crate) fn accelerations(&self) -> Result<Vec<[R; 3]>, PropagateError> {
+        use ferroastro_integrators::SecondOrderSystem as _;
+        let mut a = vec![R::ZERO; 3 * self.n];
+        let (t, x, v) = (self.ias.time(), self.ias.positions(), self.ias.velocities());
+        match &self.forces64 {
+            Some(f) => F64Forces::new(f).acceleration(t, x, v, &mut a)?,
+            None => self.model.acceleration(t, x, v, &mut a)?,
+        }
+        Ok((0..self.n).map(|i| slot(&a, self.n, i)).collect())
     }
 
     /// The model's total energy divided by G (km⁵/s⁴) at the integrator's current state, or

@@ -191,9 +191,38 @@ pub fn initial_conditions(
             "use run() for oracle stage B",
         )),
         (Mode::NBody, Precision::F64) => Ok(NBodyRun::<f64>::new(spec, data, None)?.initial()),
-        (Mode::NBody, Precision::Dd) => {
+        (Mode::NBody, Precision::Dd | Precision::Mixed) => {
             Ok(NBodyRun::<DoubleDouble>::new(spec, data, None)?.initial())
         }
+    }
+}
+
+/// The accelerations of an N-body scenario's integration variables at its initial conditions
+/// (km/s², as exact `(hi, lo)` parts, storage order; with a geocentric Earth–Moon pair the Earth
+/// slot holds the EMB and the Moon slot Moon − Earth), evaluated as the integrator would: in the
+/// scenario's precision, through the f64 forces in the mixed mode (DEP-007 and NUM-007
+/// diagnostics, WP25). The NAIF ids are in the same order.
+///
+/// # Errors
+/// As [`run`] up to the start of the integration; `FA-E1201` for a non-n-body scenario.
+pub fn initial_accelerations(
+    spec: &ScenarioSpec,
+    data: &DataSources<'_>,
+) -> Result<(Vec<i32>, Vec<[Parts; 3]>), PropagateError> {
+    fn of<R: ferroastro_real::Real>(
+        spec: &ScenarioSpec,
+        data: &DataSources<'_>,
+    ) -> Result<(Vec<i32>, Vec<[Parts; 3]>), PropagateError> {
+        let r = NBodyRun::<R>::new(spec, data, None)?;
+        let ids = r.initial().records.iter().map(|x| x.naif).collect();
+        let a = r.accelerations()?.into_iter().map(output::parts3).collect();
+        Ok((ids, a))
+    }
+    prepare(spec)?;
+    not_for_test_particles(spec)?;
+    match spec.integrator.precision {
+        Precision::F64 => of::<f64>(spec, data),
+        Precision::Dd | Precision::Mixed => of::<DoubleDouble>(spec, data),
     }
 }
 
@@ -215,11 +244,14 @@ pub fn run(spec: &ScenarioSpec, data: &DataSources<'_>) -> Result<RunOutput, Pro
     prepare(spec)?;
     match (spec.mode, spec.integrator.precision) {
         (Mode::TestParticle, Precision::F64) => particle::run::<f64>(spec, data),
-        (Mode::TestParticle, Precision::Dd) => particle::run::<DoubleDouble>(spec, data),
+        // `supports` refuses the mixed mode for test particles before we get here.
+        (Mode::TestParticle, Precision::Dd | Precision::Mixed) => {
+            particle::run::<DoubleDouble>(spec, data)
+        }
         // `supports` refuses double-double for this mode before we get here.
         (Mode::EphemerisField, _) => field::run(spec, data),
         (Mode::NBody, Precision::F64) => NBodyRun::<f64>::new(spec, data, None)?.advance(None),
-        (Mode::NBody, Precision::Dd) => {
+        (Mode::NBody, Precision::Dd | Precision::Mixed) => {
             NBodyRun::<DoubleDouble>::new(spec, data, None)?.advance(None)
         }
     }
@@ -269,7 +301,7 @@ pub fn run_with_energy(
     prepare(spec)?;
     match (spec.mode, spec.integrator.precision) {
         (Mode::NBody, Precision::F64) => nbody::<f64>(spec, data),
-        (Mode::NBody, Precision::Dd) => nbody::<DoubleDouble>(spec, data),
+        (Mode::NBody, Precision::Dd | Precision::Mixed) => nbody::<DoubleDouble>(spec, data),
         _ => Ok((run(spec, data)?, None)),
     }
 }
@@ -325,7 +357,7 @@ pub fn run_until(
             let out = r.advance(stop)?;
             (out, r.checkpoint_parts()?)
         }
-        Precision::Dd => {
+        Precision::Dd | Precision::Mixed => {
             let mut r = NBodyRun::<DoubleDouble>::new(spec, data, None)?;
             let out = r.advance(stop)?;
             (out, r.checkpoint_parts()?)
@@ -388,7 +420,9 @@ pub fn resume(
     let restore = Some((snap, &driver, ck.ic_hash.as_str()));
     match spec.integrator.precision {
         Precision::F64 => NBodyRun::<f64>::new(spec, data, restore)?.advance(None),
-        Precision::Dd => NBodyRun::<DoubleDouble>::new(spec, data, restore)?.advance(None),
+        Precision::Dd | Precision::Mixed => {
+            NBodyRun::<DoubleDouble>::new(spec, data, restore)?.advance(None)
+        }
     }
 }
 
@@ -415,7 +449,7 @@ pub fn resume_until(
             let out = r.advance(stop)?;
             (out, r.checkpoint_parts()?)
         }
-        Precision::Dd => {
+        Precision::Dd | Precision::Mixed => {
             let mut r = NBodyRun::<DoubleDouble>::new(spec, data, restore)?;
             let out = r.advance(stop)?;
             (out, r.checkpoint_parts()?)

@@ -178,7 +178,7 @@ pub fn supports(item: &str, mode: Mode) -> Result<(), String> {
     // on every non-Sun body in n-body mode (WP20).
     let central_term = matches!(item, "gr_1pn_central" | "lense_thirring");
     let nbody_relativity = matches!(item, "gr_eih" | "gr_1pn_central" | "lense_thirring");
-    let small_bodies = matches!(item, "asteroids" | "kbos" | "kbo_ring");
+    let small_bodies = matches!(item, "asteroids" | "kbos" | "kbo_ring" | "major_asteroids");
     if mode == Mode::EphemerisField {
         const FIELD: [&str; 4] = [
             "newton",
@@ -197,7 +197,7 @@ pub fn supports(item: &str, mode: Mode) -> Result<(), String> {
         };
     }
     if ALWAYS.contains(&item)
-        || (item == "integrator.abm" && mode == Mode::NBody)
+        || (matches!(item, "integrator.abm" | "integrator.precision.mixed") && mode == Mode::NBody)
         || (central_term && mode == Mode::TestParticle)
         || (nbody_relativity && mode == Mode::NBody)
         || (small_bodies && mode == Mode::NBody)
@@ -212,6 +212,11 @@ pub fn supports(item: &str, mode: Mode) -> Result<(), String> {
                 .into()
         }
         _ if small_bodies => "small bodies (Minor/Ring tiers) need n-body mode".into(),
+        "integrator.precision.mixed" => {
+            "the NUM-007 ephemeris precision mode (double-double state, f64 forces) is \
+             implemented for n-body runs (WP25)"
+                .into()
+        }
         "integrator.abm" => {
             "ABM is implemented for n-body runs (WP24); test-particle runs use IAS15".into()
         }
