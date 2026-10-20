@@ -14,7 +14,9 @@ use crate::setup::{
     DataSources, constants_version, epoch, nbody_ics, setup, solar_j2, solar_pole, solar_spin,
     tag_overrides,
 };
-use crate::{PropagateError, ias15_config};
+use crate::stepper::{IntegratorSnapshot, Stepper};
+use crate::{PropagateError, abm_config, ias15_config};
+use ferroastro_abm::Abm;
 use ferroastro_constants::{Body, De440};
 use ferroastro_core::frames::Barycentric;
 use ferroastro_core::frames::Icrf;
@@ -27,9 +29,11 @@ use ferroastro_forces::{
     MinorReaction, MoonVariables, NBody, NBodyModel, NewtonianMutual, RingMasses,
     SolarJ2WithReaction, SolarLenseThirring,
 };
-use ferroastro_integrators::{Ias15, Ias15Snapshot};
+use ferroastro_integrators::Ias15;
 use ferroastro_real::Real;
-use ferroastro_scenario::{BodyName, IcRecord, ScenarioError, ScenarioSpec, ic_hash};
+use ferroastro_scenario::{
+    BodyName, IcRecord, IntegratorName, ScenarioError, ScenarioSpec, ic_hash,
+};
 use ferroastro_system::{
     Catalogue, KBO_IDENTIFICATION, KBO_RING, SystemState, Tier, kbo_ring_states, place_small_bodies,
 };
@@ -322,7 +326,7 @@ struct Event {
 pub(crate) struct NBodyRun<R: Real> {
     spec: ScenarioSpec,
     model: NBodyModel<Icrf, R>,
-    ias: Ias15<R>,
+    ias: Stepper<R>,
     n: usize,
     t_end: R,
     cadence: Option<R>,
@@ -353,7 +357,7 @@ impl<R: Real> NBodyRun<R> {
     pub(crate) fn new(
         spec: &ScenarioSpec,
         data: &DataSources<'_>,
-        restore: Option<(&Ias15Snapshot, &DriverState, &str)>,
+        restore: Option<(&IntegratorSnapshot, &DriverState, &str)>,
     ) -> Result<Self, PropagateError> {
         let name = spec.name.as_str();
         let de = De440::load()?;
@@ -383,7 +387,9 @@ impl<R: Real> NBodyRun<R> {
         let ic_epoch = parts(ep.jd());
         let hash = ic_hash(&constants, spec.mode.label(), ic_epoch, &records);
         let cfg = ias15_config(spec, true);
+        let abm = abm_config(spec);
         let dt0_days = spec.integrator.dt0_days.unwrap_or(DEFAULT_DT0_DAYS);
+        let step_days = spec.integrator.step_days.unwrap_or(DEFAULT_ABM_STEP_DAYS);
         let dir = if spec.span.years < 0.0 { -1.0 } else { 1.0 };
         let ias = match restore {
             Some((snap, _, ic)) => {
@@ -394,16 +400,43 @@ impl<R: Real> NBodyRun<R> {
                         ),
                     });
                 }
-                Ias15::restore(snap)?
+                if snap.integrator() != spec.integrator.name.label() {
+                    return Err(PropagateError::Checkpoint {
+                        problem: format!(
+                            "checkpoint holds an {} state, the scenario integrates with {}",
+                            snap.integrator(),
+                            spec.integrator.name.label()
+                        ),
+                    });
+                }
+                Stepper::restore(snap)?
             }
-            None => Ias15::new(
-                3 * n,
-                R::ZERO,
-                &x0,
-                &v0,
-                R::from_f64(dir * dt0_days * SECONDS_PER_DAY),
-                cfg,
-            )?,
+            None => match spec.integrator.name {
+                IntegratorName::Abm => Stepper::Abm(Abm::new(
+                    3 * n,
+                    R::ZERO,
+                    &x0,
+                    &v0,
+                    R::from_f64(dir * step_days * SECONDS_PER_DAY),
+                    abm,
+                )?),
+                // `supports` refuses WHFast and IRK16 before we get here.
+                _ => Stepper::Ias15(Ias15::new(
+                    3 * n,
+                    R::ZERO,
+                    &x0,
+                    &v0,
+                    R::from_f64(dir * dt0_days * SECONDS_PER_DAY),
+                    cfg,
+                )?),
+            },
+        };
+        let integrator = match spec.integrator.name {
+            IntegratorName::Abm => format!("{}, h = {step_days} d", abm.describe()),
+            _ => format!(
+                "IAS15 epsilon = {:e}, safety = {}, PC tolerance = {:e}, dense output",
+                cfg.epsilon, cfg.safety, cfg.pc_tolerance
+            ),
         };
         let mut events = Vec::new();
         let central = spec.central_body.naif();
@@ -458,14 +491,7 @@ impl<R: Real> NBodyRun<R> {
             ic_source: source,
             epoch_jd_tdb: parts(R::from_f64(jd)),
             model: tag_overrides(
-                format!(
-                    "{}; IAS15 epsilon = {:e}, safety = {}, PC tolerance = {:e}, dense output, {}",
-                    model.describe(),
-                    cfg.epsilon,
-                    cfg.safety,
-                    cfg.pc_tolerance,
-                    R::NAME
-                ),
+                format!("{}; {integrator}, {}", model.describe(), R::NAME),
                 data,
             ),
             states: Vec::new(),
@@ -551,7 +577,7 @@ impl<R: Real> NBodyRun<R> {
         let stop_at = stop_at.map(R::from_f64);
         let (mut xs, mut vs) = (vec![R::ZERO; 3 * self.n], vec![R::ZERO; 3 * self.n]);
         // The initial sample (k = 0) of a fresh run.
-        if self.driver.next_sample == 0 && self.ias.stats().steps == 0 && self.cadence.is_some() {
+        if self.driver.next_sample == 0 && self.ias.steps() == 0 && self.cadence.is_some() {
             out.states
                 .push(self.record(R::ZERO, self.ias.positions(), self.ias.velocities())?);
             self.driver.next_sample = 1;
@@ -559,7 +585,7 @@ impl<R: Real> NBodyRun<R> {
         let wanted = self.spec.span.stop_after_passages.map(u64::from);
         loop {
             let rep = self.ias.step(&self.model, self.t_end)?;
-            if rep.dt_done == R::ZERO {
+            if !rep.moved {
                 out.finished = true;
                 break;
             }
@@ -569,7 +595,8 @@ impl<R: Real> NBodyRun<R> {
                 .ok_or_else(|| setup(&self.spec.name, "dense output is off", "internal error"))?;
             // Samples inside (t0, t1].
             while let Some(tk) = self.sample_time(self.driver.next_sample) {
-                if !(after(tk, t0) && not_after(tk, t1)) {
+                // ABM's last step may end after the span; samples stop at its end.
+                if !(after(tk, t0) && not_after(tk, t1) && not_after(tk, self.t_end)) {
                     break;
                 }
                 self.ias.dense_state(tk, &mut xs, &mut vs)?;
@@ -593,9 +620,11 @@ impl<R: Real> NBodyRun<R> {
                 };
                 if early < R::ZERO && late >= R::ZERO {
                     let n = self.n;
+                    // An event after the end of the span (ABM's last step only) is not recorded.
                     if let Some(te) = self
                         .ias
                         .locate_event(|_, x, v| rdotv(x, v, n, e.body, e.central))?
+                        .filter(|&te| not_after(te, self.t_end))
                     {
                         self.ias.dense_state(te, &mut xs, &mut vs)?;
                         let sub = |a: [R; 3], b: [R; 3]| [a[0] - b[0], a[1] - b[1], a[2] - b[2]];
@@ -613,7 +642,7 @@ impl<R: Real> NBodyRun<R> {
                     *g = g_now;
                 }
             }
-            if wanted.is_some_and(|w| self.driver.passages >= w) || rep.reached_limit {
+            if wanted.is_some_and(|w| self.driver.passages >= w) || rep.reached_end {
                 out.finished = true;
                 break;
             }
@@ -633,8 +662,13 @@ impl<R: Real> NBodyRun<R> {
                 });
             }
         }
-        out.final_state =
-            Some(self.record(self.ias.time(), self.ias.positions(), self.ias.velocities())?);
+        out.final_state = Some(if out.finished && after(self.ias.time(), self.t_end) {
+            // ABM's last step ended after the span: the state at its end, from dense output.
+            self.ias.dense_state(self.t_end, &mut xs, &mut vs)?;
+            self.record(self.t_end, &xs, &vs)?
+        } else {
+            self.record(self.ias.time(), self.ias.positions(), self.ias.velocities())?
+        });
         out.stats = self.ias.stats();
         Ok(out)
     }
@@ -650,7 +684,7 @@ impl<R: Real> NBodyRun<R> {
     /// The integrator snapshot and the driver state, for a checkpoint.
     pub(crate) fn checkpoint_parts(
         &self,
-    ) -> Result<(Ias15Snapshot, DriverState, String), PropagateError> {
+    ) -> Result<(IntegratorSnapshot, DriverState, String), PropagateError> {
         Ok((
             self.ias.snapshot()?,
             self.driver.clone(),
@@ -661,3 +695,6 @@ impl<R: Real> NBodyRun<R> {
 
 /// First trial step of N-body runs when the scenario sets none (days; as WP12).
 pub const DEFAULT_DT0_DAYS: f64 = 0.1;
+
+/// ABM fixed step when the scenario sets none: 1/16 d (Subbotin et al. 2023; WP24).
+pub const DEFAULT_ABM_STEP_DAYS: f64 = 0.0625;

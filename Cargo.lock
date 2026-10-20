@@ -523,6 +523,7 @@ dependencies = [
 name = "ferroastro-propagate"
 version = "0.0.0"
 dependencies = [
+ "ferroastro-abm",
  "ferroastro-analytic",
  "ferroastro-constants",
  "ferroastro-core",

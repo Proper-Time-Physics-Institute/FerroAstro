@@ -12,7 +12,7 @@
 //!   implements; anything else is refused with `FA-E1201` naming it (REF-011).
 //! * [`run_until`] / [`resume`] / [`resume_until`]: stop after the first accepted step at or
 //!   beyond a time, write a [`Checkpoint`] (integrator state including the IAS15 predictor
-//!   coefficients, postcard encoded), and continue later, in another process, bit for bit
+//!   coefficients or the ABM derivative history, postcard encoded), and continue later, in another process, bit for bit
 //!   (CI-010); a long run can be cut into any number of such segments.
 //! * [`initial_conditions`]: the initial conditions a scenario assembles, per body, exactly as
 //!   hashed, so that differential runs can prove they share them (NUM-013).
@@ -54,23 +54,26 @@ mod output;
 mod particle;
 pub mod passages;
 mod setup;
+mod stepper;
 
 pub use error::PropagateError;
-pub use nbody::DEFAULT_DT0_DAYS;
+pub use nbody::{DEFAULT_ABM_STEP_DAYS, DEFAULT_DT0_DAYS};
 pub use output::{PassageRecord, RunOutput, StateRecord};
 pub use setup::{
     DataSources, RUNNER, SolarOverrides, SuppliedState, constants_version, de440_solar_spin,
     refuse_unsupported, supports,
 };
+pub use stepper::IntegratorSnapshot;
 
-use ferroastro_integrators::{Ias15Config, Ias15Snapshot};
+use ferroastro_abm::{AbmConfig, Corrector};
+use ferroastro_integrators::Ias15Config;
 use ferroastro_real::DoubleDouble;
-use ferroastro_scenario::{IcRecord, Mode, Parts, Precision, ScenarioSpec};
+use ferroastro_scenario::{AbmCorrector, IcRecord, Mode, Parts, Precision, ScenarioSpec};
 use nbody::{DriverState, NBodyRun};
 use serde::{Deserialize, Serialize};
 
 /// Version tag of the checkpoint encoding.
-pub const CHECKPOINT_FORMAT: &str = "ferroastro-checkpoint v2";
+pub const CHECKPOINT_FORMAT: &str = "ferroastro-checkpoint v3";
 
 /// IAS15 settings of a scenario: the defaults (Rein & Spiegel 2015) with the scenario's
 /// overrides; dense output on for N-body runs (samples and events).
@@ -81,6 +84,23 @@ pub fn ias15_config(spec: &ScenarioSpec, dense_output: bool) -> Ias15Config {
         epsilon: spec.integrator.epsilon.unwrap_or(d.epsilon),
         pc_tolerance: spec.integrator.pc_tolerance.unwrap_or(d.pc_tolerance),
         dense_output,
+        ..d
+    }
+}
+
+/// ABM settings of a scenario (WP24): the `ferroastro-abm` defaults (order 13, PECEC, DP8
+/// start-up at h/8, compensated) with the scenario's overrides.
+#[must_use]
+pub fn abm_config(spec: &ScenarioSpec) -> AbmConfig {
+    let d = AbmConfig::default();
+    AbmConfig {
+        order: spec.integrator.order.unwrap_or(d.order),
+        corrector: match spec.integrator.corrector {
+            Some(AbmCorrector::Pece) => Corrector::Pece,
+            Some(AbmCorrector::Pecec) => Corrector::Pecec,
+            None => d.corrector,
+        },
+        compensated: spec.integrator.compensated.unwrap_or(d.compensated),
         ..d
     }
 }
@@ -101,8 +121,8 @@ pub struct Checkpoint {
     pub precision: String,
     /// [`SolarOverrides::describe`] of the run's overrides (empty if none; v2, WP20).
     pub solar_overrides: String,
-    /// The integrator state.
-    pub integrator: Ias15Snapshot,
+    /// The integrator state (IAS15 or ABM; v3, WP24).
+    pub integrator: IntegratorSnapshot,
     /// Index of the next output sample.
     pub next_sample: u64,
     /// Passages found so far.
@@ -257,7 +277,7 @@ pub fn run_with_energy(
 fn checkpoint_of(
     spec: &ScenarioSpec,
     data: &DataSources<'_>,
-    (integrator, driver, ic_hash): (Ias15Snapshot, DriverState, String),
+    (integrator, driver, ic_hash): (IntegratorSnapshot, DriverState, String),
 ) -> Checkpoint {
     Checkpoint {
         format: CHECKPOINT_FORMAT.into(),
@@ -319,7 +339,7 @@ fn matching<'c>(
     spec: &ScenarioSpec,
     data: &DataSources<'_>,
     ck: &'c Checkpoint,
-) -> Result<(DriverState, &'c Ias15Snapshot), PropagateError> {
+) -> Result<(DriverState, &'c IntegratorSnapshot), PropagateError> {
     prepare(spec)?;
     not_for_test_particles(spec)?;
     let tag = data.solar_overrides_tag();

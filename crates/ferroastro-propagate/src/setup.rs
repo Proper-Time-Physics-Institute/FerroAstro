@@ -197,6 +197,7 @@ pub fn supports(item: &str, mode: Mode) -> Result<(), String> {
         };
     }
     if ALWAYS.contains(&item)
+        || (item == "integrator.abm" && mode == Mode::NBody)
         || (central_term && mode == Mode::TestParticle)
         || (nbody_relativity && mode == Mode::NBody)
         || (small_bodies && mode == Mode::NBody)
@@ -211,8 +212,11 @@ pub fn supports(item: &str, mode: Mode) -> Result<(), String> {
                 .into()
         }
         _ if small_bodies => "small bodies (Minor/Ring tiers) need n-body mode".into(),
+        "integrator.abm" => {
+            "ABM is implemented for n-body runs (WP24); test-particle runs use IAS15".into()
+        }
         other if other.starts_with("integrator.") => {
-            "only IAS15 is implemented (ABM: WP24; WHFast/IRK16: WP29)".into()
+            "only IAS15 and (n-body) ABM are implemented (WHFast/IRK16: WP29)".into()
         }
         _ => "not implemented".into(),
     })

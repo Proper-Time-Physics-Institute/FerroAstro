@@ -18,6 +18,7 @@ ferroastro-eih.workspace = true
 ferroastro-ephem.workspace = true
 ferroastro-forces.workspace = true
 ferroastro-frames.workspace = true
+ferroastro-abm = { workspace = true, features = ["serde"] }
 ferroastro-integrators = { workspace = true, features = ["serde"] }
 ferroastro-precession.workspace = true
 ferroastro-real.workspace = true

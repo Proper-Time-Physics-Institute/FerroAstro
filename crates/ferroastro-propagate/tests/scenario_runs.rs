@@ -99,7 +99,7 @@ fn checkpoint_round_trip_and_mismatch_refusal() {
             precision.label(),
             s.span.years,
             bytes.len(),
-            ck.integrator.stats.steps
+            ck.integrator.steps()
         );
         assert_eq!(words, Some(0));
         assert_eq!(full.stats, first.stats);
@@ -179,12 +179,14 @@ fn run_refuses_unimplemented_switches_by_name() {
     let mut ast = spec("sun-mercury-gr1pn-header440.toml");
     ast.forces.asteroids = 343; // lint: allow-literal(the DE440 asteroid count, a switch value)
     // Solar Lense-Thirring is implemented in both modes since WP20, so it is not listed here.
-    let mut abm = base;
-    abm.integrator.name = ferroastro_scenario::IntegratorName::Abm;
+    // ABM is implemented for n-body runs since WP24 (refusal outside n-body mode: abm_runs B1);
+    // WHFast is still refused.
+    let mut whfast = base;
+    whfast.integrator.name = ferroastro_scenario::IntegratorName::Whfast;
     for (s, needle) in [
         (eih, "forces.gr_eih"),
         (ast, "forces.asteroids"),
-        (abm, "integrator.abm"),
+        (whfast, "integrator.whfast"),
     ] {
         let e = run(&s, &DataSources::none()).unwrap_err();
         println!("{e}");
