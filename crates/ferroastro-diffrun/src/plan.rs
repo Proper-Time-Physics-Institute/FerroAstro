@@ -17,11 +17,17 @@ pub enum Protocol {
     Add,
     /// `ϖ̇(full) − ϖ̇(full without X)` (informational).
     Remove,
-    /// `ϖ̇(base + X + Y) − ϖ̇(base + X) − ϖ̇(base + Y) + ϖ̇(base)`: the interaction of two
-    /// toggles under [`Protocol::Add`] (reported separately).
+    /// The interaction of two toggles under [`Protocol::Add`] (reported separately), in Park et
+    /// al. 2017 Table 3's convention: the pair's contribution minus the single contributions,
+    /// `[ϖ̇(base+X+Y) − ϖ̇(base)] − [ϖ̇(base+X) − ϖ̇(base)] − [ϖ̇(base+Y) − ϖ̇(base)]`. Under P-add
+    /// this equals the inclusion–exclusion second difference.
     CrossTerm,
-    /// `ϖ̇(full) − ϖ̇(full − X) − ϖ̇(full − Y) + ϖ̇(full − X − Y)`: the interaction of two toggles
-    /// under [`Protocol::Remove`] (informational).
+    /// The interaction of two toggles under [`Protocol::Remove`] (informational), in Park et
+    /// al. 2017 Table 3's convention: the pair's contribution minus the single contributions,
+    /// `[ϖ̇(full) − ϖ̇(full−X−Y)] − [ϖ̇(full) − ϖ̇(full−X)] − [ϖ̇(full) − ϖ̇(full−Y)]`
+    /// `= −ϖ̇(full) + ϖ̇(full−X) + ϖ̇(full−Y) − ϖ̇(full−X−Y)`, the **negative** of the
+    /// inclusion–exclusion second difference (progress review after WP18, R1; until then this
+    /// row printed the second difference).
     CrossTermRemove,
 }
 
@@ -34,6 +40,41 @@ impl Protocol {
             Protocol::Remove => "P-remove",
             Protocol::CrossTerm => "cross term (P-add)",
             Protocol::CrossTermRemove => "cross term (P-remove)",
+        }
+    }
+
+    /// True for the two cross-term protocols.
+    #[must_use]
+    pub const fn is_cross_term(self) -> bool {
+        matches!(self, Protocol::CrossTerm | Protocol::CrossTermRemove)
+    }
+
+    /// The sign that turns a cross-term row (Park17 convention) into the inclusion–exclusion
+    /// second difference `ϖ̇(XY) − ϖ̇(X) − ϖ̇(Y) + ϖ̇(∅)` of the protocol's configurations
+    /// (`+1` for P-add, `−1` for P-remove); `None` for single-toggle rows.
+    #[must_use]
+    pub const fn second_difference_sign(self) -> Option<f64> {
+        match self {
+            Protocol::CrossTerm => Some(1.0),
+            Protocol::CrossTermRemove => Some(-1.0),
+            Protocol::Add | Protocol::Remove => None,
+        }
+    }
+
+    /// The convention of the row's value, for tables and the JSON record.
+    #[must_use]
+    pub const fn convention(self) -> &'static str {
+        match self {
+            Protocol::Add => "rate(base + X) - rate(base)",
+            Protocol::Remove => "rate(full) - rate(full - X)",
+            Protocol::CrossTerm => {
+                "Park17 Table 3: pair contribution minus single contributions, P-add \
+                 [= second difference rate(base+X+Y) - rate(base+X) - rate(base+Y) + rate(base)]"
+            }
+            Protocol::CrossTermRemove => {
+                "Park17 Table 3: pair contribution minus single contributions, P-remove \
+                 [= -(second difference rate(full) - rate(full-X) - rate(full-Y) + rate(full-X-Y))]"
+            }
         }
     }
 }
@@ -208,7 +249,9 @@ impl Plan {
     /// Body toggles (PHY-012): configurations `base`, `base + X` for every toggle and
     /// `base + X + Y` for every pair; when `full` is not empty also `full`, `full − X` and
     /// `full − X − Y`. Combinations: P-add for every toggle, the P-add cross term of every pair,
-    /// and (if `full`) P-remove for every toggle and the P-remove cross term of every pair. `template` supplies everything but the body list and the span.
+    /// and (if `full`) P-remove for every toggle and the P-remove cross term of every pair. Cross
+    /// terms follow Park17's convention ([`Protocol::CrossTermRemove`]). `template` supplies
+    /// everything but the body list and the span.
     ///
     /// # Errors
     /// `FA-E1400` if a toggle is empty, repeats a base body, is missing from `full`, labels
@@ -292,11 +335,12 @@ impl Plan {
                     combinations.push(Combination {
                         label: format!("{}+{}", x.label, y.label),
                         protocol: Protocol::CrossTermRemove,
+                        // Park17 convention (see `Protocol::CrossTermRemove`).
                         terms: vec![
-                            (1, "full".into()),
-                            (-1, format!("full-{}", x.label)),
-                            (-1, format!("full-{}", y.label)),
-                            (1, format!("full-{}-{}", x.label, y.label)),
+                            (-1, "full".into()),
+                            (1, format!("full-{}", x.label)),
+                            (1, format!("full-{}", y.label)),
+                            (-1, format!("full-{}-{}", x.label, y.label)),
                         ],
                     });
                 }

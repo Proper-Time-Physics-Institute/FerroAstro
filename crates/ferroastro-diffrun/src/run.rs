@@ -358,6 +358,14 @@ pub struct Row {
     pub sigma_rss: f64,
     /// Its value from the cross-check estimates, if every term has one.
     pub cross_check: Option<f64>,
+    /// The convention of `value` ([`Protocol::convention`]; cross terms: Park17's).
+    #[serde(default)]
+    pub convention: String,
+    /// Cross-term rows only: the inclusion–exclusion second difference of the same
+    /// configurations (`value` times [`Protocol::second_difference_sign`]), kept as its own
+    /// labelled column.
+    #[serde(default)]
+    pub second_difference: Option<f64>,
 }
 
 /// A plan's result: provenance, per-configuration rates and the table.
@@ -472,6 +480,8 @@ pub fn evaluate(plan: &Plan, configs: &[ConfigResult]) -> Result<Vec<Row>, Diffr
                 value,
                 sigma_rss: var.sqrt(),
                 cross_check: cross,
+                convention: k.protocol.convention().to_owned(),
+                second_difference: k.protocol.second_difference_sign().map(|w| w * value),
             })
         })
         .collect()
@@ -614,24 +624,41 @@ impl PlanResult {
             if self.rows_of(p).next().is_none() {
                 continue;
             }
+            let _ = writeln!(s, "\n*{} convention: {}*", p.label(), p.convention());
+            let cross = p.is_cross_term();
             let _ = writeln!(
                 s,
-                "\n| {} row | value (″/cy) | σ_rss | cross-check | reference | value − reference |",
-                p.label()
+                "\n| {} row | value (″/cy) | σ_rss | cross-check | reference | value − reference |{}",
+                p.label(),
+                if cross {
+                    " second difference (″/cy) |"
+                } else {
+                    ""
+                }
             );
-            let _ = writeln!(s, "|---|---|---|---|---|---|");
+            let _ = writeln!(
+                s,
+                "|---|---|---|---|---|---|{}",
+                if cross { "---|" } else { "" }
+            );
             for r in self.rows_of(p) {
                 let reference = reference(&r.combination.label, p);
                 let _ = writeln!(
                     s,
-                    "| {} | {:.6} | {:.6} | {} | {} | {} |",
+                    "| {} | {:.6} | {:.6} | {} | {} | {} |{}",
                     r.combination.label,
                     r.value,
                     r.sigma_rss,
                     r.cross_check
                         .map_or_else(|| "—".into(), |x| format!("{x:.6}")),
                     reference.map_or_else(|| "—".into(), |x| format!("{x}")),
-                    reference.map_or_else(|| "—".into(), |x| format!("{:+.6}", r.value - x))
+                    reference.map_or_else(|| "—".into(), |x| format!("{:+.6}", r.value - x)),
+                    if cross {
+                        r.second_difference
+                            .map_or_else(|| " — |".into(), |x| format!(" {x:.6} |"))
+                    } else {
+                        String::new()
+                    }
                 );
             }
         }
