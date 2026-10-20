@@ -66,6 +66,10 @@ jobs:
         run: cargo clippy --workspace --all-targets --all-features -- -D warnings
       - name: cargo nextest + doctests
         run: cargo nextest run --workspace && cargo test --doc --workspace
+      # WP26 (NUM-021, TST-005): the SoA kernel tests again with the `simd` feature, so the
+      # SIMD-vs-scalar bitwise checks (cfg(feature = "simd")) run on every PR.
+      - name: cargo nextest (SoA kernels with the simd feature)
+        run: cargo nextest run -p ferroastro-forces -p ferroastro-eih -p ferroastro-propagate --features ferroastro-propagate/simd -E 'binary(soa_kernels) | binary(eih_soa) | binary(simd_soa)'
       - name: cargo deny check
         run: cargo deny check
       - name: cargo doc
@@ -122,6 +126,9 @@ jobs:
       # ferroastro-real also as no_std with the pure-Rust libm (no default features).
       - name: Build for wasm32-unknown-unknown
         run: cargo build -p ferroastro-real -p ferroastro-core -p ferroastro-erfa -p ferroastro-time -p ferroastro-integrators -p ferroastro-forces -p ferroastro-eih -p ferroastro-abm -p ferroastro-analytic -p ferroastro-frames -p ferroastro-ephem -p ferroastro-system -p ferroastro-scenario -p ferroastro-propagate -p ferroastro-diffrun --target wasm32-unknown-unknown
+      # WP26: the optional SoA SIMD lanes (wide) build for wasm32 too (per-lane f64 without simd128).
+      - name: Build the SoA kernels with the simd feature for wasm32-unknown-unknown
+        run: cargo build -p ferroastro-forces -p ferroastro-eih -p ferroastro-propagate --features ferroastro-propagate/simd --target wasm32-unknown-unknown
       - name: Build ferroastro-real and ferroastro-erfa no_std (libm) for wasm32-unknown-unknown
         run: cargo build -p ferroastro-real -p ferroastro-erfa --no-default-features --features libm --target wasm32-unknown-unknown
       # DEP-010 / WP8: the optional hifitime (UTC) feature must build for wasm32 too.

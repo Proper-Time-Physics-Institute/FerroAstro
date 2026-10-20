@@ -26,6 +26,8 @@ step() { echo "## $*"; "$@"; }
 step cargo fmt --all --check
 step cargo clippy --workspace --all-targets --all-features -- -D warnings
 step cargo nextest run --workspace
+# WP26: the SoA SIMD-vs-scalar bitwise checks run only with the simd feature (as CI's rust job).
+step cargo nextest run -p ferroastro-forces -p ferroastro-eih -p ferroastro-propagate --features ferroastro-propagate/simd -E 'binary(soa_kernels) | binary(eih_soa) | binary(simd_soa)'
 step cargo test --doc --workspace
 step cargo deny check
 RUSTDOCFLAGS="-D warnings" step cargo doc --no-deps --workspace
