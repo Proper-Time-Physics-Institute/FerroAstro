@@ -470,11 +470,11 @@ fn equal_mass_binary_advance_is_mass_ratio_independent() {
         let d = |x: [f64; 3], y: [f64; 3]| x[0].mul_add(y[0], x[1].mul_add(y[1], x[2] * y[2]));
         let (va2, vb2) = (d(va, va), d(vb, vb));
         let newton = 0.5 * gm * (va2 + vb2) - gm * gm / r;
-        let pn = 0.375 * gm * va2.mul_add(va2, vb2 * vb2)
+        let pn = 3.0 / 8.0 * gm * va2.mul_add(va2, vb2 * vb2)
             + gm * gm / (2.0 * r) * (3.0 * (va2 + vb2) - 7.0 * d(va, vb) - d(nn, va) * d(nn, vb))
             + gm * gm * (2.0 * gm) / (2.0 * r * r);
         (newton + pn / c2, newton)
-    }; // lint: allow-literal(coefficients of the EIH Lagrangian energy, Landau & Lifshitz 106.17)
+    };
     let (e0, en0) = energy(&p);
     let mut worst_energy: f64 = 0.0;
     let dt = period / f64::from(SAMPLES_PER_ORBIT);
