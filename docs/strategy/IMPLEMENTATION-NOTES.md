@@ -4332,7 +4332,7 @@ I read the equations from page images of the PDF rendered at 300 dpi; the text e
 
 DE430 (Folkner et al. 2014, IPN PR 42-196) Eq. 27 is cited by NUM-020, but its PDF is not in the local corpus, so I did not read it. The DE440 paper says it repeats the DE430 material "so that this paper can be self-contained". **NUM-020's second check should compare against both PDFs.**
 
-### Plan and pre-registered checks (written 2026-10-20 ~08:20 UTC, before any WP19 code or run)
+### Plan and pre-registered checks (written 2026-10-20 08:07 UTC, before any WP19 code or run; committed in `8330165`)
 **Model.**
 - **`Eih` term** (`ferroastro-eih`, a `ForceTerm`). It adds only the c⁻² part of Eq. 27 to every Major body. The Newtonian part stays in `NewtonianMutual`, so `gr_eih` = `NewtonianMutual` + `Eih`.
 - **Sums.** The Eq. 27 sums (sources j, potentials k) run over the Major bodies. Minor and Ring bodies stay Newtonian: they neither feel nor source 1PN terms (interpretation, NEEDS HUMAN REVIEW for WP22).
@@ -4362,3 +4362,95 @@ DE430 (Folkner et al. 2014, IPN PR 42-196) Eq. 27 is cited by NUM-020, but its P
 **Vectors.** New file `tests/vectors/eih.toml`: C2a, C2b, C3 (Δ vs R3), C5b factor, C5c, C6 (both parts), C7 factor. C3 and C4 reuse `PHY005-GR-NUM-RATE` and `PHY006-RATIO-REL-DEV`.
 
 **PHY-014 gate.** The NUM-020 transcription table is `crates/ferroastro-eih/TRANSCRIPTION.md`, with an unsigned review block for OI-33. No PHY-014 work starts in WP19.
+
+### What was built (WP19)
+- **`ferroastro-eih`** (L7; deps: core, ephem, forces, real, system).
+  - `Eih`: the c⁻² part of Eq. 27 as a `ForceTerm`, with `RhsAcceleration::{Newtonian, Iterated}`.
+  - `HeliocentricSchwarzschild`: the Sun-only rung.
+  - `mu_star` and `relativistic_barycentre`: Eqs. 1–2.
+  - `TRANSCRIPTION.md`: the NUM-020 table, with an unsigned second-check block.
+  - The crate is in CI's wasm32 job.
+- **`ferroastro-propagate`.**
+  - N-body `gr_eih` and `gr_1pn_central`, with PPN from `forces.ppn` or DE440; the two together are refused.
+  - Still refused (REF-011): `gr_eih` in test-particle mode, and `lense_thirring` in N-body mode (WP20).
+  - The refusal tests (propagate, CLI) and the doc example moved to those cases.
+- **`ci/scenarios/sun-mercury-eih-header440.toml`.**
+- **`tools/eih_limit.py`** (sympy, ruff/mypy clean) and `tests/test_eih_limit.py`: the R5 → R3 limit and the EIH-Lagrangian check, each with a negative control.
+- **`tests/vectors/eih.toml`**: 10 vectors.
+  - 8 are from the plan.
+  - `EIH-BINARY-ADVANCE-REL` and `EIH-BINARY-ENERGY-REL` were added after mutation probe E3. Each was written before its own first run.
+
+### WP19 results (PR tier, pinned header.440 and de440.bsp, 2026-10-20, toolchain 1.95.0)
+Every check passed on its first run. No bound was changed.
+
+| # | measured | pre-registered | margin |
+|---|---|---|---|
+| C1 sympy R5 → R3 (general β, γ) | identical; the source gets 0; negative control detected | ≡ 0 | — |
+| C2a total, β = γ = 1 / (1.001, 0.999) | 1.689e-16 / 1.689e-16 | 1e-15 | 0.17 |
+| C2b correction only | 1.288e-16 / 2.820e-16 | 1e-13 | 0.003 |
+| C2c Sun's correction (massless partner) | exactly 0 | 0 | — |
+| C3 EIH Sun + Mercury rate | **42.980114172** ″/cy (1001 passages, 76 506 steps) | 42.980 ± 0.001 | 0.11 |
+| C3 EIH − R3 (R3: 42.980085160) | +2.901e-5 ″/cy | 1e-4 | 0.29 |
+| C3b N-body `gr_1pn_central` − R3 | +2.664e-5 ″/cy | 1e-4 | 0.27 |
+| C4 PPN ratio, five points | max \|dev\| 4.16e-10; identical IC hashes | 1e-6 | 4e-4 |
+| C5a triangle bound | holds for all 10 bodies (Sun closest: 1.29e-25 vs 1.50e-25) | exact | — |
+| C5b max \|Δa\|/(ε²\|a_N\|), ε = 2.607e-8 | 1.259 (Sun); planets ≤ 1.4e-3 | 100 | 0.013 |
+| C5c Mercury, iterated vs default, 10 yr | 1.502e-5 km | 1e-3 km | 0.015 |
+| C6 relativistic SSB deviation, 10 yr | **3.20e-10 km** | 1e-5 km | 3e-5 |
+| C6 Newtonian / relativistic deviation ratio | 1.975e-5 km / 3.20e-10 km = 6.2e4 | ≥ 10 | pass |
+| (E3) equal-mass binary advance vs 6πGM/(c²p) | −1.468e-5 (ε = 2.63e-6) | 1e-4 | 0.15 |
+| (E3) binary 1PN energy | 5.271e-10; 1.318e-10 at 2a (×4.0: O(c⁻⁴)) | 1e-9 | 0.53 |
+| sympy: Eq. 27 vs EIH Lagrangian, 2 bodies | equal to 60 digits; dE/dt has no c⁻² part; T6 control detected | ≡ 0 | — |
+
+**Notes on the numbers.**
+- **C3.** The plan predicted EIH − R3 ≈ 1e-5. The measured +2.9e-5 is larger, and it is understood: at a fixed initial state, μ = GM☉ + GM_Me also changes a. The rate therefore scales as d ln(rate)/d ln μ ≈ 3/2 + 5/2(2a/r − 1) ≈ 4, which gives 4 × 7.1e-6 ≈ 2.9e-5. The red-team's 7e-6 holds for a fixed a.
+- **C6 expectation.** I expected the Newtonian barycentre to oscillate by about 1.5 m; it moved 2.0 cm. My estimate ignored that for near-circular orbits v² ≈ U, so μ* − μ ∝ (v² − U) nearly cancels; what remains is set by eccentricity and is partly absorbed by the linear fit over 10 yr. The asserted ratio (≥ 10) is unaffected.
+- **Binary energy.** Its margin (0.53) is the thinnest. The ×4.0 scaling with 2a shows the residual is the expected O(c⁻⁴) non-conservation, not round-off or a defect.
+
+### WP19 real-data result (C7, data tier; header.440 and de440.bsp re-verified against their pins)
+Sun + 8 planets + geocentric Moon from header.440, solar J2 in both runs, 1969-06-28 → +10 yr every 10 d, IAS15 default (5346 steps each). Maximum residual against de440.bsp, km:
+
+| body | Newtonian + J2, barycentric | EIH + J2, barycentric | Newtonian, heliocentric | EIH, heliocentric | factor (barycentric) |
+|---|---|---|---|---|---|
+| Sun | 1.381 | 1.399 | – | – | 0.99 |
+| **Mercury** | **3408.93** | **1.442** | 3409.90 | **0.055** | **2364** |
+| Venus | 877.26 | 1.496 | 878.24 | 0.129 | 586 |
+| Earth | 527.82 | 3.914 | 526.87 | 2.699 | 135 |
+| Moon (barycentric) | 696.12 | 219.99 | 695.08 | 218.87 | 3.2 |
+| Mars system | 387.92 | 10.23 | 389.03 | 11.25 | 38 |
+| Jupiter system | 32.39 | 11.51 | 31.90 | 12.22 | 2.8 |
+| Saturn system | 6.79 | 7.55 | 5.55 | 8.79 | 0.90 |
+| Uranus system | 11.47 | 10.27 | 11.00 | 9.74 | 1.1 |
+| Neptune system | 6.39 | 6.09 | 7.12 | 6.85 | 1.05 |
+| Moon − Earth | 177.20 | **221.55** | – | – | 0.80 |
+
+**Mercury improves 2364× (pre-registered ≥ 10; pass).** Its heliocentric residual is 55 m over 10 yr.
+
+**Finding (reported, not asserted): Moon − Earth gets worse with EIH, 177 → 222 km.** The model omits the Earth's and Moon's figures, the tides and the librations, which dominate the lunar orbit at this level. The Newtonian residual benefits from a partial cancellation that EIH removes. Nothing about the lunar 1PN terms can be concluded until those terms exist (WP25 and later).
+
+The outer-planet residuals of about 10 km are unchanged by EIH and follow the Sun's barycentric error (1.4 km in both runs): the omitted asteroids, KBOs and ring move the SSB.
+
+### Mutation probes (WP19; each mutant applied to a backed-up file, the EIH PR tier run, the file restored; tree clean afterwards)
+| # | mutant of `eih.rs` | result |
+|---|---|---|
+| E1 | T7: (r_j − r_i)·a_j → (r_i − r_j)·a_j | killed (C6, binary) |
+| E2 | T2: −(2β−1) → −(2β+1) | killed (C6, binary) |
+| E3 | T6: −3/2 → −1 | **survived C1–C7.** Killed only after the binary energy check was added: 1.46e-7 against 1e-9; the advance does not move. |
+| E4 | T10: (3+4γ)/2 → (3+4γ)/4 | killed (C6, binary) |
+| E5 | T4: (1+γ) → γ | killed (C6, binary) |
+| E6 | T9: (v_i − v_j) → −v_j | killed (C2, C3, C4, C6, binary) |
+| E7 | `Iterated` is a no-op | killed (C5: the Δ ≠ 0 assertion, added after the first run; it is an assertion, not a tolerance) |
+| E8 | T1: −2(β+γ) → −2β | killed (C2, C3, C4, C6, binary) |
+
+**Lesson for PHY-014.** The solar-system checks (C3, C6, C7) are insensitive to terms driven by the source's velocity. The Lagrangian and binary checks are what pin those terms.
+
+### Deviations and NEEDS HUMAN REVIEW (WP19)
+1. **OI-33 / NUM-020 is not signed.** `crates/ferroastro-eih/TRANSCRIPTION.md` is the record. The DE430 PDF (IPN PR 42-196) was not available locally; the second check should read both PDFs. **PHY-014 (WP22) must not start until a human signs.**
+2. **The EIH sums run over the Major bodies only.** Minor and Ring bodies stay Newtonian; the Eq. 27 text says "over all bodies". This matters for WP22 (343 asteroids): their 1PN pull on Mercury is about 1e-8 of N-AST's 0.0012 ″/cy, but the decision is the maintainer's.
+3. **`gr_1pn_central` in N-body mode** is my reading of "Sun-only 1PN rung": the heliocentric R3 correction on every other Major body, with no reaction. It matches R3 to 2.7e-5 ″/cy.
+4. **RHS iteration is API-only.** `RhsAcceleration::Iterated` has no scenario switch. CI-002's switch list is fixed, and adding a field is a spec change for PR #2's owners.
+5. **The relativistic SSB (NUM-018) is not used for IC assembly.** It is implemented and verified (C6), but the header.440 ICs are already DE440-barycentric. Re-barycentring a body subset with μ* is a WP25/WP22 decision. The "μm in DD" acceptance belongs to WP25.
+6. **`potential_over_g` is `None` for both EIH terms.** The N-body model energy is therefore unavailable with relativity on. The 1PN energy is checked separately (binary test).
+7. **Checks added after the first run:** the binary advance and energy, and the C5 Δ ≠ 0 assertion. Each was added because a mutant survived, and each binary bound was fixed before that check's first run. No existing bound moved.
+8. **Moon − Earth gets worse under EIH** (177 → 222 km), as reported above.
+9. **The C6 rationale over-estimated the Newtonian barycentre wobble** (1.5 m expected, 2 cm measured). The vector's rationale keeps the pre-registered text, and these notes record the correction.
