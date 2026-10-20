@@ -175,3 +175,17 @@ retrieved = "2026-10-20"
 tolerance = { abs = 0.1 }
 tolerance_rationale = "The O(d^4) correction at d = 450 s is ~(n d)^2 ~ 1e-5 relative for Mercury, and DD round-off is ~1e-22 of the residual; 0.1 separates 4 from the floor case (a mu*' error of even 1e-9 relative gives a ratio < 3.9 at these residuals). ADDED AFTER THE FIRST RUN of C3b (which printed ratios of 4.000) to kill the mutant 'mu*' drops the 1/2', which survived the PR tier; disclosed in IMPLEMENTATION-NOTES WP25."
 verified_by = "WP25 builder agent, 2026-10-20: added after the first C3b run (disclosed); the bound follows from the d^2 law, not from the run."
+
+[[vector]]
+id = "EPH-MIXED-DE440-HELIO-CONSISTENCY-KM"
+requirement = ["NUM-007", "REF-001"]
+quantity = "| max_t |h_mixed - h_de440| - max_t |h_DD - h_de440| | for Mercury, h = heliocentric position, scenario ephemeris-mixed-epm16-40yr with span 5 yr and 10-d samples, mixed mode and full double-double, against de440.bsp"
+value = 0.0
+unit = "km"
+kind = "analytic"
+source = "The two runs solve the same model from the same ICs and differ only by round-off; by the triangle inequality their maximum residuals against the real ephemeris differ by at most their mutual distance, which NUM-007 bounds at 1 cm over 40 yr (and is smaller over 5 yr)."
+citation = "JPL de440.bsp (Park et al. 2021, AJ 161, 105); FerroAstro NUM-007; WP25 plan addendum D1"
+retrieved = "2026-10-20"
+tolerance = { abs = 1.0e-5 }
+tolerance_rationale = "The NUM-007 40-yr bound applied to a 5-yr run (round-off grows with time, so it is conservative). Heliocentric residuals are used because the re-barycentred ICs sit ~123 km from DE440's own SSB (the body subset has no KBOs or ring)."
+verified_by = "WP25 builder agent, 2026-10-20: fixed in the WP25 plan addendum before the first run."
