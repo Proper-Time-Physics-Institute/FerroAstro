@@ -5157,3 +5157,16 @@ Round 2 (`run_mutants.py`, all 9 mutants, fresh mtimes on restore): 9/9 killed.
 - **WP22**: blocked on the NUM-020 / OI-33 signature.
 - **Mixed double-double ephemeris mode (WP25):** B3 already shows f64 round-off of 0.5–2.2 m (Mercury). Making the integrator sums DD with forces in f64 is WP25's NUM-007 work.
 - **ABM in test-particle mode:** refused. The single-body rungs keep IAS15.
+
+### WP24 gate results (local, 2026-10-20, toolchain 1.95.0 + MSRV 1.85.0; code tip `b61114a`)
+- **`tools/pre_push.sh` (full):**
+  - Every step passes except `trace --check`. TRACE.md was stale after the last tests were added; it was regenerated in the next commit and now reports 0 errors.
+  - The MSRV steps were then run by hand: `cargo +1.85.0 check --workspace --all-targets` and `cargo +1.85.0 nextest run --workspace -E 'not binary(compile_fail)'` pass (285 passed).
+  - nextest: **288 passed, 48 skipped** (the skipped tests are the `#[ignore]`d `data_*` and `nightly_*` tests). Doctests pass.
+  - deny: advisories, bans, licenses and sources ok.
+  - ruff, ruff format and mypy strict pass; pytest 73 passed; reuse is compliant; `check_layers`: 23 crates, 0 errors.
+- **Data tier** (`--profile data --run-ignored only`, pinned cache re-verified): **31/31 pass**, including B5.
+- **Nightly tier** (release), run without the N-body Brouwer ensemble, PHY-013 and B3 (B3 ran separately, 500 s, pass): **12/14 pass, 2 fail**. Both failures are known:
+  - the speed table: "wp21-e-…: rebound missing on (a)", which is V3 from the last review, not touched here;
+  - **B2** `nightly_abm_vs_ias15_forty_year_mercury_bound`: 2.241986e-3 km against the 1e-3 km bound (NEEDS HUMAN REVIEW 1).
+  - Both 1000-yr checkpoint resumes (f64 and DD) pass with checkpoint format v3.
