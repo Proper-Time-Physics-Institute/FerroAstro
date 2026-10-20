@@ -72,7 +72,8 @@ pub fn com_energy(
     Ok(kinetic + potential)
 }
 
-/// `|E(last) − E(first)| / |E(first)|` with [`com_energy`], and the number of sampled bodies.
+/// `|E(last) − E(first)| / |E(first)|` with [`com_energy`], and the number of bodies in the
+/// energy (the sampled bodies, plus the Sun of a heliocentric series that omits it).
 ///
 /// # Errors
 /// `FA-E1600` if the series has fewer than two output times, the first and last times hold
@@ -98,7 +99,12 @@ pub fn relative_energy_change(
     }
     let e0 = com_energy(first, series.center_naif, gms)?;
     let e1 = com_energy(last, series.center_naif, gms)?;
-    Ok((((e1 - e0) / e0).abs(), first.len()))
+    let centre_added =
+        series.center_naif != 0 && !first.iter().any(|r| r.naif == series.center_naif);
+    Ok((
+        ((e1 - e0) / e0).abs(),
+        first.len() + usize::from(centre_added),
+    ))
 }
 
 /// The largest heliocentric position difference of Mercury between `a` and `b` (km), the time
