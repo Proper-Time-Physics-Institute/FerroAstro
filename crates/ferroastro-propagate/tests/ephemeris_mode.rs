@@ -36,6 +36,7 @@ const MAJOR_SYSTEM: &str = "abm-sun-planets-moon-eih-40yr.toml";
 /// C4 span (Julian years; WP25 plan).
 const C4_YEARS: f64 = 2.0;
 const MERCURY: i32 = 1;
+const MOON: i32 = 301;
 /// NAIF ids of (7) Iris and (324) Bamberga.
 const IRIS: i32 = 2_000_007; // lint: allow-literal(NAIF id 2000000 + 7)
 const BAMBERGA: i32 = 2_000_324; // lint: allow-literal(NAIF id 2000000 + 324)
@@ -185,6 +186,39 @@ fn mixed_mode_refusals_tiers_and_shared_initial_conditions() {
     assert!(o.model.contains("11 Major, 343 Minor"), "{}", o.model);
     let ids: Vec<i32> = ic.records.iter().map(|r| r.naif).collect();
     assert!(ids.contains(&IRIS) && ids.contains(&BAMBERGA));
+
+    // Re-barycentring is one translation of every slot except Moon - Earth (geocentric), which
+    // it leaves bitwise unchanged; every other slot moves by the same vector.
+    let mut raw = short.clone();
+    raw.initial_conditions.barycentre = None;
+    let ic_raw = initial_conditions(&raw, &data).unwrap();
+    let moon = ids.iter().position(|&x| x == MOON).unwrap();
+    let mut shift: Option<[DoubleDouble; 3]> = None;
+    for (i, (a, b)) in ic.records.iter().zip(&ic_raw.records).enumerate() {
+        assert_eq!(a.naif, b.naif);
+        if i == moon {
+            let bits = |r: &[Parts; 3]| r.map(|z| z.map(f64::to_bits));
+            assert_eq!(bits(&a.position), bits(&b.position), "Moon - Earth moved");
+            assert_eq!(
+                bits(&a.velocity),
+                bits(&b.velocity),
+                "Moon - Earth velocity changed"
+            );
+            continue;
+        }
+        let d = [0, 1, 2].map(|k| dd(a.position[k]) - dd(b.position[k]));
+        let s0 = *shift.get_or_insert(d);
+        let e = (0..3)
+            .map(|k| (d[k] - s0[k]).to_f64().abs())
+            .fold(0.0, f64::max);
+        // Translating <= 1e10 km positions by ~1e2 km in double-double is exact to ~1e-21 km.
+        assert!(e < 1e-15, "slot {i} moved differently by {e:e} km"); // lint: allow-literal(DD translation round-off bound, structural)
+    }
+    let s0 = shift.unwrap().map(DoubleDouble::to_f64);
+    println!(
+        "  re-barycentring shift {:.6} km (every slot but Moon - Earth)",
+        s0[0].hypot(s0[1]).hypot(s0[2])
+    );
 }
 
 /// C2: a mixed run stopped at 1 yr and resumed equals the uninterrupted 2-yr run bitwise; a

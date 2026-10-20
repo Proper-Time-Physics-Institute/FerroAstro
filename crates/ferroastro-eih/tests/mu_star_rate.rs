@@ -104,8 +104,9 @@ fn residual(delta_s: f64, print: bool) -> f64 {
     worst
 }
 
-/// C3b, reported in the PR tier: the residual at the pre-registered δ = 1 h and its decrease
-/// with δ (a central difference converges as δ²; a wrong μ̇* leaves an O(1) floor). The
+/// C3b in the PR tier: the residual at the pre-registered δ = 1 h is reported, and its δ²
+/// convergence is asserted (a central difference converges as δ²; a wrong μ̇* leaves an O(1)
+/// floor). The
 /// pre-registered bound is asserted in [`nightly_mu_star_rate_pre_registered_bound`]; it fails at
 /// δ = 1 h (3.9e-6 against 1e-6: the plan's truncation estimate omitted a factor (2π)², see
 /// IMPLEMENTATION-NOTES WP25, NEEDS HUMAN REVIEW).
@@ -116,20 +117,23 @@ fn mu_star_rate_matches_a_central_difference() {
     let base = residual(DELTA_S, true);
     println!("C3b: max |mu*' - difference| / max |mu*'| at d = {DELTA_S} s: {base:.3e}");
     let mut last = base;
+    let mut ratio = 0.0;
     for k in 1..=4 {
         let d = DELTA_S / f64::from(1_u32 << k);
         let r = residual(d, false);
+        ratio = last / r;
         println!(
-            "  d = {d:>7.1} s: {r:.3e} (ratio to the previous {:.3}; 4 for a delta^2 residual)",
-            last / r
+            "  d = {d:>7.1} s: {r:.3e} (ratio to the previous {ratio:.4}; 4 for a delta^2 residual)"
         );
         last = r;
     }
-    // Reported only: no bound was pre-registered for the convergence (WP25 plan C3).
-    assert!(
-        last < base,
-        "the residual does not decrease with the step: {last} >= {base}"
-    );
+    // The last halving (450 s -> 225 s): `EPH-MUSTAR-RATE-CONVERGENCE`, added after the first run
+    // (disclosed in IMPLEMENTATION-NOTES WP25).
+    vectors()
+        .get("EPH-MUSTAR-RATE-CONVERGENCE")
+        .unwrap()
+        .check(ratio)
+        .unwrap();
 }
 
 /// C3b with its pre-registered bound `EPH-MUSTAR-RATE-REL` at δ = 1 h. **Fails** (3.9e-6 against
