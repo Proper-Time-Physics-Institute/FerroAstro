@@ -49,6 +49,8 @@ done
 for tool in rebound swiftest mercury6 orekit; do
   for s in ci/scenarios/*.toml; do
     name="$(basename "$s" .toml)"
+    # bench-* scenarios belong to the speed-table harness (tools/bench/speed_table.sh, WP18).
+    [[ "$name" == bench-* ]] && continue
     rm -rf "${out:?}/$tool/$name"
     log="$out/$tool-$name.log"
     $R "$tool" "$s" "$out/$tool/$name" > "$log" 2>&1

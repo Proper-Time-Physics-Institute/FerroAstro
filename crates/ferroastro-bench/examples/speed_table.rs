@@ -493,7 +493,7 @@ fn reference_tool(kind: Kind) -> Option<&'static str> {
 }
 
 /// `assemble`: the speed table of one run directory.
-fn cmd_assemble(args: &[String]) {
+fn cmd_assemble(args: &[String]) -> ExitCode {
     let run_dir = PathBuf::from(need(args, "--run-dir"));
     let run: serde_json::Value =
         serde_json::from_str(&std::fs::read_to_string(run_dir.join("run.json")).unwrap()).unwrap();
@@ -697,7 +697,7 @@ fn cmd_assemble(args: &[String]) {
             .and_then(serde_json::Value::as_f64)
             .unwrap_or(f64::NAN)
     };
-    let table = SpeedTable {
+    let mut table = SpeedTable {
         schema_version: ferroastro_bench::table::TABLE_SCHEMA_VERSION,
         run_id: run
             .get("run_id")
@@ -715,7 +715,12 @@ fn cmd_assemble(args: &[String]) {
         entries,
         notes,
     };
-    table.validate().unwrap();
+    let valid = table.validate();
+    if let Err(e) = &valid {
+        table
+            .notes
+            .push(format!("NOT A VALID CI-008 TABLE (smoke run only): {e}"));
+    }
     std::fs::write(
         need(args, "--out-json"),
         serde_json::to_string_pretty(&table).unwrap() + "\n",
@@ -723,6 +728,13 @@ fn cmd_assemble(args: &[String]) {
     .unwrap();
     std::fs::write(need(args, "--out-md"), table.to_markdown()).unwrap();
     println!("{}", table.to_markdown());
+    match valid {
+        Ok(()) => ExitCode::SUCCESS,
+        Err(e) => {
+            eprintln!("{e}");
+            ExitCode::FAILURE
+        }
+    }
 }
 
 fn cmd_compare(args: &[String]) -> ExitCode {
@@ -769,7 +781,7 @@ fn main() -> ExitCode {
     let args: Vec<String> = std::env::args().skip(1).collect();
     match args.first().map(String::as_str) {
         Some("ferroastro") => cmd_ferroastro(&args),
-        Some("assemble") => cmd_assemble(&args),
+        Some("assemble") => return cmd_assemble(&args),
         Some("compare") => return cmd_compare(args.get(1..).unwrap_or(&[])),
         _ => {
             eprintln!("usage: speed_table ferroastro|assemble|compare ... (see the file's docs)");
