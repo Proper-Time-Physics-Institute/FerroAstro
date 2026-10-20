@@ -7,7 +7,10 @@
 # maintainer's local machine, Journal #10). Outputs under $FA_BENCH_DIR/<run-id>/ (default
 # target/bench): run.json, <tool>/<scenario>/run-<k>/ and speed-table.{json,md}.
 #
-#   tools/bench/speed_table.sh [--runs N] [--run-id ID] [--only-ferroastro]
+#   tools/bench/speed_table.sh [--runs N] [--run-id ID] [--only-ferroastro] [--only SCENARIO]...
+#
+# --only (WP21) restricts the invocation to the named timed scenarios (repeatable; their daily
+# twins follow); the table then lists only those scenarios and notes the others as not run.
 #
 # Oracles run through tools/oracles/run_oracles.sh (images built locally, never pushed; no
 # FerroAstro build enters them, LIC-002). A runner that refuses a scenario (exit 3, REF-011) is
@@ -19,11 +22,13 @@ cd "$root"
 runs=5
 run_id="$(date -u +%Y%m%dT%H%M%SZ)"
 only_fa=0
+only=()
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --runs) runs="$2"; shift 2 ;;
     --run-id) run_id="$2"; shift 2 ;;
     --only-ferroastro) only_fa=1; shift ;;
+    --only) only+=("$2"); shift 2 ;;
     *) echo "unknown argument $1" >&2; exit 2 ;;
   esac
 done
@@ -38,8 +43,18 @@ load_start="$(load)"
 started="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 
 timed=(bench-a-sun-8planets-newton-1000yr bench-b-sun-mercury-tp-gr1pn-1000yr
-       bench-c-full-newton-minor343-100yr oracle-stage-b-mercury-de440-field-100yr)
+       bench-c-full-newton-minor343-100yr oracle-stage-b-mercury-de440-field-100yr
+       bench-e-sun-8planets-eih-1000yr)
 daily=(bench-a-sun-8planets-newton-1000yr-daily bench-b-sun-mercury-tp-gr1pn-1000yr-daily)
+if [[ ${#only[@]} -gt 0 ]]; then
+  keep_t=(); keep_d=()
+  for s in "${only[@]}"; do
+    [[ " ${timed[*]} " == *" $s "* ]] || { echo "--only: unknown timed scenario $s" >&2; exit 2; }
+    keep_t+=("$s")
+    [[ " ${daily[*]} " == *" $s-daily "* ]] && keep_d+=("$s-daily")
+  done
+  timed=("${keep_t[@]}"); daily=("${keep_d[@]}")
+fi
 
 cargo build --release -p ferroastro-bench --example speed_table >&2 || exit 1
 drv="$root/target/release/examples/speed_table"
