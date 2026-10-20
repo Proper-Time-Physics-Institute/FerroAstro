@@ -123,3 +123,60 @@ fn cross_terms_follow_park17_convention_with_the_second_difference_alongside() {
         json.contains("Park17 Table 3: pair contribution minus single contributions, P-remove")
     );
 }
+
+/// WP20: the switch plan with both protocols runs each toggle subset once and its rows follow
+/// their definitions (synthetic rates: J2 alone 3, LT alone 5, both 7; not physical values).
+///
+/// Verifies: NUM-013, NUM-019
+#[test]
+fn switch_plan_with_both_protocols_has_each_subset_once_and_park17_signs() {
+    use ferroastro_diffrun::SwitchToggle;
+    let t = common::scenario("sun-mercury-newton-header440.toml");
+    let toggles = [
+        SwitchToggle {
+            label: "J2".into(),
+            apply: |f| f.sun_j2 = true,
+        },
+        SwitchToggle {
+            label: "LT".into(),
+            apply: |f| f.lense_thirring = true,
+        },
+    ];
+    let plan = Plan::switches_both("wp20-sign", &t, &toggles, &[(0, 1)], &[-1.0, 1.0]).unwrap();
+    let labels: Vec<&str> = plan.configs.iter().map(|c| c.label.as_str()).collect();
+    assert_eq!(labels, ["base", "base+J2", "base+LT", "base+J2+LT"]);
+    assert!(plan.configs.iter().all(|c| c.legs.len() == 2));
+    let full = &plan.configs[3].legs[1].forces;
+    assert!(full.sun_j2 && full.lense_thirring);
+    let rates = [
+        ("base", 0.0),       // lint: allow-literal(synthetic rate)
+        ("base+J2", 3.0),    // lint: allow-literal(synthetic rate)
+        ("base+LT", 5.0),    // lint: allow-literal(synthetic rate)
+        ("base+J2+LT", 7.0), // lint: allow-literal(synthetic rate)
+    ];
+    let configs: Vec<ConfigResult> = rates.iter().map(|&(l, r)| synthetic(l, r)).collect();
+    let rows = evaluate(&plan, &configs).unwrap();
+    let row = |p: Protocol, l: &str| {
+        rows.iter()
+            .find(|r| r.combination.protocol == p && r.combination.label == l)
+            .unwrap()
+            .value
+    };
+    let rate = |l: &str| rates.iter().find(|r| r.0 == l).unwrap().1;
+    assert_eq!(row(Protocol::Add, "J2"), rate("base+J2") - rate("base"));
+    assert_eq!(row(Protocol::Add, "LT"), rate("base+LT") - rate("base"));
+    assert_eq!(
+        row(Protocol::Remove, "J2"),
+        rate("base+J2+LT") - rate("base+LT")
+    );
+    assert_eq!(
+        row(Protocol::Remove, "LT"),
+        rate("base+J2+LT") - rate("base+J2")
+    );
+    let cross = rate("base+J2+LT") - rate("base+J2") - rate("base+LT") + rate("base");
+    assert_eq!(row(Protocol::CrossTerm, "J2+LT"), cross);
+    // With two toggles the P-remove pair contribution is the whole J2 + LT effect, so its
+    // Park17-convention cross term is again the second difference, with the opposite sign
+    // convention of Protocol::CrossTermRemove.
+    assert_eq!(row(Protocol::CrossTermRemove, "J2+LT"), -cross);
+}
