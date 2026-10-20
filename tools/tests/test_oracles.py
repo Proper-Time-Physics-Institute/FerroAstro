@@ -450,4 +450,6 @@ def test_nightly_runs_every_tool_that_has_a_committed_golden() -> None:
     assert golden_tools - single_shot <= scenario_tools, golden_tools - scenario_tools
     assert golden_tools | scenario_tools <= built
     for tool in single_shot:
-        assert re.search(rf"^\$R {tool} ", script, flags=re.MULTILINE), tool
+        # Each step runs through run_step (review R3: a waited-for child, so signals are recorded).
+        step = rf'^run_step "{tool}\|[^"]*" "[^"]*" \$R {tool} '
+        assert re.search(step, script, flags=re.MULTILINE), tool

@@ -15,16 +15,15 @@ use ferroastro_scenario::BodyName;
 /// Synthetic configuration rates (″/cy), chosen so that every combination is a distinct small
 /// integer: P-add singles V = 10, J = 20, pair contribution 33; P-remove singles V = 11, J = 18,
 /// pair contribution 30. Not physical values.
-// lint: allow-literal(synthetic rates of the sign test)
 const RATES: [(&str, f64); 8] = [
-    ("base", 0.0),
-    ("base+V", 10.0),
-    ("base+J", 20.0),
-    ("base+V+J", 33.0),
-    ("full", 100.0),
-    ("full-V", 89.0),
-    ("full-J", 82.0),
-    ("full-V-J", 70.0),
+    ("base", 0.0),      // lint: allow-literal(synthetic rate)
+    ("base+V", 10.0),   // lint: allow-literal(synthetic rate)
+    ("base+J", 20.0),   // lint: allow-literal(synthetic rate)
+    ("base+V+J", 33.0), // lint: allow-literal(synthetic rate)
+    ("full", 100.0),    // lint: allow-literal(synthetic rate)
+    ("full-V", 89.0),   // lint: allow-literal(synthetic rate)
+    ("full-J", 82.0),   // lint: allow-literal(synthetic rate)
+    ("full-V-J", 70.0), // lint: allow-literal(synthetic rate)
 ];
 
 fn synthetic(label: &str, rate: f64) -> ConfigResult {
