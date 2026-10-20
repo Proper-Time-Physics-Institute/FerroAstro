@@ -29,6 +29,9 @@ mod barycentre;
 mod central;
 mod eih;
 
-pub use barycentre::{BarycentreBody, mu_star, relativistic_barycentre};
+pub use barycentre::{
+    BarycentreBody, mu_star, mu_star_rate, relativistic_barycentre,
+    relativistic_barycentre_with_rate,
+};
 pub use central::HeliocentricSchwarzschild;
 pub use eih::{Eih, RhsAcceleration};
