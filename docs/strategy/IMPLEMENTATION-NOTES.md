@@ -5637,3 +5637,189 @@ Script: scratchpad `wp26/mut/run_mutants.py`. Each mutant runs the three SoA tes
 - **Data tier** (`--profile data --run-ignored only`): **33/33 pass** (57 s), including D1. Horizons `signature.version` 1.2 / DE441.
 - **Layer check:** 23 crates, 141 edges, 0 errors. **`lint_literals`:** 0 findings.
 - **Nightly tier:** only the V3 speed-table test was re-run (expected E6 failure on (d), above). WP26 adds no other nightly test.
+
+## 📈 Progress review: after WP26
+
+I am the independent progress reviewer (an agent, not the builder). I audited `m5-performance` at `6cae36b`: WP24–WP26, stacked on `m4-eih` at `78d5a4c`, since the last review at `734dcf3`. Everything below ran on 2026-10-20 between 23:05 and 23:50 UTC on the local machine (i9-13900, 32 logical CPUs, shared, load 1.7–2.4), with toolchain 1.95.0.
+- I loosened nothing and committed no mutation. Mutants ran in a scratch clone, which was clean afterwards (`git status` empty).
+- My WP25 nightly run wrote checkpoints into `target/wp25-store`. That directory was empty before, and I emptied it again afterwards, so the next nightly run starts from scratch.
+- The worktree stayed clean apart from this section.
+
+### Overall health: 🟡 YELLOW
+- **Green:**
+  - Every AGENTS.md gate passes on `6cae36b`. **GitHub CI on the tip is green:** run 39511071234 (rust, msrv, wasm32, python, reuse, dco).
+  - The data tier passes **33/33 on the first pass** (70 s). `FA_DATA_DIR` was fresh, with 40 live downloads and no HTTP 503, and Horizons reported `signature.version` 1.2 / DE441 throughout.
+  - **Every nightly number I re-ran equals the builders' reports to the printed digit:**
+    - B3 (all 13 cells);
+    - B2 2.241986e-3 km;
+    - WP25 Table 1, N3 and N4 (all 30 cells);
+    - C3b 3.927e-6;
+    - the speed table.
+    The 40-yr runs reproduce bit for bit across sessions.
+  - Four key numbers reproduce in independent Python (no FerroAstro code): the WP25 relativistic barycentre offset, the WP26 exact-1/r³ ulp bound, an independent ABM13 Kepler run (WP24 A3), and the PHY-005 analytic GR rate.
+  - The vectors changed by **additions only**. Every WP24–WP26 vector commit precedes the tests that read it (V5 applied).
+  - The layer check is green (23 crates, 141 edges). `lint_literals` reports 0 findings. No anise, nyx or GPL crate was added. No requirement or ADR text was edited.
+  - The fixes for V1, V3 and V4 from the last review hold. My V1 and V4 mutants are now killed, and V3 now selects complete tables and fails on E6 (d) only.
+  - Mutation probes: 4 of my 6 new mutants are killed in the PR tier.
+- **Not green:**
+  - **W1:** the ABM Kahan compensation is untested. A mutant that reads the state as `s + c` (anti-compensation) survives every PR test.
+  - **W2:** the Moon slot's low words in the mixed mode are untested. A mutant that drops them survives the PR and data tiers.
+  - **W3:** the nightly tier is now permanently red, with 5 known failures. Each one is disclosed, but a new regression in a nightly test would not stand out from them:
+    - B2 2.24 m against a 1 m bound;
+    - C3b 3.9e-6 against 1e-6;
+    - NUM-007 N1 2.04 cm against 1 cm;
+    - N4 Mars 2.18 cm against 1 cm, with Mercury and the Moon unresolved;
+    - E6 (d).
+  - **M4 is still blocked on humans:** NUM-020 / OI-33 is unsigned, so WP22 cannot run, and WP23 has not started. **M5 exit** needs WP27 (stage D, 1550–2650) and WP28.
+
+### 1. Commands (tip `6cae36b`)
+| command | result |
+|---|---|
+| `cargo fmt --all --check` | pass |
+| `cargo clippy --workspace --all-targets --all-features -- -D warnings` | pass |
+| `cargo nextest run --workspace` + `cargo test --doc --workspace` | **304 passed, 53 skipped**. The 53 are 33 `data` and 20 `nightly` tests, which are exactly the 53 `#[ignore]`s. Doctests: 18 binaries ok. |
+| `cargo deny check` | advisories, bans, licenses and sources ok. `wide` 0.7.33 is Zlib OR Apache-2.0 OR MIT. |
+| `RUSTDOCFLAGS="-D warnings" cargo doc --no-deps --workspace` | pass |
+| `ruff check`, `ruff format --check`, `mypy` (tools) | pass |
+| `reuse lint` | pass (557/557) |
+| `trace.py --check` | 121 requirements, 718 citing tests, 0 errors |
+| `check_layers.py` / `lint_literals.py` | 23 crates, 141 edges, 0 errors / 0 findings |
+| PR tier with `--features ferroastro-propagate/simd` (abm, forces, eih, propagate, integrators, ladder, oracle, cli) | 151/151 (the mutation baseline) |
+| GitHub CI `6cae36b` | run **39511071234 success**. `data` and `long runs` are skipped by design. |
+| **data tier** (`tools/run_long_local.sh --data-only`, fresh `FA_DATA_DIR=target/fa-data-rev26`, log `target/long-local/20261020T231033Z-6cae36bd9e87.log`) | **33/33 pass** (69.7 s).<br>• de440.bsp, sb441-n373s.bsp and linux_p1550p2650.440 were symlinked from the pinned cache and SHA-verified on load.<br>• Because I did not link the provenance sidecars, de440.bsp prints `retrieved=unknown` (my setup, not a code defect).<br>• header.440 `0f4636b6…6ac3359` was fetched live on 2026-10-20 (Last-Modified 2020-12-22).<br>• There were 40 cache misses and 0 HTTP 503s. |
+| **nightly** (release, `--profile nightly`): the five WP24–WP26 nightlies | 34 min 50 s. **1 pass, 4 fail, all of them the known failures (W3):**<br>• B3 passes (679 s).<br>• B2, C3b, the WP25 Table 1/N1–N4 test (2082 s, with the all-mutual run done fresh in 4 segments) and the speed table (E6 (d)) fail.<br>• I did not re-run the N4 double-double follow-up (~6 h), PHY-013 or the Brouwer ensemble. WP24–WP26 leave the default kernels bitwise unchanged, as the PR-tier goldens confirm. |
+
+### 2. Real-data and benchmark results
+Provenance (each SHA-256 equals its manifest pin):
+- header.440 `0f4636b6…6ac3359`
+- de440.bsp `a4ce9bf9…fff7c4b5`
+- sb441-n373s.bsp `21431132…8da10b` (REF-003 CSV via tools/sample_sb441.py@bcc3320)
+- Horizons `signature.version` 1.2, DE441
+
+Margin = |Δ| / tolerance.
+
+| test (tier) | measured (this review) | oracle (source) | tolerance | margin |
+|---|---|---|---|---|
+| WP24 B5 `data_abm_and_ias15_ten_years…` (data) | Mercury max barycentric residual: IAS15 1.441927 km, **ABM13 1.441823 km**; \|Δ\| 1.041e-4 km | de440.bsp (JPL) | 1e-3 km | 0.10 |
+| ↳ B5 context (reported) | Moon geocentric residual 218.9 km over 10 yr; Mars 10.2 km (no asteroids) | de440.bsp | — | model content (no lunar tides or figure), not an integrator effect |
+| WP25 D1 `data_ephemeris_mode_mixed_and_dd…` (data) | 5 yr, 354 bodies: Mercury heliocentric max residual 0.784622 km in DD and mixed; \|Δ\| **1.828e-7 km** (f64 plain 1.49e-6) | de440.bsp | 1e-5 km | 0.018 |
+| WP26 D1 `data_soa_and_pairwise_kernels…` (data) | Mercury: pairwise 1.441927, **soa 1.441915 km**; \|Δ\| 1.198e-5 km; max \|r_soa − r_pairwise\| 1.408e-5 km | de440.bsp | 1e-3 km | 0.012 |
+| WP24 B2 (nightly) | **2.241986e-3 km** (plain sums: 5.457e-4) | IAS15 f64 | 1e-3 km (PROVISIONAL) | **FAIL 2.24×** (known, NEEDS HUMAN REVIEW) |
+| WP24 B3 (nightly, reported) | Mercury vs ABM DD: compensated 2.247e-3, plain 5.44e-4 km. Mars: 2.55e-5 / 2.58e-3. ABM DD − IAS15 DD 1.28e-12 km. With 343 Minor: 2.006e-3 / 1.419e-3 | own DD | reported | identical to WP24 |
+| WP25 N1 NUM-007 (nightly) | Mercury mixed − DD **2.0382e-2 m** | NUM-007 ≤ 1 cm; Subbotin 2023 Table 1: 8.4 mm | 1e-5 km | **FAIL 2.04×** (known) |
+| WP25 N1b (nightly) | f64 plain Mercury 3.2461 m (compensated 2.1064 m) | Subbotin f64 2.47 m | band 0.8–8 m (PROVISIONAL) | 0.32 |
+| WP25 N2 NUM-008 (nightly) | Moon mixed − DD **0.743 mm** | ≤ 2 mm; Subbotin 1.2 mm | 2e-6 km | 0.37 |
+| WP25 N3 NUM-018 (nightly) | SSB drift DD 2.9173 µm, mixed 2.9243 µm, f64 0.405 mm | ≤ 10 µm; Subbotin 3.14 / 2.6 µm / 0.5 mm | 1e-8 km | 0.29 |
+| WP25 N4 NUM-009 (nightly) | \|tiered − all-mutual\|: **Mars 21.80 mm** (resolvable), Earth 2.44 mm; Mercury 8.05 mm and the Moon 0.40 mm unresolved | NUM-009 notes [V] < 1 cm / < 1 mm (Subbotin §2, EPM2021) | 1e-5 / 1e-6 km | **Mars FAIL 2.2×** (known; confirmed in DD by WP25) |
+| WP25 C3b (nightly) | max relative 3.927e-6 (Mercury and Sun dominate); halving ratios 4.0000 | central difference | 1e-6 | **FAIL** (known; estimate omitted (2π)²) |
+| WP25 C3 (PR) | as given 122.649586 km; after 3 DD passes 3.457e-27 km, 9.5e-35 km/s | DD round-off | 1e-19 km / 1e-27 km/s | 3e-8 |
+| ↳ **independent C3 offset** (mine, mpmath 40 digits, my own header parser and the committed CSV) | μ* barycentre of 354 bodies as given: **122.649586367 km** (Newtonian GM: 122.649622 km) | — | — | equals C3's 122.649586 to every printed digit |
+| WP24 A3 Kepler, 1000 orbits (PR) | PECEC dE/E 2.534e-13, phase 1.857e-9 rad; PECE 1.984e-12 / 1.443e-8 | analytic Kepler | 1e-10 / 1e-6 rad | 2.5e-3 / 1.9e-3 (PECEC) |
+| ↳ **independent ABM13** (mine: Python, exact-fraction coefficients, Kahan update, exact Kepler start-up instead of DP8) | **PECEC 2.603e-13 / 1.931e-9 rad; PECE 1.984e-12 / 1.455e-8 rad** (1 407 511 steps) | — | — | agrees to 3–4 % (truncation-dominated). I also confirmed Σ\|α\| = 51.56 (AM13) and Σ\|β\| = 2254.9 (AB13), the numbers behind the B2 diagnosis. |
+| WP26 P1 (PR) | exact 1/r³ max 0.500000 ulp; production 2.22 ulp | 256-bit astro-float | ≤ 1 ulp | 0.50 |
+| ↳ **independent P1** (mine: a port of the documented algorithm in binary64 Python against 60-digit mpmath, 100 000 different log-uniform r²) | exact **0.499999 ulp**, 0 inputs above ½ ulp; **production 1/(r²√r²) 2.343 ulp** | — | — | the algorithm is confirmed. The production comment's "max 2.22 ulp" is a sample maximum, not a bound (W4). |
+| WP26 P2 / P4 / P5 / P7 (PR / nightly) | 0 differing bits (28 209 + 11 349 components; 58 440 steps; 1/2/4/32 threads); P7 digests `995d808d…` equal for the scalar, simd and native builds | exact | exact | — |
+| PHY-005 (data, unchanged) | f64 42.980085159575, DD 42.980085160105 ″/cy | PHY-005 42.980 | ±1e-3 | 0.085 |
+| ↳ **independent analytic GR rate from header.440** (mine) | 6πGM/(c²a(1−e²)) at the JDEPOC osculating orbit: μ = GMS 42.980097, GMS + GM1 42.980126, mixed conventions 42.980105 / 42.980119 | — | — | all within 1e-3 of the oracle. The 1.2–4.1e-5 offset from the numerical value is the osculating-vs-mean element difference. |
+| Earlier rungs (data, unchanged to the digit) | GR from DE441 42.9806442 (Park GE 42.9799 ± 0.0009, +7.4e-4); J2-REAL 0.028452375; LT-REAL −0.0020148; **DE441 total, Park frame: 575.309163** (jk 0.00153); LT 10-yr D1: 54.88 → 16.35 m | Park17 | — | unchanged |
+
+### 3. Drift audit
+- **`git log -p 734dcf3..6cae36b -- tests/vectors ci/golden tests/goldens`:** 5 commits, **389 insertions, 0 deletions**.
+  - The new files are abm.toml, ephemeris-mode.toml and simd.toml, plus +14 lines in nbody.toml (V1).
+  - **No expected value moved, and no tolerance was widened or edited.**
+- **Pre-registration in git:**
+  - The vectors precede their tests: `f4e9191` (09:12) is before the WP24 tests, `f993f0f` (10:27) before the WP25 C-checks, and `c6094a6` (18:16:47) before `32d87c5` (18:26:46).
+  - Two vectors were added after a first run, and both are disclosed: `EPH-MUSTAR-RATE-CONVERGENCE` (`c8d8840`) and the D1 addendum `a152657`, which was pre-run.
+- **Tier demotions (W3).** Two pre-registered PR-tier checks were moved to the nightly tier *because they fail*:
+  - B2: `#[ignore = "nightly: fails its pre-registered PROVISIONAL bound …"]`;
+  - C3b: the same, for its pre-registered bound.
+
+  Neither bound moved, and both are labelled NEEDS HUMAN REVIEW. This is disclosed, but it is still `#[ignore]` creep of a failing assertion: the PR tier no longer shows them.
+- **`#[ignore]` count:** 53, up from 45 (33 `data_*` and 20 `nightly_*`). All are named for their tier, and none is cfg-gated.
+- **UNVERIFIED values used as oracles:** none.
+  - The Subbotin figures appear as context, and the N1b band is labelled PROVISIONAL.
+  - OI-44 (Subbotin's hardware) is reported only, never asserted.
+- **Circular oracles:** none that decide physics.
+  - P3a/P3b test the SoA kernels against the production `NewtonianMutual`/`Eih` in DD, so their physics rests on stage C (REBOUNDx) and on de440.bsp (D1).
+  - N1 measures round-off against FerroAstro's own DD run, as NUM-007's task text specifies; it is a self-reference by design, disclosed as WP25 item 6.
+  - C3's residual is built from `mu_star`/`mu_star_rate`, not from the function under test (the WP25 fix for R1). I reproduced its as-given input independently.
+- **Tests that cannot fail.**
+  - P3c has no power against a pair-rule error, because the internal force cancels. The builder found this and disclosed it.
+  - C4's ratio ≥ 10 is met by the abandoned run-1 design as well (ratio 141), so it does not separate `F64Forces` from `MixedForces`. The `mixed_forces_is_the_compensated_model_widened` unit test does that, but see W2.
+- **Mutation probes** (scratch clone at `6cae36b`; PR tier of abm, forces, eih, propagate, integrators, ladder, oracle and cli with `--features ferroastro-propagate/simd`; restores with `cp` + utime; the baseline passed 151/151):
+
+| crate | mutant | PR-tier result |
+|---|---|---|
+| abm | **Kahan state read as `s + c` instead of `s − c`** (anti-compensation) | **survived 151/151 (W1)** |
+| abm | PECE mode uses f(C) and stores f(P) | killed (one-step definitions, A3, A4) |
+| forces (soa) | `inv_r3_exact` correction `½ s e → s e` | killed (P1) |
+| forces (mixed) | **Moon-slot low words dropped in `acceleration_split`** | **survived 151/151 (W2).** It also survives the data tier: D1 still passes, though D1's Mercury \|Δ\| moved from 1.828e-7 to 1.413e-7 km, so the mutant is not equivalent. Only nightly N2 could catch it, and I did not run that. |
+| eih (soa) | `k_ui = −2(β+γ) → −2(β+β)` (visible only at γ ≠ 1) | killed (P3b, γ = 0.9 case) |
+| propagate | relativistic re-barycentring 3 passes → 1 | killed (C3) |
+
+- **Hygiene:**
+  - No `unsafe`, `unwrap` or `panic!` in the new library code; the `unwrap`s in the diff are in `#[cfg(test)]` modules.
+  - `wide`'s `unsafe` stays inside the crate, and FerroAstro keeps `forbid(unsafe_code)`.
+  - Every new test has a `Verifies:` tag.
+  - Only the generated TRACE.md changed under docs/requirements.
+- **Labels:** PR #18 has no `golden-change` label. It adds 3 vector files with tolerances, so rule 1 applies, as R7 did for #13 and #17.
+
+**Findings (new in this review):**
+- **W1 (medium): the ABM compensated update is not pinned.**
+  - Anti-compensation passes every PR test. A3 (1e-10) is truncation-dominated, and A6/B4 compare the code with itself.
+  - B3 shows why it matters: compensation turns Mars's 2.58 m into 2.5 cm. Only the nightly B3, which is reported and not asserted, would show the regression.
+- **W2 (medium): the Moon-slot low words of the mixed mode are not pinned** in the PR or data tier. Only NUM-008's 40-yr nightly (N2) could notice.
+- **W3 (medium, process): the nightly tier is red by design.**
+  - Its five known failures (B2, C3b, N1, N4 Mars, E6 (d)) mean that "nightly failed" carries no information.
+  - Two of them were demoted from the PR tier because they fail.
+- **W4 (low): the production inverse-cube comment** says "max 2.22 ulp measured". My independent sample reached 2.343 ulp, and the analytic worst case is about 3 ulp (½ + ½ + ½ relative, doubled by ulp normalisation). The comment should give a bound, not a sample maximum.
+- **W5 (info, science): the compensated ABM is worse than plain for Mercury at 40 yr** (2.25 m against 0.54 m, against DD), and much better for Mars.
+  - The builder explains this as history-sum round-off (Σ\|α\| = 51.6, which I confirmed) plus a random-walk realisation. That is plausible, but a single realisation cannot establish it.
+  - NUM-007's mixed mode keeps these sums in DD and makes the question moot for ephemeris runs.
+- **W6 (info): the Moon's geocentric residual is 219 km over 10 yr** against de440.bsp in every 10-body D1 configuration. This is the absence of lunar tides and figure, not an integrator effect, but WP27's stage-D lunar residuals will be dominated by it.
+
+### 4. Requirement coverage
+`trace.py` reports **66/93** `test` requirements cited (63 at the last review) and 718 citing tests.
+- **Newly cited:** NUM-002 (16 tests), NUM-007 (9), NUM-021 (12) and NUM-022 (2).
+- **M5** (ROADMAP: NUM-002, NUM-007, NUM-021/022/024, DEP-011, REF-001, CI-007/008/010):
+  - Every one is cited.
+  - Acceptance is not met for NUM-007 (N1 at 2.04×), NUM-009 (N4 Mars), NUM-021's 2.5× target (met only with AVX) and NUM-022's linear scaling (holds only to 4 threads).
+  - The M5 exit criteria ("residuals vs de440.bsp over 1550–2650 published", "wall time vs Subbotin") are **WP27 and WP28, not started**.
+- **M4, uncited:** PHY-014 (WP22, blocked on OI-33) and AGT-004 (WP23, not started).
+- **M0, uncited (gate-enforced):** ORG-002/008/010, STD-001…011, TST-001, DEP-001/002/003/006. Whether `trace` may count gate evidence is still a human question.
+- **Not yet due:** NUM-003/004/005/025 and DEP-005/016.
+
+### 5. Corrections for the next builder (apply first)
+1. **W1:** add a PR-tier ABM test that pins the compensation. Pre-register its vector first.
+   - Use a Mars-like Kepler orbit, where position rounding dominates, in f64 with `compensated = true` and with `false`, against a DD run of the same ABM.
+   - Assert that the compensated error is at most 1/k of the plain error, with k fixed from B3's ratio of about 100 (for example k = 10).
+   - My mutant (`.map(|(&s, &c)| s + c)` in `regular_step`) must fail it.
+2. **W2:** extend `mixed_forces_is_the_compensated_model_widened`, or C1, to a model with the geocentric Moon pair.
+   - Assert that the Moon slot's widened DD acceleration equals the compensated f64 model's sum + comp word for word, and that its low words are non-zero.
+   - My mutant (`put(p.moon, rel.map(|a| a.sum), [R::ZERO; 3])` in `layout.rs`) must fail it.
+3. **W3:** add a committed known-failures list, for example `ci/nightly-known-failures.toml`.
+   - Each entry gives the test, the vector id, the NEEDS HUMAN REVIEW reference and the last measured value.
+   - The local nightly summary should then label each failure "known (value unchanged)", "known (value changed)" or "NEW".
+   - Do not change any bound. Do not demote another failing pre-registered PR check to the nightly tier; if one fails, report it and leave it in its tier (or ask).
+4. **W4:** reword the `nbody/terms.rs` inverse-cube comment to give the analytic bound (≤ 3 ulp) and both observed maxima: 2.22 ulp (WP26) and 2.343 ulp (this review, a different sample). Leave the arithmetic unchanged.
+5. **Next WP:**
+   - WP22 stays blocked (OI-33 is unsigned).
+   - WP23 has not started.
+   - WP27 (stage D, 1550–2650 against de440.bsp) is the M5 exit. Run it locally with checkpointed segments, and report the lunar residual separately from the planets (W6).
+6. **V2** from the last review (the frame report for subset-EIH runs) is still open. Apply it when the stage C tooling is next touched.
+7. **R7:** ask the maintainer to apply `golden-change` to PR #18, which adds abm.toml, ephemeris-mode.toml and simd.toml with tolerances. Do not create or apply the label.
+8. **Still for humans:**
+   - OI-33 (NUM-020) and OI-35 signatures;
+   - B2, C3b, NUM-007 N1 (options a/b/c in WP25) and N4 Mars (NUM-009's wording);
+   - the mixed-design correction after the first run (WP25);
+   - NUM-021 AVX-only and NUM-022 scaling (WP26);
+   - E6 and OI-38;
+   - the `force_kernel` and `major_asteroids` keys in CI-002 (PR #2);
+   - the nightly cron line (not installed).
+
+Reviewer artefacts are in the session scratchpad `rev26/`, not committed:
+- logs: `data.log`, `nightly.log`, `mutate.log`;
+- `mutate.py`;
+- `py/c3_bary.py`, `py/inv_r3.py` and `py/abm_kepler.py`.
+
+The header parser is the one from `rev21/py/hdr.py`, with the SHA pin checked.
