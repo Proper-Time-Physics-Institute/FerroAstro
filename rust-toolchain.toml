@@ -1,0 +1,8 @@
+# SPDX-FileCopyrightText: 2026 Proper-Time Physics Institute
+# SPDX-License-Identifier: Apache-2.0
+# Development toolchain pin (ADR-0006). Placeholder: bump to current stable when the M0 workspace is created. Bump via PR; MSRV is declared separately in Cargo.toml.
+[toolchain]
+channel = "1.95.0"
+components = ["rustfmt", "clippy", "rust-docs"]
+targets = ["wasm32-unknown-unknown"]
+profile = "minimal"

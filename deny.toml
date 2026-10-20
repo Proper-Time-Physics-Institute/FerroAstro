@@ -1,0 +1,49 @@
+# SPDX-FileCopyrightText: 2026 Proper-Time Physics Institute
+# SPDX-License-Identifier: Apache-2.0
+# License / advisory / source gating (DEP-001..003, STD-006).
+
+[advisories]
+version = 2
+yanked = "deny"
+
+[licenses]
+version = 2
+confidence-threshold = 0.93
+allow = [
+    "Apache-2.0",
+    "Apache-2.0 WITH LLVM-exception",
+    "MIT",
+    "BSD-2-Clause",
+    "BSD-3-Clause",
+    "ISC",
+    "Zlib",
+    "Unicode-3.0",
+    "Unicode-DFS-2016",
+    "CC0-1.0",
+]
+# MPL-2.0 only for reviewed crates, used unmodified (DEP-002, DEP-004).
+# anise is not a dependency; decision deferred to M5 (OI-16, OI-72).
+exceptions = [
+    { allow = ["MPL-2.0"], crate = "hifitime" },
+]
+
+[bans]
+multiple-versions = "warn"
+wildcards = "deny"
+deny = [
+    # AGPL / GPL / LGPL, banned by name whatever their declared license (DEP-003).
+    { crate = "nyx-space", reason = "AGPL-3.0-or-later" },
+    { crate = "rug", reason = "LGPL; GMP/MPFR; no wasm32" },
+    { crate = "gmp-mpfr-sys", reason = "LGPL native libs" },
+    { crate = "cspice-sys", reason = "LGPL-3.0" },
+    { crate = "librebound-sys", reason = "GPL-3.0; clean-room rule (DEP-008)" },
+    { crate = "libassist-sys", reason = "GPL-3.0" },
+    { crate = "adam_assist", reason = "GPL-3.0" },
+    { crate = "rebound-rs", reason = "GPL-3.0" },
+    { crate = "thor-rs-assist", reason = "provenance unverified (DEP-015)" },
+    { crate = "erfars", reason = "archived" },
+]
+
+[sources]
+unknown-registry = "deny"
+unknown-git = "deny"
