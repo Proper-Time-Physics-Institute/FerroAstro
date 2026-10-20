@@ -1,0 +1,279 @@
+{
+  "schema_version": 1,
+  "run_id": "wp21-e-20261020T110212Z",
+  "generated_utc": "2026-10-20T11:06:25Z",
+  "host": {
+    "runner_class": "local-workstation (maintainer's machine, CI-008 / Journal #10)",
+    "cpu_model": "13th Gen Intel(R) Core(TM) i9-13900",
+    "logical_cpus": 32,
+    "cpu_flags": [
+      "fma",
+      "sse4_2",
+      "avx",
+      "avx2"
+    ],
+    "avx512": false,
+    "kernel": "7.0.0-31-generic",
+    "rustc": "rustc 1.95.0 (59807616e 2026-04-14)",
+    "build": "cargo --release (workspace release profile), RUSTFLAGS = \"\"",
+    "git_commit": "9f9066687d79ce6f7ee7b502dddab4f6bfa11d3a"
+  },
+  "load_avg_run": [
+    1.79,
+    2.73
+  ],
+  "scenarios": [
+    {
+      "name": "bench-e-sun-8planets-eih-1000yr",
+      "label": "(e) Sun + 8 planets, EIH 1PN (gr_eih; REBOUNDx gr_full), 1000 yr",
+      "daily_twin": null,
+      "sha256": "eb9ae4a2a948621b249717c7d114f89c23844f2b0469f7c60c7fc0985f1ff4d4"
+    }
+  ],
+  "entries": [
+    {
+      "scenario": "bench-e-sun-8planets-eih-1000yr",
+      "tool": "ferroastro",
+      "version": "ferroastro 0.0.0 (9f9066687d79ce6f7ee7b502dddab4f6bfa11d3a)",
+      "settings": "IAS15 epsilon = 1e-9, safety = 0.25, PC tolerance = 1e-16, dense output, f64",
+      "status": "timed",
+      "message": "",
+      "timing": {
+        "runs_s": [
+          24.305811814,
+          24.316699431,
+          24.416566342,
+          24.332697623,
+          24.436429712
+        ],
+        "median_s": 24.332697623,
+        "min_s": 24.305811814,
+        "max_s": 24.436429712
+      },
+      "load_avg": [
+        [
+          1.79,
+          2.46
+        ],
+        [
+          2.46,
+          2.54
+        ],
+        [
+          2.54,
+          2.67
+        ],
+        [
+          2.67,
+          2.58
+        ],
+        [
+          2.58,
+          2.41
+        ]
+      ],
+      "timer_scope": "run_with_energy in-process (IC assembly, model build, IAS15 integration, sampling); header.440/SPK parsed before the timer; release build; 5 runs in one process",
+      "rate_arcsec_cy": null,
+      "accuracy": {
+        "relative_energy_change": {
+          "value": null,
+          "unit": "",
+          "basis": "EIH 1PN: the Newtonian energy is not a conserved quantity of the model (the 1PN energy is checked in ferroastro-eih)"
+        },
+        "mercury_dr_km": {
+          "value": 0.06712543048184291,
+          "unit": "km",
+          "basis": "vs rebound (same invocation), max at t = 363423.75 d over 1001 samples"
+        },
+        "rate_minus_ferroastro": {
+          "value": null,
+          "unit": "arcsec/cy",
+          "basis": "no daily twin: span too short for the 14-term fit or no Mercury series"
+        },
+        "rate_minus_reference": {
+          "value": null,
+          "unit": "arcsec/cy",
+          "basis": "no published rate for this configuration"
+        }
+      }
+    },
+    {
+      "scenario": "bench-e-sun-8planets-eih-1000yr",
+      "tool": "rebound",
+      "version": "rebound 5.2.2, reboundx 5.1.0",
+      "settings": "IAS15 epsilon 1e-09, adaptive_mode PRS23",
+      "status": "timed",
+      "message": "",
+      "timing": {
+        "runs_s": [
+          24.609,
+          24.647,
+          24.628,
+          24.591,
+          24.62
+        ],
+        "median_s": 24.62,
+        "min_s": 24.591,
+        "max_s": 24.647
+      },
+      "load_avg": [
+        [
+          2.62,
+          2.77
+        ],
+        [
+          2.77,
+          2.71
+        ],
+        [
+          2.71,
+          2.47
+        ],
+        [
+          2.47,
+          2.38
+        ],
+        [
+          2.38,
+          2.62
+        ]
+      ],
+      "timer_scope": "runner's wall clock around sim set-up + integrate (Python API), inside the container",
+      "rate_arcsec_cy": null,
+      "accuracy": {
+        "relative_energy_change": {
+          "value": null,
+          "unit": "",
+          "basis": "EIH 1PN: the Newtonian energy is not a conserved quantity of the model (the 1PN energy is checked in ferroastro-eih)"
+        },
+        "mercury_dr_km": {
+          "value": null,
+          "unit": "km",
+          "basis": "this run is the column's reference (0 by definition)"
+        },
+        "rate_minus_ferroastro": {
+          "value": null,
+          "unit": "arcsec/cy",
+          "basis": "no daily twin: span too short for the 14-term fit or no Mercury series"
+        },
+        "rate_minus_reference": {
+          "value": null,
+          "unit": "arcsec/cy",
+          "basis": "no published rate for this configuration"
+        }
+      }
+    },
+    {
+      "scenario": "bench-e-sun-8planets-eih-1000yr",
+      "tool": "swiftest",
+      "version": "",
+      "settings": "",
+      "status": "refused",
+      "message": "REFUSED: swiftest cannot run scenario 'bench-e-sun-8planets-eih-1000yr': it requests `gr_eih` (Swiftest's general_relativity is a central-body 1PN term, not EIH (REF-007)). The runner never omits a force or option silently (REF-011).",
+      "timing": null,
+      "load_avg": [],
+      "timer_scope": "runner's wall clock around Swiftest set-up, run and output read-back (fresh interpreter per attempt), inside the container",
+      "rate_arcsec_cy": null,
+      "accuracy": {
+        "relative_energy_change": {
+          "value": null,
+          "unit": "",
+          "basis": "refused: REFUSED: swiftest cannot run scenario 'bench-e-sun-8planets-eih-1000yr': it requests `gr_eih` (Swiftest's general_relativity is a central-body 1PN term, not EIH (REF-007)). The runner never omits a force or option silently (REF-011)."
+        },
+        "mercury_dr_km": {
+          "value": null,
+          "unit": "km",
+          "basis": "refused: REFUSED: swiftest cannot run scenario 'bench-e-sun-8planets-eih-1000yr': it requests `gr_eih` (Swiftest's general_relativity is a central-body 1PN term, not EIH (REF-007)). The runner never omits a force or option silently (REF-011)."
+        },
+        "rate_minus_ferroastro": {
+          "value": null,
+          "unit": "arcsec/cy",
+          "basis": "refused: REFUSED: swiftest cannot run scenario 'bench-e-sun-8planets-eih-1000yr': it requests `gr_eih` (Swiftest's general_relativity is a central-body 1PN term, not EIH (REF-007)). The runner never omits a force or option silently (REF-011)."
+        },
+        "rate_minus_reference": {
+          "value": null,
+          "unit": "arcsec/cy",
+          "basis": "refused: REFUSED: swiftest cannot run scenario 'bench-e-sun-8planets-eih-1000yr': it requests `gr_eih` (Swiftest's general_relativity is a central-body 1PN term, not EIH (REF-007)). The runner never omits a force or option silently (REF-011)."
+        }
+      }
+    },
+    {
+      "scenario": "bench-e-sun-8planets-eih-1000yr",
+      "tool": "mercury6",
+      "version": "",
+      "settings": "",
+      "status": "refused",
+      "message": "REFUSED: mercury6 cannot run scenario 'bench-e-sun-8planets-eih-1000yr': it requests `gr_eih` (Mercury6 has no relativity; GR from it is never used (REF-008)). The runner never omits a force or option silently (REF-011).",
+      "timing": null,
+      "load_avg": [],
+      "timer_scope": "runner's wall clock around writing inputs, mercury6 + element6 and reading outputs, inside the container",
+      "rate_arcsec_cy": null,
+      "accuracy": {
+        "relative_energy_change": {
+          "value": null,
+          "unit": "",
+          "basis": "refused: REFUSED: mercury6 cannot run scenario 'bench-e-sun-8planets-eih-1000yr': it requests `gr_eih` (Mercury6 has no relativity; GR from it is never used (REF-008)). The runner never omits a force or option silently (REF-011)."
+        },
+        "mercury_dr_km": {
+          "value": null,
+          "unit": "km",
+          "basis": "refused: REFUSED: mercury6 cannot run scenario 'bench-e-sun-8planets-eih-1000yr': it requests `gr_eih` (Mercury6 has no relativity; GR from it is never used (REF-008)). The runner never omits a force or option silently (REF-011)."
+        },
+        "rate_minus_ferroastro": {
+          "value": null,
+          "unit": "arcsec/cy",
+          "basis": "refused: REFUSED: mercury6 cannot run scenario 'bench-e-sun-8planets-eih-1000yr': it requests `gr_eih` (Mercury6 has no relativity; GR from it is never used (REF-008)). The runner never omits a force or option silently (REF-011)."
+        },
+        "rate_minus_reference": {
+          "value": null,
+          "unit": "arcsec/cy",
+          "basis": "refused: REFUSED: mercury6 cannot run scenario 'bench-e-sun-8planets-eih-1000yr': it requests `gr_eih` (Mercury6 has no relativity; GR from it is never used (REF-008)). The runner never omits a force or option silently (REF-011)."
+        }
+      }
+    },
+    {
+      "scenario": "bench-e-sun-8planets-eih-1000yr",
+      "tool": "orekit",
+      "version": "",
+      "settings": "",
+      "status": "refused",
+      "message": "REFUSED: orekit cannot run scenario 'bench-e-sun-8planets-eih-1000yr': it requests `gr_eih` (Orekit has no EIH N-body equations (single-body propagator, REF-006)); `mode` (only ephemeris-field mode (stage B)); `initial_conditions.source` (the particle starts from the DE440 ephemeris itself (de440-bsp)); `initial_conditions.epoch_jd_tdb` (the span must lie inside linux_p1550p2650.440 (JD 2287184.5 .. 2688976.5)); `bodies` (the Sun, the particle and >= 1 field body, each an Orekit DE body (no EMB)). The runner never omits a force or option silently (REF-011).",
+      "timing": null,
+      "load_avg": [],
+      "timer_scope": "runner's wall clock around the JVM run of StageB.java (JVM start-up and ephemeris loading included), inside the container",
+      "rate_arcsec_cy": null,
+      "accuracy": {
+        "relative_energy_change": {
+          "value": null,
+          "unit": "",
+          "basis": "refused: REFUSED: orekit cannot run scenario 'bench-e-sun-8planets-eih-1000yr': it requests `gr_eih` (Orekit has no EIH N-body equations (single-body propagator, REF-006)); `mode` (only ephemeris-field mode (stage B)); `initial_conditions.source` (the particle starts from the DE440 ephemeris itself (de440-bsp)); `initial_conditions.epoch_jd_tdb` (the span must lie inside linux_p1550p2650.440 (JD 2287184.5 .. 2688976.5)); `bodies` (the Sun, the particle and >= 1 field body, each an Orekit DE body (no EMB)). The runner never omits a force or option silently (REF-011)."
+        },
+        "mercury_dr_km": {
+          "value": null,
+          "unit": "km",
+          "basis": "refused: REFUSED: orekit cannot run scenario 'bench-e-sun-8planets-eih-1000yr': it requests `gr_eih` (Orekit has no EIH N-body equations (single-body propagator, REF-006)); `mode` (only ephemeris-field mode (stage B)); `initial_conditions.source` (the particle starts from the DE440 ephemeris itself (de440-bsp)); `initial_conditions.epoch_jd_tdb` (the span must lie inside linux_p1550p2650.440 (JD 2287184.5 .. 2688976.5)); `bodies` (the Sun, the particle and >= 1 field body, each an Orekit DE body (no EMB)). The runner never omits a force or option silently (REF-011)."
+        },
+        "rate_minus_ferroastro": {
+          "value": null,
+          "unit": "arcsec/cy",
+          "basis": "refused: REFUSED: orekit cannot run scenario 'bench-e-sun-8planets-eih-1000yr': it requests `gr_eih` (Orekit has no EIH N-body equations (single-body propagator, REF-006)); `mode` (only ephemeris-field mode (stage B)); `initial_conditions.source` (the particle starts from the DE440 ephemeris itself (de440-bsp)); `initial_conditions.epoch_jd_tdb` (the span must lie inside linux_p1550p2650.440 (JD 2287184.5 .. 2688976.5)); `bodies` (the Sun, the particle and >= 1 field body, each an Orekit DE body (no EMB)). The runner never omits a force or option silently (REF-011)."
+        },
+        "rate_minus_reference": {
+          "value": null,
+          "unit": "arcsec/cy",
+          "basis": "refused: REFUSED: orekit cannot run scenario 'bench-e-sun-8planets-eih-1000yr': it requests `gr_eih` (Orekit has no EIH N-body equations (single-body propagator, REF-006)); `mode` (only ephemeris-field mode (stage B)); `initial_conditions.source` (the particle starts from the DE440 ephemeris itself (de440-bsp)); `initial_conditions.epoch_jd_tdb` (the span must lie inside linux_p1550p2650.440 (JD 2287184.5 .. 2688976.5)); `bodies` (the Sun, the particle and >= 1 field body, each an Orekit DE body (no EMB)). The runner never omits a force or option silently (REF-011)."
+        }
+      }
+    }
+  ],
+  "notes": [
+    "header.440: provenance: url=https://ssd.jpl.nasa.gov/ftp/eph/planets/ascii/de440/header.440 retrieved=2026-10-15 sha256=0f4636b663e6f00af9efa2b605ef23635489f56b23dd1a5e3821d3acc6ac3359 bytes=22802 last_modified=\"Tue, 22 Dec 2020 00:51:11 GMT\" cache=hit",
+    "Accuracy columns are computed by ferroastro-bench from each tool's own output files, identically for every tool; a '–' always carries its reason in the notes under the table.",
+    "Mercury |Δr|: heliocentric, max over the common output times, against the scenario's reference run in this same harness invocation (REBOUND for (a) and (e); FerroAstro for (b) and (d)).",
+    "Perihelion rates: the WP14/WP17 Park2017 estimator (sampled-state passages, Park17 mean-orbit plane, quadratic + 14 Table-2 terms with SW92 T2A mean motions, 20 jack-knife blocks), window epoch + 30 d to end − 30 d, applied to each tool's daily twin (CI-009).",
+    "(a) Sun + 8 planets, Newtonian, 1000 yr: not run in this invocation (harness --only)",
+    "(b) Sun + Mercury with GR (1PN test particle), 1000 yr: not run in this invocation (harness --only)",
+    "(c) full Newtonian + 343 Minor asteroids + KBOs + ring, 100 yr: not run in this invocation (harness --only)",
+    "(d) Mercury in the DE440-driven field (stage B), 100 yr: not run in this invocation (harness --only)"
+  ]
+}
