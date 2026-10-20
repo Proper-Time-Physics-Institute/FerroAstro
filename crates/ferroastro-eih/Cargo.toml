@@ -17,6 +17,11 @@ ferroastro-forces.workspace = true
 ferroastro-real.workspace = true
 ferroastro-system.workspace = true
 
+[features]
+default = []
+# SIMD lanes for EihSoa (forwards to ferroastro-forces/simd; bitwise identical to scalar).
+simd = ["ferroastro-forces/simd"]
+
 [dev-dependencies]
 ferroastro-analytic.workspace = true
 ferroastro-constants.workspace = true

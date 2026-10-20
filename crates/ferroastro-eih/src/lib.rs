@@ -19,6 +19,9 @@
 //!   `gr_1pn_central` with `mode = "n-body"`): the R3 test-particle correction of the Sun's field
 //!   applied to every other Major body, without reaction.
 //! * [`mu_star`] and [`relativistic_barycentre`]: Eqs. 1–2 (NUM-018).
+//! * [`EihSoa`] (WP26, NUM-021): the [`Eih`] term on the structure-of-arrays kernel of
+//!   `ferroastro_forces::soa` (exact `1/r³`, no FMA); feature `simd` adds the bitwise-identical
+//!   `wide` lanes.
 //!
 //! # Gauge, time and units (NUM-017, AGENTS.md rule 4)
 //! Both terms declare [`ferroastro_forces::Gauge::PpnIsotropicHarmonic`]. The time argument is
@@ -28,6 +31,7 @@
 mod barycentre;
 mod central;
 mod eih;
+mod eih_soa;
 
 pub use barycentre::{
     BarycentreBody, mu_star, mu_star_rate, relativistic_barycentre,
@@ -35,3 +39,4 @@ pub use barycentre::{
 };
 pub use central::HeliocentricSchwarzschild;
 pub use eih::{Eih, RhsAcceleration};
+pub use eih_soa::EihSoa;
