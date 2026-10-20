@@ -21,7 +21,7 @@
 use ferroastro_constants::De440;
 use ferroastro_constants::header440::Header;
 use ferroastro_core::units::Velocity;
-use ferroastro_eih::{BarycentreBody, relativistic_barycentre_with_rate};
+use ferroastro_eih::{BarycentreBody, mu_star, mu_star_rate, relativistic_barycentre_with_rate};
 use ferroastro_propagate::{
     DataSources, RunOutput, StateRecord, initial_accelerations, initial_conditions, resume, run,
     run_until,
@@ -279,12 +279,32 @@ fn relativistic_rebarycentring_residual_in_double_double() {
     let de = De440::load().unwrap();
     let c =
         Velocity::from_km_per_s(DoubleDouble::from_f64(de.speed_of_light().km_per_s())).unwrap();
-    let (b, w) = relativistic_barycentre_with_rate(&bodies, c).unwrap();
     let norm = |a: [DoubleDouble; 3]| {
         let [x, y, z] = a.map(DoubleDouble::to_f64);
         x.hypot(y).hypot(z)
     };
-    let (rb, rw) = (norm(b), norm(w));
+    // The residual is formed here from `mu_star` and `mu_star_rate` (the latter checked
+    // independently against a central difference in C3b), not through
+    // `relativistic_barycentre_with_rate`, which the re-barycentring itself uses: an error in that
+    // function's Eq. 5 sums (e.g. a dropped mu*' r term) would otherwise cancel (review, WP25).
+    let mu = mu_star(&bodies, c).unwrap();
+    let rate = mu_star_rate(&bodies, c).unwrap();
+    let total = mu.iter().fold(DoubleDouble::ZERO, |s, &m| s + m);
+    let mut b = [DoubleDouble::ZERO; 3];
+    let mut w = [DoubleDouble::ZERO; 3];
+    for ((body, &m), &md) in bodies.iter().zip(&mu).zip(&rate) {
+        for k in 0..3 {
+            b[k] += m * body.position[k];
+            w[k] += md * body.position[k] + m * body.velocity[k];
+        }
+    }
+    let (rb, rw) = (norm(b.map(|x| x / total)), norm(w.map(|x| x / total)));
+    let (bf, wf) = relativistic_barycentre_with_rate(&bodies, c).unwrap();
+    println!(
+        "C3: library Eq. 5 at the re-barycentred state: |b| = {:.3e} km, |b'| = {:.3e} km/s",
+        norm(bf),
+        norm(wf)
+    );
     println!(
         "C3: {} bodies; |b| = {rb:.3e} km, |b'| (Eq. 5) = {rw:.3e} km/s after re-barycentring in DD",
         bodies.len()

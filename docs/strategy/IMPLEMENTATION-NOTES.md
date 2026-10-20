@@ -5394,6 +5394,8 @@ Script: scratchpad `wp25/mut/run_mutants.py` and `run_mutants_r2.py`. Restores u
 | M4 epm2021 promotes no asteroid | killed (C2) |
 | M5 rebarycentring also shifts the Moon − Earth slot | **survived round 1**; killed after the Moon-slot invariance check |
 | M6 (an equivalent rewrite of the f64 rounding) | equivalent mutant, no finding |
+| R1 (reviewer) `relativistic_barycentre_with_rate` drops the μ̇*·r term of the Eq. 5 velocity sum | **survived the PR tier** (C3 formed its residual with the same function, so the error cancelled). Size: 1.3e-13 km/s at the header.440 ICs, about 17 cm of secular drift over 40 yr, so nightly N3 (10 µm) would catch it. Killed in the PR tier after C3 was changed to rebuild the Eq. 5 sums in the test from `mu_star` and `mu_star_rate` (C3b checks the latter independently): 1.32e-13 km/s against the 1e-27 km/s bound |
+| R2 (reviewer) the EMB-slot compensation in `finish_into` set to zero | killed (`mixed_forces_is_the_compensated_model_widened`) |
 
 ### Interpretations, deviations and NEEDS HUMAN REVIEW (WP25)
 1. **NEEDS HUMAN REVIEW — N1 (NUM-007) fails:** Mercury 2.04 cm against 1 cm. Options for the maintainer:
