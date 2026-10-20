@@ -5170,3 +5170,98 @@ Round 2 (`run_mutants.py`, all 9 mutants, fresh mtimes on restore): 9/9 killed.
   - the speed table: "wp21-e-…: rebound missing on (a)", which is V3 from the last review, not touched here;
   - **B2** `nightly_abm_vs_ias15_forty_year_mercury_bound`: 2.241986e-3 km against the 1e-3 km bound (NEEDS HUMAN REVIEW 1).
   - Both 1000-yr checkpoint resumes (f64 and DD) pass with checkpoint format v3.
+
+## WP25 — [M5] Mixed double-double ephemeris mode reproducing Subbotin et al. 2023 Table 1
+Branch `m5-performance` (stacked on `m4-eih`), draft PR #18, continuing after WP24.
+
+### Progress-review corrections (status at the start of WP25)
+- **V1, V4:** applied in WP24 (unchanged).
+- **V5** (pre-registration in git): applied. This plan is committed first, the vectors in their own commit next, then the tests that read them.
+  - Before this plan, library code was written, and three things were run:
+    - the exact unit test of the mixed adapter;
+    - the scenario parse tests;
+    - one wall-time probe of 0.25-yr runs (below).
+  - The probe printed the rebarycentring residual (C3 below), so C3's bound is fixed from the double-double unit round-off and not from that number. This is disclosed rather than hidden.
+- **V2, V3:** not applied. They belong to the M4 stage C and CI-008 tooling, and stay under "Remaining".
+- **WP22:** blocked (OI-33 signature); nothing here touches PHY-014.
+- **R7:** a maintainer request (repeated in the PR comment).
+- **Thin margins:** S1 and the binary 1PN energy are not touched.
+- **Mutation restores:** use `cp` + `touch`.
+
+### Sources (clean room, DEP-008)
+- **Subbotin, Kodukov & Pavlov 2023**, "Reducing roundoff errors in numerical integration of planetary ephemeris", CeMDA, doi:10.1007/s10569-023-10139-2.
+  - Read as the arXiv preprint arXiv:2304.04458v1, fetched 2026-10-20 from https://arxiv.org/pdf/2304.04458v1 (sha256 `e65d152ab556a0a379bd2dc6dcf4f1b92bdd1d24a984fe2f42ba5b4fbb2025b5`). It is cached in the session scratchpad and not committed.
+  - What was taken from the paper:
+    - §2: the model. 16 EIH bodies: the Sun, the planets, the Moon, Pluto, and (1) Ceres, (2) Pallas, (4) Vesta, (7) Iris and (324) Bamberga. The other point masses are Newtonian with the 16 and do not interact with each other. Their claim: "sub-centimeter impact on the orbits of the planets and sub-millimeter impact on the geocentric orbit of the Moon on the timespan of 40 years".
+    - The integrator: ABM13 PECEC, h = 1/16 d, Dormand–Prince 8 start-up at h/8.
+    - §3.2: round-off is estimated by **two-way integration** (forward 40 yr, then back).
+    - §3.3, Eqs. 3–5: the relativistic barycentre and the IC condition Σμ*r = 0, Σ(μ̇*r + μ*ṙ) = 0, with drift = |b(t)|.
+    - §4.3: the mixed scheme. x, f and the PECEC intermediates are in DD. The ∇ differences are in f64 and γ in DD. r_ij, the relativistic part, 1/c² and GM are in f64.
+    - §4.4: the geocentric Moon with the Taylor form of the tidal difference; "four terms … are required, but not more".
+    - **Table 1** (40 yr; max errors):
+
+      | | f64 | extended | mixed | double-double |
+      |---|---|---|---|---|
+      | Moon | 0.28 m | 0.1 mm | 1.2 mm | 3.2e-14 m |
+      | Mercury | 2.47 m | 7 mm | 8.4 mm | 2.6e-16 m |
+      | Mars | 0.7 m | 1 mm | 0.44 mm | 2.8e-16 m |
+      | barycentre drift | 0.5 mm | 2.9 µm | 2.6 µm | 3.14 µm |
+      | wall time | 81 s | 323 s | 246 s | 32 min |
+
+  - The paper names a code repository. **It was not opened** (DEP-008), and no ephemeris or N-body integrator source was read.
+- Park et al. 2021, Eqs. 1–2: μ* (already transcribed, WP11/WP15). μ̇* is differentiated here: μ̇ᵢ* = (μᵢ/c²)[vᵢ·aᵢ + ½ Σⱼ μⱼ (rᵢⱼ·vᵢⱼ)/rᵢⱼ³], with Newtonian aᵢ.
+
+### Design (fixed before any check)
+- **Mixed mode = a type configuration (NUM-007).**
+  - `ferroastro_forces::F64Forces<S>` wraps any `SecondOrderSystem<f64>` and is a `SecondOrderSystem<R>` for every `R`. It rounds t, x and v once to f64, evaluates the wrapped model, and widens a exactly. For `R = f64` it is the identity.
+  - With `Abm<DoubleDouble>`, everything else is DD: the state, the whole f history, the coefficients, the sums and the state update. This rounds less than Subbotin's scheme (their ∇ʲf are f64), never more.
+  - The geocentric Moon (EMB + Moon − Earth, WP12) and its 12-term Taylor tidal difference (≥ 4, NUM-008) are evaluated in f64, as in their §4.4.
+- **Scenario keys (CI-002).** Existing digests are unchanged; the new keys are skipped when absent or default.
+  - `integrator.precision = "mixed"`: n-body only. It is refused by name in the test-particle and ephemeris-field modes.
+  - `forces.major_asteroids = "none" | "epm2021" | "all"`: which of `forces.asteroids` are Major (EIH, mutual).
+    - `epm2021` is their five asteroids. With the 11 DE440 majors (Sun, 8 planets with Earth and Moon, Pluto) it gives their 16 Majors, plus 338 Minor.
+    - `all` is the all-mutual reference of check N4.
+    - This **replaces WP15's "16 Majors = 11 + the 5 largest-GM asteroids"** for WP25 (NEEDS HUMAN REVIEW: NUM-009's text).
+    - The key joins `SWITCHES`, so every oracle runner refuses it by name.
+  - `initial_conditions.barycentre = "relativistic"`: three fixed-point passes in the run's backend that translate every slot (except Moon − Earth) by `(Σμ*r/Σμ*, Σ(μ̇*r + μ*v)/Σμ*)` (Subbotin Eq. 5).
+- **Reference scenario:** `ci/scenarios/ephemeris-mixed-epm16-40yr.toml`.
+  - 11 DE440 majors + 343 asteroids (epm2021 tiers), header.440 + REF-003 ICs, relativistic SSB.
+  - ABM13 PECEC h = 1/16 d, compensated, 40 yr, mixed; every body sampled every 20 d.
+  - The f64 and DD twins change `integrator.precision` only, so all three runs share one IC hash.
+  - The f64 twin used for Table 1 is the **plain-sum** one (`compensated = false`); the compensated twin is reported.
+- **Deviations from Subbotin's model (recorded, not tuned):**
+  - DE440 GMs and asteroid set: 343 numbered asteroids (338 Minor), against their 277 asteroids, 30 TNOs, 180-point annulus and 160-point ring.
+  - No KBOs or ring (OI-24). No J2 or LT (they omit both too).
+  - **Round-off is measured against a full-DD run of the same scenario** (the WP25 task), not by their two-way integration.
+- **Wall-time probe (2026-10-20 ~14:20 UTC, release, 0.25 yr, extrapolated to 40 yr).** Not a check; it chose test placement only.
+
+  | variant | f64 | mixed | DD |
+  |---|---|---|---|
+  | epm2021 tiers | 82 s | 182 s | 678 s |
+  | all-mutual | 2625 s | 2807 s | — (est. ≳ 7 h) |
+
+### Plan and pre-registered checks (written 2026-10-20 14:30 UTC)
+Bounds are vectors in `tests/vectors/ephemeris-mode.toml`, committed in their own commit before the tests that read them. "max over 40 yr" means over the 20-d samples and the final state; Mercury and Mars are barycentric, and the Moon is Moon − Earth.
+
+| # | check | tier | bound (vector) | expectation and rationale |
+|---|---|---|---|---|
+| C1 | `F64Forces`: identity for f64 (bitwise); for DD, the wrapped model sees the nearest f64 inputs and its output is widened exactly | PR (unit) | exact | Ran once before this plan (pass). |
+| C2 | Scenario and driver. `mixed` is refused in test-particle and ephemeris-field modes by name. `barycentre` is refused outside n-body mode. Mixed, DD and f64 twins have one IC hash. The model string names the mixed mode. A DD checkpoint does not resume a mixed run. `epm2021` gives 16 Major + 338 Minor, with (7) and (324) Major. A missing EPM2021 asteroid is refused. Mixed-mode checkpoint/resume is bitwise. | PR | exact | — |
+| C3 | Relativistic rebarycentring. After 3 passes in DD (header.440 + 343 asteroids), \|Σμ*r\|/Σμ* ≤ 1e-19 km and the Eq. 5 velocity ≤ 1e-27 km/s (`EPH-REBARY-DD-RESIDUAL-KM`, `-KMS`). μ̇* vs a central difference of μ* along the Newtonian flow (δ = 1 h, DD) ≤ 1e-6 relative (`EPH-MUSTAR-RATE-REL`). | PR | vectors | DD unit u = 2⁻¹⁰⁴ ≈ 5e-32. Positions ≤ 7.4e9 km and 354 bodies give 354 · 7.4e9 · 5e-32 ≈ 1.3e-19 km, rounded down to 1e-19 because the sums are dominated by the Sun; velocities ≤ 60 km/s give 1e-27 km/s. Finite difference: O(δ²/P²) ≈ (1 h / 88 d)² ≈ 2e-7. |
+| C4 | Mixed mode is real. Major-body ABM scenario (WP24), 2 yr: max \|mixed − DD\| ≤ max \|f64 plain − DD\| / 10 for Mercury (`EPH-MIXED-SHORT-RATIO`). | PR | ratio ≥ 10 | Expected: f64 ~2 cm at 2 yr (t^1.5 from WP24 B3), mixed ~0.1 mm (Subbotin 8.4 mm at 40 yr). A mixed mode that silently ran f64 sums gives ratio ≈ 1. |
+| C5 | DEP-007 forces. `NBodyModel` (Newtonian + geocentric Moon + EIH + solar J2 + LT; 11 majors, header.440) in DD vs f64 at the ICs: per body \|a_DD − a_f64\| / \|a_DD\| ≤ 1e-12 (`EPH-FORCES-DD-F64-REL`). | PR | vector | f64 round-off of a ≤ 20-term sum ≈ 1e-15 relative. A backend-dependent formula error (e.g. a c⁻² term lost in one backend) shows up at ≥ 1e-9. |
+| N1 | **(1) NUM-007.** Reference scenario: max \|mixed − DD\| Mercury ≤ 1 cm (`EPH-MIXED-MERCURY-40YR-KM`). | nightly | 1e-5 km | Subbotin 8.4 mm. Our estimate is 0.7–2 cm: per-evaluation force rounding ~1e-16 relative random-walks the mean motion (h·δa per step, √N), as derived in the notes. **It may fail; if so, it is reported and the bound is not moved.** |
+| N1b | **(1) Table 1 trend.** max \|f64 plain − DD\| Mercury ∈ [0.8, 8] m (`EPH-F64-MERCURY-40YR-BAND-KM`, centre 4.4e-3 km ± 3.6e-3 km, PROVISIONAL) | nightly | band | WP24 B3 measured 1.4 m with 10 Majors + 343 Minor. Subbotin 2.47 m (two-way). |
+| N2 | **(2) NUM-008.** max \|mixed − DD\| Moon − Earth ≤ 2 mm (`EPH-MIXED-MOON-40YR-KM`) | nightly | 2e-6 km | Subbotin 1.2 mm. |
+| N3 | **(3) NUM-018.** Barycentre drift max \|b(t)\| (μ* in DD over every body; b(0) ≈ 0 by C3) ≤ 10 µm, in the DD run and in the mixed run (`EPH-SSB-DRIFT-40YR-KM`) | nightly | 1e-8 km | Subbotin 3.14 µm (DD) and 2.6 µm (mixed). In DD the drift is the O(c⁻⁴) non-conservation of the 1PN centre of mass (EIH with Newtonian RHS) plus truncation, not round-off; our body set differs, hence the factor 3. The f64 drift is reported (Subbotin 0.5 mm). |
+| N4 | **(4) NUM-009 tiering.** Reference (epm2021) vs all-mutual (`major_asteroids = "all"`), both mixed. max \|Δr\|: Mercury … Pluto < 1 cm (`EPH-TIERING-PLANETS-40YR-KM`), Moon − Earth < 1 mm (`EPH-TIERING-MOON-40YR-KM`). | nightly (≈ 50 min, checkpointed 10-yr segments) | 1e-5 / 1e-6 km | **Resolvability condition (pre-registered):** the check counts only if √2 × the N1/N2 mixed round-off of the body is ≤ bound/3. Otherwise it is reported as UNRESOLVED and fails by name, and a DD all-mutual run (≳ 7 h) is the follow-up; nothing is loosened. |
+| N5 | **(5) DEP-007.** ABM, forces, SPK evaluation and time arithmetic each pass their tests in f64 and DD. | PR | — | Existing: ABM A3–A6, `ferroastro-ephem` `generic_over_double_double` and the DE440 DD-vs-f64 tests, and `ferroastro-time` DD round trips. New: C5 and the mixed runs. Mapped in the results. |
+
+Reported, not asserted:
+- Mars for every comparison (Subbotin mixed 0.44 mm, f64 0.7 m);
+- the f64 compensated twin;
+- f64 barycentre drift;
+- wall times against Subbotin's 81 s / 246 s / 32 min (OI-44: their CPU is unspecified);
+- the B2-style ABM-vs-IAS15 comparison is not repeated.
+
+Nothing above is tuned after a run. If a bound fails, the value, the failure and its diagnosis are reported, and the bound is not changed.
