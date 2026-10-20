@@ -4649,3 +4649,36 @@ The notes-only commits that follow change no code.
 - D1 and WP19's C7 reproduced their numbers: D1 Mercury 54.88 → 16.35 m, shift 67.24 m; C7 Mercury factor 2364.16.
 
 **GitHub CI:** run **39407461351** on `b9caa52`: success (rust, msrv, wasm32 with eih, python, reuse, dco; data and long runs skipped by design).
+
+## WP21 — [M4] REBOUNDx `gr_full` oracle (stage C) and GR-on/GR-off differentials
+Branch `m4-eih` (stacked on `m3-newtonian-nbody`), draft PR #17, after WP20.
+
+### Progress-review corrections (status at the start of WP21)
+R1, R2, R3, R4, R6 and R8 were applied in WP19 (see the WP19 table; nothing in WP21 reopens them). R7 was requested on PR #13 and remains the maintainer's. R5, R9 and the M3 exit stay with humans. The WP19 items apply: clean room, pre-registration before the first run (a failed pre-registration is a finding), `tools/pre_push.sh` (full) before every push with the GitHub CI run id. WP22 keeps the 575.3093 oracle; WP21 does not touch PHY-014.
+
+### Clean-room record (DEP-008, LIC-001)
+REBOUNDx is used only through its documented Python API, read from the published documentation: the "Astrophysical Effects" page (`gr_full`: "first-order post-newtonian effects from all bodies", based on Newhall et al. 1983, parameter `c` only; `gr`: single dominant mass, based on Anderson et al. 1975, "Adding this effect to several bodies is NOT equivalent to using gr_full"; `gr_potential`: Nobili & Roxburgh 1986, correct precession, mean motion wrong by O(GM/ac²)) and the Python quick-start (`reboundx.Extras(sim)`, `rebx.load_force`, `rebx.add_force`, `force.params["c"]`). No REBOUND or REBOUNDx source (C or Python) and no REBOUNDx example notebook was opened. The container receives scenario files and header.440 and returns plain files.
+
+### Plan and pre-registered checks (written 2026-10-20 10:40 UTC, before any WP21 code or run)
+**Runner (`tools/oracles/rebound_runner.py`).**
+- `gr_eih` (n-body) → REBOUNDx `gr_full` with `c = CLIGHT · 86400 / AU` au/day from header.440. The runner refuses unless header.440 has BETA = GAMMA = 1 (gr_full has no β, γ).
+- `gr_1pn_central` (n-body) → REBOUNDx `gr` (the Sun, which must be `particles[0]`, is the source). For these scenarios the runner also writes a second series with `gr_potential` (`<scenario>.rebound.gr_potential.states.csv`, its own MANIFEST entry); the primary file stays `<scenario>.rebound.states.csv`.
+- Still refused (REF-011, each by name): `ppn` (gr_full has only c; β, γ ≠ 1 stays analytic, REF-010), `lense_thirring`, `sun_j2`, small bodies, and test-particle mode (every switch).
+- `nightly.sh` runs `stage-c-*` and `oracle-c-*` on REBOUND only (stage C is REBOUNDx's; the other N-body oracles' GR is covered by the WP17 C-lite and Swiftest/Mercury6 would spend hours on the Newtonian 2000-yr legs without adding a check).
+
+**Scenarios** (`ci/scenarios/`): `stage-c-sun-planets-moon-{eih,newton}-100yr` (Sun, 8 planets with Earth and Moon resolved, ε 1e-9, dt0 0.1 d, yearly samples); `oracle-c-planets-moon-{newton,eih}-{back,fwd}` and `oracle-c-sun-mercury-{newton,eih,gr1pn}-{back,fwd}` (legs −969.5702 yr and +1030.5941 yr from JDEPOC = the Park17 window J2000 ± 1000 Julian yr plus 30 d, as N3; daily Sun and Mercury samples).
+
+**Checks.** Every bound is fixed here, before any run.
+
+| # | check | tier | bound (vector) | expectation and rationale |
+|---|---|---|---|---|
+| S1 | FerroAstro `gr_eih` vs the committed REBOUNDx `gr_full` golden, stage C 100 yr: Mercury max \|Δr\| (SSB) | PR | ≤ 1e-3 km (`ORACLE-STAGE-C-REBOUNDX-MERCURY-MAX-DR`, new, PROVISIONAL from the task) | 0.5–2 m: the stage A difference (0.71 m) was REBOUND's f64 round-off, and the Moon adds steps. **The bound may fail on round-off alone**; that would be a finding, diagnosed with S1c. Every body is reported. Also asserted: R2 brute-force max/time checks. |
+| S1c | the same for the Newtonian control `stage-c-sun-planets-moon-newton-100yr` (golden committed too) | PR | reported, not asserted | round-off baseline with the Moon; S1 − S1c isolates the 1PN contribution to the tool difference |
+| S1m | MANIFEST entries for both stage C goldens (REF-005, CI-003) | PR | existing CI-003 test (complete, not dirty) | — |
+| S2 | full-system GR contribution, 1000–3000 CE: [rate(eih) − rate(newton)]_REBOUNDx − [same]_FerroAstro, one Park2017 estimator (N3's: mean-orbit plane, sampled-state passages, quadratic + 14 terms, 20 jack-knife blocks) | nightly | ≤ 1e-3 ″/cy (`ORACLE-STAGE-C-GR-TOOL-AGREEMENT`, new, PROVISIONAL from the task) | \|Δ\| < 1e-6 (Newtonian P-add Venus agreed to 7e-9). The contribution itself is reported against PHY-005's 42.980 (it includes the planets' 1PN terms, so it is not asserted against 42.980). |
+| S3 | single-body isolation, Sun + Mercury, 1000–3000 CE, GR on − off: FerroAstro `gr_eih`, REBOUNDx `gr_full`, REBOUNDx `gr`, REBOUNDx `gr_potential`, FerroAstro `gr_1pn_central` (N-body) | nightly | each 42.980 ± 0.001 (`PHY005-GR-NUM-RATE`); `gr_full` − FerroAstro `gr_eih` ≤ 1e-3 (`ORACLE-STAGE-C-GR-TOOL-AGREEMENT`) | 42.9801 ± 3e-5 for all five (WP19 C3: 42.980114 per-orbit; C-lite 42.980085). `gr_potential`'s mean-motion error (~2.5e-8 relative) moves the ″/cy rate by ~1e-6. gr_full − gr_eih < 1e-6. |
+| S4 | CI-009 identical ICs: FerroAstro IC hashes of each on/off pair equal; the REBOUNDx t = 0 rows of each on/off pair bitwise equal; one estimator id printed for all tools | nightly | exact | — |
+| S5 | REF-011: runner refusals (pytest): `ppn`, `lense_thirring`, `sun_j2`, test-particle mode with `gr_1pn_central`, a non-Sun first body with `gr_1pn_central`, header β/γ ≠ 1; `gr_eih` and `gr_1pn_central` accepted in n-body; the ppn canary still refused | PR (pytest) | exact | — |
+| S6 | speed table gains an EIH row: `bench-e-sun-8planets-eih-1000yr` (scenario (a) with `gr_eih`), FerroAstro and REBOUNDx gr_full, 5 timed runs; Mercury \|Δr\| vs REBOUND | local harness | reported | FerroAstro ≈ 6–7× REBOUND's time on (a); EIH adds an O(N²) c⁻² term per evaluation to both, so the ratio should stay 3–10×. Mercury \|Δr\| after 1000 yr ≈ (a)'s 52 m. |
+
+Nothing above is tuned after a run. If a bound fails, the value, the failure and its diagnosis are reported, and the bound is not changed.
