@@ -69,7 +69,7 @@ mod tests {
         assert_eq!(t.range_s().to_bits(), 9.0_f64.to_bits());
         assert!(t.meets_minimum());
         let e = Timing::new(vec![4.0, 1.0, 2.0, 3.0]).unwrap();
-        assert_eq!(e.median_s.to_bits(), 2.5_f64.to_bits());
+        assert_eq!(e.median_s.to_bits(), 2.5_f64.to_bits()); // lint: allow-literal(synthetic wall-clock seconds)
         assert!(!e.meets_minimum());
         assert!(Timing::new(vec![]).is_none());
         assert!(Timing::new(vec![1.0, f64::NAN]).is_none());

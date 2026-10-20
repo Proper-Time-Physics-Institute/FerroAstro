@@ -233,7 +233,7 @@ fn table(run_id: &str, cpu: &str, runs: Vec<f64>) -> SpeedTable {
 /// Verifies: CI-008
 #[test]
 fn table_rules_markdown_and_stability() {
-    let five = vec![10.0, 11.0, 12.0, 13.0, 14.0];
+    let five = vec![10.0, 11.0, 12.0, 13.0, 14.0]; // lint: allow-literal(synthetic wall-clock seconds for the table logic)
     let t1 = table("r1", "cpu", five.clone());
     t1.validate().unwrap();
     let md = t1.to_markdown();
@@ -250,10 +250,10 @@ fn table_rules_markdown_and_stability() {
     assert!(few.validate().is_err(), "an empty column needs its reason");
 
     // Range of t1 = 4 s, median 12 s.
-    let close = table("r2", "cpu", vec![12.5, 13.0, 15.0, 15.5, 16.0]);
+    let close = table("r2", "cpu", vec![12.5, 13.0, 15.0, 15.5, 16.0]); // lint: allow-literal(synthetic wall-clock seconds for the table logic)
     let rows = stability(&t1, &close, "ferroastro").unwrap();
     assert!(rows[0].pass, "|15 - 12| = 3 < 4");
-    let far = table("r3", "cpu", vec![16.0, 16.5, 17.0, 17.5, 18.0]);
+    let far = table("r3", "cpu", vec![16.0, 16.5, 17.0, 17.5, 18.0]); // lint: allow-literal(synthetic wall-clock seconds for the table logic)
     assert!(
         !stability(&t1, &far, "ferroastro").unwrap()[0].pass,
         "5 >= 4"
