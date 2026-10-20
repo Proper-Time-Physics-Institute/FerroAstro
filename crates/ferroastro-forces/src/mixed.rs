@@ -24,6 +24,8 @@
 //! backward differences ∇ʲf in f64 and only the γⱼ in double-double, so this realisation rounds
 //! less than theirs, never more.
 
+use crate::NBodyModel;
+use ferroastro_core::frames::Frame;
 use ferroastro_integrators::{IntegratorError, SecondOrderSystem};
 use ferroastro_real::Real;
 
@@ -60,6 +62,48 @@ impl<R: Real, S: SecondOrderSystem<f64> + ?Sized> SecondOrderSystem<R> for F64Fo
         self.inner.acceleration(t.to_f64(), &xf, &vf, &mut af)?;
         for (out, &value) in a.iter_mut().zip(&af) {
             *out = R::from_f64(value);
+        }
+        Ok(())
+    }
+}
+
+/// The NUM-007 mixed mode of an f64 [`NBodyModel`] as Subbotin et al. 2023 §4.3 realise it:
+/// each force term is evaluated in f64 from the state rounded once to f64, and the
+/// contributions are accumulated with Neumaier's compensated sum and widened as the unevaluated
+/// sum `(Σ, compensation)` into `R` ([`NBodyModel::acceleration_split`]), so the time derivative
+/// `f` is not rounded to f64 (their "x and f are stored in double-double"). For `R = f64` the
+/// pair is rounded once.
+///
+/// WP25 found that [`F64Forces`], which rounds the summed acceleration to f64, is limited by the
+/// summation round-off of the hundreds of small contributions to each body (IMPLEMENTATION-NOTES
+/// WP25); this adapter is the mixed mode of the run driver.
+#[derive(Debug, Clone, Copy)]
+pub struct MixedForces<'a, F: Frame> {
+    model: &'a NBodyModel<F, f64>,
+}
+
+impl<'a, F: Frame> MixedForces<'a, F> {
+    /// Wrap an f64 N-body model.
+    #[must_use]
+    pub const fn new(model: &'a NBodyModel<F, f64>) -> Self {
+        Self { model }
+    }
+}
+
+impl<R: Real, F: Frame> SecondOrderSystem<R> for MixedForces<'_, F> {
+    fn dimension(&self) -> usize {
+        SecondOrderSystem::<f64>::dimension(self.model)
+    }
+
+    fn acceleration(&self, t: R, x: &[R], v: &[R], a: &mut [R]) -> Result<(), IntegratorError> {
+        let xf: Vec<f64> = x.iter().map(|&z| z.to_f64()).collect();
+        let vf: Vec<f64> = v.iter().map(|&z| z.to_f64()).collect();
+        let mut hi = vec![0.0_f64; a.len()];
+        let mut lo = vec![0.0_f64; a.len()];
+        self.model
+            .acceleration_split(t.to_f64(), &xf, &vf, &mut hi, &mut lo)?;
+        for ((out, &h), &l) in a.iter_mut().zip(&hi).zip(&lo) {
+            *out = R::from_parts(h, l);
         }
         Ok(())
     }

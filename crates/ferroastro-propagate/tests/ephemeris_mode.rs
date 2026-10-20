@@ -354,7 +354,8 @@ fn mixed_mode_round_off_is_far_below_f64() {
 
 /// C5 (DEP-007): the N-body force model (Newtonian mutual + geocentric Moon + EIH + solar J2 and
 /// Lense–Thirring with reaction, Sun … Pluto from header.440) evaluated in double-double and in
-/// f64 at the initial conditions agree to f64 round-off; the mixed mode evaluates the f64 model.
+/// f64 at the initial conditions agree to f64 round-off; the mixed mode evaluates the f64 terms
+/// and carries the compensation of their sum as a low word.
 ///
 /// Verifies: DEP-007, NUM-007
 #[test]
@@ -373,6 +374,7 @@ fn nbody_forces_agree_in_double_double_and_f64() {
     assert_eq!(ids, ids64);
     let mut worst = 0.0_f64;
     let mut worst_mix = 0.0_f64;
+    let mut lows = 0;
     for (i, id) in ids.iter().enumerate() {
         let d: [DoubleDouble; 3] = a_dd[i].map(dd);
         let n = d.map(|z| z.to_f64().powi(2)).iter().sum::<f64>().sqrt();
@@ -384,8 +386,8 @@ fn nbody_forces_agree_in_double_double_and_f64() {
             .map(|k| (d[k] - dd(amix[i][k])).to_f64().powi(2))
             .sum::<f64>()
             .sqrt();
-        // The mixed mode's accelerations are f64 values (no low word).
-        assert!(amix[i].iter().all(|z| z[1] == 0.0));
+        // The mixed mode widens the compensated f64 sum: a low word is carried.
+        lows += amix[i].iter().filter(|z| z[1] != 0.0).count();
         println!(
             "  {id:>4}: |a| = {n:.6e} km/s^2, |a_dd - a_f64|/|a| = {:.2e}, |a_dd - a_mixed|/|a| = {:.2e}",
             e / n,
@@ -399,6 +401,11 @@ fn nbody_forces_agree_in_double_double_and_f64() {
          (bound {})",
         tol.tolerance.allowed(0.0)
     );
+    println!(
+        "  mixed-mode components with a low word: {lows} of {}",
+        3 * ids.len()
+    );
+    assert!(lows > 0, "the mixed mode rounds its accelerations to f64");
     tol.check(worst).unwrap();
     tol.check(worst_mix).unwrap();
 }

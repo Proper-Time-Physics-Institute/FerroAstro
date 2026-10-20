@@ -21,8 +21,9 @@
 //! [`GeocentricMoon`], [`SolarJ2WithReaction`] and (WP20) [`SolarLenseThirring`] — each declaring its gauge, parameters and
 //! tiers. [`NBodyPropagator`] advances a model with IAS15 from a TDB epoch.
 //!
-//! M5 (WP25) adds [`F64Forces`], the NUM-007 ephemeris precision mode: an f64 force model
-//! advanced by an integrator whose state, sums and coefficients are double-double.
+//! M5 (WP25) adds the NUM-007 ephemeris precision mode: [`MixedForces`] (f64 force terms,
+//! compensated accumulation widened into double-double) and the plain [`F64Forces`] adapter, for
+//! an integrator whose state, sums and coefficients are double-double.
 //!
 //! Internal units: positions in km, velocities in km/s, time in TDB seconds, GM in km³/s². The
 //! typed constructors and [`NewtonianPointMasses::pack`] / [`NewtonianPointMasses::unpack`]
@@ -42,7 +43,7 @@ mod relativity;
 pub use central::{CentralTerm, Pole, TestParticle};
 pub use error::ForceError;
 pub use ferroastro_integrators::SecondOrderSystem;
-pub use mixed::F64Forces;
+pub use mixed::{F64Forces, MixedForces};
 pub use nbody::{
     Accelerations, ForceTerm, GeocentricMoon, Layout, LtReaction, MOON_TAYLOR_Q_MAX,
     MOON_TAYLOR_TERMS_DEFAULT, MOON_TAYLOR_TERMS_MIN, MinorFromMajors, MinorReaction, MoonPair,

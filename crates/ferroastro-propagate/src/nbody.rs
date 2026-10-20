@@ -28,8 +28,8 @@ use ferroastro_eih::{
 };
 use ferroastro_ephem::NaifId;
 use ferroastro_forces::{
-    F64Forces, ForceTerm, GeocentricMoon, LtReaction, MOON_TAYLOR_TERMS_DEFAULT, MinorFromMajors,
-    MinorReaction, MoonVariables, NBody, NBodyModel, NewtonianMutual, RingMasses,
+    ForceTerm, GeocentricMoon, LtReaction, MOON_TAYLOR_TERMS_DEFAULT, MinorFromMajors,
+    MinorReaction, MixedForces, MoonVariables, NBody, NBodyModel, NewtonianMutual, RingMasses,
     SolarJ2WithReaction, SolarLenseThirring,
 };
 use ferroastro_integrators::Ias15;
@@ -623,7 +623,7 @@ impl<R: Real> NBodyRun<R> {
                     model.describe(),
                     if spec.integrator.precision == Precision::Mixed {
                         "mixed (NUM-007): double-double state, integrator sums and coefficients, \
-                         f64 forces"
+                         f64 force terms with compensated accumulation into double-double"
                     } else {
                         R::NAME
                     }
@@ -722,7 +722,7 @@ impl<R: Real> NBodyRun<R> {
         let wanted = self.spec.span.stop_after_passages.map(u64::from);
         loop {
             let rep = match &self.forces64 {
-                Some(f) => self.ias.step(&F64Forces::new(f), self.t_end)?,
+                Some(f) => self.ias.step(&MixedForces::new(f), self.t_end)?,
                 None => self.ias.step(&self.model, self.t_end)?,
             };
             if !rep.moved {
@@ -815,13 +815,13 @@ impl<R: Real> NBodyRun<R> {
 
     /// The accelerations of the integration variables at the integrator's current state (km/s²,
     /// storage order; with a geocentric pair the Earth slot is the EMB and the Moon slot Moon −
-    /// Earth), as the integrator sees them: through [`F64Forces`] in the mixed mode.
+    /// Earth), as the integrator sees them: through [`MixedForces`] in the mixed mode.
     pub(crate) fn accelerations(&self) -> Result<Vec<[R; 3]>, PropagateError> {
         use ferroastro_integrators::SecondOrderSystem as _;
         let mut a = vec![R::ZERO; 3 * self.n];
         let (t, x, v) = (self.ias.time(), self.ias.positions(), self.ias.velocities());
         match &self.forces64 {
-            Some(f) => F64Forces::new(f).acceleration(t, x, v, &mut a)?,
+            Some(f) => MixedForces::new(f).acceleration(t, x, v, &mut a)?,
             None => self.model.acceleration(t, x, v, &mut a)?,
         }
         Ok((0..self.n).map(|i| slot(&a, self.n, i)).collect())
