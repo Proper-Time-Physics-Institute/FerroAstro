@@ -19,6 +19,8 @@ ferroastro-system.workspace = true
 
 [dev-dependencies]
 ferroastro-constants.workspace = true
+ferroastro-frames.workspace = true
+ferroastro-integrators.workspace = true
 ferroastro-testdata.workspace = true
 ferroastro-vectors.workspace = true
 
