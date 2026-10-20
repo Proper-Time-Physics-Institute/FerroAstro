@@ -4308,7 +4308,12 @@ The nightly differentials check every oracle series they read before any FerroAs
   - `jpl/ref001-pins/ref001-verification.json` differed only in download metadata. The golden was made with a cold cache, so it records `last_modified`; a warm-cache run records `fetched = false` and no `last_modified`.
   - Every SHA-256 and `pin_ok` agreed.
   - **Fix:** `last_modified` became a volatile key (`c56a0e3`, with a pytest). The drift check re-run on the **same candidate directory** reports **no drift**: every committed golden (REBOUND, Swiftest and Mercury6 stage A, Orekit stage B, ERFA, JPL) was reproduced bit for bit.
-  - **Not done:** the full nightly has not been re-run with the fixed script (about 52 min). The next scheduled run should show `state=PASS`.
+- **Second complete run, after the fix: `state=PASS`.** It ran from a clean clone at `b152939`, 2026-10-20 08:56:28 → 09:45:47 UTC, **2959 s**.
+  - The drift check reports no drift: every committed golden was reproduced bit for bit.
+  - `status.tsv` has 15 ok, 40 refusals and 1 FerroAstro row. The four new refusals are the new `sun-mercury-eih-header440` scenario, which every oracle runner refuses, naming `gr_eih`.
+  - Wall clocks: Swiftest P-add 1058 s and 1182 s; Orekit 409 s; FerroAstro differentials 24 s.
+  - Differentials 2/2 pass, with the same numbers as the first run.
+  - This is the first PASS of the CI-006 nightly on record.
 
 **Suggested cron line (not installed; the maintainer's call):**
 `17 2 * * *  cd /home/tmorris/Physics/FerroAstro-m0 && setsid tools/oracles/nightly.sh >> target/nightly.log 2>&1`
@@ -4490,4 +4495,6 @@ Two earlier pre-push runs failed (`prepush-1`, `prepush-2`/`-4`), each on a lint
 
 GitHub CI:
 - run 39391028675 on `746fc95`: success;
-- run **39394141110** on `ab46110`: success (rust, msrv, wasm32 with eih, python, reuse, dco; data and long runs skipped by design).
+- run **39394141110** on `ab46110`: success (rust, msrv, wasm32 with eih, python, reuse, dco; data and long runs skipped by design);
+- run **39397046266** on `b152939`: success;
+- the notes-only tip that follows is reported in the PR.
