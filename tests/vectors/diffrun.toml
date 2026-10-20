@@ -31,3 +31,32 @@ retrieved = "2026-10-15"
 tolerance = { abs = 1.0e-6 }
 tolerance_rationale = "Engineering bound fixed before the first run (WP14). An IC difference of 6.7e-7 km on r ~ 5e7 km moves passage longitudes by ~1e-14 rad; propagated over 40 yr (0.4 cy) that is <~ 1e-8 arcsec/cy in the slope, so 1e-6 is ~100x above the expected difference while 1e3x below the smallest PHY-012 row tolerance. PROVISIONAL; NEEDS HUMAN REVIEW with the other agent-set engineering bounds."
 verified_by = "WP14 builder agent, 2026-10-15: derivation above; WP11 numbers re-read in IMPLEMENTATION-NOTES."
+
+[[vector]]
+id = "NUM019-ISOLATION-NBODY-DIFF"
+requirement = ["NUM-013", "NUM-019", "PHY-010", "PHY-011"]
+quantity = "differential single-body rate in N-body mode (Sun + Mercury, header.440, solar pole along Mercury's initial heliocentric orbit normal; J2 or LT toggled against the Newtonian run, identical IC hash, Park2017 estimator on the perihelion passages) minus the analytic rate of the same term"
+value = 0.0
+unit = "arcsec/cy"
+kind = "analytic"
+source = "NUM-013 acceptance (a): isolated single-body terms (Sun + Mercury only: J2 0.0286 at J2 = 2.25e-7, LT -0.0020) agree with the analytic formulas within 1e-4 arcsec/cy"
+citation = "FerroAstro docs/requirements/NUM.md NUM-013 (maintainer decision 2026-10-14, Journal #8) and NUM-019"
+retrieved = "2026-10-20"
+tolerance = { abs = 1.0e-4 }
+tolerance_rationale = "NUM-013(a)'s own bound, copied. Comparison basis (documented, as NUM-013 requires): two-body N-body run with the J2 and LT reactions on the Sun, so the relative motion has mu' = GM_sun + GM_Me and the LT strength GS' = GS (1 + GM_Me/GM_sun); analytic per-orbit advances 3 pi J2 R^2/p^2 and -4 pi GS'/(c^2 n a^3 (1-e^2)^(3/2)) per period, i.e. the rates -4GS'/(c^2 a^3 (1-e^2)^(3/2)), for the initial osculating orbit (a, e from mu'); equatorial geometry (pole = initial orbit normal), so the planar formulas apply exactly. Also applied against the requirement's printed values PHY010-J2-PARK-ANALYTIC-RATE and PHY011-LT-ANALYTIC-RATE. Pre-registered in IMPLEMENTATION-NOTES WP20 (I2, I5) before the first run."
+verified_by = "WP20 builder agent, 2026-10-20: bound copied from NUM-013(a)."
+
+[[vector]]
+id = "NUM019-NBODY-LT-CONTRIBUTION"
+requirement = ["NUM-019", "PHY-011", "NUM-013"]
+quantity = "Lense-Thirring contribution to Mercury's perihelion rate in the full N-body model under EIH (P-add: rate(EIH full system + LT) - rate(EIH full system)), 1000-3000 CE, Park2017 estimator in the Mercury mean-orbit frame"
+value = -0.002
+unit = "arcsec/cy"
+kind = "measured"
+source = "Park17 Table 3, row 'Lense-Thirring (Gravitomagnetic)': -0.0020 +/- 0.0002; NUM-019 acceptance (-0.0020 +/- 0.0002)"
+citation = "Park, R. S., Folkner, W. M., Konopliv, A. S., et al. 2017, AJ 153, 121, doi:10.3847/1538-3881/aa5be2, Table 3; FerroAstro docs/requirements/NUM.md NUM-019"
+retrieved = "2026-10-20"
+tolerance = { abs = 2.0e-4 }
+tolerance_rationale = "Park17's quoted 1-sigma, which NUM-019 copies. Non-gating while OI-35 (the transcription of the LT form against DE440 and INPOP21a) is open, as the WP20 task requires for the asserting N-body LT test. Pre-registered in IMPLEMENTATION-NOTES WP20 (N3) before the first run."
+verified_by = "WP20 builder agent, 2026-10-20: value as PARK17-LT-RATE (read by the WP4 builder in the published PDF, sha256 24fb2153f6b78109daa80171cd37006157b73564f8d0ac383532b5c92433380b)."
+blocked_by = "OI-35"
