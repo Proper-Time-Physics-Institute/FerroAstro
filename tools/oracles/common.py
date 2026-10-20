@@ -56,6 +56,7 @@ SWITCHES: tuple[str, ...] = (
     "asteroids",
     "kbos",
     "kbo_ring",
+    "major_asteroids",
 )
 
 #: Fields that must be present and non-empty in every manifest entry (CI-003).
@@ -109,8 +110,9 @@ def load_scenario(path: Path) -> dict[str, Any]:
 def requested_switches(forces: Mapping[str, Any]) -> list[str]:
     """Return the switches a ``[forces]`` table turns on, unknown keys included (by name).
 
-    ``ppn`` counts when present (any beta, gamma), ``asteroids`` when greater than 0, the others
-    when true. Unknown keys are returned too, so a runner refuses them by name.
+    ``ppn`` counts when present (any beta, gamma), ``asteroids`` when greater than 0,
+    ``major_asteroids`` when set to anything but ``"none"``, the others when true. Unknown keys
+    are returned too, so a runner refuses them by name.
     """
     on: list[str] = []
     for key, value in forces.items():
@@ -118,6 +120,9 @@ def requested_switches(forces: Mapping[str, Any]) -> list[str]:
             on.append(key)
         elif key == "asteroids":
             if isinstance(value, int) and value > 0:
+                on.append(key)
+        elif key == "major_asteroids":
+            if value not in ("none", False, None):
                 on.append(key)
         elif key not in SWITCHES or value is True:
             on.append(key)

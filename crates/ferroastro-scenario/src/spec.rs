@@ -145,6 +145,68 @@ pub struct InitialConditionsSpec {
     /// absent or equal to the header's `JDEPOC`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub epoch_jd_tdb: Option<f64>,
+    /// Re-barycentre the assembled initial conditions (n-body mode; absent: use the source's
+    /// states as given). `relativistic` moves the origin to the relativistic SSB with the μᵢ* of
+    /// Park et al. 2021 Eqs. 1–2, computed in the run's backend (NUM-018, WP25).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub barycentre: Option<IcBarycentre>,
+}
+
+/// How the initial conditions are re-barycentred (`initial_conditions.barycentre`, WP25).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "kebab-case")]
+pub enum IcBarycentre {
+    /// Σ μᵢ* rᵢ = 0 and Σ (μ̇ᵢ* rᵢ + μᵢ* vᵢ) = 0 (Subbotin et al. 2023 Eq. 5), with
+    /// μᵢ* = μᵢ [1 + vᵢ²/(2c²) − Σⱼ μⱼ/(2c² rᵢⱼ)] (Park et al. 2021 Eq. 2) and μ̇ᵢ* from the
+    /// Newtonian accelerations. Every body is translated by the same position and velocity.
+    Relativistic,
+}
+
+impl IcBarycentre {
+    /// The spelling in scenario files.
+    #[must_use]
+    pub const fn label(self) -> &'static str {
+        match self {
+            IcBarycentre::Relativistic => "relativistic",
+        }
+    }
+}
+
+/// Which numbered asteroids are Major bodies (`forces.major_asteroids`, NUM-009, WP25). The
+/// others of `forces.asteroids` stay Minor.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "kebab-case")]
+pub enum MajorAsteroids {
+    /// None: every asteroid is Minor (Newtonian from the Majors only).
+    #[default]
+    None,
+    /// (1) Ceres, (2) Pallas, (4) Vesta, (7) Iris and (324) Bamberga, the five asteroids that
+    /// obey the EIH equations in the EPM2021 model of Subbotin et al. 2023 §2 (with the Sun, the
+    /// planets, the Moon and Pluto: their 16 Major bodies).
+    Epm2021,
+    /// Every asteroid of `forces.asteroids`: the all-mutual reference of the tiering check.
+    All,
+}
+
+impl MajorAsteroids {
+    /// The spelling in scenario files.
+    #[must_use]
+    pub const fn label(self) -> &'static str {
+        match self {
+            MajorAsteroids::None => "none",
+            MajorAsteroids::Epm2021 => "epm2021",
+            MajorAsteroids::All => "all",
+        }
+    }
+
+    /// True for [`MajorAsteroids::None`] (the serde skip test).
+    #[must_use]
+    pub fn is_none(&self) -> bool {
+        *self == MajorAsteroids::None
+    }
+
+    /// The asteroid numbers of [`MajorAsteroids::Epm2021`].
+    pub const EPM2021: [u32; 5] = [1, 2, 4, 7, 324];
 }
 
 /// The GM set (CI-002).
@@ -210,10 +272,14 @@ pub struct Forces {
     /// not a CI-002 switch name, WP15).
     #[serde(default, skip_serializing_if = "std::ops::Not::not")]
     pub kbo_ring: bool,
+    /// Which of the `asteroids` are Major bodies instead of Minor (NUM-009; not a CI-002 switch
+    /// name, WP25). Default `none`.
+    #[serde(default, skip_serializing_if = "MajorAsteroids::is_none")]
+    pub major_asteroids: MajorAsteroids,
 }
 
 /// The force switches of CI-002, as written under `[forces]`.
-pub const SWITCHES: [&str; 9] = [
+pub const SWITCHES: [&str; 10] = [
     "newton",
     "sun_j2",
     "gr_1pn_central",
@@ -223,6 +289,7 @@ pub const SWITCHES: [&str; 9] = [
     "asteroids",
     "kbos",
     "kbo_ring",
+    "major_asteroids",
 ];
 
 impl Forces {
@@ -239,6 +306,7 @@ impl Forces {
             self.asteroids > 0,
             self.kbos,
             self.kbo_ring,
+            self.major_asteroids != MajorAsteroids::None,
         ];
         SWITCHES
             .iter()
@@ -283,6 +351,9 @@ pub enum Precision {
     F64,
     /// Double-double (`ferroastro-real`).
     Dd,
+    /// The NUM-007 ephemeris precision mode (Subbotin et al. 2023 "mixed"): state, integrator
+    /// sums and coefficients in double-double, forces in f64 (n-body mode, WP25).
+    Mixed,
 }
 
 impl Precision {
@@ -292,6 +363,7 @@ impl Precision {
         match self {
             Precision::F64 => "f64",
             Precision::Dd => "dd",
+            Precision::Mixed => "mixed",
         }
     }
 }
@@ -555,6 +627,22 @@ impl ScenarioSpec {
                 return err("initial_conditions.epoch_jd_tdb", &jd, "must be finite");
             }
             _ => {}
+        }
+        if self.forces.major_asteroids != MajorAsteroids::None && self.forces.asteroids == 0 {
+            return err(
+                "forces.major_asteroids",
+                &self.forces.major_asteroids.label(),
+                "selects Major bodies among forces.asteroids, which is 0",
+            );
+        }
+        if self.mode != Mode::NBody {
+            if let Some(b) = self.initial_conditions.barycentre {
+                return err(
+                    "initial_conditions.barycentre",
+                    &b.label(),
+                    "re-barycentring applies to n-body initial conditions only",
+                );
+            }
         }
         if let Some(p) = self.forces.ppn {
             if !(p.beta.is_finite() && p.gamma.is_finite()) {

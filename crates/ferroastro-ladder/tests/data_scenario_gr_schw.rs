@@ -91,6 +91,7 @@ fn data_gr_schw_scenario_equals_direct_api_bitwise_from_header440() {
             Precision::Dd => setup
                 .run_in::<ferroastro_real::DoubleDouble>(&rung)
                 .unwrap(),
+            Precision::Mixed => unreachable!("test-particle runs refuse the mixed mode"),
         };
         let ps = passages(&out);
         let fit = fit_per_orbit(&ps, &plane).unwrap();

@@ -203,6 +203,10 @@
           "type": "boolean",
           "default": false
         },
+        "major_asteroids": {
+          "description": "Which of the `asteroids` are Major bodies instead of Minor (NUM-009; not a CI-002 switch\nname, WP25). Default `none`.",
+          "$ref": "#/$defs/MajorAsteroids"
+        },
         "newton": {
           "description": "Newtonian point-mass gravity.",
           "type": "boolean"
@@ -239,6 +243,16 @@
         }
       ]
     },
+    "IcBarycentre": {
+      "description": "How the initial conditions are re-barycentred (`initial_conditions.barycentre`, WP25).",
+      "oneOf": [
+        {
+          "description": "Σ μᵢ* rᵢ = 0 and Σ (μ̇ᵢ* rᵢ + μᵢ* vᵢ) = 0 (Subbotin et al. 2023 Eq. 5), with\nμᵢ* = μᵢ [1 + vᵢ²/(2c²) − Σⱼ μⱼ/(2c² rᵢⱼ)] (Park et al. 2021 Eq. 2) and μ̇ᵢ* from the\nNewtonian accelerations. Every body is translated by the same position and velocity.",
+          "type": "string",
+          "const": "relativistic"
+        }
+      ]
+    },
     "IcSource": {
       "description": "Where the initial conditions come from (CI-002: `de440-header | de440-bsp@JD | horizons@JD`).",
       "oneOf": [
@@ -263,6 +277,17 @@
       "description": "`[initial_conditions]`.",
       "type": "object",
       "properties": {
+        "barycentre": {
+          "description": "Re-barycentre the assembled initial conditions (n-body mode; absent: use the source's\nstates as given). `relativistic` moves the origin to the relativistic SSB with the μᵢ* of\nPark et al. 2021 Eqs. 1–2, computed in the run's backend (NUM-018, WP25).",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/IcBarycentre"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
         "epoch_jd_tdb": {
           "description": "Epoch (TDB Julian date): required for `de440-bsp` and `horizons`; for `de440-header`,\nabsent or equal to the header's `JDEPOC`.",
           "type": [
@@ -385,6 +410,26 @@
         "precision"
       ]
     },
+    "MajorAsteroids": {
+      "description": "Which numbered asteroids are Major bodies (`forces.major_asteroids`, NUM-009, WP25). The\nothers of `forces.asteroids` stay Minor.",
+      "oneOf": [
+        {
+          "description": "None: every asteroid is Minor (Newtonian from the Majors only).",
+          "type": "string",
+          "const": "none"
+        },
+        {
+          "description": "(1) Ceres, (2) Pallas, (4) Vesta, (7) Iris and (324) Bamberga, the five asteroids that\nobey the EIH equations in the EPM2021 model of Subbotin et al. 2023 §2 (with the Sun, the\nplanets, the Moon and Pluto: their 16 Major bodies).",
+          "type": "string",
+          "const": "epm2021"
+        },
+        {
+          "description": "Every asteroid of `forces.asteroids`: the all-mutual reference of the tiering check.",
+          "type": "string",
+          "const": "all"
+        }
+      ]
+    },
     "Mode": {
       "description": "How the bodies are integrated.",
       "oneOf": [
@@ -470,6 +515,11 @@
           "description": "Double-double (`ferroastro-real`).",
           "type": "string",
           "const": "dd"
+        },
+        {
+          "description": "The NUM-007 ephemeris precision mode (Subbotin et al. 2023 \"mixed\"): state, integrator\nsums and coefficients in double-double, forces in f64 (n-body mode, WP25).",
+          "type": "string",
+          "const": "mixed"
         }
       ]
     },
