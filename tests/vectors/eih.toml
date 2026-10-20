@@ -174,3 +174,17 @@ retrieved = "2026-10-20"
 tolerance = { abs = 1.0e-4 }
 tolerance_rationale = "The bound of EIH-BINARY-ADVANCE-REL (2PN and gauge terms O(epsilon) relative). Fixed by the WP19 adversarial reviewer before this check's first run."
 verified_by = "WP19 reviewer agent, 2026-10-20: written before the first run of this check."
+
+[[vector]]
+id = "LT-DE440-MERCURY-SHIFT-LOG10-KM"
+requirement = ["NUM-019", "PHY-011"]
+quantity = "log10 of the max over 10 yr (every 10 d) of |r_Mercury(EIH + J2 + LT) - r_Mercury(EIH + J2)|, Sun + 8 planets + geocentric Moon, header.440 ICs, IAS15 default, DE440 spin and WGCCRE 2015 pole, in km"
+value = -1.5
+unit = "1"
+kind = "analytic"
+source = "Order of magnitude: the LT perihelion rate -0.002 arcsec/cy over 0.1 cy is ~1e-9 rad, i.e. ~10-50 m at Mercury's orbit (WP20 D1)."
+citation = "Park et al. 2021, AJ 161, 105 (DE440), Sec. 3.4; FerroAstro docs/requirements/PHY.md PHY-011"
+retrieved = "2026-10-20"
+tolerance = { abs = 1.5 }
+tolerance_rationale = "PROVISIONAL sanity window [1e-3, 1] km, fixed before the first run (IMPLEMENTATION-NOTES WP20 D1): log10(shift / km) = -1.5 +/- 1.5, i.e. the shift is neither ~0 (LT a no-op) nor ~1000x the expectation. It does not test the LT form."
+verified_by = "WP20 builder agent, 2026-10-20: order-of-magnitude estimate above."
