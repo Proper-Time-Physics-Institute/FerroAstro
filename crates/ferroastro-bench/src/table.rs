@@ -68,7 +68,8 @@ impl Measure {
     }
 
     fn cell(&self) -> String {
-        self.value.map_or_else(|| "–".to_owned(), |v| format!("{v:.3e}"))
+        self.value
+            .map_or_else(|| "–".to_owned(), |v| format!("{v:.3e}"))
     }
 }
 
@@ -185,7 +186,10 @@ impl SpeedTable {
             return Err(table_err(&self.run_id, "schema_version"));
         }
         if self.host.cpu_model.is_empty() || self.host.runner_class.is_empty() {
-            return Err(table_err(&self.run_id, "host CPU model or runner class missing"));
+            return Err(table_err(
+                &self.run_id,
+                "host CPU model or runner class missing",
+            ));
         }
         for e in &self.entries {
             let what = format!("{} / {}", e.scenario, e.tool);
@@ -231,6 +235,10 @@ impl SpeedTable {
     /// The markdown rendering: host block, then one table per scenario with the accuracy bases
     /// as notes under it.
     #[must_use]
+    #[expect(
+        clippy::too_many_lines,
+        reason = "one linear rendering: host block, then each scenario's table and notes"
+    )]
     pub fn to_markdown(&self) -> String {
         let mut s = String::new();
         let h = &self.host;
@@ -242,7 +250,11 @@ impl SpeedTable {
         );
         let _ = writeln!(s, "| host | value |\n|---|---|");
         let _ = writeln!(s, "| runner class | {} |", h.runner_class);
-        let _ = writeln!(s, "| CPU | {} ({} logical CPUs) |", h.cpu_model, h.logical_cpus);
+        let _ = writeln!(
+            s,
+            "| CPU | {} ({} logical CPUs) |",
+            h.cpu_model, h.logical_cpus
+        );
         let _ = writeln!(
             s,
             "| CPU flags | {} (AVX-512: {}) |",
@@ -263,9 +275,9 @@ impl SpeedTable {
                 s,
                 "Scenario sha256 `{}`{}.\n",
                 sc.sha256,
-                sc.daily_twin
-                    .as_ref()
-                    .map_or_else(String::new, |d| format!("; rate columns from the daily twin `{d}`"))
+                sc.daily_twin.as_ref().map_or_else(String::new, |d| format!(
+                    "; rate columns from the daily twin `{d}`"
+                ))
             );
             let _ = writeln!(
                 s,
@@ -287,7 +299,12 @@ impl SpeedTable {
                 let load = if e.load_avg.is_empty() {
                     "–".to_owned()
                 } else {
-                    let lo = e.load_avg.iter().flatten().copied().fold(f64::INFINITY, f64::min);
+                    let lo = e
+                        .load_avg
+                        .iter()
+                        .flatten()
+                        .copied()
+                        .fold(f64::INFINITY, f64::min);
                     let hi = e.load_avg.iter().flatten().copied().fold(0.0, f64::max);
                     format!("{lo:.0}–{hi:.0}")
                 };
@@ -301,7 +318,11 @@ impl SpeedTable {
                     s,
                     "| {} | {} | {} | {status} | {runs} | {med} | {range} | {load} | {} | {} | {} | {} |",
                     e.tool,
-                    if e.version.is_empty() { "–" } else { &e.version },
+                    if e.version.is_empty() {
+                        "–"
+                    } else {
+                        &e.version
+                    },
                     e.settings.replace('|', "/"),
                     a.relative_energy_change.cell(),
                     a.mercury_dr_km.cell(),
@@ -381,9 +402,13 @@ pub fn stability(
     tool: &str,
 ) -> Result<Vec<Stability>, BenchError> {
     if prev.run_id == next.run_id {
-        return Err(table_err(&next.run_id, "both tables come from the same run"));
+        return Err(table_err(
+            &next.run_id,
+            "both tables come from the same run",
+        ));
     }
-    if prev.host.runner_class != next.host.runner_class || prev.host.cpu_model != next.host.cpu_model
+    if prev.host.runner_class != next.host.runner_class
+        || prev.host.cpu_model != next.host.cpu_model
     {
         return Err(table_err(
             &next.run_id,

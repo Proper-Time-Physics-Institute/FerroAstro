@@ -1,0 +1,36 @@
+# SPDX-FileCopyrightText: 2026 Proper-Time Physics Institute
+# SPDX-License-Identifier: Apache-2.0
+[package]
+name = "ferroastro-bench"
+description = "Speed tables: FerroAstro and the oracle containers on identical scenarios, median of >= 5 runs, CPU model/flags/runner class and accuracy columns (CI-008, DEP-014, NUM-009)"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+authors.workspace = true
+repository.workspace = true
+publish = false
+
+[dependencies]
+ferroastro-core.workspace = true
+ferroastro-diffrun.workspace = true
+ferroastro-propagate.workspace = true
+ferroastro-scenario.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+
+[dev-dependencies]
+criterion.workspace = true
+ferroastro-constants.workspace = true
+ferroastro-precession.workspace = true
+ferroastro-system.workspace = true
+ferroastro-testdata.workspace = true
+ferroastro-vectors.workspace = true
+
+[[bench]]
+name = "scenarios"
+harness = false
+
+[lints]
+workspace = true

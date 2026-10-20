@@ -291,6 +291,25 @@ dependencies = [
 ]
 
 [[package]]
+name = "ferroastro-bench"
+version = "0.0.0"
+dependencies = [
+ "criterion",
+ "ferroastro-constants",
+ "ferroastro-core",
+ "ferroastro-diffrun",
+ "ferroastro-precession",
+ "ferroastro-propagate",
+ "ferroastro-scenario",
+ "ferroastro-system",
+ "ferroastro-testdata",
+ "ferroastro-vectors",
+ "serde",
+ "serde_json",
+ "thiserror",
+]
+
+[[package]]
 name = "ferroastro-cli"
 version = "0.0.0"
 dependencies = [
