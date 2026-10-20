@@ -280,6 +280,20 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "00d174d5400e5e8fd687ad1049e2f578285fa914201b1af7e8b112a4546bd826"
 
 [[package]]
+name = "ferroastro-abm"
+version = "0.0.0"
+dependencies = [
+ "ferroastro-analytic",
+ "ferroastro-core",
+ "ferroastro-integrators",
+ "ferroastro-real",
+ "ferroastro-vectors",
+ "postcard",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
 name = "ferroastro-analytic"
 version = "0.0.0"
 dependencies = [

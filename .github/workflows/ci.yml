@@ -121,7 +121,7 @@ jobs:
       # wasm32-unknown-unknown (DEP-006);
       # ferroastro-real also as no_std with the pure-Rust libm (no default features).
       - name: Build for wasm32-unknown-unknown
-        run: cargo build -p ferroastro-real -p ferroastro-core -p ferroastro-erfa -p ferroastro-time -p ferroastro-integrators -p ferroastro-forces -p ferroastro-eih -p ferroastro-analytic -p ferroastro-frames -p ferroastro-ephem -p ferroastro-system -p ferroastro-scenario -p ferroastro-propagate -p ferroastro-diffrun --target wasm32-unknown-unknown
+        run: cargo build -p ferroastro-real -p ferroastro-core -p ferroastro-erfa -p ferroastro-time -p ferroastro-integrators -p ferroastro-forces -p ferroastro-eih -p ferroastro-abm -p ferroastro-analytic -p ferroastro-frames -p ferroastro-ephem -p ferroastro-system -p ferroastro-scenario -p ferroastro-propagate -p ferroastro-diffrun --target wasm32-unknown-unknown
       - name: Build ferroastro-real and ferroastro-erfa no_std (libm) for wasm32-unknown-unknown
         run: cargo build -p ferroastro-real -p ferroastro-erfa --no-default-features --features libm --target wasm32-unknown-unknown
       # DEP-010 / WP8: the optional hifitime (UTC) feature must build for wasm32 too.
