@@ -22,18 +22,21 @@ Mercury's perihelion precession is the showcase for both **speed** and **ease of
 It is built as a ladder of rungs. Each rung is a requirement with a cited expected value,
 a tolerance with its rationale, and a CI test:
 
-| # | Rung | Expected (″/Julian century) | Source |
-|---|---|---|---|
-| 1 | Newtonian Sun + Mercury (2-body) | 0 exactly | analytic (PHY-001) |
-| 2 | + each planet (Venus, Earth/Moon, Mars, Jupiter, Saturn, Uranus, Neptune) | 277.4176, 90.8881, 2.4814, 153.9899, 7.3227, 0.1425, 0.0424 | Park et al. 2017 Table 3 (PHY-012) |
-| 3 | + asteroids, cross terms → full Newtonian | 532.30 ± 0.01 | Park 2017 (PHY-013) |
-| 4 | + solar J2 | 0.0286 ± 0.0011 | Park 2017 (PHY-010) |
-| 5a | Special relativity, SR-Kepler Lagrangian | 7.1634 (= GR/6), a *model* result | derived and checked (PHY-007) |
-| 5b | "Velocity-dependent 1PN terms only" | 50.144 (harmonic gauge) / 35.817 (areal gauge), **not an observable** | derived (PHY-008) |
-| 6 | Schwarzschild test particle, PPN (2+2γ−β)/3 | 42.9799 ± 0.0009 | Park 2017; analytic 42.9805 (PHY-004/005/006) |
-| 7 | Lense–Thirring (solar spin) | −0.0020 ± 0.0002 | Park 2017 (PHY-011) |
-| 8 | Full EIH 1PN N-body + J2 + LT (DE440-class) | **575.3100 ± 0.0015**, in Mercury's mean-orbit frame | Park 2017 (PHY-014) |
-| 9 | Reproduce JPL DE440 from its header initial conditions, faster | position residuals vs `de440.bsp` | REF-001/002, CI-007 |
+| # | Rung | Expected (″/Julian century; ± = published uncertainty) | Test tolerance (authoritative requirement) | Source |
+|---|---|---|---|---|
+| 1 | Newtonian Sun + Mercury (2-body) | 0 exactly | \|ϖ̇\| < 1×10⁻⁶ (PHY-001) | analytic (PHY-001) |
+| 2 | + each planet (Venus, Earth/Moon, Mars, Jupiter, Saturn, Uranus, Neptune) | 277.4176, 90.8881, 2.4814, 153.9899, 7.3227, 0.1425, 0.0424 | ±0.005 each, provisional protocol (PHY-012) | Park et al. 2017 Table 3 (PHY-012) |
+| 3 | + asteroids, cross terms → full Newtonian | 532.30 (asteroids alone 0.0012) | ±0.01 (PHY-013); asteroids ±0.0003 (PHY-019) | Park 2017 (PHY-013, PHY-019) |
+| 4 | + solar J2 | 0.0286 ± 0.0011 | numerical vs analytic ±0.0005 (PHY-010) | Park 2017 (PHY-010) |
+| 5a | Special relativity, SR-Kepler Lagrangian | 7.1634 (= GR/6), a *model* result | ±0.001 (PHY-007) | derived and checked (PHY-007) |
+| 5b | "Velocity-dependent 1PN terms only" | 50.144 (harmonic gauge) / 35.817 (areal gauge), **not an observable** | ±0.002 (PHY-008) | derived (PHY-008) |
+| 6 | Schwarzschild test particle, PPN (2+2γ−β)/3 | 42.9799 ± 0.0009 | analytic 42.9805 ± 0.0001 (PHY-004); numerical ±0.001 (PHY-005); β/γ ratio 10⁻⁶ relative (PHY-006) | Park 2017; analytic 42.9805 (PHY-004/005/006) |
+| 7 | Lense–Thirring (solar spin) | −0.0020 ± 0.0002 | ±0.0002 (PHY-011) | Park 2017 (PHY-011) |
+| 8 | Full EIH 1PN N-body + J2 + LT (DE440-class) | **575.3100 ± 0.0015**, in Mercury's mean-orbit frame | ±0.005; 575.3093 expected with DE440 J2 (PHY-014) | Park 2017 (PHY-014) |
+| 9 | Reproduce JPL DE440 from its header initial conditions, faster | position residuals vs `de440.bsp` | see CI-007 | REF-001/002, CI-007 |
+
+The ± values in the "Expected" column are the **published uncertainties** of the source (Park 2017 σ), not pass
+criteria. Each rung's pass criterion is the test tolerance in its PHY requirement, which is authoritative.
 
 The **headline number is 575.31″/cy**, which is inertial and fixed to the ICRF. The classical ≈5600″/cy
 figure is mostly the precession of Earth's equinox. It is shown only as an explicitly constructed

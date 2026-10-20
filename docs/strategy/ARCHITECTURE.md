@@ -33,7 +33,7 @@ The crates are built bottom-up. Each layer depends only on the layers below it, 
 | `ferroastro-time` | Time scales and conversions, leap seconds | DEP-010, REF-009 | `hifitime` (MPL-2.0, unmodified) plus an ERFA (BSD-3) port subset |
 | `ferroastro-frames` | ICRF, J2000 ecliptic, Mercury mean-orbit frame, IAU 2006 precession (for the historical comparison only) | NUM-014, PHY-015 | ERFA port |
 | `ferroastro-constants` | Versioned constant sets: DE440 (loaded from `header.440`); IAU 2015 nominal values in a separate namespace | PHY-002/003, REF-002 | own |
-| `ferroastro-ephem` | DAF/SPK type-2 reader generic over `Real`; DE ASCII header parser | DEP-011, REF-004 | own; validated against `anise` and `jplephem` |
+| `ferroastro-ephem` | DAF/SPK type-2 reader generic over `Real`; DE ASCII header parser | DEP-011, REF-004 | own; validated against `jplephem` (`anise` is not a dependency; decision deferred to M5, OI-72) |
 | `ferroastro-forces` | Force models as composable terms; body tiers (Major/Minor/Ring); every model labels its gauge | NUM-008/009/017/018/019 | own (clean-room, DEP-008) |
 | `ferroastro-integrators` | IAS15 (default), ABM PECE(C) ephemeris mode, IRKGL16 reference, WH + Saha–Tremaine | NUM-001…005, NUM-010 | own (clean-room) |
 | `ferroastro-precession` | Event location (r·v = 0), Park-2017 estimator, alternatives, differential harness, frame/epoch/fit metadata | NUM-011…013, PHY-015 | own |
@@ -75,8 +75,8 @@ docs/              strategy/, requirements/, adr/, standards/, physics/, validat
 |---|---|---|
 | PR-fast (< 10 min) | every PR | Unit and property tests; analytic rungs; cached goldens only (no oracle containers) |
 | PR-oracle | `oracle` label | Re-run the affected oracle containers on the PR's scenarios |
-| Nightly | cron, larger runner | All oracles × all scenarios, 1000-yr spans, speed table, golden-drift check |
-| Weekly / release | cron + tag, larger runner, checkpointed (CI-010) | Stage D: DE440 reproduction 1550–2650; published report |
+| Nightly | short run on GitHub runners; full run on the local machine (Journal #10) | All oracles × all scenarios, 1000-yr spans, speed table, golden-drift check |
+| Weekly / release | local machine, checkpointed (CI-010) | Stage D: DE440 reproduction 1550–2650; published report |
 
 The independent oracles are: analytic formulas (every single-body rung, and β/γ ≠ 1, which no external code
 supports); Park 2017 published values; REBOUNDx `gr_full` (coupled 1PN); Orekit (Mercury in a DE-driven field);

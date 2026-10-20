@@ -22,9 +22,9 @@ allow = [
     "CC0-1.0",
 ]
 # MPL-2.0 only for reviewed crates, used unmodified (DEP-002, DEP-004).
+# anise is not a dependency; decision deferred to M5 (OI-16, OI-72).
 exceptions = [
     { allow = ["MPL-2.0"], crate = "hifitime" },
-    { allow = ["MPL-2.0"], crate = "anise" },  # dev-dependency / test oracle ONLY until OI-16 (SOFA terms via sofars) is cleared
 ]
 
 [bans]

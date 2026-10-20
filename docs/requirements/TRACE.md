@@ -7,8 +7,8 @@
 > `(cd tools && uv run python trace.py)`. CI evidence for a commit is its `ci`
 > workflow run; run URLs are not written here so that the file stays deterministic.
 
-- Requirements: **119** (draft 119)
-- `verification: test` requirements cited by at least one test: **31 / 92**
+- Requirements: **121** (draft 121)
+- `verification: test` requirements cited by at least one test: **31 / 93**
 - Citing tests: **188**; vectors referencing a requirement: **104**
 
 | ID | Status | Crit. | Verification | Tests | Vectors |
@@ -50,9 +50,10 @@
 | [PHY-013](PHY.md) | draft | high | test | — | — |
 | [PHY-014](PHY.md) | draft | high | test | — | — |
 | [PHY-015](PHY.md) | draft | high | test | `crates/ferroastro-cli/tests/cli_report.rs::single_body_report_lists_every_rung_with_gauge_and_metadata`<br>`crates/ferroastro-ladder/tests/phy008_sr_b.rs::sr_b_output_without_gauge_is_rejected_and_docs_say_not_observable`<br>`crates/ferroastro-ladder/tests/phy015_metadata.rs::every_single_body_rung_reports_full_metadata`<br>`crates/ferroastro-precession/src/report.rs::reports_without_any_metadata_field_are_rejected`<br>`crates/ferroastro-precession/tests/data_park2017_horizons.rs::data_park17_rate_from_horizons_de441_mean_orbit`<br>`crates/ferroastro-precession/tests/data_park2017_horizons.rs::data_sw92_rate_from_horizons_de441_ecliptic` | `SW92-MERCURY-VARPI-RATE`<br>`SW92-MERCURY-VARPI-RATE-VS-DE441` |
-| [PHY-016](PHY.md) | draft | medium | test | `crates/ferroastro-precession/tests/data_park2017_horizons.rs::data_park17_rate_from_horizons_de441_mean_orbit`<br>`crates/ferroastro-precession/tests/data_park2017_horizons.rs::data_sw92_rate_from_horizons_de441_ecliptic`<br>`crates/ferroastro-testdata/src/horizons.rs::chunks_respect_the_row_limit_and_share_boundaries`<br>`crates/ferroastro-testdata/src/horizons.rs::parses_a_vector_answer_with_its_provenance`<br>`crates/ferroastro-testdata/src/horizons.rs::rejects_errors_wrong_frames_and_bad_rows` | `PARK17-TOTAL-RATE`<br>`PARK17-TOTAL-RATE-SIGMA`<br>`SW92-MERCURY-VARPI-RATE-VS-DE441` |
-| [PHY-017](PHY.md) | draft | medium | inspection | — | — |
+| [PHY-016](PHY.md) | draft | high | test | `crates/ferroastro-precession/tests/data_park2017_horizons.rs::data_park17_rate_from_horizons_de441_mean_orbit`<br>`crates/ferroastro-precession/tests/data_park2017_horizons.rs::data_sw92_rate_from_horizons_de441_ecliptic`<br>`crates/ferroastro-testdata/src/horizons.rs::chunks_respect_the_row_limit_and_share_boundaries`<br>`crates/ferroastro-testdata/src/horizons.rs::parses_a_vector_answer_with_its_provenance`<br>`crates/ferroastro-testdata/src/horizons.rs::rejects_errors_wrong_frames_and_bad_rows` | `PARK17-TOTAL-RATE`<br>`PARK17-TOTAL-RATE-SIGMA`<br>`SW92-MERCURY-VARPI-RATE-VS-DE441` |
+| [PHY-017](PHY.md) | draft | high | inspection | — | — |
 | [PHY-018](PHY.md) | draft | high | inspection | `crates/ferroastro-vectors/tests/schema.rs::bad_values_are_rejected` | — |
+| [PHY-019](PHY.md) | draft | high | test | — | — |
 | [NUM-001](NUM.md) | draft | high | test | `crates/ferroastro-integrators/src/compensated.rs::compensated_sum_keeps_low_order_bits`<br>`crates/ferroastro-integrators/src/dd.rs::division_and_product_are_double_double_accurate`<br>`crates/ferroastro-integrators/src/radau.rs::newton_and_monomial_forms_agree`<br>`crates/ferroastro-integrators/src/radau.rs::spacings_are_correctly_rounded`<br>`crates/ferroastro-integrators/src/radau.rs::spacings_are_radau_roots_in_order`<br>`crates/ferroastro-integrators/tests/ias15_analytic.rs::damped_oscillator_matches_closed_form`<br>`crates/ferroastro-integrators/tests/ias15_analytic.rs::gyration_conserves_speed_and_is_reversible`<br>`crates/ferroastro-integrators/tests/ias15_analytic.rs::invalid_inputs_are_coded_errors`<br>`crates/ferroastro-integrators/tests/ias15_analytic.rs::kepler_orbits_match_analytic_solution`<br>`crates/ferroastro-integrators/tests/ias15_step_control.rs::step_proposal_is_dead_beat`<br>`crates/ferroastro-integrators/tests/ias15_step_control.rs::step_proposal_scales_as_epsilon_to_one_seventh`<br>`crates/ferroastro-ladder/tests/num023_brouwer.rs::nightly_num023_brouwer_slopes_ias15_f64`<br>`crates/ferroastro-ladder/tests/phy001_newtonian_two_body.rs::n2b_sun_mercury_has_no_perihelion_precession` | `IAS15-EQ11-DEADBEAT`<br>`IAS15-EQ11-EPS-EXPONENT` |
 | [NUM-002](NUM.md) | draft | high | test | — | — |
 | [NUM-003](NUM.md) | draft | medium | test | — | — |
@@ -109,7 +110,7 @@
 | [DEP-017](DEP.md) | draft | high | inspection | — | — |
 | [REF-001](REF.md) | draft | high | test | — | — |
 | [REF-002](REF.md) | draft | high | test | `crates/ferroastro-constants/src/header440.rs::malformed_headers_are_fa_e0300`<br>`crates/ferroastro-constants/src/header440.rs::missing_name_is_fa_e0301`<br>`crates/ferroastro-constants/src/header440.rs::parses_names_tokens_values_and_title`<br>`crates/ferroastro-constants/src/table.rs::table_rejects_uncited_or_unknown_citations`<br>`crates/ferroastro-constants/tests/data_de440_table.rs::data_de440_header_ref002_acceptance`<br>`crates/ferroastro-constants/tests/data_de440_table.rs::data_de440_table_matches_header`<br>`crates/ferroastro-constants/tests/phy002_constants.rs::table_is_cited_versioned_and_pinned_to_the_manifest`<br>`crates/ferroastro-constants/tests/phy002_constants.rs::table_scalars_and_counts`<br>`crates/ferroastro-testdata/src/lib.rs::manifest_products_are_well_formed`<br>`crates/ferroastro-testdata/tests/data_de440_header.rs::data_de440_header_defined_constants` | `CONST-AU-IAU2012`<br>`CONST-CLIGHT-SI`<br>`DE440-ASUN`<br>`DE440-BETA`<br>`DE440-CONSTANT-COUNT`<br>`DE440-EMRAT`<br>`DE440-GAMMA`<br>`DE440-GMS-AU3D2`<br>`DE440-J2SUN`<br>`DE440-JDEPOC`<br>`DE440-MA-COUNT` |
-| [REF-003](REF.md) | draft | medium | test | — | — |
+| [REF-003](REF.md) | draft | high | test | — | — |
 | [REF-004](REF.md) | draft | high | test | — | — |
 | [REF-005](REF.md) | draft | high | test | — | — |
 | [REF-006](REF.md) | draft | medium | test | — | — |
@@ -132,3 +133,4 @@
 | [LIC-002](LIC.md) | draft | high | inspection | — | — |
 | [LIC-003](LIC.md) | draft | high | inspection | — | — |
 | [LIC-004](LIC.md) | draft | high | inspection | — | — |
+| [LIC-005](LIC.md) | draft | high | inspection | — | — |

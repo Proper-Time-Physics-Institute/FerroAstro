@@ -72,7 +72,7 @@ notes: >-
 id: REF-003
 title: "Asteroid/KBO initial states sampled from sb441-n373*.bsp at JDEPOC (provisional)"
 status: draft
-criticality: medium
+criticality: high
 verification: test
 statement: >-
   Asteroid and KBO initial states SHALL be sampled from sb441-n373*.bsp at
@@ -85,12 +85,14 @@ source: >-
   docs/strategy/journal/03-reference-implementations-ci.md §2.4, §5 item 2 and
   REF-003.
 parent: null
-related: [PHY-014, CI-003]
+related: [PHY-014, PHY-019, CI-003]
 notes: >-
   BLOCKED: how JPL supplied asteroid ICs, the contents of sb441-n373.bsp, and
   that n373 = 343 asteroids + 30 KBOs are all UNVERIFIED; IOM 392R-21-005 must
   be read. The 36-point KBO ring masses (MA8201–MA8236) have no state in
-  sb441-n373.
+  sb441-n373. Criticality raised to high 2026-10-14 (red-team review, Journal
+  #9): it feeds the high-criticality PHY-014 and PHY-019. Scheduled in M4,
+  whose exit (PHY-014) needs these initial conditions.
 ```
 
 ### REF-004 — jplephem as reference SPK reader

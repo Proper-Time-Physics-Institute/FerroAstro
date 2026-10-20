@@ -26,8 +26,8 @@ parent: null
 related: [STD-005]
 notes: >-
   rustfmt.toml uses stable-only options (edition 2024, max_width 100). The
-  proposed channel 1.90.0 is UNVERIFIED as "latest"; pick current stable at
-  bootstrap. Stabilisation status of imports_granularity / group_imports is
+  pinned channel 1.95.0 is a placeholder (ADR-0006), bumped to the then-current
+  stable at M0. Stabilisation status of imports_granularity / group_imports is
   UNVERIFIED, so they are avoided.
 ```
 
@@ -121,9 +121,11 @@ source: >-
 parent: null
 related: [STD-001, DEP-006]
 notes: >-
-  Proposed policy: MSRV ≥ latest stable minus 2 minors; raising it is
-  semver:minor. Edition 2024 requires Rust ≥ 1.85 (proposed rust-version
-  "1.85").
+  Policy per ADR-0006 (AUTHORITATIVE): rust-version is set at M0 to the highest
+  minimum required by the adopted dependencies (e.g. rmcp, hifitime) and is
+  never more than the pinned toolchain minus two minors (MSRV ≤ toolchain − 2);
+  raising it is semver:minor. Edition 2024 sets a floor of Rust ≥ 1.85.
+  Journal #5's "MSRV ≥ latest stable minus 2" wording is superseded.
 ```
 
 ### STD-006 — cargo deny gate
@@ -152,20 +154,22 @@ notes: >-
 
 ```yaml
 id: STD-007
-title: "Public API changes checked with cargo-semver-checks: advisory before M5, gating from M5"
+title: "Public API changes checked with cargo-semver-checks: advisory before M6, gating from M6"
 status: draft
 criticality: medium
 verification: test
 statement: >-
   Public API changes SHALL be checked with cargo-semver-checks against the last
-  release: advisory before milestone M5, gating from M5.
+  release: advisory before milestone M6, gating from M6.
 acceptance: >-
-  semver.yml runs on every PR; from M5 it is a required status check.
+  semver.yml runs on every PR; from M6 it is a required status check.
 source: >-
   docs/strategy/journal/05-organization-standards.md §3.4 and STD-007.
 parent: null
 related: [STD-011]
-notes: null
+notes: >-
+  Journal #5 said "from M5" using its own milestone numbering; that milestone
+  (Showcase & 0.x release) is M6 in ROADMAP.md.
 ```
 
 ### STD-008 — nextest, doctests and long runs
@@ -215,7 +219,11 @@ related: [ORG-004]
 notes: >-
   Pyright is an acceptable substitute for mypy, chosen by ADR (one, not both).
   The orekit-jpype packaging choice and the pre-commit hook IDs/revisions are
-  UNVERIFIED.
+  UNVERIFIED. Licence guard (red-team L12, Journal #9): python.yml runs
+  pip-licenses over the locked tools/ environment and fails on any GPL/AGPL/LGPL
+  runtime dependency (e.g. rebound), so GPL oracles stay in ci/oracles/
+  containers (LIC-001, LIC-005). `reuse`, partly GPL-3, is allowed only as a
+  CLI tool, not imported.
 ```
 
 ### STD-010 — SPDX headers and REUSE
