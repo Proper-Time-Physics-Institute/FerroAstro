@@ -792,6 +792,17 @@ fn nbody_lense_thirring_and_solar_overrides_are_recorded_and_checked() {
     assert!(b.model.contains(&ov.describe()) && b.model.contains("J2 = 2.25e-7"));
     assert_eq!(a.ic_hash, b.ic_hash);
     assert_ne!(a.final_state, b.final_state);
+    // Both solar terms use the overridden pole (WP20 mutation probe T7) and J2.
+    let pole = "pole x = 0 1; pole y = 0 1; pole z = 1 1;";
+    for term in [
+        "solar-j2-with-reaction",
+        "solar-lense-thirring-with-reaction",
+    ] {
+        let line = b.model.lines().find(|l| l.contains(term)).unwrap();
+        assert!(line.contains(pole), "{line}");
+    }
+    let j2_line = b.model.lines().find(|l| l.contains("solar-j2")).unwrap();
+    assert!(j2_line.contains("J2 = 0.000000225 1;"), "{j2_line}");
     let (_, ck) = run_until(&s, &tagged, 1.0).unwrap();
     let ck = ck.unwrap();
     assert_eq!(ck.solar_overrides, ov.describe());
