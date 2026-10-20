@@ -7,7 +7,11 @@
 //!
 //! The tables come from `tools/bench/speed_table.sh` (hours of oracle runs, not part of the test):
 //! `FA_BENCH_TABLES=<earlier.json>,<later.json>`, or by default the two most recent
-//! `target/bench/*/speed-table.json` that pass validation.
+//! `target/bench/*/speed-table.json` that pass validation **and are complete**: every E6 scenario
+//! (the four WP18 scenarios (a)–(d)) timed for FerroAstro, and every tool listed on (a). Partial
+//! tables (e.g. an `--only` run such as WP21's row (e)) are listed by name and skipped (progress
+//! review V3 after WP21). Fewer than two complete tables, or a named table that is partial, is a
+//! named precondition failure, reported before E6 is evaluated.
 
 #![expect(
     clippy::unwrap_used,
@@ -20,6 +24,44 @@ use std::path::PathBuf;
 
 const SCENARIO_A: &str = "bench-a-sun-8planets-newton-1000yr";
 const TOOLS_ON_A: [&str; 5] = ["rebound", "swiftest", "mercury6", "orekit", "ferroastro"];
+/// The scenarios E6 was pre-registered on (WP18 rows (a)-(d)).
+const E6_SCENARIOS: [&str; 4] = [
+    SCENARIO_A,
+    "bench-b-sun-mercury-tp-gr1pn-1000yr",
+    "bench-c-full-newton-minor343-100yr",
+    "oracle-stage-b-mercury-de440-field-100yr",
+];
+
+/// What makes a table partial for E6/E7: the missing (scenario, tool) entries, empty if complete.
+fn missing(t: &SpeedTable) -> Vec<String> {
+    let mut out: Vec<String> = E6_SCENARIOS
+        .iter()
+        .filter(|s| {
+            t.entry(s, "ferroastro")
+                .and_then(|e| e.timing.as_ref())
+                .is_none()
+        })
+        .map(|s| format!("{s} / ferroastro not timed"))
+        .collect();
+    out.extend(
+        TOOLS_ON_A
+            .iter()
+            .filter(|tool| t.entry(SCENARIO_A, tool).is_none())
+            .map(|tool| format!("{SCENARIO_A} / {tool} missing")),
+    );
+    out
+}
+
+/// Panic with a named precondition failure if `t` is partial.
+fn require_complete(t: &SpeedTable, origin: &str) {
+    let m = missing(t);
+    assert!(
+        m.is_empty(),
+        "PRECONDITION FAILED (not E6): speed table {} ({origin}) is partial: {}",
+        t.run_id,
+        m.join("; ")
+    );
+}
 
 fn read(p: &PathBuf) -> SpeedTable {
     serde_json::from_str(&std::fs::read_to_string(p).unwrap()).unwrap()
@@ -30,7 +72,10 @@ fn tables() -> (SpeedTable, SpeedTable) {
         let (a, b) = v
             .split_once(',')
             .expect("FA_BENCH_TABLES=<earlier>,<later>");
-        return (read(&PathBuf::from(a)), read(&PathBuf::from(b)));
+        let (a, b) = (read(&PathBuf::from(a)), read(&PathBuf::from(b)));
+        require_complete(&a, "FA_BENCH_TABLES");
+        require_complete(&b, "FA_BENCH_TABLES");
+        return (a, b);
     }
     let base = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../target/bench");
     let mut found: Vec<(String, SpeedTable)> = std::fs::read_dir(&base)
@@ -44,14 +89,33 @@ fn tables() -> (SpeedTable, SpeedTable) {
         })
         .collect();
     found.sort_by(|a, b| a.0.cmp(&b.0));
-    let later = found
-        .pop()
-        .expect("no valid speed table; run tools/bench/speed_table.sh")
-        .1;
-    let earlier = found
-        .pop()
-        .expect("only one valid speed table; run the harness again")
-        .1;
+    let (complete, partial): (Vec<_>, Vec<_>) =
+        found.into_iter().partition(|(_, t)| missing(t).is_empty());
+    for (_, t) in &partial {
+        println!(
+            "skipped partial table {} ({} UTC): {}",
+            t.run_id,
+            t.generated_utc,
+            missing(t).join("; ")
+        );
+    }
+    let mut complete: Vec<SpeedTable> = complete.into_iter().map(|x| x.1).collect();
+    assert!(
+        complete.len() >= 2,
+        "PRECONDITION FAILED (not E6): {} complete speed table(s) under {} (need 2 with every E6 \
+         scenario {:?} timed for FerroAstro and every tool on (a)); {} partial table(s) skipped; \
+         run tools/bench/speed_table.sh without --only",
+        complete.len(),
+        base.display(),
+        E6_SCENARIOS,
+        partial.len()
+    );
+    let later = complete.pop().expect("checked above");
+    let earlier = complete.pop().expect("checked above");
+    println!(
+        "selected the two most recent complete tables: {} and {}",
+        earlier.run_id, later.run_id
+    );
     (earlier, later)
 }
 

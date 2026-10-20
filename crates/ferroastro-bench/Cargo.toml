@@ -28,7 +28,11 @@ simd = ["ferroastro-propagate/simd"]
 [dev-dependencies]
 criterion.workspace = true
 ferroastro-constants.workspace = true
+ferroastro-eih.workspace = true
 ferroastro-ephem.workspace = true
+ferroastro-forces.workspace = true
+# Run-level parallelism for the NUM-022 scaling bench (WP26).
+ferroastro-propagate = { workspace = true, features = ["parallel"] }
 ferroastro-precession.workspace = true
 ferroastro-system.workspace = true
 ferroastro-testdata.workspace = true
@@ -36,6 +40,14 @@ ferroastro-vectors.workspace = true
 
 [[bench]]
 name = "scenarios"
+harness = false
+
+[[bench]]
+name = "simd_kernels"
+harness = false
+
+[[bench]]
+name = "run_scaling"
 harness = false
 
 [lints]
