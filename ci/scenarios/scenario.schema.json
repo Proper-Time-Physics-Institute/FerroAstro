@@ -75,6 +75,21 @@
     "span"
   ],
   "$defs": {
+    "AbmCorrector": {
+      "description": "Predictor–corrector mode of the Adams–Bashforth–Moulton integrator (WP24, NUM-002).",
+      "oneOf": [
+        {
+          "description": "P, E, C, E.",
+          "type": "string",
+          "const": "pece"
+        },
+        {
+          "description": "P(EC)²: P, E, C, E, C (Subbotin et al. 2023; the default).",
+          "type": "string",
+          "const": "pecec"
+        }
+      ]
+    },
     "BodyName": {
       "description": "A body a scenario may name. Planets beyond Venus are their system barycentres, as in DE440\n(`GM4…GM9` are system GMs); `EMB` is the Earth–Moon barycentre as one body.",
       "oneOf": [
@@ -292,9 +307,27 @@
       ]
     },
     "IntegratorSpec": {
-      "description": "`[integrator]`. Unset settings take the integrator's defaults.",
+      "description": "`[integrator]`. Unset settings take the integrator's defaults. `epsilon`, `pc_tolerance` and\n`dt0_days` configure IAS15 only; `order`, `corrector`, `step_days` and `compensated` configure\nABM only (a key of the other integrator is refused).",
       "type": "object",
       "properties": {
+        "compensated": {
+          "description": "ABM Kahan-compensated state update (default true; false gives the plain sums).",
+          "type": [
+            "boolean",
+            "null"
+          ]
+        },
+        "corrector": {
+          "description": "ABM predictor–corrector mode (default `pecec`).",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/AbmCorrector"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
         "dt0_days": {
           "description": "First trial step in days (N-body default 0.1 d; the controller adapts it).",
           "type": [
@@ -315,6 +348,16 @@
           "description": "The integrator.",
           "$ref": "#/$defs/IntegratorName"
         },
+        "order": {
+          "description": "ABM order, 8 … 14 (default 13).",
+          "type": [
+            "integer",
+            "null"
+          ],
+          "format": "uint32",
+          "maximum": 14,
+          "minimum": 8
+        },
         "pc_tolerance": {
           "description": "IAS15 predictor–corrector convergence threshold (default 1e-16).",
           "type": [
@@ -326,6 +369,14 @@
         "precision": {
           "description": "The arithmetic.",
           "$ref": "#/$defs/Precision"
+        },
+        "step_days": {
+          "description": "ABM fixed step in days (default 1/16 d; its sign follows the span).",
+          "type": [
+            "number",
+            "null"
+          ],
+          "format": "double"
         }
       },
       "additionalProperties": false,

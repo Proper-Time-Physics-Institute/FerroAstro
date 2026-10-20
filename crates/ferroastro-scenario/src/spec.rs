@@ -296,7 +296,30 @@ impl Precision {
     }
 }
 
-/// `[integrator]`. Unset settings take the integrator's defaults.
+/// Predictor–corrector mode of the Adams–Bashforth–Moulton integrator (WP24, NUM-002).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "kebab-case")]
+pub enum AbmCorrector {
+    /// P, E, C, E.
+    Pece,
+    /// P(EC)²: P, E, C, E, C (Subbotin et al. 2023; the default).
+    Pecec,
+}
+
+impl AbmCorrector {
+    /// The spelling in scenario files.
+    #[must_use]
+    pub const fn label(self) -> &'static str {
+        match self {
+            AbmCorrector::Pece => "pece",
+            AbmCorrector::Pecec => "pecec",
+        }
+    }
+}
+
+/// `[integrator]`. Unset settings take the integrator's defaults. `epsilon`, `pc_tolerance` and
+/// `dt0_days` configure IAS15 only; `order`, `corrector`, `step_days` and `compensated` configure
+/// ABM only (a key of the other integrator is refused).
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub struct IntegratorSpec {
@@ -313,6 +336,19 @@ pub struct IntegratorSpec {
     /// First trial step in days (N-body default 0.1 d; the controller adapts it).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub dt0_days: Option<f64>,
+    /// ABM order, 8 … 14 (default 13).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[schemars(range(min = 8, max = 14))]
+    pub order: Option<u32>,
+    /// ABM predictor–corrector mode (default `pecec`).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub corrector: Option<AbmCorrector>,
+    /// ABM fixed step in days (default 1/16 d; its sign follows the span).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub step_days: Option<f64>,
+    /// ABM Kahan-compensated state update (default true; false gives the plain sums).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub compensated: Option<bool>,
 }
 
 /// `[span]`.
@@ -563,10 +599,42 @@ impl ScenarioSpec {
                 "needs exactly one body in output.perihelion",
             );
         }
+        let ig = &self.integrator;
+        let ias15_keys = [
+            ("integrator.epsilon", ig.epsilon.is_some()),
+            ("integrator.pc_tolerance", ig.pc_tolerance.is_some()),
+            ("integrator.dt0_days", ig.dt0_days.is_some()),
+        ];
+        let abm_keys = [
+            ("integrator.order", ig.order.is_some()),
+            ("integrator.corrector", ig.corrector.is_some()),
+            ("integrator.step_days", ig.step_days.is_some()),
+            ("integrator.compensated", ig.compensated.is_some()),
+        ];
+        let (foreign, owner): (&[(&'static str, bool)], &str) = match ig.name {
+            IntegratorName::Abm => (&ias15_keys, "IAS15"),
+            _ => (&abm_keys, "ABM"),
+        };
+        if let Some((field, _)) = foreign.iter().find(|k| k.1) {
+            return err(
+                field,
+                &ig.name.label(),
+                &format!(
+                    "configures {owner} only, not integrator {}",
+                    ig.name.label()
+                ),
+            );
+        }
+        if let Some(o) = ig.order {
+            if !(8..=14).contains(&o) {
+                return err("integrator.order", &o, "8 <= order <= 14 (NUM-002)");
+            }
+        }
         for (field, v) in [
             ("integrator.epsilon", self.integrator.epsilon),
             ("integrator.pc_tolerance", self.integrator.pc_tolerance),
             ("integrator.dt0_days", self.integrator.dt0_days),
+            ("integrator.step_days", self.integrator.step_days),
         ] {
             if let Some(v) = v {
                 if !(v.is_finite() && v > 0.0) {
