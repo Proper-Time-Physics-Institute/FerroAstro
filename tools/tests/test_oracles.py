@@ -453,3 +453,20 @@ def test_nightly_runs_every_tool_that_has_a_committed_golden() -> None:
         # Each step runs through run_step (review R3: a waited-for child, so signals are recorded).
         step = rf'^run_step "{tool}\|[^"]*" "[^"]*" \$R {tool} '
         assert re.search(step, script, flags=re.MULTILINE), tool
+
+
+# Verifies: CI-006
+def test_drift_ignores_download_metadata_but_not_the_product_hash(tmp_path: Path) -> None:
+    """A warm-cache JPL run (no ``last_modified``) is not drift; a changed SHA-256 is (WP19)."""
+    golden = {
+        "date_utc": "2026-10-15",
+        "products": [{"sha256": "aa", "fetched": True, "last_modified": "x", "retrieved_utc": "t"}],
+    }
+    warm = {"date_utc": "2026-10-20", "products": [{"sha256": "aa", "fetched": False}]}
+    changed = {"date_utc": "2026-10-20", "products": [{"sha256": "bb", "fetched": False}]}
+    paths = {}
+    for name, doc in (("golden", golden), ("warm", warm), ("changed", changed)):
+        paths[name] = tmp_path / f"{name}.json"
+        paths[name].write_text(json.dumps(doc), encoding="utf-8")
+    assert drift.stable_json(paths["golden"]) == drift.stable_json(paths["warm"])
+    assert drift.stable_json(paths["golden"]) != drift.stable_json(paths["changed"])
