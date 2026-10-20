@@ -31,8 +31,8 @@ use ferroastro_forces::{
 };
 use ferroastro_integrators::Ias15Config;
 use ferroastro_propagate::{
-    Checkpoint, DataSources, RunOutput, initial_conditions, resume, resume_until, run, run_batch,
-    run_until, run_with_energy,
+    Checkpoint, DataSources, RunOutput, SolarOverrides, initial_conditions, resume, resume_until,
+    run, run_batch, run_until, run_with_energy,
 };
 use ferroastro_scenario::{BodyName, Precision, ScenarioSpec};
 use ferroastro_system::{Catalogue, InitialConditions, Tier};
@@ -178,15 +178,12 @@ fn run_refuses_unimplemented_switches_by_name() {
     // Small bodies are N-body only (WP15): refused in test-particle mode.
     let mut ast = spec("sun-mercury-gr1pn-header440.toml");
     ast.forces.asteroids = 343; // lint: allow-literal(the DE440 asteroid count, a switch value)
-    // Solar Lense-Thirring in N-body mode arrives in WP20.
-    let mut lt = base.clone();
-    lt.forces.lense_thirring = true;
+    // Solar Lense-Thirring is implemented in both modes since WP20, so it is not listed here.
     let mut abm = base;
     abm.integrator.name = ferroastro_scenario::IntegratorName::Abm;
     for (s, needle) in [
         (eih, "forces.gr_eih"),
         (ast, "forces.asteroids"),
-        (lt, "forces.lense_thirring"),
         (abm, "integrator.abm"),
     ] {
         let e = run(&s, &DataSources::none()).unwrap_err();
@@ -765,4 +762,41 @@ fn run_with_energy_returns_the_run_and_the_model_energy() {
     tp.span.years = 1.0; // lint: allow-literal(run length, PR-tier cost)
     let (_, none) = run_with_energy(&tp, &data).unwrap();
     assert!(none.is_none());
+}
+
+/// WP20: solar Lense–Thirring runs in N-body mode; solar overrides are recorded in the model
+/// string and in the checkpoint, and a checkpoint refuses to resume under other overrides
+/// (CI-010). The IC hash does not depend on overrides (they are not initial conditions).
+///
+/// Verifies: NUM-019, CI-010
+#[test]
+fn nbody_lense_thirring_and_solar_overrides_are_recorded_and_checked() {
+    let (h, prov) = header();
+    let plain = DataSources::none().with_header(&h, &prov);
+    let ov = SolarOverrides {
+        j2: Some(2.25e-7), // lint: allow-literal(Park17 J2, vector PARK17-J2SUN; structural here)
+        pole: Some([0.0, 0.0, 1.0]),
+        spin_gm: None,
+        provenance: "structural test".into(),
+    };
+    let tagged = plain.with_solar_overrides(&ov);
+    let mut s = spec("sun-mercury-newton-header440.toml");
+    s.forces.sun_j2 = true;
+    s.forces.lense_thirring = true;
+    s.span.years = 2.0; // lint: allow-literal(short structural run)
+    let a = run(&s, &plain).unwrap();
+    let b = run(&s, &tagged).unwrap();
+    println!("{}\n{}", a.model, b.model);
+    assert!(a.model.contains("solar-lense-thirring-with-reaction"));
+    assert!(!a.model.contains("solar overrides"));
+    assert!(b.model.contains(&ov.describe()) && b.model.contains("J2 = 2.25e-7"));
+    assert_eq!(a.ic_hash, b.ic_hash);
+    assert_ne!(a.final_state, b.final_state);
+    let (_, ck) = run_until(&s, &tagged, 1.0).unwrap();
+    let ck = ck.unwrap();
+    assert_eq!(ck.solar_overrides, ov.describe());
+    let e = resume(&s, &plain, &ck).unwrap_err();
+    assert!(e.to_string().contains("solar overrides"), "{e}");
+    let resumed = resume(&s, &tagged, &ck).unwrap();
+    assert_eq!(resumed.final_state, b.final_state);
 }

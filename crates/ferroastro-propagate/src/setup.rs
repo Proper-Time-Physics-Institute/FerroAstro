@@ -27,6 +27,58 @@ pub struct DataSources<'a> {
     spk: Option<(&'a Spk<'a>, &'a str)>,
     horizons: Option<(&'a [SuppliedState], &'a str)>,
     small_bodies: Option<&'a SmallBodyStates>,
+    solar: Option<&'a SolarOverrides>,
+}
+
+/// Values that replace the DE440 solar parameters of the `sun_j2` and `lense_thirring` terms
+/// (NUM-019's configurable pole; Park17's J2 = 2.25e-7 for the PHY-010 rung and the Park17
+/// comparison of WP20). They are not part of the scenario file (CI-002's switch list is fixed),
+/// so they are written into [`crate::RunOutput::model`] and into every [`crate::Checkpoint`],
+/// and a checkpoint refuses to resume under different overrides (CI-010). Overrides change no
+/// initial condition, so the IC hash does not depend on them.
+#[derive(Debug, Clone, PartialEq, Default)]
+pub struct SolarOverrides {
+    /// Solar J2 (unnormalised) instead of DE440 `J2SUN`.
+    pub j2: Option<f64>,
+    /// Solar pole (ICRF components, any non-zero length; normalised) instead of the WGCCRE 2015
+    /// pole, for J2 and Lense–Thirring.
+    pub pole: Option<[f64; 3]>,
+    /// `G·S` of the Sun (km⁵/s³) instead of DE440 `GMS · MOISUN · ASUN² · OMGSUN`.
+    pub spin_gm: Option<f64>,
+    /// Where the values come from (e.g. a vector id), recorded with them.
+    pub provenance: String,
+}
+
+impl SolarOverrides {
+    /// True if no value is overridden.
+    #[must_use]
+    pub const fn is_empty(&self) -> bool {
+        self.j2.is_none() && self.pole.is_none() && self.spin_gm.is_none()
+    }
+
+    /// A canonical one-line description (empty string when nothing is overridden). Recorded in
+    /// the run's model string and its checkpoints; values are printed with full precision.
+    #[must_use]
+    pub fn describe(&self) -> String {
+        if self.is_empty() {
+            return String::new();
+        }
+        let mut parts = Vec::new();
+        if let Some(j2) = self.j2 {
+            parts.push(format!("J2 = {j2:e}"));
+        }
+        if let Some([x, y, z]) = self.pole {
+            parts.push(format!("pole = [{x:e}, {y:e}, {z:e}]"));
+        }
+        if let Some(gs) = self.spin_gm {
+            parts.push(format!("G S = {gs:e} km^5/s^3"));
+        }
+        format!(
+            "solar overrides: {} (source: {})",
+            parts.join(", "),
+            self.provenance
+        )
+    }
 }
 
 impl<'a> DataSources<'a> {
@@ -62,6 +114,26 @@ impl<'a> DataSources<'a> {
     pub const fn with_small_bodies(mut self, states: &'a SmallBodyStates) -> Self {
         self.small_bodies = Some(states);
         self
+    }
+
+    /// With values that replace the DE440 solar J2, pole or spin ([`SolarOverrides`]).
+    #[must_use]
+    pub const fn with_solar_overrides(mut self, overrides: &'a SolarOverrides) -> Self {
+        self.solar = Some(overrides);
+        self
+    }
+
+    /// The solar overrides, if supplied.
+    #[must_use]
+    pub const fn solar_overrides(&self) -> Option<&'a SolarOverrides> {
+        self.solar
+    }
+
+    /// [`SolarOverrides::describe`] of the supplied overrides (empty if none).
+    #[must_use]
+    pub fn solar_overrides_tag(&self) -> String {
+        self.solar
+            .map_or_else(String::new, SolarOverrides::describe)
     }
 
     /// The small-body states, if supplied.
@@ -102,9 +174,10 @@ pub fn supports(item: &str, mode: Mode) -> Result<(), String> {
         "initial_conditions.source.horizons",
     ];
     // gr_1pn_central: the R3 field in test-particle mode, the heliocentric Sun-only rung in n-body
-    // mode (WP19). lense_thirring: test-particle mode only (n-body: WP20).
+    // mode (WP19). lense_thirring: the R3b field in test-particle mode, the DE440 Eq. 37-39 term
+    // on every non-Sun body in n-body mode (WP20).
     let central_term = matches!(item, "gr_1pn_central" | "lense_thirring");
-    let nbody_relativity = matches!(item, "gr_eih" | "gr_1pn_central");
+    let nbody_relativity = matches!(item, "gr_eih" | "gr_1pn_central" | "lense_thirring");
     let small_bodies = matches!(item, "asteroids" | "kbos" | "kbo_ring");
     if mode == Mode::EphemerisField {
         const FIELD: [&str; 4] = [
@@ -132,9 +205,6 @@ pub fn supports(item: &str, mode: Mode) -> Result<(), String> {
     }
     Err(match item {
         "newton=false" => "every FerroAstro model contains Newtonian gravity".into(),
-        "lense_thirring" => {
-            "solar Lense-Thirring in n-body mode arrives in WP20; test-particle mode has it".into()
-        }
         "gr_eih" => {
             "the EIH equations need n-body mode (a test particle has no mutual 1PN terms; use \
              gr_1pn_central)"
@@ -164,6 +234,53 @@ pub fn constants_version(de: &De440) -> String {
         "DE440 constants table from {} sha256 {}",
         s.product, s.sha256
     )
+}
+
+/// `model` followed by the solar overrides of `data`, if any (the run's model string).
+pub(crate) fn tag_overrides(model: String, data: &DataSources<'_>) -> String {
+    let tag = data.solar_overrides_tag();
+    if tag.is_empty() {
+        model
+    } else {
+        format!("{model}; {tag}")
+    }
+}
+
+/// The solar J2 of a run: the override if supplied, else DE440 `J2SUN`.
+pub(crate) fn solar_j2(de: &De440, data: &DataSources<'_>) -> f64 {
+    data.solar_overrides()
+        .and_then(|o| o.j2)
+        .unwrap_or_else(|| de.sun_j2())
+}
+
+/// The solar pole of a run (ICRF unit vector): the override if supplied, else WGCCRE 2015.
+///
+/// # Errors
+/// `FA-E0500` (wrapped) for a zero or non-finite override.
+pub(crate) fn solar_pole<R: Real>(
+    data: &DataSources<'_>,
+) -> Result<ferroastro_forces::Pole<Icrf, R>, PropagateError> {
+    let k = match data.solar_overrides().and_then(|o| o.pole) {
+        Some(p) => p.map(R::from_f64),
+        None => ferroastro_frames::Pole::<R>::sun_wgccre2015()?.unit_vector(),
+    };
+    Ok(ferroastro_forces::Pole::from_components(k)?)
+}
+
+/// `G·S` of a run: the override if supplied, else [`de440_solar_spin`].
+///
+/// # Errors
+/// As [`de440_solar_spin`]; `FA-E0001` (wrapped) for an invalid override.
+pub(crate) fn solar_spin(
+    de: &De440,
+    data: &DataSources<'_>,
+    scenario: &str,
+) -> Result<SpinGm, PropagateError> {
+    match data.solar_overrides().and_then(|o| o.spin_gm) {
+        Some(gs) => SpinGm::from_km5_per_s3(gs)
+            .map_err(|e| setup(scenario, e.to_string(), "check the solar overrides")),
+        None => de440_solar_spin(de, scenario),
+    }
 }
 
 /// `G·S` of the Sun from DE440: `GM☉ · MOISUN · ASUN² · OMGSUN` (as the single-body rungs).

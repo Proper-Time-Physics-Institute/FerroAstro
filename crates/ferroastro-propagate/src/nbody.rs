@@ -10,7 +10,10 @@
 //! uninterrupted runs therefore take the same steps, and a resumed run continues bit for bit.
 
 use crate::output::{PassageRecord, RunOutput, StateRecord, parts, parts3};
-use crate::setup::{DataSources, constants_version, epoch, nbody_ics, setup};
+use crate::setup::{
+    DataSources, constants_version, epoch, nbody_ics, setup, solar_j2, solar_pole, solar_spin,
+    tag_overrides,
+};
 use crate::{PropagateError, ias15_config};
 use ferroastro_constants::{Body, De440};
 use ferroastro_core::frames::Barycentric;
@@ -20,8 +23,9 @@ use ferroastro_core::units::{Length, Velocity};
 use ferroastro_eih::{Eih, HeliocentricSchwarzschild, RhsAcceleration};
 use ferroastro_ephem::NaifId;
 use ferroastro_forces::{
-    ForceTerm, GeocentricMoon, MOON_TAYLOR_TERMS_DEFAULT, MinorFromMajors, MinorReaction,
-    MoonVariables, NBody, NBodyModel, NewtonianMutual, Pole, RingMasses, SolarJ2WithReaction,
+    ForceTerm, GeocentricMoon, LtReaction, MOON_TAYLOR_TERMS_DEFAULT, MinorFromMajors,
+    MinorReaction, MoonVariables, NBody, NBodyModel, NewtonianMutual, RingMasses,
+    SolarJ2WithReaction, SolarLenseThirring,
 };
 use ferroastro_integrators::{Ias15, Ias15Snapshot};
 use ferroastro_real::Real;
@@ -93,9 +97,12 @@ fn relativity<R: Real>(
 }
 
 /// The model of an N-body scenario (term order: Newtonian mutual, Minor, Ring, geocentric Moon,
-/// the relativistic term (WP19), solar J2 with reaction) and the body order.
+/// the relativistic term (WP19), solar J2 with reaction, solar Lense–Thirring with reaction
+/// (WP20)) and the body order. The solar J2, pole and spin are DE440's unless `data` carries
+/// [`crate::SolarOverrides`].
 fn model<R: Real>(
     spec: &ScenarioSpec,
+    data: &DataSources<'_>,
     de: &De440,
     small: &[(NaifId, f64, Tier)],
 ) -> Result<(NBodyModel<Icrf, R>, Vec<IcRecordGm>), PropagateError> {
@@ -153,12 +160,32 @@ fn model<R: Real>(
             }
             .into());
         }
-        let k = ferroastro_frames::Pole::<R>::sun_wgccre2015()?.unit_vector();
         terms.push(Box::new(SolarJ2WithReaction::new(
-            R::from_f64(de.sun_j2()),
+            R::from_f64(solar_j2(de, data)),
             Length::from_km(R::from_f64(de.sun_radius().km()))
                 .map_err(|e| setup(&spec.name, e.to_string(), "check the DE440 table"))?,
-            Pole::from_components(k)?,
+            solar_pole::<R>(data)?,
+        )?));
+    }
+    if spec.forces.lense_thirring {
+        if !has(BodyName::Sun) {
+            return Err(ScenarioError::Value {
+                name: spec.name.clone(),
+                field: "forces.lense_thirring",
+                value: "true".into(),
+                problem: "solar Lense-Thirring needs the Sun among the bodies".into(),
+            }
+            .into());
+        }
+        let gamma = spec.forces.ppn.map_or(de.ppn_gamma(), |p| p.gamma);
+        let c = Velocity::from_km_per_s(R::from_f64(de.speed_of_light().km_per_s()))
+            .map_err(|e| setup(&spec.name, e.to_string(), "check the DE440 table"))?;
+        terms.push(Box::new(SolarLenseThirring::new(
+            solar_spin(de, data, &spec.name)?.cast(),
+            c,
+            R::from_f64(gamma),
+            solar_pole::<R>(data)?,
+            LtReaction::On,
         )?));
     }
     Ok((NBodyModel::new(&bodies, vars, terms)?, gms))
@@ -339,7 +366,7 @@ impl<R: Real> NBodyRun<R> {
         if !small_source.is_empty() {
             source = format!("{source}; {small_source}");
         }
-        let (model, gms) = model::<R>(spec, &de, &small)?;
+        let (model, gms) = model::<R>(spec, data, &de, &small)?;
         let (x0, v0) = model.pack(&states, pair.as_ref())?;
         let n = model.layout().len();
         let records: Vec<IcRecord> = gms
@@ -430,13 +457,16 @@ impl<R: Real> NBodyRun<R> {
             constants,
             ic_source: source,
             epoch_jd_tdb: parts(R::from_f64(jd)),
-            model: format!(
-                "{}; IAS15 epsilon = {:e}, safety = {}, PC tolerance = {:e}, dense output, {}",
-                model.describe(),
-                cfg.epsilon,
-                cfg.safety,
-                cfg.pc_tolerance,
-                R::NAME
+            model: tag_overrides(
+                format!(
+                    "{}; IAS15 epsilon = {:e}, safety = {}, PC tolerance = {:e}, dense output, {}",
+                    model.describe(),
+                    cfg.epsilon,
+                    cfg.safety,
+                    cfg.pc_tolerance,
+                    R::NAME
+                ),
+                data,
             ),
             states: Vec::new(),
             passages: Vec::new(),
