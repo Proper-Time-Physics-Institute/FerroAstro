@@ -1,0 +1,120 @@
+# SPDX-FileCopyrightText: 2026 Proper-Time Physics Institute
+# SPDX-License-Identifier: Apache-2.0
+#
+# WP19 (ferroastro-eih): pre-registered bounds of the EIH checks, fixed in the WP19 plan
+# (docs/strategy/IMPLEMENTATION-NOTES.md, "WP19 ... Plan and pre-registered checks") on
+# 2026-10-20 before any EIH code or run. Upper bounds: value 0 with tolerance abs = bound.
+# Lower bounds ("-MIN"): the measured value must be >= value (tolerance unused).
+schema_version = 1
+
+[[vector]]
+id = "EIH-R3-LIMIT-TOTAL-REL"
+requirement = ["NUM-017"]
+quantity = "relative difference |a_EIH - a_R3| / |a_R3| of Mercury's total acceleration (Newtonian + 1PN) in the R5 -> R3 limit: Mercury massless at its header.440 state relative to the Sun, the Sun at rest; EIH = NewtonianMutual + Eih vs TestParticle(Newtonian + SchwarzschildPpn)"
+value = 0.0
+unit = "1"
+kind = "analytic"
+source = "The R5 -> R3 limit is an exact identity (tools/eih_limit.py checks it symbolically); the numerical difference is round-off only."
+citation = "Park et al. 2021, AJ 161, 105, Eq. 27; FerroAstro NUM-017 acceptance; WP19 task text (1e-15 relative); WP19 plan check C2a"
+retrieved = "2026-10-20"
+tolerance = { abs = 1.0e-15 }
+tolerance_rationale = "From the WP19 task text. The Newtonian parts are computed in different operation orders (a few ulp of a 4e-5 km/s^2 vector, ~4e-16 relative); the 1PN parts are 2.5e-8 of the total, so their round-off does not reach this level."
+verified_by = "WP19 builder agent, 2026-10-20: fixed in the WP19 plan before the first run."
+
+[[vector]]
+id = "EIH-R3-LIMIT-CORRECTION-REL"
+requirement = ["NUM-017"]
+quantity = "relative difference of the 1PN correction parts alone (EIH minus Newton vs R3) in the R5 -> R3 limit of EIH-R3-LIMIT-TOTAL-REL"
+value = 0.0
+unit = "1"
+kind = "analytic"
+source = "Exact identity (tools/eih_limit.py); the two forms order about 15 floating-point operations differently."
+citation = "Park et al. 2021, AJ 161, 105, Eq. 27; WP19 plan check C2b"
+retrieved = "2026-10-20"
+tolerance = { abs = 1.0e-13 }
+tolerance_rationale = "About 450 ulp: generous for round-off of two operation orders, while any transcription error in a coefficient is O(1) relative."
+verified_by = "WP19 builder agent, 2026-10-20: fixed in the WP19 plan before the first run."
+
+[[vector]]
+id = "EIH-VS-R3-RATE-DIFF"
+requirement = ["NUM-013", "PHY-005"]
+quantity = "|rate(EIH N-body Sun + Mercury) - rate(R3 test particle)| of Mercury's perihelion, both from header.440 ICs, 1001 passages, per-orbit fit (also used for gr_1pn_central in N-body mode)"
+value = 0.0
+unit = "arcsec/cy"
+kind = "analytic"
+source = "NUM-013(a): isolated single-body terms within 1e-4 arcsec/cy. The two models differ by Mercury's mass (mu = GM_sun + GM_Mercury vs GM_sun) and the Sun's reflex motion; predicted ~1e-5 (red-team REPORT section 1: 7e-6 from mu)."
+citation = "FerroAstro docs/requirements/NUM.md NUM-013(a); WP19 plan check C3"
+retrieved = "2026-10-20"
+tolerance = { abs = 1.0e-4 }
+tolerance_rationale = "NUM-013(a)'s 1e-4 arcsec/cy, the WP19 task's 'matches the R3 run within 1e-4'."
+verified_by = "WP19 builder agent, 2026-10-20: fixed in the WP19 plan before the first run."
+
+[[vector]]
+id = "EIH-ITERATION-C4-FACTOR"
+requirement = ["NUM-018"]
+quantity = "upper bound on max_i |a_i(iterated) - a_i(default)| / (eps^2 |a_N,i|), eps = max_i U_i / c^2, Sun + 8 planets + Moon at the header.440 epoch"
+value = 0.0
+unit = "1"
+kind = "defined"
+source = "NUM-018 acceptance: the iterated-minus-default difference is within the expected O(c^-4) magnitude. The iteration changes a_j on the RHS by its 1PN correction (O(eps) relative), which enters Eq. 27 at O(c^-2): O(eps^2) relative."
+citation = "FerroAstro docs/requirements/NUM.md NUM-018; WP19 plan check C5b"
+retrieved = "2026-10-20"
+tolerance = { abs = 100.0 }
+tolerance_rationale = "A factor 100 on the order-of-magnitude estimate. Iterating with the full a_j instead of its correction would give ~1/eps ~ 4e7 times more and fail."
+verified_by = "WP19 builder agent, 2026-10-20: fixed in the WP19 plan before the first run."
+
+[[vector]]
+id = "EIH-ITERATED-RUN-MERCURY-KM"
+requirement = ["NUM-018"]
+quantity = "max over 10 yr (every 10 d) of Mercury's barycentric |r_iterated - r_default|, EIH Sun + 8 planets + geocentric Moon, header.440 ICs"
+value = 0.0
+unit = "km"
+kind = "defined"
+source = "The c^-4 physics changes Mercury's position by << 1 cm over 10 yr; the rest is round-off divergence of two nearly identical runs."
+citation = "FerroAstro docs/requirements/NUM.md NUM-018; WP19 plan check C5c"
+retrieved = "2026-10-20"
+tolerance = { abs = 1.0e-3 }
+tolerance_rationale = "1 m: far above round-off divergence over 10 yr (WP12 measured f64 round-off ~1e-5 km for the Moon), far below a 1PN-level error (~10^3 km for Mercury over 10 yr)."
+verified_by = "WP19 builder agent, 2026-10-20: fixed in the WP19 plan before the first run."
+
+[[vector]]
+id = "EIH-REL-SSB-DEVIATION-KM"
+requirement = ["NUM-018", "NUM-017"]
+quantity = "max deviation of the relativistic barycentre (Park et al. 2021 Eqs. 1-2, mu*-weighted) from its least-squares linear fit over 10 yr (every 10 d), EIH beta = gamma = 1, Sun + 8 planets + geocentric Moon, header.440 ICs"
+value = 0.0
+unit = "km"
+kind = "defined"
+source = "The 1PN centre of mass is conserved by the EIH equations up to O(c^-4) (~1e-12 km here); f64 round-off of the integrated positions is ~1e-7 km."
+citation = "Park et al. 2021, AJ 161, 105, Eqs. 1-2 and 27; FerroAstro NUM-018; WP19 plan check C6"
+retrieved = "2026-10-20"
+tolerance = { abs = 1.0e-5 }
+tolerance_rationale = "1 cm: two orders above the expected round-off, five below the Newtonian barycentre's c^-2 oscillation (~1.5 m from Jupiter's (m/M)(v/c)^2 r). A wrong sign or coefficient in Eq. 27 breaks the conservation at the c^-2 level."
+verified_by = "WP19 builder agent, 2026-10-20: fixed in the WP19 plan before the first run."
+
+[[vector]]
+id = "EIH-NEWTON-SSB-RATIO-MIN"
+requirement = ["NUM-018"]
+quantity = "lower bound on (deviation of the Newtonian barycentre GM-weighted from its linear fit) / (the same for the relativistic barycentre) in the run of EIH-REL-SSB-DEVIATION-KM"
+value = 10.0
+unit = "1"
+kind = "defined"
+source = "Under EIH the Newtonian barycentre oscillates at O(c^-2) (~1 m) while the relativistic one is fixed: the check must be able to tell them apart."
+citation = "WP19 plan check C6"
+retrieved = "2026-10-20"
+tolerance = { abs = 0.0 }
+tolerance_rationale = "One-sided threshold (measured ratio must be >= the value); the tolerance field is unused."
+verified_by = "WP19 builder agent, 2026-10-20: fixed in the WP19 plan before the first run."
+
+[[vector]]
+id = "EIH-DE440-MERCURY-IMPROVEMENT-MIN"
+requirement = ["NUM-017", "NUM-019"]
+quantity = "lower bound on (max Mercury residual vs de440.bsp of the Newtonian + J2 run) / (the same for the EIH + J2 run); Sun + 8 planets + geocentric Moon from header.440, 1969-06-28 -> +10 yr, every 10 d, IAS15 default"
+value = 10.0
+unit = "1"
+kind = "defined"
+source = "WP19 task check 5 (PROVISIONAL sanity): the EIH Mercury residual must improve on the WP12 Newtonian residual (3409 km) by >= 10x. Both runs are made in the same test from the same ICs."
+citation = "JPL DE440 (Park et al. 2021): header.440 sha256 0f4636b663e6f00af9efa2b605ef23635489f56b23dd1a5e3821d3acc6ac3359; de440.bsp sha256 a4ce9bf9b3282becc9f4b2ac3cebe03a2ae7599981aabd7265fd8482fff7c4b5; WP19 plan check C7"
+retrieved = "2026-10-20"
+tolerance = { abs = 0.0 }
+tolerance_rationale = "One-sided threshold (measured factor must be >= the value; PROVISIONAL, NEEDS HUMAN REVIEW). The remaining EIH residual is expected from omitted asteroids, KBOs, ring, lunar and terrestrial figure, tides and Lense-Thirring."
+verified_by = "WP19 builder agent, 2026-10-20: bound from the WP19 task text, fixed in the plan before the first run."

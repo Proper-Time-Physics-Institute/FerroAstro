@@ -368,6 +368,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "ferroastro-eih"
+version = "0.0.0"
+dependencies = [
+ "ferroastro-constants",
+ "ferroastro-core",
+ "ferroastro-ephem",
+ "ferroastro-forces",
+ "ferroastro-real",
+ "ferroastro-system",
+ "ferroastro-testdata",
+ "ferroastro-vectors",
+]
+
+[[package]]
 name = "ferroastro-ephem"
 version = "0.0.0"
 dependencies = [

@@ -1,0 +1,26 @@
+# SPDX-FileCopyrightText: 2026 Proper-Time Physics Institute
+# SPDX-License-Identifier: Apache-2.0
+[package]
+name = "ferroastro-eih"
+description = "Einstein-Infeld-Hoffmann 1PN N-body accelerations with PPN beta/gamma (clean-room from Park et al. 2021 Eq. 27), the heliocentric 1PN rung term and the relativistic barycentre"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+authors.workspace = true
+repository.workspace = true
+
+[dependencies]
+ferroastro-core.workspace = true
+ferroastro-ephem.workspace = true
+ferroastro-forces.workspace = true
+ferroastro-real.workspace = true
+ferroastro-system.workspace = true
+
+[dev-dependencies]
+ferroastro-constants.workspace = true
+ferroastro-testdata.workspace = true
+ferroastro-vectors.workspace = true
+
+[lints]
+workspace = true
