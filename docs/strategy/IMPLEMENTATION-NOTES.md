@@ -4297,6 +4297,19 @@ That pattern fits the script being killed together with its controlling agent se
 
 The nightly differentials check every oracle series they read before any FerroAstro run. A missing series fails as `PRECONDITION FAILED (missing oracle series, not a physics result)` and names each tool/scenario.
 
+**R3 nightly run: the first complete one** (local; a clone at the script commit `52205e9`, clean; started 2026-10-20 08:00:43 UTC, ended 08:52:58 UTC, **3135 s**). My builds and tests ran concurrently, so the wall clocks are upper bounds.
+- **Result.** `run-status.txt` says `state=FAIL`, `drift=FAIL`: an explicit status, as R3 asked.
+- **Runs.** `status.tsv` has 52 rows: 15 ok, 36 refusals (exit 3, REF-011, each naming its switch), 1 FerroAstro row; no build or run failures.
+- **Wall clocks.** Swiftest P-add base 1247 s and Venus 1060 s (they dominate). Orekit stage B 521 s; Mercury6 P-add 66 s and 77 s; REBOUND P-add 15 s and 17 s; ERFA and JPL 1 s each.
+- **FerroAstro differentials: 2/2 pass in 29 s.**
+  - P-add Venus is 277.387780 ″/cy for FerroAstro. The tools differ from it by Swiftest −1.42e-8, Mercury6 +1.75e-8 and REBOUND +6.9e-9 ″/cy (tolerance 1e-3).
+  - C-lite GR: FerroAstro 42.980085, Swiftest 42.980094, difference +9.2e-6 ″/cy (tolerance 1e-3).
+- **The drift FAIL was a false positive, and a latent defect: no earlier nightly had reached the JPL step.**
+  - `jpl/ref001-pins/ref001-verification.json` differed only in download metadata. The golden was made with a cold cache, so it records `last_modified`; a warm-cache run records `fetched = false` and no `last_modified`.
+  - Every SHA-256 and `pin_ok` agreed.
+  - **Fix:** `last_modified` became a volatile key (`c56a0e3`, with a pytest). The drift check re-run on the **same candidate directory** reports **no drift**: every committed golden (REBOUND, Swiftest and Mercury6 stage A, Orekit stage B, ERFA, JPL) was reproduced bit for bit.
+  - **Not done:** the full nightly has not been re-run with the fixed script (about 52 min). The next scheduled run should show `state=PASS`.
+
 **Suggested cron line (not installed; the maintainer's call):**
 `17 2 * * *  cd /home/tmorris/Physics/FerroAstro-m0 && setsid tools/oracles/nightly.sh >> target/nightly.log 2>&1`
 With `setsid`, a closing terminal or session does not kill the job, and `run-status.txt` says how the run ended.
@@ -4454,3 +4467,27 @@ The outer-planet residuals of about 10 km are unchanged by EIH and follow the Su
 7. **Checks added after the first run:** the binary advance and energy, and the C5 Δ ≠ 0 assertion. Each was added because a mutant survived, and each binary bound was fixed before that check's first run. No existing bound moved.
 8. **Moon − Earth gets worse under EIH** (177 → 222 km), as reported above.
 9. **The C6 rationale over-estimated the Newtonian barycentre wobble** (1.5 m expected, 2 cm measured). The vector's rationale keeps the pre-registered text, and these notes record the correction.
+
+### WP19 data tier and nightly re-checks (local, 2026-10-20)
+- **Data tier, full** (`tools/run_long_local.sh --data-only`, commit `ab46110`, clean; log `target/long-local/20261020T083229Z-ab46110b9d17.log`): **29/29 pass in 72 s**.
+  - `FA_DATA_DIR` was a fresh directory. de440.bsp, sb441-n373s.bsp and linux_p1550p2650.440 were symlinked from the pinned cache and SHA-verified on load; everything else was downloaded (35 cache misses, header.440 among them, sha256 `0f4636b6…6ac3359`).
+  - Zero HTTP 503s. Every Horizons answer carried `signature.version` 1.2 with source DE441.
+  - C7 gave the same numbers as above (Mercury factor 2364.16).
+- **PHY-012 nightly, re-run by me** (`nightly_phy012_park17_table3_newtonian_contributions`, release, 68 s, pass). The P-remove pair rows, now printed in Park's convention, reproduce the reviewer's six values exactly: V+EM −0.020782, V+J −0.001116, EM+Ma −0.001570, Ma+J +0.000199, J+S +0.041038, S+U +0.000380 ″/cy. The P-add rows are unchanged (4 of 7 outside ±0.005; non-gating, OI-38).
+
+### WP19 gate results (local, toolchain 1.95.0 + MSRV 1.85.0)
+`tools/pre_push.sh` (full) passed before every push:
+- before `746fc95`: log `target/wp19/prepush-3.log`;
+- before `ab46110`: log `target/wp19/prepush-5.log`.
+
+On `ab46110`:
+- nextest: 263 passed, 42 skipped (29 `data_*`, 13 `nightly_*`);
+- MSRV nextest: 260 passed;
+- pytest: 64 passed;
+- trace, layers, reuse, deny and doc: clean.
+
+Two earlier pre-push runs failed (`prepush-1`, `prepush-2`/`-4`), each on a lint I had introduced (literal lint, stale TRACE.md); both were fixed before pushing.
+
+GitHub CI:
+- run 39391028675 on `746fc95`: success;
+- run **39394141110** on `ab46110`: success (rust, msrv, wasm32 with eih, python, reuse, dco; data and long runs skipped by design).
