@@ -5266,7 +5266,7 @@ Reported, not asserted:
 
 Nothing above is tuned after a run. If a bound fails, the value, the failure and its diagnosis are reported, and the bound is not changed.
 
-### Plan addendum (written 2026-10-20 15:05 UTC, before the run): D1, data tier
+### Plan addendum (written 2026-10-20 14:38 UTC, before the run): D1, data tier
 | # | check | tier | bound (vector) | expectation and rationale |
 |---|---|---|---|---|
 | D1 | Setup: header.440 and de440.bsp fetched or re-verified, provenance printed; the reference scenario with a 5-yr span and 10-d samples, mixed and full DD (f64 plain reported). Check: every body's max heliocentric residual against de440.bsp; \|max res_mixed − max res_DD\| for Mercury | data | ≤ 1 cm (`EPH-MIXED-DE440-HELIO-CONSISTENCY-KM`) | Triangle inequality on the mixed-vs-DD distance. The residuals themselves are reported: the model lacks J2, LT, KBOs and ring, so they are km-level and not asserted. |
