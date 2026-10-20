@@ -343,13 +343,15 @@ acceptance: >-
   Split by rung type (maintainer decision 2026-10-14, Journal #8):
   (a) isolated single-body terms (Sun + Mercury only: GR 42.98 ″/cy, J₂
   0.0286 ″/cy at J₂ = 2.25×10⁻⁷, LT −0.0020 ″/cy) agree with the analytic
-  formulas within 10⁻⁴ ″/cy; (b) N-body differential contributions agree with
-  the Park 2017 Table 3 values within ±0.005 ″/cy (as PHY-012), with
-  interaction cross terms reported separately.
+  formulas within 10⁻⁴ ″/cy; (b) N-body differential contributions, using the
+  PROVISIONAL protocol Sun + Mercury + planet X minus Sun + Mercury (Newtonian)
+  as in PHY-012, agree with the Park 2017 Table 3 values within ±0.005 ″/cy,
+  with interaction cross terms reported separately. Part (b) is BLOCKED until
+  OI-38 confirms Park 2017's switch-on/switch-off protocol.
 source: >-
   docs/strategy/journal/04-numerical-methods.md §3.2 and NUM-013.
 parent: null
-related: [PHY-005, PHY-010, PHY-011, PHY-012, CI-009]
+related: [PHY-005, PHY-010, PHY-011, PHY-012, PHY-019, CI-009]
 notes: >-
   OVERLAP with PHY-012/PHY-005/PHY-010/PHY-011: the PHY- requirements are
   authoritative for the expected values and ladder tolerances; NUM-013 is
@@ -357,8 +359,11 @@ notes: >-
   the PHY tolerances (GR ±0.001, J2 ±0.0005, LT ±0.0002). Journal #4 R4 notes
   that in an N-body run, planet-interaction residuals in the GR differential
   are ≲ 10⁻² ″/cy, so 10⁻⁴ is achievable only when the comparison isolates the
-  single-body term (e.g. Sun + Mercury only). RESOLVED by the split acceptance
-  above. The comparison basis SHALL be documented. Park's switch-on/off protocol is UNVERIFIED.
+  single-body term (e.g. Sun + Mercury only). The split acceptance above is the
+  provisional resolution; OI-70 stays open until a maintainer confirms it. The
+  comparison basis SHALL be documented. Park's switch-on/off protocol is
+  UNVERIFIED (OI-38); without a fixed protocol part (b) is ill-posed, because
+  cross terms (up to 0.0411 ″/cy) exceed the tolerance (PHY-012 notes).
 ```
 
 ### NUM-014 — Frame utilities, inertial default
@@ -400,8 +405,13 @@ statement: >-
   inclined); R2 SR exact 2π[(1−μ²/c²h²)^(−1/2) − 1]; R3
   (2+2γ−β)/3 · 6πμ/(c²p); R3b Lense–Thirring.
 acceptance: >-
-  Single-body numerical per-orbit advance matches each analytic value to
-  ≤ 10⁻⁶ relative, averaged over 10³ orbits.
+  Single-body numerical per-orbit advance, averaged over 10³ orbits, matches
+  each analytic value to within max(10⁻⁶ relative, 10⁻⁷ ″/cy absolute), or the
+  term's effect is measured by differential runs with and without the term from
+  identical initial conditions and matched at the same tolerance. The planar R1
+  J₂ and R3b LT oracles are used only in strictly equatorial geometry (orbit in
+  the solar equatorial plane); otherwise the inclined formula is the oracle.
+  BLOCKED by OI-35 (R3b form) and OI-37 (inclined J₂ citation).
 source: >-
   docs/strategy/journal/04-numerical-methods.md §4 and NUM-015.
 parent: ORG-002
@@ -411,7 +421,13 @@ notes: >-
   standard but the citation is UNVERIFIED. R3 form matches IERS Conventions 2010
   Ch. 10 (equation number UNVERIFIED). R3b typography versus DE440 UNVERIFIED.
   Journal #5's example (≥100 orbits, 10⁻⁶ relative) is superseded by this
-  requirement's 10³-orbit average.
+  requirement's 10³-orbit average. Tolerance revised 2026-10-14 (red-team
+  review, Journal #9): 10⁻⁶ relative alone is unreachable for the small terms.
+  The LT advance is ~2.4×10⁻¹¹ rad/orbit, so 10⁻⁶ relative needs ω pinned to
+  ~2.4×10⁻¹⁴ rad, while f64 Brouwer round-off after ~10⁵ steps is
+  ~ε√N/e ≈ 1.7×10⁻¹³ rad. Mercury is ~3.4° from the solar equator, so the
+  planar J₂ formula is off by ~0.5% (0.02846 vs 0.02860 ″/cy) unless the test
+  geometry is strictly equatorial.
 ```
 
 ### NUM-016 — SR rung documents its Hamiltonian
@@ -448,8 +464,11 @@ verification: test
 statement: >-
   All 1PN equations of motion SHALL be written in PPN isotropic/harmonic
   gauge, with TDB as time argument and GM in TDB-compatible units. No
-  standard-Schwarzschild-coordinate EOM SHALL be used except the explicitly
-  labelled exact-geodesic oracle.
+  standard-Schwarzschild-coordinate EOM SHALL be used except these labelled
+  exemptions: (i) the exact-geodesic oracle; (ii) PHY-008's SR-b areal-gauge
+  rung (35.817 ″/cy); (iii) PHY-009's D-term coefficient check, whose
+  U(n·v)² term is the areal-gauge form. Exempt runs carry their gauge label in
+  the output and are never production EOMs.
 acceptance: >-
   The R5 → R3 limit test passes: with massless planets the EIH equations
   reduce to the Schwarzschild test-particle equations, checked symbolically and
@@ -457,7 +476,7 @@ acceptance: >-
 source: >-
   docs/strategy/journal/04-numerical-methods.md §3.2, §4 R3/R5 and NUM-017.
 parent: ORG-002
-related: [NUM-018, NUM-020, PHY-005, PHY-014]
+related: [NUM-018, NUM-020, PHY-005, PHY-008, PHY-009, PHY-014]
 notes: >-
   The secular per-orbit precession is gauge-invariant at 1PN, but a, n and
   osculating elements are not. TCB/TDB rate difference L_B ≈ 1.55×10⁻⁸ is
@@ -493,14 +512,15 @@ notes: null
 
 ```yaml
 id: NUM-019
-title: "Solar J₂ with reaction on the Sun; LT for all non-Sun bodies with γ-dependence"
+title: "Solar J₂ with reaction on the Sun; solar-spin LT on every non-Sun body, with γ-dependence"
 status: draft
 criticality: high
 verification: test
 statement: >-
   Solar J₂ SHALL include the reaction on the Sun (DE440 Eq. 29) and a
-  configurable solar pole. Lense–Thirring SHALL be applied to all non-Sun
-  bodies with its γ-dependence.
+  configurable solar pole. The Lense–Thirring acceleration from the solar
+  angular momentum SHALL be applied to every non-Sun body, with its
+  γ-dependence.
 acceptance: >-
   Total linear momentum is conserved with J₂ on. J₂ and LT contributions match
   Park17 Table 3 (0.0286 ± 0.0011 and −0.0020 ± 0.0002 ″/cy).
@@ -513,8 +533,13 @@ notes: >-
   The LT form used here (IERS-style, Journal #4 R3b) and PHY-011's INPOP21a
   Eq. 1 form SHALL be shown to agree; R3b typography versus DE440 is
   UNVERIFIED. A J₂ fitted without LT is biased LOW: the LT precession is
-  negative, so the fit absorbs it by lowering J₂ (INPOP 2.01→2.218×10⁻⁷ once LT
-  is modelled; DE430 2.11 < DE440 2.196×10⁻⁷). Journal #4's original "~7% too
+  negative, so the fit absorbs it by lowering J₂. INPOP (2.01→2.218×10⁻⁷ once
+  LT is modelled) and DE430 2.11 < DE440 2.196×10⁻⁷ are consistent in sign
+  only: the INPOP shift (9.4%) exceeds the ~7% LT share and the releases also
+  differ in data and GM☉ (C5), so the full shift is not attributed to LT.
+  Wording "LT for all bodies except the Sun" clarified 2026-10-14: it is the
+  LT acceleration from solar angular momentum, applied to every non-Sun body.
+  Journal #4's original "~7% too
   high" wording was corrected on 2026-10-14. Confirmation against the Park 2021
   text is pending (OI-50).
 ```

@@ -110,7 +110,7 @@
 ### Requirements implied
 
 - **DEP-001**: `cargo-deny` must reject GPL-*, LGPL-*, AGPL-*, SSPL, and any license not on an explicit allow-list anywhere in the dependency graph. That includes dev- and build-dependencies of published crates. CI fails on violation.
-- **DEP-002**: The license allow-list is: Apache-2.0, Apache-2.0 WITH LLVM-exception, MIT, BSD-2-Clause, BSD-3-Clause, ISC, Zlib, Unicode-3.0/Unicode-DFS-2016, CC0-1.0, and MPL-2.0. MPL-2.0 is allowed only for the crates named in a reviewed exception list (initially `hifitime`, `anise`).
+- **DEP-002**: The license allow-list is: Apache-2.0, Apache-2.0 WITH LLVM-exception, MIT, BSD-2-Clause, BSD-3-Clause, ISC, Zlib, Unicode-3.0/Unicode-DFS-2016, CC0-1.0, and MPL-2.0. MPL-2.0 is allowed only for the crates named in a reviewed exception list (initially `hifitime`, `anise`). *(Superseded 2026-10-14: MPL-2.0 is not on the allow-list, only in per-crate exceptions; the exception list is `hifitime` only, and `anise` is not a dependency until an M5 decision, OI-72. See DEP-002.)*
 - **DEP-003**: `cargo-deny` must ban `nyx-space`/`nyx_space`, `rug`, `gmp-mpfr-sys`, `cspice-sys`, `librebound-sys`, `libassist-sys`, `adam_assist`, `rebound-rs`, and `thor-rs-assist` by name (until DEP-015 clears it), whatever their declared license.
 - **DEP-004**: MPL-2.0 dependency files must never be vendored and modified in-tree. Any fix goes upstream, or into a separately published MPL fork.
 - **DEP-005**: Every distributed artifact (crates, CLI binaries, PyPI wheels, WASM bundle, MCP server image) must ship a generated `THIRD_PARTY_LICENSES` file (e.g. via `cargo-about` or `cargo-deny list`). For MPL components it must state where their source can be obtained.

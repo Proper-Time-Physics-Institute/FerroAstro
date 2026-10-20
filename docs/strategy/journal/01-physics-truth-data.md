@@ -64,7 +64,7 @@ GR reference value computed here **[C]** with:
 - Mercury a = 0.38709927 au and e = 0.20563593 (SW92 J2000 mean elements)
 - orbital period from (GM☉ + GM_Mercury), 415.2009 orbits per Julian century
 
-Result: Δϖ = 6πGM/(c²a(1−e²)) = 5.01866×10⁻⁷ rad/orbit = **42.9805″/cy**. Park17 gives 42.9799 ± 0.0009, so the two agree within 0.0006″/cy. The residual difference comes from mean versus osculating a and e.
+Result: Δϖ = 6πGM/(c²a(1−e²)) = 5.01866×10⁻⁷ rad/orbit = **42.9805″/cy**. Park17 gives 42.9799 ± 0.0009, so the two agree within 0.0006″/cy. The residual difference comes from mean versus osculating a and e. *(Annotated 2026-10-14, red-team review, Journal #9: this attribution is a **hypothesis, UNVERIFIED**. Closing the gap needs a shifted by ≈ +312 km (8×10⁻⁶ relative); other candidates are Park's fit/projection procedure and the element source.)*
 
 | Rung ID | Physics | Expected ϖ̇ (″/cy) | Uncertainty | Source / status |
 |---|---|---|---|---|
@@ -89,7 +89,7 @@ Result: Δϖ = 6πGM/(c²a(1−e²)) = 5.01866×10⁻⁷ rad/orbit = **42.9805�
 | GR-1PN-2B | 1PN Sun + Mercury (finite mass ratio) | GR-SCHW + O(η) | the m = m☉ + m_Mercury shift is ≈7×10⁻⁶ | Will14 Eq. 64: the η term vanishes in fully conservative theories [P]. Value [C]. |
 | **LT** | Lense–Thirring from solar spin | **−0.0020** | ±0.0002 | Park17 [P], with S☉ = 190×10³⁹ kg m² s⁻¹. Same value repeated in Park21 [P]. [C] −0.00202 from ϖ̇ = −4GS/(c²a³(1−e²)^{3/2}) at I ≈ 0. |
 | **EIH-FULL** | Full N-body EIH + J2 + LT (γ = β = 1) | **575.3100** | ±0.0015 | Park17 Table 3 [P], in the Mercury mean-orbit frame (§1) |
-| PPN-βγ | Sensitivity of GR-SCHW to β and γ | 42.98 × (2+2γ−β)/3 | β: ±0.00056 per Park17 σ_β. γ: ±0.00066 per Cassini σ_γ. | Will14 Eq. 65 [P]. Arithmetic [C]. |
+| PPN-βγ | Sensitivity of GR-SCHW to β and γ | 42.98 × (2+2γ−β)/3 *(2026-10-14: 42.98 is shorthand; the test asserts the ratio to the β = γ = 1 run, PHY-006)* | β: ±0.00056 per Park17 σ_β. γ: ±0.00066 per Cassini σ_γ. | Will14 Eq. 65 [P]. Arithmetic [C]. |
 
 ---
 
@@ -153,6 +153,8 @@ To first order, each coefficient adds a perihelion advance per orbit. In units o
 | B | 4 |
 | C | 2 |
 | D | 2 |
+
+*(Corrected 2026-10-14, red-team review, Journal #9: per unit coefficient, A gives **8**, not 1; the value 1 holds only at A = 1/8, the SR kinetic value. B, C and D are per unit as listed, so the per-unit advances are 8A, 4B, 2C, 2D. The numerical 1.000 below was obtained at A = 1/8.)*
 
 These coefficients were confirmed numerically in this session by direct integration of the Euler–Lagrange equations, using sympy and DOP853 at e = 0.2 and ε = 10⁻⁴. Results: 1.000, 3.999, 2.000 and 2.000.
 

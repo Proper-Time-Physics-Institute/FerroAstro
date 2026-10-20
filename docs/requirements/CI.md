@@ -3,7 +3,7 @@
 
 # CI — Oracle containers, goldens, job tiers and benchmarking
 
-**Scope.** These requirements define how continuous integration runs FerroAstro against its oracles (REF-*). That covers one pinned Docker image per reference, a single tool-agnostic scenario format, golden artifacts with provenance, the job tiers (PR-fast, PR-label `oracle`, Nightly, Weekly/release), the shared precession estimator, and speed-benchmark hygiene. Source: Journal #3 (`docs/strategy/journal/03-reference-implementations-ci.md`), as revised by Journal #6 (`06-maintainer-decisions.md`). Long jobs and benchmarks run on **GitHub paid larger runners**. Those runners cap each job at 6 h, so long jobs must checkpoint and resume (CI-010). The code-quality gates (fmt, clippy, docs, ruff, reuse) are in [STD.md](STD.md).
+**Scope.** These requirements define how continuous integration runs FerroAstro against its oracles (REF-*). That covers one pinned Docker image per reference, a single tool-agnostic scenario format, golden artifacts with provenance, the job tiers (PR-fast, PR-label `oracle`, Nightly, Weekly/release), the shared precession estimator, and speed-benchmark hygiene. Source: Journal #3 (`docs/strategy/journal/03-reference-implementations-ci.md`), as revised by Journal #6 (`06-maintainer-decisions.md`). **Revised 2026-10-15 (Journal #10):** long runs (full nightly oracles, Stage D, multi-millennia) and benchmarks run on the **maintainer's local machine for now**. GitHub-hosted runners do PR-fast work and a short nightly. Long runs still checkpoint and resume (CI-010) so they can move to hosted runners later. The code-quality gates (fmt, clippy, docs, ruff, reuse) are in [STD.md](STD.md).
 
 ---
 
@@ -22,11 +22,12 @@ statement: >-
 acceptance: >-
   Every Dockerfile under ci/oracles/ uses a FROM …@sha256: base, == package
   pins and SHA/hash-pinned sources. Every test workflow references images by
-  digest. Images are pushed to GHCR tagged <tool>-<version>-<yyyymmdd>.
+  digest. Images are pushed to a private GHCR registry (never public, LIC-002)
+  tagged <tool>-<version>-<yyyymmdd>, or rebuilt with layer caching in CI.
 source: >-
   docs/strategy/journal/03-reference-implementations-ci.md §4 and CI-001.
 parent: null
-related: [REF-005, REF-006, REF-007, REF-009, LIC-002]
+related: [REF-005, REF-006, REF-007, REF-009, LIC-002, LIC-005]
 notes: >-
   Images: jpl, orekit, rebound (GPL, isolated), swiftest (GPL, isolated),
   fortran (isolated), erfa.
@@ -151,8 +152,10 @@ source: >-
 parent: null
 related: [CI-008, CI-010, STD-008]
 notes: >-
-  Runs on GitHub paid larger runners (Journal #6); chained across jobs per
-  CI-010 where a run would exceed 6 h.
+  REVISED 2026-10-15 (Journal #10): a short nightly runs on GitHub-hosted
+  runners; the full all-oracle / 1000-yr nightly runs on the maintainer's local
+  machine for now, with results uploaded as artifacts with manifests (CI-003).
+  Supersedes the Journal #6 larger-runner plan.
 ```
 
 ### CI-007 — Weekly/release Stage D DE440 reproduction
@@ -177,8 +180,9 @@ source: >-
 parent: null
 related: [PHY-014, REF-001, CI-010]
 notes: >-
-  Journal #3's tier table said "long-running / self-hosted"; superseded by the
-  Journal #6 decision for GitHub paid larger runners. No residual pass
+  Runs on the maintainer's local machine for now (Journal #10, 2026-10-15),
+  superseding the Journal #6 larger-runner plan; the report is uploaded with
+  its manifest. No residual pass
   threshold was set in the journals; PHY-014 sets the precession acceptance.
   Planet orbits in DE440 and DE441 differ by < 1 m over 1550–2650.
 ```
@@ -187,12 +191,13 @@ notes: >-
 
 ```yaml
 id: CI-008
-title: "Benchmarks on one fixed GitHub larger-runner class, median of ≥ 5 runs, same-run comparison only"
+title: "Benchmarks on one fixed, recorded machine, median of ≥ 5 runs, same-run comparison only"
 status: draft
 criticality: medium
 verification: test
 statement: >-
-  Benchmarks SHALL run on one fixed GitHub paid larger-runner class. Speed
+  Benchmarks SHALL run on one fixed, recorded machine (currently the
+  maintainer's local machine; Journal #10). Speed
   results SHALL be reported as the median of ≥ 5 runs with CPU model and flags,
   and SHALL be compared only within the same run and runner class.
 acceptance: >-
@@ -205,7 +210,8 @@ source: >-
 parent: null
 related: [NUM-024, DEP-014, CI-006]
 notes: >-
-  REVISED by Journal #6 (fixed larger-runner class). Journal #5's bench.yml
+  REVISED by Journal #10 (2026-10-15): local machine instead of the Journal #6
+  larger-runner class. Journal #5's bench.yml
   said "self-hosted or larger pinned runner" with trends informational, not
   gating; that is consistent with this refinement. Run-to-run variance on
   shared runners is UNVERIFIED.
@@ -251,11 +257,11 @@ criticality: medium
 verification: test
 statement: >-
   Long CI jobs (nightly, Stage D and multi-millennia runs) SHALL checkpoint
-  their state and resume in a chained follow-on job, so that no single job
-  exceeds the 6 h per-job limit of GitHub-hosted runners, larger runners
-  included.
+  their state and resume in a follow-on job or session, so that runs survive
+  interruption on the local machine (Journal #10) and can later move to
+  GitHub-hosted runners, which cap each job at 6 h.
 acceptance: >-
-  No long-run job exceeds 6 h. A short scenario interrupted at a checkpoint and
+  A short scenario interrupted at a checkpoint and
   resumed in a new job produces output identical to an uninterrupted run on the
   same runner class.
 source: >-

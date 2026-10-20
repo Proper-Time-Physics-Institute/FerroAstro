@@ -251,7 +251,7 @@ Analytic test:
 
 $$\Delta\varpi_{GR}=\frac{2+2\gamma-\beta}{3}\cdot\frac{6\pi\mu}{c^2a(1-e^2)}\ \text{per orbit}$$
 
-- Mercury ($\beta = \gamma = 1$): 5.0187×10⁻⁷ rad/orbit = **42.981″/cy**. Park's 42.9799 comes from full-model fitting.
+- Mercury ($\beta = \gamma = 1$): 5.0187×10⁻⁷ rad/orbit = **42.981″/cy**. Park's 42.9799 comes from full-model fitting. *(Corrected 2026-10-14, red-team review, Journal #9: 42.98048 rounds to **42.980**, not 42.981. The element set used here (a = 0.38709893 au, e = 0.20563069) changes the value by only 2×10⁻⁶ ″/cy, so it does not explain the difference; it was a rounding error.)*
 - Optional exact geodesic cross-check, in Schwarzschild coordinates with proper-time parametrisation: $u'' + u = \mu/h^2 + 3\mu u^2/c^2$. The 2PN correction is ~$(\mu/c^2p)\times$GR ≈ 10⁻⁶″/cy, negligible.
 
 **R3b. Lense–Thirring (solar spin $\mathbf S$).** IERS-style form, with $\mathbf J$ the angular momentum per unit mass (UNVERIFIED typography vs DE440 Eq., which uses $(1+\gamma)G/(2c^2r^3)[\ldots]$ with total $\mathbf J$ **[V, partial]**):
@@ -281,7 +281,7 @@ $$
 - The transcription above was checked term-by-term against the extracted DE430 PDF text. A **second independent check against the typeset PDF is required** (NUM-020).
 - Companion definitions:
   - SSB with relativistic masses: $\mu_i^* = \mu_i\left(1 + \frac{v_i^2}{2c^2} - \frac{1}{2c^2}\sum_{j\neq i}\frac{\mu_j}{r_{ij}}\right)$, $\mathbf r_{\rm SSB} = \sum\mu_i^*\mathbf r_i/\sum\mu_i^*$ (DE440 Eqs. 1–2 **[V]**).
-  - DE440 adds 30 KBOs plus a 36-point-mass ring at 44 au, and LT for all bodies except the Sun **[V]**.
+  - DE440 adds 30 KBOs plus a 36-point-mass ring at 44 au, and LT for all bodies except the Sun **[V]**. *(Clarified 2026-10-14, red-team review, Journal #9: this means the LT acceleration from solar angular momentum, applied to every non-Sun body; it is not "LT of all bodies".)*
 - **Test of R5 against R3.** In the limit of massless planets, R5 reduces to R3 for each planet in the Sun's field, in SSB coordinates with the Sun fixed. A unit test should check that limit symbolically and numerically.
 
 ---
@@ -333,7 +333,7 @@ $$
 | NUM-016 | SR rung documents its Hamiltonian ($H = \gamma mc^2 - \mu m/r$) and states that other SR couplings give different fractions (1/3). | Doc review |
 | NUM-017 | All 1PN EOMs in PPN isotropic/harmonic gauge, TDB time argument, $GM$ in TDB-compatible units. No standard-Schwarzschild-coordinate EOM except the explicitly labelled exact-geodesic oracle. | R5 → R3 limit test |
 | NUM-018 | EIH implementation: Newtonian $\ddot{\mathbf r}_j$ on the RHS (default), with an optional one-step fixed-point iteration to quantify the $O(c^{-4})$ difference. Relativistic SSB ($\mu^*$) for the initial-condition barycentring. | Difference ≤ expected $O(c^{-4})$. SSB drift ≤ μm-level in DD mode (Subbotin reports 2.6 μm / 40 yr) |
-| NUM-019 | Solar J₂ with the proper reaction on the Sun (DE440 Eq. 29) and configurable pole. LT for all non-Sun bodies with γ-dependence. | Momentum conservation test. Park Table 3 values |
+| NUM-019 | Solar J₂ with the proper reaction on the Sun (DE440 Eq. 29) and configurable pole. LT for all non-Sun bodies with γ-dependence. *(Clarified 2026-10-14: LT acceleration from solar angular momentum, applied to every non-Sun body.)* | Momentum conservation test. Park Table 3 values |
 | NUM-020 | Independent second transcription and check of DE430 Eq. 27 / DE440 §3.1 against the typeset PDFs before release. Every "UNVERIFIED" item in this journal is tracked as an issue. | Review sign-off |
 | NUM-021 | Force kernels in SoA layout with SIMD (f64x4/x8), exact 1/r³ (≤1 ulp), fixed reduction order, explicit FMA policy, bitwise-reproducible across thread counts. | Bitwise reproducibility CI test. Speedup ≥ 2.5× vs scalar at N = 16 (target, UNVERIFIED feasibility) |
 | NUM-022 | Run-level parallelism (rayon) for ensembles and β/γ sweeps, plus optional SIMD batch-lane integration of independent ICs. | Linear scaling to core count for ≥ cores runs |
