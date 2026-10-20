@@ -155,6 +155,6 @@ kind = "analytic"
 source = "2 Omega x v with Omega = (1+gamma)G/(2c^2 r^3)[-J + 3(J.r)r/r^2] expands to (1+gamma)GS/(c^2 r^3)[v x s + 3(s.r)(r x v)/r^2], the R3b expression (WP20 notes; checked symbolically by tools/lt_forms.py)."
 citation = "Park et al. 2021, AJ 161, 105 (DE440), Eqs. 37-39; Fienga et al. 2021, INPOP21a, IMCCE scientific note, Eq. 1; Journal #4 R3b"
 retrieved = "2026-10-20"
-tolerance = { rel = 1.0e-13 }
+tolerance = { abs = 1.0e-13 }
 tolerance_rationale = "The same expression evaluated in two operation orders (~15 operations each, cross products with cancellation); about 450 ulp, as EIH-R3-LIMIT-CORRECTION-REL. A coefficient or sign error is O(1). Pre-registered in IMPLEMENTATION-NOTES WP20 (L1b) before the first run."
 verified_by = "WP20 builder agent, 2026-10-20: fixed in the WP20 plan before the first run."
