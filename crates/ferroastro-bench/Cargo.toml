@@ -20,6 +20,11 @@ serde.workspace = true
 serde_json.workspace = true
 thiserror.workspace = true
 
+[features]
+default = []
+# SIMD lanes of the SoA kernels (bitwise identical to the scalar lanes; NUM-021, WP26).
+simd = ["ferroastro-propagate/simd"]
+
 [dev-dependencies]
 criterion.workspace = true
 ferroastro-constants.workspace = true

@@ -24,6 +24,11 @@ ferroastro-propagate = { workspace = true, features = ["parallel"] }
 ferroastro-scenario.workspace = true
 sha2.workspace = true
 
+[features]
+default = []
+# SIMD lanes of the SoA kernels (bitwise identical to the scalar lanes; NUM-021, WP26).
+simd = ["ferroastro-propagate/simd"]
+
 [dev-dependencies]
 ferroastro-testdata.workspace = true
 

@@ -23,20 +23,20 @@ use ferroastro_core::frames::Icrf;
 use ferroastro_core::time::SECONDS_PER_DAY;
 use ferroastro_core::units::{Length, Velocity};
 use ferroastro_eih::{
-    BarycentreBody, Eih, HeliocentricSchwarzschild, RhsAcceleration,
+    BarycentreBody, Eih, EihSoa, HeliocentricSchwarzschild, RhsAcceleration,
     relativistic_barycentre_with_rate,
 };
 use ferroastro_ephem::NaifId;
 use ferroastro_forces::{
     ForceTerm, GeocentricMoon, LtReaction, MOON_TAYLOR_TERMS_DEFAULT, MinorFromMajors,
-    MinorReaction, MixedForces, MoonVariables, NBody, NBodyModel, NewtonianMutual, RingMasses,
-    SolarJ2WithReaction, SolarLenseThirring,
+    MinorReaction, MixedForces, MoonVariables, NBody, NBodyModel, NewtonianMutual,
+    NewtonianMutualSoa, RingMasses, SoaBackend, SolarJ2WithReaction, SolarLenseThirring,
 };
 use ferroastro_integrators::Ias15;
 use ferroastro_real::Real;
 use ferroastro_scenario::{
-    BodyName, IcBarycentre, IcRecord, IntegratorName, MajorAsteroids, Precision, ScenarioError,
-    ScenarioSpec, ic_hash,
+    BodyName, ForceKernel, IcBarycentre, IcRecord, IntegratorName, MajorAsteroids, Precision,
+    ScenarioError, ScenarioSpec, ic_hash,
 };
 use ferroastro_system::{
     ASTEROID_NAIF_BASE, Catalogue, KBO_IDENTIFICATION, KBO_RING, SystemState, Tier,
@@ -51,6 +51,13 @@ pub(crate) struct DriverState {
     pub(crate) next_sample: u64,
     /// Perihelion passages found so far.
     pub(crate) passages: u64,
+}
+
+/// True if the scenario selects the SoA pair kernels (`integrator.force_kernel = "soa"`, WP26).
+/// The lane backend is [`SoaBackend::preferred`]: SIMD with the `simd` feature, scalar without,
+/// bitwise identical either way.
+fn soa_kernel(spec: &ScenarioSpec) -> bool {
+    spec.integrator.force_kernel == Some(ForceKernel::Soa)
 }
 
 /// The relativistic term of an N-body scenario (WP19): `gr_eih` gives the EIH term (Park et al.
@@ -86,12 +93,12 @@ fn relativity<R: Real>(
     let (beta, gamma) = (R::from_f64(beta), R::from_f64(gamma));
     let mut terms: Vec<Box<dyn ForceTerm<Icrf, R>>> = Vec::new();
     if f.gr_eih {
-        terms.push(Box::new(Eih::new(
-            c,
-            beta,
-            gamma,
-            RhsAcceleration::Newtonian,
-        )?));
+        let eih = Eih::new(c, beta, gamma, RhsAcceleration::Newtonian)?;
+        if soa_kernel(spec) {
+            terms.push(Box::new(EihSoa::new(eih, SoaBackend::preferred())));
+        } else {
+            terms.push(Box::new(eih));
+        }
     }
     if f.gr_1pn_central {
         if !has_sun {
@@ -141,7 +148,11 @@ fn model<R: Real>(
         });
     }
     let has = |b: BodyName| spec.bodies.contains(&b);
-    let mut terms: Vec<Box<dyn ForceTerm<Icrf, R>>> = vec![Box::new(NewtonianMutual)];
+    let mut terms: Vec<Box<dyn ForceTerm<Icrf, R>>> = if soa_kernel(spec) {
+        vec![Box::new(NewtonianMutualSoa::new(SoaBackend::preferred()))]
+    } else {
+        vec![Box::new(NewtonianMutual)]
+    };
     if small.iter().any(|b| b.2 == Tier::Minor) {
         terms.push(Box::new(MinorFromMajors::new(MinorReaction::On)));
     }

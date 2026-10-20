@@ -169,6 +169,21 @@
         "gm_set"
       ]
     },
+    "ForceKernel": {
+      "description": "The N-body pair kernels (`integrator.force_kernel`, NUM-021, WP26).",
+      "oneOf": [
+        {
+          "description": "Each pair visited once (`i < j`), fused `r²`, `1/(r²√r²)` (the M3/M4 kernels).",
+          "type": "string",
+          "const": "pairwise"
+        },
+        {
+          "description": "Structure-of-arrays kernels (`ferroastro_forces::soa`): exact `1/r³`, no FMA, sources of\neach target summed in storage order; scalar and SIMD lanes are bitwise identical.",
+          "type": "string",
+          "const": "soa"
+        }
+      ]
+    },
     "Forces": {
       "description": "`[forces]`: exactly the CI-002 switches. Every switch but `newton` defaults to off.",
       "type": "object",
@@ -368,6 +383,17 @@
             "null"
           ],
           "format": "double"
+        },
+        "force_kernel": {
+          "description": "The N-body pair kernels (NUM-021, WP26): `pairwise` (default) or `soa`. Not a force\nswitch: it selects FerroAstro's arithmetic, not the physics.",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ForceKernel"
+            },
+            {
+              "type": "null"
+            }
+          ]
         },
         "name": {
           "description": "The integrator.",

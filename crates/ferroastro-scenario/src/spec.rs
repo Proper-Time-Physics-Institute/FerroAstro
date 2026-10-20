@@ -421,6 +421,33 @@ pub struct IntegratorSpec {
     /// ABM Kahan-compensated state update (default true; false gives the plain sums).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub compensated: Option<bool>,
+    /// The N-body pair kernels (NUM-021, WP26): `pairwise` (default) or `soa`. Not a force
+    /// switch: it selects FerroAstro's arithmetic, not the physics.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub force_kernel: Option<ForceKernel>,
+}
+
+/// The N-body pair kernels (`integrator.force_kernel`, NUM-021, WP26).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "kebab-case")]
+pub enum ForceKernel {
+    /// Each pair visited once (`i < j`), fused `r²`, `1/(r²√r²)` (the M3/M4 kernels).
+    #[default]
+    Pairwise,
+    /// Structure-of-arrays kernels (`ferroastro_forces::soa`): exact `1/r³`, no FMA, sources of
+    /// each target summed in storage order; scalar and SIMD lanes are bitwise identical.
+    Soa,
+}
+
+impl ForceKernel {
+    /// The spelling in scenario files.
+    #[must_use]
+    pub const fn label(self) -> &'static str {
+        match self {
+            ForceKernel::Pairwise => "pairwise",
+            ForceKernel::Soa => "soa",
+        }
+    }
 }
 
 /// `[span]`.
@@ -712,6 +739,23 @@ impl ScenarioSpec {
                     ig.name.label()
                 ),
             );
+        }
+        if ig.force_kernel == Some(ForceKernel::Soa) {
+            if self.mode != Mode::NBody {
+                return err(
+                    "integrator.force_kernel",
+                    &"soa",
+                    "the SoA kernels are N-body pair kernels (mode = \"n-body\" only)",
+                );
+            }
+            if ig.precision == Precision::Mixed {
+                return err(
+                    "integrator.force_kernel",
+                    &"soa",
+                    "not with precision = \"mixed\": the NUM-007 mixed mode compensates every pair \
+                     contribution (WP25), the SoA kernel sums each body's sources in one lane",
+                );
+            }
         }
         if let Some(o) = ig.order {
             if !(8..=14).contains(&o) {

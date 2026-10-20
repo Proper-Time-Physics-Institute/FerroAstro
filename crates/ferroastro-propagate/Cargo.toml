@@ -33,6 +33,9 @@ thiserror.workspace = true
 default = []
 # Run-level parallelism for batches (NUM-022). Off on wasm32.
 parallel = ["dep:rayon"]
+# SIMD lanes of the SoA kernels (`integrator.force_kernel = "soa"`, NUM-021, WP26); results are
+# bitwise identical with and without it.
+simd = ["ferroastro-forces/simd", "ferroastro-eih/simd"]
 
 [dev-dependencies]
 ferroastro-testdata.workspace = true
