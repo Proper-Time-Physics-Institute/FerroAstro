@@ -5625,3 +5625,15 @@ Script: scratchpad `wp26/mut/run_mutants.py`. Each mutant runs the three SoA tes
 - V2 (stage C subset-EIH frame report) and WP23 were not started. WP22 is blocked on the OI-33 signature.
 - SIMD batch lanes across independent runs (NUM-022 optional part). A SoA kernel for the Minor-from-Majors term, which dominates the 343-asteroid runs, is out of NUM-021's pair-kernel scope but is the next performance lever.
 - Repeating P8 and P9 on a quiet machine (CI-008), and the maintainer decisions in items 2–4 above.
+
+### WP26 gate results (local, 2026-10-20, toolchain 1.95.0 + MSRV 1.85.0; code tip `e8c86a0`)
+- **`tools/pre_push.sh` (full), 22:5x UTC: every step passes.**
+  - fmt and clippy (`--all-features`, `-D warnings`).
+  - nextest: **304 passed, 53 skipped** (the `#[ignore]`d data and nightly tests). The new simd step: **12/12**.
+  - Doctests; deny (advisories, bans, licenses and sources ok); `cargo doc -D warnings`.
+  - ruff, ruff format and mypy strict; pytest **78 passed**; reuse compliant; trace: 0 errors.
+  - MSRV: `cargo +1.85.0 check` and nextest **301 passed**.
+- **First run of `pre_push.sh` (at `f3b8fdd`): `cargo doc` failed.** Intra-doc links pointed at the cfg-gated `F64x4` and `SoaBackend::Simd`, and the PR tier compiled unused simd-only test helpers with warnings. Both were fixed in `e8c86a0` before the passing run.
+- **Data tier** (`--profile data --run-ignored only`): **33/33 pass** (57 s), including D1. Horizons `signature.version` 1.2 / DE441.
+- **Layer check:** 23 crates, 141 edges, 0 errors. **`lint_literals`:** 0 findings.
+- **Nightly tier:** only the V3 speed-table test was re-run (expected E6 failure on (d), above). WP26 adds no other nightly test.
