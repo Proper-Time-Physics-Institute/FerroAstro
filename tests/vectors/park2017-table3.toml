@@ -203,7 +203,7 @@ blocked_by = "OI-38"
 
 [[vector]]
 id = "PARK17-T3-ASTEROIDS"
-requirement = ["PHY-013", "NUM-013"]
+requirement = ["PHY-013", "NUM-013", "PHY-019"]
 quantity = "contribution of the 343 asteroids to the precession rate of Mercury's perihelion, Mercury mean-orbit frame (Park17 Table 3 row 'Asteroids', rung N-AST)"
 value = "0.0012"
 unit = "arcsec/cy"

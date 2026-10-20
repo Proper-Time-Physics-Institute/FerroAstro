@@ -59,7 +59,7 @@ fn combo(label: &str, protocol: Protocol, plus: &str, minus: &str) -> Combinatio
     }
 }
 
-/// Verifies: PHY-013, NUM-009, NUM-013, REF-003, CI-009, CI-010, PHY-015
+/// Verifies: PHY-013, PHY-019, NUM-009, NUM-013, REF-003, CI-009, CI-010, PHY-015
 #[test]
 #[expect(
     clippy::too_many_lines,
