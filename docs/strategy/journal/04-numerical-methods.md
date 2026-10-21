@@ -175,7 +175,7 @@ Other Park 2017 results: $(\beta - 1) = (-2.7 \pm 3.9)\times10^{-5}$ and $J_{2\o
 **Implications.**
 - The headline number is **inertial (ICRF-fixed)**. It does **not** include general precession, which is ~5029″/cy in longitude (IAU 2006 $p_A$ = 5028.796195″/cy; UNVERIFIED in this review).
 - Classical "≈5600″/cy" figures are in the equinox-of-date frame.
-- The **interaction terms** (non-additivity at the 10⁻² ″/cy level) mean a per-body decomposition depends on how it is defined. Park's exact switch-on/switch-off protocol is UNVERIFIED.
+- The **interaction terms** (non-additivity at the 10⁻² ″/cy level) mean a per-body decomposition depends on how it is defined. Park's exact switch-on/switch-off protocol is UNVERIFIED. *(Superseded 2026-10-21, [Journal #12](12-maintainer-signoffs.md): the maintainer confirmed P-remove against Park 2017 §4 p. 5 (OI-38 closed); see ADR-0014 and PHY-012.)*
 - **Ambiguity is real.** Purely Newtonian "planetary" values in the literature range 526.7–532.4″/cy, depending on the perihelion definition and fitting span (Pogossian 2022, CeMDA, doi:10.1007/s10569-022-10085-5, arXiv:2112.07301 **[V]**). FerroAstro must document its definition.
 
 #### 3.2 Methods compared
@@ -254,7 +254,7 @@ $$\Delta\varpi_{GR}=\frac{2+2\gamma-\beta}{3}\cdot\frac{6\pi\mu}{c^2a(1-e^2)}\ \
 - Mercury ($\beta = \gamma = 1$): 5.0187×10⁻⁷ rad/orbit = **42.981″/cy**. Park's 42.9799 comes from full-model fitting. *(Corrected 2026-10-14, red-team review, Journal #9: 42.98048 rounds to **42.980**, not 42.981. The element set used here (a = 0.38709893 au, e = 0.20563069) changes the value by only 2×10⁻⁶ ″/cy, so it does not explain the difference; it was a rounding error.)*
 - Optional exact geodesic cross-check, in Schwarzschild coordinates with proper-time parametrisation: $u'' + u = \mu/h^2 + 3\mu u^2/c^2$. The 2PN correction is ~$(\mu/c^2p)\times$GR ≈ 10⁻⁶″/cy, negligible.
 
-**R3b. Lense–Thirring (solar spin $\mathbf S$).** IERS-style form, with $\mathbf J$ the angular momentum per unit mass (UNVERIFIED typography vs DE440 Eq., which uses $(1+\gamma)G/(2c^2r^3)[\ldots]$ with total $\mathbf J$ **[V, partial]**):
+**R3b. Lense–Thirring (solar spin $\mathbf S$).** IERS-style form, with $\mathbf J$ the angular momentum per unit mass (UNVERIFIED typography vs DE440 Eq., which uses $(1+\gamma)G/(2c^2r^3)[\ldots]$ with total $\mathbf J$ **[V, partial]**): *(Superseded 2026-10-21, [Journal #12](12-maintainer-signoffs.md): the form below was confirmed equal to DE440 §3.4 Eqs. 37–39 and INPOP21a Eq. 1, with $\mathbf J$ read as the total solar angular momentum $\mathbf S$ (so $\mu\mathbf J\to G\mathbf S$) and $\mathbf r,\mathbf v$ heliocentric; the Sun takes the reaction and LT applies to all non-Sun bodies (OI-35 closed). See PHY-011 and NUM-019.)*
 
 $$\mathbf a_{LT}=(1+\gamma)\frac{\mu}{c^2r^3}\left[\frac{3}{r^2}(\mathbf r\times\mathbf v)(\mathbf r\cdot\mathbf J)+\mathbf v\times\mathbf J\right]$$
 
@@ -278,7 +278,7 @@ $$
 $$
 
 - $\ddot{\mathbf r}_j$ on the RHS is replaced by the **Newtonian** acceleration, which is accurate to $O(c^{-2})$ **[V]**.
-- The transcription above was checked term-by-term against the extracted DE430 PDF text. A **second independent check against the typeset PDF is required** (NUM-020).
+- The transcription above was checked term-by-term against the extracted DE430 PDF text. A **second independent check against the typeset PDF is required** (NUM-020). *(Superseded 2026-10-21, [Journal #12](12-maintainer-signoffs.md): the second check was done against the typeset DE430 and DE440 pages and the maintainer signed it off; no sign, coefficient or index difference was found (OI-33 closed). See NUM-020.)*
 - Companion definitions:
   - SSB with relativistic masses: $\mu_i^* = \mu_i\left(1 + \frac{v_i^2}{2c^2} - \frac{1}{2c^2}\sum_{j\neq i}\frac{\mu_j}{r_{ij}}\right)$, $\mathbf r_{\rm SSB} = \sum\mu_i^*\mathbf r_i/\sum\mu_i^*$ (DE440 Eqs. 1–2 **[V]**).
   - DE440 adds 30 KBOs plus a 36-point-mass ring at 44 au, and LT for all bodies except the Sun **[V]**. *(Clarified 2026-10-14, red-team review, Journal #9: this means the LT acceleration from solar angular momentum, applied to every non-Sun body; it is not "LT of all bodies".)*
@@ -293,7 +293,7 @@ $$
   - EIH needs first the per-body potentials $\Phi_i = \sum_k \mu_k/r_{ik}$, which is O(N²) and reuses the $1/r$ values, and then the pair terms, so it stays **O(N²)**. Estimate: ~3–5× Newtonian flops per pair (UNVERIFIED).
 - **Tiering is the single biggest lever** **[V, Subbotin; DE430 "iterative" asteroids]**. EPM-style: 16 "major" bodies with full EIH. The asteroids feel Newtonian forces from the majors and do not interact with each other, which costs <1 cm (planets) / <1 mm (Moon) over 40 yr **[V]**.
   - For 343 asteroids this is 16×343 + 120 ≈ 5.6×10³ interactions instead of ~6.4×10⁴ *(derived here)*.
-  - Make tiers a first-class model setting: `Major` = EIH, `Minor` = Newtonian from majors only, `Ring` = fixed-mass points.
+  - Make tiers a first-class model setting: `Major` = EIH, `Minor` = Newtonian from majors only, `Ring` = fixed-mass points. *(Superseded 2026-10-21, [Journal #12](12-maintainer-signoffs.md): the maintainer ruled that EIH applies to all bodies as in DE440, the Moon, asteroids and KBOs included (NUM-020 D1). See NUM-009 and PHY-014.)*
 - **Integrator overhead.**
   - At N ≈ 10 the force is only ~45 pairs, so IAS15's polynomial bookkeeping (O(7N) per iteration) and the step control are comparable to the force cost.
   - ABM PECE needs about 2 evals per step against ~15 for IAS15. Even with a smaller step (1/16 d vs ~1 d for IAS15 at Mercury's 88 d period, UNVERIFIED typical), ABM is cost-competitive *(derived here)*.
@@ -323,7 +323,7 @@ $$
 | NUM-006 | All arithmetic generic over a `Real` trait with backends f64, double-double (FMA-based TwoProd) and optional f128. No x87 80-bit dependency. | Compile-time monomorphisation. f64 path benchmark unchanged |
 | NUM-007 | "Ephemeris precision mode" = Subbotin mixed scheme: state + integrator sums + coefficients in DD, forces in f64. | Mercury 40-yr round-off ≤ 1 cm vs full-DD run |
 | NUM-008 | Integrate the Moon geocentrically (Earth–Moon vector as state), and use the Taylor-expanded differential third-body acceleration (≥4 terms). | Lunar round-off ≤ 2 mm / 40 yr in NUM-007 mode |
-| NUM-009 | Body tiering: Major (EIH, mutual), Minor (Newtonian from Majors only), Ring (fixed point masses). | DE440 asteroid set (343) cost < 2× the 16-body cost |
+| NUM-009 | Body tiering: Major (EIH, mutual), Minor (Newtonian from Majors only), Ring (fixed point masses). *(Superseded 2026-10-21, [Journal #12](12-maintainer-signoffs.md): EIH for all bodies; NUM-009 is authoritative.)* | DE440 asteroid set (343) cost < 2× the 16-body cost |
 | NUM-010 | Dense output (continuous interpolant) at integrator order, plus event location for $\mathbf r\cdot\mathbf v = 0$ (heliocentric perihelion) to ≤10⁻⁶ s. | Kepler orbit: perihelion times to round-off |
 | NUM-011 | Precession estimator "Park2017": mean-orbit frame (configurable pole; default RA 280.9876°, Dec 61.4481°, ICRF), projected perihelion angles, LSQ fit of $B + \dot\varpi t + Qt^2 + \sum$ sinusoids with user or FFT-derived frequencies. Report formal and jack-knife σ. | Reproduce 575.31 ± 0.01″/cy for a DE440-class model over 1000–3000 CE |
 | NUM-012 | Alternative estimators: osculating ϖ, LRL-vector angle, per-orbit mean ellipse. Every estimator output labels its definition, frame and span. | Cross-estimator spread reported in docs |

@@ -21,4 +21,4 @@
 - **Park2017 estimator on Horizons DE441:** 575.30916″/cy, against 575.3100 ± 0.0015 (DE441 vs Park's fitted J2; the expected DE440-J2 offset is −0.0007).
 
 ### Human sign-offs outstanding
-NUM-020 (EIH transcription vs the typeset DE430/DE440 PDF; holds WP22) · OI-35 (LT form) · OI-75 (μ* vs Park 2021 Eq. 2) · OI-38 (Park 2017 protocol text) · #10 and #12 (issue forms and labels; evidence-gated merges).
+NUM-020 (EIH transcription vs the typeset DE430/DE440 PDF; holds WP22) · OI-35 (LT form) · OI-75 (μ* vs Park 2021 Eq. 2) · OI-38 (Park 2017 protocol text) · #10 and #12 (issue forms and labels; evidence-gated merges). *(Superseded 2026-10-21, [Journal #12](12-maintainer-signoffs.md): NUM-020, OI-35, OI-75 and OI-38 were signed off; #10 and #12 are deferred until M4 lands.)*
