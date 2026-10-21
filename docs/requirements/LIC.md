@@ -128,6 +128,17 @@ notes: >-
   ERFA test-vector reproduction). SOFA Fortran remains usable as an oracle
   only. The SOFA licence (SPDX SOFA) requires derived works to be renamed.
   Per-file notice added 2026-10-14 (red-team L8, Journal #9).
+  BUILD EVIDENCE (sync 2026-10-20; WP8, WP9 on m3-newtonian-nbody): the ports
+  in crates/ferroastro-erfa come from the ERFA 2.0.1 release tarball (sha256
+  45111f0a…8c20e4); only ERFA files were opened, no SOFA file was opened or
+  downloaded. Names drop ERFA's era prefix and never use SOFA's iau prefix.
+  Ported routines: cal2jd, jd2cal, taitt, tttai, dtdb, tttdb, tdbtt, tdbtcb,
+  tcbtdb, tttcg, tcgtt (WP8); obl06, p06e, pfw06, fw2m, pmat06, ecm06, eqec06,
+  eceq06 and helpers ir, rx, rz, rxr, tr, rxp, trxp, s2c, c2s, anp, anpm
+  (WP9). Every ported file ends with the ERFA notice, conditions and
+  disclaimer verbatim; NOTICE reproduces them; LICENSES/BSD-3-Clause.txt is
+  present; reuse lint passes (crates/ferroastro-erfa/tests/dep009_attribution.rs). The full list and test evidence are in DEP-009's
+  notes.
 ```
 
 ### LIC-005 — GPL oracle containers never contain a FerroAstro build

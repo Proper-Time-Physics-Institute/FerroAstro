@@ -117,6 +117,20 @@ notes: >-
   and OpenFastTrace, revisited at M2. Their fit is UNVERIFIED. Test citation
   syntax is `/// Verifies: <ID>` (Rust) and `# Verifies: <ID>` (Python);
   Journal #5's TL;DR form `// REQ: <ID>` is superseded.
+  ADOPTED WITH CONDITIONS 2026-10-20 (judge ruling on PR #19; ADR-0010):
+  allow trace.py to accept named CI-gate evidence in place of a citing test
+  for requirements that a CI gate enforces. Evidence (WP6 requirement gap
+  table and every progress review since, m3-newtonian-nbody): STD-001…011,
+  TST-001, DEP-001/002/003 and ORG-008 have no citing test because fmt,
+  clippy, deny, MSRV and DCO jobs enforce them; DEP-006 is enforced by the
+  wasm32 job and is uncited too (progress review after WP18). Conditions:
+  (1) gate evidence counts only for the tool-verdict requirements STD-001…011,
+  TST-001, DEP-001/002/003/006 and ORG-008, and never for PHY/NUM/REF/API;
+  (2) a human-owned `verified_by_gate: workflow/job[/step]` field, and
+  trace.py --check fails if the target is missing; (3) crit:high counts only
+  once the gate is a required check pinned to the default branch (#12),
+  shown as "gate (unpinned)" until then and not counted toward moving past
+  draft; (4) TRACE.md lists gate evidence separately from test evidence.
 ```
 
 ### ORG-005 — MADR 4.0.0 decision records
@@ -225,6 +239,7 @@ source: >-
   docs/strategy/journal/05-organization-standards.md ORG-008 (original).
 parent: null
 related: [ORG-010, ORG-009, STD-011]
+verified_by_gate: "ci/dco/Check sign-off trailers"
 notes: >-
   REVISED by Journal #6. The original Journal #5 text required a signed CLA
   checked by cla.yml; the CLA is deferred to ORG-010. Consequences for Journal

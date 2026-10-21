@@ -157,12 +157,25 @@ statement: >-
   switch. There SHALL be no dependency on x87 80-bit arithmetic.
 acceptance: >-
   The crate compiles with each backend by monomorphisation, and the f64-path
-  benchmark is unchanged relative to a non-generic f64 baseline.
+  benchmark is unchanged relative to a non-generic f64 baseline. "Unchanged"
+  is measured as the ratio of medians (candidate / baseline) of alternated
+  Criterion runs and must lie within ±2 % (PROVISIONAL band, vector
+  NUM006-F64-BENCH-RATIO).
 source: >-
   docs/strategy/journal/04-numerical-methods.md §2 and NUM-006.
 parent: null
 related: [DEP-007, DEP-012, API-001]
 notes: >-
+  Benchmark band added 2026-10-20 (build-evidence sync; it quantifies
+  "unchanged" and loosens nothing). Evidence (WP7, m3-newtonian-nbody):
+  tools/bench_num006.py runs a baseline and a candidate commit in detached
+  worktrees, alternating Criterion ias15_sun_mercury/propagate_1_julian_year
+  for 5 rounds, and compares medians of medians with the vector. Measured
+  against the non-generic baseline c5fd5a0: 0.9922, 0.9846 and 1.0048 for
+  three WP7 candidates. The machine is shared (load ~13 on 32 cores; a single
+  round showed a 6.5 % spread), so the 2 % band is PROVISIONAL and NEEDS HUMAN
+  REVIEW (WP7 item 2). Monomorphisation: crates/ferroastro-real/tests/num006_backends.rs (f64 and double-double on stable; f128 matches DD to
+  ≤ 8.2e-33 on nightly only, compiled out on stable).
   AUTHORITATIVE over DEP-007 for the numerical contract (backends, FMA TwoProd,
   zero-cost f64, no x87). DEP-007 remains the dependency-side statement of
   which components must be generic and that f128 is nightly-only behind a
@@ -207,16 +220,35 @@ verification: test
 statement: >-
   The Moon SHALL be integrated geocentrically (the Earth–Moon vector is a
   state variable), using the Taylor-expanded differential third-body
-  acceleration with at least 4 terms.
+  acceleration with at least 4 terms, and with enough terms that the series
+  truncation stays below f64 round-off of the tidal term in the expansion
+  actually used.
 acceptance: >-
-  Lunar round-off ≤ 2 mm over 40 yr in NUM-007 mode.
+  Lunar round-off ≤ 2 mm over 40 yr in NUM-007 mode. In FerroAstro's
+  q-formulation, F(q) = (1 + q)^(−3/2) − 1 = Σ c_k q^k with
+  q = ρ·(ρ − 2d)/d², the default series (12 terms) agrees with a
+  double-double direct difference to ≤ 4 ε of the tidal term in every tested
+  geometry (vector NBODY-MOON-TAYLOR-VS-DD-ULPS).
 source: >-
   docs/strategy/journal/04-numerical-methods.md §2 item 2 and NUM-008.
 parent: NUM-007
 related: [PHY-014]
 notes: >-
   |r_M − r_E| is ~400× smaller than barycentric vectors [V]; DE, EPM and INPOP
-  all integrate the Moon geocentrically.
+  all integrate the Moon geocentrically. ACCEPTANCE TIGHTENED 2026-10-20
+  (build-evidence sync), because 4 terms are not enough in the q-formulation.
+  Evidence (WP12, m3-newtonian-nbody, crates/ferroastro-forces/src/nbody/tests.rs::geocentric_moon_expansion_matches_double_double_direct_difference):
+  12 terms reach 0.568 ε of the tidal term (worst of 4 geometries) against
+  the 4 ε bound, while 4 terms leave up to 6.4e6 ε for a Sun-aligned geometry
+  (q = −5.1e-3; 0.45 ε at q = 1.5e-4). That 4 terms suffice for the 2 mm /
+  40 yr target in the expansion Subbotin et al. 2023 use is not contradicted
+  (periodic errors of that size stay sub-mm) but needs a source check (WP12
+  deviation 6). FerroAstro enforces a minimum of 4 terms and switches to the
+  closed form above |q| = 0.05, which the planets never reach. Geocentric vs
+  barycentric Moon (crates/ferroastro-forces/tests/nbody_moon_formulations.rs,
+  10 yr): the two formulations agree to 7.2e-13 km in double-double, and the
+  geocentric form reduces f64 round-off of Moon − Earth by a factor of 148.9.
+  The 2 mm / 40 yr acceptance needs NUM-007 mode, which is not built yet.
 ```
 
 ### NUM-009 — Body tiering
@@ -233,7 +265,9 @@ statement: >-
   and do not interact with each other; Ring bodies are fixed point masses.
 acceptance: >-
   With the DE440 asteroid set (343 Minor bodies), the run costs < 2× the
-  16-Major-body run.
+  16-Major-body run. The bound applies when the Major bodies interact under
+  EIH, as the statement requires; with Newtonian Majors the cost ratio is
+  measured and reported only.
 source: >-
   docs/strategy/journal/04-numerical-methods.md §5 and NUM-009; Subbotin et al.
   2023; Folkner et al. 2014, IPN PR 42-196.
@@ -243,6 +277,33 @@ notes: >-
   Tiering costs < 1 cm (planets) / < 1 mm (Moon) over 40 yr [V]. Interaction
   count 16×343 + 120 ≈ 5.6×10³ versus ~6.4×10⁴ (derived here). EIH cost per pair
   ~3–5× Newtonian is UNVERIFIED.
+  BUILD EVIDENCE (sync 2026-10-20; WP11, WP12, WP15 on m3-newtonian-nbody).
+  (1) Scope of the 2× bound: the EIH-only sentence above makes explicit what
+  the statement already implies; it is recorded with its evidence because it
+  stops a Newtonian-Major measurement from counting as a failure. Measured
+  with Newtonian Majors (crates/ferroastro-forces/tests/nightly_num009_tier_cost.rs::nightly_num009_tiered_minor_bodies_cost, 10 yr
+  from JDEPOC, median of 5): tiered/16-Major = 28.2 (reviewer re-run 28.5),
+  as predicted from the pair count (≈ 46× for the forces), while tiered /
+  all-mutual = 0.117 (< 1, asserted). The vector NUM009-TIER-COST-RATIO
+  carries blocked_by = "OI-42" and is non-gating until EIH Majors exist
+  (WP19; OI-42 holds the EIH cost estimate). (2) "16 Majors" is read as the
+  11 DE440 major bodies (Sun, Mercury, Venus, Earth, Moon, Mars–Pluto system
+  barycentres) plus the 5 header asteroids with the largest GMs (1 Ceres,
+  4 Vesta, 2 Pallas, 10 Hygiea, 511 Davida), leaving 338 Minor bodies; the
+  acceptance's "343 Minor" would count those 5 twice (WP15 deviation 6;
+  Subbotin et al. 2023 should be checked for their 16, OI-78). (3) header.440
+  has 409 MA entries: 343 numbered asteroids (MAnnnn, nnnn < 8000, NAIF
+  2 000 000 + nnnn) and 66 others, MA8001–MA8030 (30 KBO masses, 3 of them
+  identified) and MA8201–MA8236 (36 equal ring masses) (WP11, WP15;
+  crates/ferroastro-system/tests/ref002_header_initial_conditions.rs). (4)
+  Minor bodies act on the Majors: MinorFromMajors applies the reaction of
+  each Minor body on the Majors by default (MinorReaction::On,
+  configurable), because N-AST (PHY-019) is the asteroids' pull on Mercury;
+  that DE440 does the same was not checked against the paper (WP11 review,
+  WP12 deviation 2; OI-78). (5) Ring bodies are frozen (zero acceleration),
+  so the moving bodies' momentum is not conserved in their presence (WP12
+  deviation 7). Tests: crates/ferroastro-forces/src/nbody/tests.rs::tiers_follow_num009; crates/ferroastro-propagate/tests/scenario_runs.rs::small_body_gms_equal_their_header_values_bitwise and
+  small_bodies_carry_their_gm_and_conserve_total_momentum.
 ```
 
 ### NUM-010 — Dense output and perihelion event location
@@ -258,12 +319,31 @@ statement: >-
   integrator order) and event location for r·v = 0 (heliocentric perihelion).
 acceptance: >-
   Perihelion events are located to ≤ 10⁻⁶ s; on a Kepler orbit the perihelion
-  times match the analytic values to round-off.
+  times match the analytic values to round-off. The 10⁻⁶ s bound is the
+  location error (the located time against the integrated trajectory's own
+  r·v root), not the accumulated drift from the analytic times. "To
+  round-off" is backend-dependent: it is asserted in double-double, where
+  round-off is negligible, against the same 10⁻⁶ s; the f64 drift from the
+  analytic times is reported.
 source: >-
   docs/strategy/journal/04-numerical-methods.md §3.2 and NUM-010.
 parent: null
 related: [NUM-011]
-notes: null
+notes: >-
+  Reading recorded 2026-10-20 (build-evidence sync; WP7 item 10). It states
+  which error each bound applies to and loosens no number. Evidence on
+  m3-newtonian-nbody, crates/ferroastro-integrators/tests/num010_dense_events.rs (Keplerian Mercury-like orbit, 100 orbits): f64
+  dense-output location error 1.69e-12 s (NUM010-EVENT-LOCATION, 1e-6 s);
+  double-double event times vs analytic P/2 + kP 1.16e-15 s
+  (NUM010-KEPLER-PERIHELION-TIMES, 1e-6 s); f64 vs analytic 2.18e-11 s,
+  reported. N-body mode (WP13, crates/ferroastro-propagate/tests/scenario_runs.rs::nbody_perihelion_events_match_analytic_kepler_times,
+  Sun + Mercury, 100 yr, 416 passages): 1.287e-5 s against analytic times
+  (NUM010-NBODY-PERIHELION-VS-KEPLER, 1e-4 s PROVISIONAL, which covers the
+  accumulated phase round-off over 415 orbits) and a location residual of
+  2.38e-7 s (NUM010-NBODY-EVENT-LOCATION, 1e-6 s; this metric sits on the f64
+  recomputation floor of r·v, the true bracket is ~1e-11 s). Event location
+  is Illinois regula falsi on the last step's collocation polynomial
+  (Ias15::locate_event); dense output is opt-in (Ias15Config::dense_output).
 ```
 
 ### NUM-011 — Park2017 precession estimator (canonical observable)
@@ -299,6 +379,27 @@ notes: >-
   (NUM-012). The slope-bias constant (~A·P/T² for an unmodelled sinusoid) is
   UNVERIFIED. Achievable precision (~10⁻³ ″/cy total) is a derived, UNVERIFIED
   estimate.
+  BUILD EVIDENCE AND OPEN DECISIONS (sync 2026-10-20; WP5, WP6, WP14 on
+  m3-newtonian-nbody). The acceptance is met on DE441 via JPL Horizons
+  (ferroastro-precession park2017; data_park17_rate_from_horizons_de441_mean_orbit):
+  575.309163 ″/cy, formal σ 0.00083, jack-knife σ 0.00153, against
+  575.31 ± 0.01; an independent Python estimator in the progress review after
+  WP5 got 575.309174. Two points are recorded as an open decision (OI-74)
+  rather than settled, because the evidence does not settle them. (a) Scope
+  of "canonical for every absolute rate": WP5 delivered the estimator but not
+  that clause. The single-body rungs still report the initial-orbit-plane
+  passage estimator (WP4), and the WP6 cross-estimator table shows passages
+  and Park2017 agree to ≤ 2e-8 ″/cy on those rungs, so the gap is one of
+  labelling, not of value; the N-body differential runs (WP14 onward) do use
+  Park2017. Whether to make every rung report Park2017, or restrict
+  "canonical" to N-body and absolute rates, is for a maintainer. (b)
+  Heliocentric versus barycentric passages: FerroAstro uses heliocentric
+  passages (Mercury − Sun; Horizons centre 500@10), as PHY-016 specifies, but
+  Park 2017 does not say which it used (WP5 "Centre"; kept for humans in
+  every progress review since). Also unresolved and reported, not asserted:
+  Park17 Table 2 amplitudes are not reproduced, because once-per-orbit
+  sampling aliases k·n_M + j·n_P pairs; the rate is orthogonal to them (11
+  FFT-derived terms give the same ϖ̇ to 1e-5 ″/cy) (WP5).
 ```
 
 ### NUM-012 — Alternative estimators with labelled definitions
@@ -343,11 +444,14 @@ acceptance: >-
   Split by rung type (maintainer decision 2026-10-14, Journal #8):
   (a) isolated single-body terms (Sun + Mercury only: GR 42.98 ″/cy, J₂
   0.0286 ″/cy at J₂ = 2.25×10⁻⁷, LT −0.0020 ″/cy) agree with the analytic
-  formulas within 10⁻⁴ ″/cy; (b) N-body differential contributions, using the
-  PROVISIONAL protocol Sun + Mercury + planet X minus Sun + Mercury (Newtonian)
-  as in PHY-012, agree with the Park 2017 Table 3 values within ±0.005 ″/cy,
-  with interaction cross terms reported separately. Part (b) is BLOCKED until
-  OI-38 confirms Park 2017's switch-on/switch-off protocol.
+  formulas within 10⁻⁴ ″/cy; (b) N-body differential contributions follow
+  PHY-012's PROVISIONAL "report both" protocol (ADR-0014): the harness
+  computes P-remove (full system minus full system without X) and P-add
+  (Sun + Mercury + X minus Sun + Mercury), Newtonian, from identical initial
+  conditions; the P-remove values agree with the Park 2017 Table 3 values
+  within ±0.005 ″/cy (asserted), the P-add values are reported, and
+  interaction cross terms are reported separately with their sign
+  convention labelled.
 source: >-
   docs/strategy/journal/04-numerical-methods.md §3.2 and NUM-013.
 parent: null
@@ -361,9 +465,31 @@ notes: >-
   are ≲ 10⁻² ″/cy, so 10⁻⁴ is achievable only when the comparison isolates the
   single-body term (e.g. Sun + Mercury only). The split acceptance above is the
   provisional resolution; OI-70 stays open until a maintainer confirms it. The
-  comparison basis SHALL be documented. Park's switch-on/off protocol is
-  UNVERIFIED (OI-38); without a fixed protocol part (b) is ill-posed, because
-  cross terms (up to 0.0411 ″/cy) exceed the tolerance (PHY-012 notes).
+  comparison basis SHALL be documented. Park's switch-on/off protocol is not
+  yet confirmed against the Park 2017 text (OI-38 stays open); without a
+  fixed protocol part (b) is ill-posed, because cross terms (up to
+  0.0411 ″/cy) exceed the tolerance (PHY-012 notes).
+  PART (b) PROTOCOL, 2026-10-20 (maintainer decision; ADR-0014): part (b) is
+  no longer blocked on OI-38. P-remove is asserted and P-add reported; this
+  was chosen after the WP14/WP17 results were known (P-add, the
+  pre-registered protocol, missed 4 of 7 rows by 0.019–0.043 ″/cy; P-remove
+  passes all 7 within 0.0007 ″/cy; four tools agree on P-add Venus to
+  2e-8 ″/cy). The assertion is PROVISIONAL and reverts to P-add, with the 4
+  misses treated as physics discrepancies, if a maintainer reading of the
+  Park 2017 text says P-add. Full evidence and values are in the PHY-012
+  notes. Cross-term sign: the harness's cross term is the inclusion–exclusion
+  second difference; Park17's pair rows are the joint removal minus the two
+  single removals, i.e. its negative, and match P-remove's to ≤ 1.2e-4 ″/cy
+  in all six pairs (progress review after WP18, R1, post hoc). Reports SHALL
+  label which convention a cross-term column uses. BUILD EVIDENCE for the
+  harness (m3-newtonian-nbody): ferroastro-diffrun (WP14) checks identical
+  per-body IC records and one shared IC hash before any run (FA-E1401 on a
+  one-ulp tamper), runs long legs in checkpointed segments (CI-010), and
+  combines rates by exact signed sums (crates/ferroastro-diffrun/tests/harness.rs). Part (a): crates/ferroastro-ladder/tests/num013_isolation.rs (WP6; GR
+  −6.6e-6, J2 +2.7e-9, LT −6.3e-9 ″/cy at J2 = 2.25e-7, equatorial) and the
+  scenario path crates/ferroastro-diffrun/tests/num013a_scenario.rs (WP14;
+  DE440 J2, real geometry; GR −1.233e-5, J2 +3.6e-8, LT −2.7e-9 ″/cy), all
+  within 10⁻⁴.
 ```
 
 ### NUM-014 — Frame utilities, inertial default
@@ -381,15 +507,46 @@ statement: >-
 acceptance: >-
   The ecliptic-of-date result minus the inertial result ≈ p_A, with both
   measured in the same reference plane. The default output frame is inertial.
+  The reference plane is the fixed IAU 2006 mean ecliptic of J2000: the
+  inertial longitude is measured from that plane's fixed x-axis, and the
+  ecliptic-of-date longitude from the projection of the IAU 2006 equinox of
+  date onto it, after rotating the state into the ecliptic of date. The
+  fitted rate difference agrees with the linear-fit slope of p_A(t) from an
+  ERFA-derived p06e at the same epochs within 1e-3 ″/cy, and with the slope
+  of the exact projected-equinox longitude predicted from p06e's π_A, Π_A
+  and p_A within 1e-5 ″/cy.
 source: >-
   docs/strategy/journal/04-numerical-methods.md §3.1 and NUM-014.
 parent: null
 related: [PHY-015, PHY-017]
 notes: >-
-  BLOCKED on p_A = 5028.796195 ″/cy (IAU 2006, Cap03), UNVERIFIED. No numeric
-  tolerance was given in the journal. Journal #1 warns that 575.31 (Mercury
-  mean-orbit plane) + p_A does not reproduce an equinox-referred value, so this
-  check must not mix planes.
+  No numeric tolerance was given in the journal. Journal #1 warns that 575.31
+  (Mercury mean-orbit plane) + p_A does not reproduce an equinox-referred
+  value, so this check must not mix planes. PLANE AND TOLERANCES named
+  2026-10-20 (build-evidence sync; WP9 items 1 and 7). The earlier text left
+  both open, so this adds precision and loosens nothing. Evidence on
+  m3-newtonian-nbody: crates/ferroastro-ladder/tests/num014_ecliptic_of_date.rs
+  (offline, SW92 ICs at J2000, 831 passages: difference − p_A slope
+  +5.68e-4, difference − exact geometry +8.6e-7 ″/cy; data tier, header.440
+  ICs at JDEPOC: +4.431e-4 and +8.42e-7), vectors NUM014-RATE-DIFF-VS-PA
+  (1e-3, the WP9 brief's number) and NUM014-RATE-DIFF-VS-GEOMETRY (1e-5,
+  ERFA's documented 1 µas agreement of the P03 parameterisations). The 1e-3
+  check passes with only ~2× margin, because the moving ecliptic adds a
+  second-order projection term ≈ (π_A²/4)·sin 2(Π_A + p_A); the 1e-5
+  geometry check carries the discriminating power (a +1e-4 ″/cy mutant of
+  the p_A coefficient fails it but passes the 1e-3 check). The expected
+  values were computed with pyerfa before the Rust run (non-blind; WP9 item
+  2). With this plane the difference depends on Mercury's orbit only through
+  the passage epochs, so it tests frames, not dynamics (WP9 review). Measured
+  in the moving ecliptic itself (dog-leg) the difference would be off by
+  ~2 ″/cy. p_A SOURCE: the check uses ferroastro-erfa's port of ERFA p06e,
+  verified against ERFA's t_erfa_c reference values and pyerfa 2.0.1.5
+  goldens (bitwise in f64), never the OI-02 snippet value, so OI-02 no
+  longer blocks this requirement; it still blocks PHY-017. Not covered:
+  velocities rotated into the ecliptic of date omit the frame-rotation term
+  (≈ 1e-5 relative; this check uses positions only). The JPL/NAIF
+  EclipticJ2000 frame (ECLIPJ2000, no frame bias) is 0.041″ (pole) from the
+  IAU 2006 J2000 ecliptic used here and must not be mixed with it.
 ```
 
 ### NUM-015 — Analytic test oracles
@@ -428,6 +585,19 @@ notes: >-
   ~ε√N/e ≈ 1.7×10⁻¹³ rad. Mercury is ~3.4° from the solar equator, so the
   planar J₂ formula is off by ~0.5% (0.02846 vs 0.02860 ″/cy) unless the test
   geometry is strictly equatorial.
+  μ IN THE ORACLES (sync 2026-10-20; WP11, WP13): the per-orbit oracles use
+  the μ of the integrated dynamics (GM☉ for the test particle); the mean
+  motion that converts them to ″/cy is a separate choice, currently
+  n = √((GM☉ + GM☿)/a³) in ferroastro-analytic and ferroastro-ladder
+  (RATE_CONVENTION, WP13 F5) but GM☉ in the WP14 scenario harness check. The
+  maintainer decided on 2026-10-21 (OI-77 closed) that n = √((GM☉ + GM☿)/a³)
+  is used for every ″/cy conversion (details in PHY-004 notes). The
+  per-orbit comparison this acceptance makes does not depend on n. OI-35
+  (R3b): evidence available, pending human sign-off (PHY-011 notes); R3b
+  matches Park 2017 Eq. 2 to 1.25e-6 relative in equatorial geometry
+  (passing only through the 1e-7 ″/cy floor; 2.9e-17 rad/orbit absolute,
+  26× the measured estimator noise floor) and 7.7e-8 in the real geometry
+  (WP4).
 ```
 
 ### NUM-016 — SR rung documents its Hamiltonian
@@ -505,7 +675,22 @@ source: >-
   2021 Eqs. 1–2.
 parent: NUM-017
 related: [NUM-007, PHY-014]
-notes: null
+notes: >-
+  μ* TRANSCRIPTION (sync 2026-10-20; WP11, WP15 on m3-newtonian-nbody): the
+  relativistic barycentre is implemented in ferroastro-system as
+  μᵢ* = μᵢ [1 + vᵢ²/(2c²) − (1/(2c²)) Σⱼ≠ᵢ μⱼ/rᵢⱼ], with Σ μᵢ* rᵢ = 0 and
+  Σ μᵢ* vᵢ = 0 (the time derivative of μ* neglected in the velocity
+  condition). WP11 wrote it from memory; the WP15 builder agent then compared
+  it with the printed Eq. 2 of Park et al. 2021 (PDF sha256 96c3945d…e8f0ee0)
+  and found it equal. That is one agent reading; a human second reading
+  against Park 2021 Eq. 2 is still needed before sign-off (OI-75), and the
+  equation numbers in this requirement's source ("Eqs. 1–2") should be
+  confirmed in the same reading. Tests pin the implementation to the
+  transcription, not the transcription to the paper:
+  crates/ferroastro-system/tests/ref002_header_initial_conditions.rs
+  (μᵢ*/μᵢ − 1 = (vᵢ² − Uᵢ)/(2c²) to 8 ulp per body; Σμ*r 7.5e-12 km after two
+  rebarycentring passes). The SSB-drift and iteration acceptances need EIH
+  (WP19) and DD ephemeris mode (NUM-007), which are not built yet.
 ```
 
 ### NUM-019 — Solar J₂ reaction and Lense–Thirring for all bodies
@@ -542,6 +727,23 @@ notes: >-
   Journal #4's original "~7% too
   high" wording was corrected on 2026-10-14. Confirmation against the Park 2021
   text is pending (OI-50).
+  BUILD EVIDENCE (sync 2026-10-20; WP9, WP12, WP13 on m3-newtonian-nbody).
+  Pole: the default solar pole is the IAU WGCCRE 2015 pole (RA 286.13°,
+  Dec 63.87°, from NAIF pck00011.tpc; PHY-010 notes) and is configurable;
+  that DE440's J2 term uses this pole is UNVERIFIED (WP12 deviation 4).
+  Reaction: SolarJ2WithReaction applies a_Sun = −Σ (μᵢ/μ_Sun) aᵢ
+  (crates/ferroastro-forces/src/nbody/tests.rs::solar_j2_reaction_balances_momentum, |Σμa| = 0.100 ε Σμ|a| against 8);
+  over 100 yr with Sun + 8 planets + Moon and J2 on, |ΔP|/Σμ|v| = 5.2e-16
+  = 0.010 ε√N against 64 ε√N (WP12 check 1a). The form follows this
+  requirement's citation and the momentum argument; Eq. 29's number and
+  typography were not re-read in the paper (WP12 deviation 5). Bodies acted
+  on: J2 acts on the Major bodies other than the Sun; whether DE440 applies
+  solar J2 to the asteroids (Minor bodies) was not checked (WP12 deviation 3;
+  OI-76). LT is implemented for the test-particle rungs only; N-body
+  scenarios refuse lense_thirring with FA-E1201 until it is applied to every
+  non-Sun body (WP13), so the LT half of this statement is not yet met.
+  Single-body J2/LT vs Park17 Table 3 in the real geometry: 0.0284524 and
+  −0.0020148 ″/cy (WP4).
 ```
 
 ### NUM-020 — Second independent check of the EIH transcription
@@ -613,6 +815,17 @@ parent: null
 related: [NUM-021]
 notes: >-
   The within-step threading crossover and heyoka's batch mode are UNVERIFIED.
+  BUILD STATUS (sync 2026-10-20; WP13 on m3-newtonian-nbody): run_batch in
+  ferroastro-propagate (rayon behind the parallel feature) is implemented, and
+  crates/ferroastro-propagate/tests/scenario_runs.rs::same_scenario_twice_and_batch_thread_counts_are_bitwise asserts that a
+  batch of 8 runs gives bitwise-identical results with 1 and 8 threads and
+  equals the single runs. The linear-scaling acceptance is NOT asserted and
+  NOT met yet: the build machine is shared with other users' jobs, so a
+  scaling measurement there is not evidence, and CI-008 confines speed
+  claims to the one recorded machine under controlled load. The single
+  measurement (4.57 s on 1 thread vs 1.04 s on 8, speed-up 4.38 against an
+  ideal of 4.5 for that mix of run lengths) is reported only (WP13 deviation
+  9). The acceptance is unchanged; SIMD batch lanes are not built.
 ```
 
 ### NUM-023 — Round-off diagnostics

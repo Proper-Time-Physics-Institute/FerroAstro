@@ -9,14 +9,17 @@
 
 - Requirements: **121** (draft 121)
 - `verification: test` requirements cited by at least one test: **61 / 93**
-- Citing tests: **557**; vectors referencing a requirement: **600**
+- Citing tests: **565**; vectors referencing a requirement: **600**
+- Gate evidence (ADR-0010): **12** requirements name a gate; **6** counted, **6** `gate (unpinned)`; `verification: test` requirements covered by a counted gate alone: **6**
+
+## Test evidence
 
 | ID | Status | Crit. | Verification | Tests | Vectors |
 |---|---|---|---|---|---|
 | [ORG-001](ORG.md) | draft | low | inspection | — | — |
 | [ORG-002](ORG.md) | draft | high | test | — | — |
-| [ORG-003](ORG.md) | draft | medium | test | `tools/tests/test_trace.py::test_parses_real_catalogue`<br>`tools/tests/test_trace.py::test_rejects_bad_enum`<br>`tools/tests/test_trace.py::test_rejects_duplicate_and_malformed` | — |
-| [ORG-004](ORG.md) | draft | medium | test | `tools/tests/test_trace.py::test_approved_requirement_needs_a_citing_test`<br>`tools/tests/test_trace.py::test_render_is_deterministic`<br>`tools/tests/test_trace.py::test_unknown_cited_id_fails` | — |
+| [ORG-003](ORG.md) | draft | medium | test | `tools/tests/test_trace.py::test_gate_outside_scope_is_rejected`<br>`tools/tests/test_trace.py::test_malformed_gate_is_rejected`<br>`tools/tests/test_trace.py::test_parses_real_catalogue`<br>`tools/tests/test_trace.py::test_rejects_bad_enum`<br>`tools/tests/test_trace.py::test_rejects_duplicate_and_malformed` | — |
+| [ORG-004](ORG.md) | draft | medium | test | `tools/tests/test_trace.py::test_approved_requirement_needs_a_citing_test`<br>`tools/tests/test_trace.py::test_gate_evidence_is_a_separate_section`<br>`tools/tests/test_trace.py::test_gate_outside_scope_is_rejected`<br>`tools/tests/test_trace.py::test_high_criticality_gate_is_unpinned_and_not_counted`<br>`tools/tests/test_trace.py::test_malformed_gate_is_rejected`<br>`tools/tests/test_trace.py::test_medium_criticality_gate_counts`<br>`tools/tests/test_trace.py::test_missing_workflow_job_or_step_is_rejected`<br>`tools/tests/test_trace.py::test_render_is_deterministic`<br>`tools/tests/test_trace.py::test_unknown_cited_id_fails` | — |
 | [ORG-005](ORG.md) | draft | low | inspection | — | — |
 | [ORG-006](ORG.md) | draft | low | inspection | — | — |
 | [ORG-007](ORG.md) | draft | low | inspection | — | — |
@@ -134,3 +137,25 @@
 | [LIC-003](LIC.md) | draft | high | inspection | `tools/tests/test_fetch_jpl.py::test_checksum_mismatch_is_refused`<br>`tools/tests/test_fetch_jpl.py::test_fetch_verifies_pin_and_writes_sidecar`<br>`tools/tests/test_fetch_jpl.py::test_no_jpl_sofa_or_novas_file_is_tracked`<br>`tools/tests/test_fetch_jpl.py::test_non_https_and_bad_pins_are_rejected` | — |
 | [LIC-004](LIC.md) | draft | high | inspection | `crates/ferroastro-erfa/tests/dep009_attribution.rs::every_ported_file_carries_spdx_copyright_source_and_licence`<br>`crates/ferroastro-erfa/tests/dep009_attribution.rs::notice_carries_the_erfa_bsd3_notice`<br>`crates/ferroastro-erfa/tests/dep009_t_erfa_c.rs::t_erfa_c_reference_values_in_double_double`<br>`crates/ferroastro-erfa/tests/dep009_t_erfa_c.rs::t_erfa_c_reference_values_in_f64`<br>`crates/ferroastro-erfa/tests/dep009_t_erfa_c_precession.rs::iau2006_precession_and_ecliptic_match_t_erfa_c_in_f64_and_dd`<br>`crates/ferroastro-erfa/tests/dep009_t_erfa_c_precession.rs::vector_and_matrix_helpers_match_t_erfa_c_in_f64_and_dd` | `ERFA-T-ANP-VALUE`<br>`ERFA-T-ANPM-VALUE`<br>`ERFA-T-C2S-PHI`<br>`ERFA-T-C2S-THETA`<br>`ERFA-T-CAL2JD-DJM`<br>`ERFA-T-CAL2JD-DJM0`<br>`ERFA-T-DTDB`<br>`ERFA-T-ECEQ06-DD`<br>`ERFA-T-ECEQ06-DR`<br>`ERFA-T-ECM06-RM11`<br>`ERFA-T-ECM06-RM12`<br>`ERFA-T-ECM06-RM13`<br>`ERFA-T-ECM06-RM21`<br>`ERFA-T-ECM06-RM22`<br>`ERFA-T-ECM06-RM23`<br>`ERFA-T-ECM06-RM31`<br>`ERFA-T-ECM06-RM32`<br>`ERFA-T-ECM06-RM33`<br>`ERFA-T-EQEC06-DB`<br>`ERFA-T-EQEC06-DL`<br>`ERFA-T-FW2M-11`<br>`ERFA-T-FW2M-12`<br>`ERFA-T-FW2M-13`<br>`ERFA-T-FW2M-21`<br>`ERFA-T-FW2M-22`<br>`ERFA-T-FW2M-23`<br>`ERFA-T-FW2M-31`<br>`ERFA-T-FW2M-32`<br>`ERFA-T-FW2M-33`<br>`ERFA-T-IR-11`<br>`ERFA-T-IR-12`<br>`ERFA-T-IR-13`<br>`ERFA-T-IR-21`<br>`ERFA-T-IR-22`<br>`ERFA-T-IR-23`<br>`ERFA-T-IR-31`<br>`ERFA-T-IR-32`<br>`ERFA-T-IR-33`<br>`ERFA-T-JD2CAL-D`<br>`ERFA-T-JD2CAL-FD`<br>`ERFA-T-JD2CAL-M`<br>`ERFA-T-JD2CAL-Y`<br>`ERFA-T-OBL06-VALUE`<br>`ERFA-T-P06E-BPA`<br>`ERFA-T-P06E-BPIA`<br>`ERFA-T-P06E-BQA`<br>`ERFA-T-P06E-CHIA`<br>`ERFA-T-P06E-EPS0`<br>`ERFA-T-P06E-EPSA`<br>`ERFA-T-P06E-GAM`<br>`ERFA-T-P06E-OMA`<br>`ERFA-T-P06E-PA`<br>`ERFA-T-P06E-PHI`<br>`ERFA-T-P06E-PIA`<br>`ERFA-T-P06E-PSI`<br>`ERFA-T-P06E-PSIA`<br>`ERFA-T-P06E-THETAA`<br>`ERFA-T-P06E-ZA`<br>`ERFA-T-P06E-ZETAA`<br>`ERFA-T-PFW06-EPSA`<br>`ERFA-T-PFW06-GAMB`<br>`ERFA-T-PFW06-PHIB`<br>`ERFA-T-PFW06-PSIB`<br>`ERFA-T-PMAT06-11`<br>`ERFA-T-PMAT06-12`<br>`ERFA-T-PMAT06-13`<br>`ERFA-T-PMAT06-21`<br>`ERFA-T-PMAT06-22`<br>`ERFA-T-PMAT06-23`<br>`ERFA-T-PMAT06-31`<br>`ERFA-T-PMAT06-32`<br>`ERFA-T-PMAT06-33`<br>`ERFA-T-RX-11`<br>`ERFA-T-RX-12`<br>`ERFA-T-RX-13`<br>`ERFA-T-RX-21`<br>`ERFA-T-RX-22`<br>`ERFA-T-RX-23`<br>`ERFA-T-RX-31`<br>`ERFA-T-RX-32`<br>`ERFA-T-RX-33`<br>`ERFA-T-RXP-1`<br>`ERFA-T-RXP-2`<br>`ERFA-T-RXP-3`<br>`ERFA-T-RXR-11`<br>`ERFA-T-RXR-12`<br>`ERFA-T-RXR-13`<br>`ERFA-T-RXR-21`<br>`ERFA-T-RXR-22`<br>`ERFA-T-RXR-23`<br>`ERFA-T-RXR-31`<br>`ERFA-T-RXR-32`<br>`ERFA-T-RXR-33`<br>`ERFA-T-RZ-11`<br>`ERFA-T-RZ-12`<br>`ERFA-T-RZ-13`<br>`ERFA-T-RZ-21`<br>`ERFA-T-RZ-22`<br>`ERFA-T-RZ-23`<br>`ERFA-T-RZ-31`<br>`ERFA-T-RZ-32`<br>`ERFA-T-RZ-33`<br>`ERFA-T-S2C-1`<br>`ERFA-T-S2C-2`<br>`ERFA-T-S2C-3`<br>`ERFA-T-TAITT-T1`<br>`ERFA-T-TAITT-T2`<br>`ERFA-T-TCBTDB-B1`<br>`ERFA-T-TCBTDB-B2`<br>`ERFA-T-TCGTT-T1`<br>`ERFA-T-TCGTT-T2`<br>`ERFA-T-TDBTCB-B1`<br>`ERFA-T-TDBTCB-B2`<br>`ERFA-T-TDBTT-T1`<br>`ERFA-T-TDBTT-T2`<br>`ERFA-T-TR-11`<br>`ERFA-T-TR-12`<br>`ERFA-T-TR-13`<br>`ERFA-T-TR-21`<br>`ERFA-T-TR-22`<br>`ERFA-T-TR-23`<br>`ERFA-T-TR-31`<br>`ERFA-T-TR-32`<br>`ERFA-T-TR-33`<br>`ERFA-T-TRXP-1`<br>`ERFA-T-TRXP-2`<br>`ERFA-T-TRXP-3`<br>`ERFA-T-TTTAI-A1`<br>`ERFA-T-TTTAI-A2`<br>`ERFA-T-TTTCG-G1`<br>`ERFA-T-TTTCG-G2`<br>`ERFA-T-TTTDB-B1`<br>`ERFA-T-TTTDB-B2` |
 | [LIC-005](LIC.md) | draft | high | inspection | — | — |
+
+## Gate evidence
+
+> CI-gate evidence, listed apart from test evidence (ADR-0010 ruling 2026-10-20). It is
+> allowed only for STD-001…011, TST-001, DEP-001/002/003/006 and ORG-008. A `crit:high`
+> gate counts only once it is a required check pinned to the default branch (#12); until
+> then it shows as `gate (unpinned)` and does not count toward moving past `draft`.
+
+| ID | Status | Crit. | Gate (`workflow/job[/step]`) | Evidence |
+|---|---|---|---|---|
+| [ORG-008](ORG.md) | draft | high | `ci/dco/Check sign-off trailers` | gate (unpinned) |
+| [STD-001](STD.md) | draft | low | `ci/rust/cargo fmt --all --check` | gate |
+| [STD-002](STD.md) | draft | medium | `ci/rust/cargo clippy` | gate |
+| [STD-004](STD.md) | draft | low | `ci/rust/cargo doc` | gate |
+| [STD-005](STD.md) | draft | low | `ci/msrv` | gate |
+| [STD-006](STD.md) | draft | high | `ci/rust/cargo deny check` | gate (unpinned) |
+| [STD-008](STD.md) | draft | medium | `ci/rust/cargo nextest + doctests` | gate |
+| [STD-009](STD.md) | draft | low | `ci/python` | gate |
+| [STD-010](STD.md) | draft | high | `ci/reuse/reuse lint` | gate (unpinned) |
+| [DEP-001](DEP.md) | draft | high | `ci/rust/cargo deny check` | gate (unpinned) |
+| [DEP-002](DEP.md) | draft | high | `ci/rust/cargo deny check` | gate (unpinned) |
+| [DEP-003](DEP.md) | draft | high | `ci/rust/cargo deny check` | gate (unpinned) |
