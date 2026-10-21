@@ -3,7 +3,8 @@
 //! DEP-009 / LIC-004 attribution and naming checks (inspection made executable):
 //! * `NOTICE` carries the ERFA copyright, conditions and disclaimer;
 //! * every ported source file states `Apache-2.0 AND BSD-3-Clause`, the ERFA copyright, the ERFA
-//!   file it was ported from, and ends with the ERFA licence block;
+//!   file it was ported from, and ends with the ERFA licence block; so do the vectors and tests
+//!   that copy `t_erfa_c.c` reference values;
 //! * no public symbol anywhere in the workspace starts with SOFA's `iau` prefix.
 
 use std::fs;
@@ -72,6 +73,43 @@ fn every_ported_file_carries_spdx_copyright_source_and_licence() {
         ported += 1;
     }
     assert!(ported >= 7, "found only {ported} ported files");
+}
+
+/// The `t_erfa_c.c` reference values copied into vectors and tests carry the same licence
+/// expression, ERFA copyright and licence block as the ported sources (BSD-3-Clause clause 1;
+/// PR #13 judge review LIC-2).
+///
+/// Verifies: DEP-009, LIC-004
+#[test]
+fn copied_t_erfa_c_values_carry_the_bsd3_notice() {
+    for rel in [
+        "tests/vectors/erfa-t_erfa_c.toml",
+        "tests/vectors/erfa-t_erfa_c-precession.toml",
+        "crates/ferroastro-erfa/tests/dep009_t_erfa_c.rs",
+        "crates/ferroastro-erfa/tests/dep009_t_erfa_c_precession.rs",
+    ] {
+        let text = fs::read_to_string(root().join(rel)).unwrap();
+        // REUSE-IgnoreStart (the strings below are searched for, not this file's licence)
+        assert!(
+            text.contains("SPDX-License-Identifier: Apache-2.0 AND BSD-3-Clause"),
+            "{rel}"
+        );
+        assert!(
+            text.contains("SPDX-FileCopyrightText: 2013-2023 NumFOCUS Foundation"),
+            "{rel}"
+        );
+        // REUSE-IgnoreEnd
+        assert!(
+            text.contains("t_erfa_c.c"),
+            "{rel} must cite its ERFA source"
+        );
+        assert!(
+            text.contains(ERFA_COPYRIGHT)
+                && text.contains(ERFA_CONDITION_1)
+                && text.trim_end().ends_with(ERFA_DISCLAIMER_END),
+            "{rel} must end with the ERFA licence block"
+        );
+    }
 }
 
 /// Verifies: DEP-009
