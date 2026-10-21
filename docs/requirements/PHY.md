@@ -171,9 +171,10 @@ notes: >-
   GM☉ + GM☿), and the WP14 NUM-013(a) scenario check
   (crates/ferroastro-diffrun/tests/num013a_scenario.rs, vector
   NUM013-ISOLATION-DIFF-SCENARIO) uses n from GM☉. The code therefore uses
-  more than one convention; which rule becomes requirement text is a
-  maintainer decision (OI-77). Every current tolerance exceeds the 3.6e-6
-  ″/cy difference.
+  more than one convention. DECIDED 2026-10-21 (OI-77 closed): every ″/cy
+  conversion uses n = √((GM☉ + GM☿)/a³), the two-body Keplerian μ, which
+  matches the "Keplerian GM" Horizons prints. The WP14 harness is to be
+  aligned. Every current tolerance exceeds the 3.6e-6 ″/cy difference.
 ```
 
 ### PHY-005 — Rung GR-SCHW, numerical
