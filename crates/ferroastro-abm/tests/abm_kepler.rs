@@ -692,7 +692,11 @@ fn one_compensated_step_is_the_documented_sequence_bit_for_bit() {
     let y0: Vec<f64> = y.iter().zip(&c).map(|(s, c)| s - c).collect();
     // |c| <= ulp(y)/2 (it is the rounding error of the last update), so y - c rounds back to y
     // except at an exact tie: the base's compensation has no effect in binary64 (reported).
-    let moved = y0.iter().zip(&y).filter(|(a, b)| a.to_bits() != b.to_bits()).count();
+    let moved = y0
+        .iter()
+        .zip(&y)
+        .filter(|(a, b)| a.to_bits() != b.to_bits())
+        .count();
     println!("T1b: components where fl(y - c) != y: {moved} of 4");
     let fold = |range: Vec<usize>, coef: &[f64], shift: usize, i: usize| -> f64 {
         range
