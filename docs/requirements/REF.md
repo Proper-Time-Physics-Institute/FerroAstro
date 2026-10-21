@@ -303,6 +303,13 @@ notes: >-
   intermittently for Sun + one planet; tools/oracles/swiftest_runner.py runs
   each attempt in a fresh interpreter and records the attempts in the
   manifest.
+  MAINTAINER RULING 2026-10-21 (on #13,
+  https://github.com/Proper-Time-Physics-Institute/FerroAstro/pull/13#issuecomment-6306750993):
+  the widening of ORACLE-STAGE-A-SWIFTEST-MAX-DR from 1 km to 60 km is
+  REJECTED. The Stage A Swiftest tolerance is 1 km, with its original
+  provenance. Before #13 merges, the Swiftest gap must be explained, with
+  evidence in the vector rationale, or fixed. Any change to the tolerance
+  needs the golden-change label and the maintainer's sign-off (TST-004).
 ```
 
 ### REF-008 — Mercury6 as Newtonian-only legacy oracle

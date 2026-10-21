@@ -79,6 +79,7 @@ source: >-
   docs/strategy/journal/05-organization-standards.md §3.3 and STD-003.
 parent: null
 related: [NUM-021, ORG-005]
+verified_by_gate: "ci/rust/lint config canary"
 notes: >-
   A future SIMD crate (NUM-021) is the likely first exception.
 ```
@@ -279,11 +280,14 @@ source: >-
   docs/strategy/journal/05-organization-standards.md §8 and STD-011.
 parent: null
 related: [ORG-008, STD-007]
+verified_by_gate: "pr-title/title/Conventional Commits PR title"
 notes: >-
   The DCO Signed-off-by trailer (ORG-008) must survive squash merges. Cargo
   workspace internal-dependency bumping by release-please is UNVERIFIED;
   evaluate release-plz in the ADR. Release PRs created with GITHUB_TOKEN do not
-  trigger CI, so a PAT or app token is needed.
+  trigger CI, so a PAT or app token is needed. The gate covers the PR-title
+  lint only (.github/workflows/pr-title.yml); release automation remains
+  unimplemented.
 ```
 
 ### STD-012 — Pinned Actions and OpenSSF Scorecard
