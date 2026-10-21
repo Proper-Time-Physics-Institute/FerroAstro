@@ -466,7 +466,7 @@ fn park_reference(vs: &VectorSet, kind: Kind) -> Option<(f64, String)> {
             Some((
                 sum,
                 format!(
-                    "sum of Park17 Table 3 rows {} = {sum:.4} arcsec/cy; informational: every row is blocked_by OI-38, and this run has EMB as one body, no Pluto and a different window (JDEPOC forward)",
+                    "sum of Park17 Table 3 rows {} = {sum:.4} arcsec/cy; informational here: the seven single-planet rows gate only in the PHY-012 differential test (P-remove, PROVISIONAL under OI-38, ADR-0014) and the pair rows are never asserted; this run has EMB as one body, no Pluto and a different window (JDEPOC forward)",
                     ids.join(", ")
                 ),
             ))
