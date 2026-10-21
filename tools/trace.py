@@ -12,7 +12,10 @@ Usage (from ``tools/``)::
 * a malformed requirement block (missing key, bad enum, malformed or duplicate ID, dangling
   ``parent``/``related``) (ORG-003);
 * a test or vector citing an unknown requirement ID (ORG-004);
-* an ``approved`` (or later) requirement with ``verification: test`` and no citing test (ORG-004);
+* an ``approved`` (or later) requirement with ``verification: test``, no citing test and no
+  counted gate evidence (ORG-004);
+* a ``verified_by_gate`` on a requirement outside ``GATE_SCOPE``, or naming a workflow, job or
+  step that does not exist in ``.github/workflows/`` (ADR-0010 ruling 2026-10-20, ORG-004);
 * a committed TRACE.md that differs from the generated one (ORG-004);
 * a vector file that violates ``tests/vectors/schema.json`` (TST-002/003);
 * a bare physical literal in test code (TST-002, ``lint_literals.py``);
@@ -44,6 +47,7 @@ REQ_DIR = ROOT / "docs" / "requirements"
 TRACE_MD = REQ_DIR / "TRACE.md"
 VECTOR_DIR = ROOT / "tests" / "vectors"
 NON_CATALOGUE = {"README.md", "OPEN-ITEMS.md", "TRACE.md"}
+WORKFLOW_DIR = Path(".github") / "workflows"
 
 PREFIXES = ("ORG", "STD", "PHY", "NUM", "TST", "API", "AGT", "DEP", "REF", "CI", "LIC")
 ID_RE = re.compile(r"^(" + "|".join(PREFIXES) + r")-\d{3}$")
@@ -63,6 +67,21 @@ ENUMS: dict[str, tuple[str, ...]] = {
 }
 # Statuses from which a test-verified requirement must be cited by at least one test.
 COVERAGE_STATUSES = ("approved", "implemented", "verified")
+
+# CI-gate evidence (ADR-0010, ruling 2026-10-20). A requirement may name the CI gate that
+# enforces it with the optional, human-owned key `verified_by_gate: <workflow>/<job>[/<step>]`
+# (ORG-011 meta surface, #12). Condition 1: gate evidence counts only for requirements whose
+# verdict comes from a tool; never for PHY, NUM, REF or API, which still need a citing test.
+GATE_SCOPE = frozenset(
+    [f"STD-{n:03d}" for n in range(1, 12)]
+    + ["TST-001", "DEP-001", "DEP-002", "DEP-003", "DEP-006", "ORG-008"]
+)
+# Condition 3: a crit:high requirement counts as gate-verified only once its gate is a required
+# check pinned to the default branch. Pinning is the ruleset work in #12, not yet done, so this
+# set is empty and every crit:high gate entry shows as "gate (unpinned)". Entries are
+# `verified_by_gate` targets, added by a maintainer when #12 pins the check.
+PINNED_GATES: frozenset[str] = frozenset()
+GATE_RE = re.compile(r"^([A-Za-z0-9_.-]+)/([A-Za-z0-9_-]+)(?:/(.+))?$")
 
 YAML_BLOCK_RE = re.compile(r"^```yaml\n(.*?)^```", re.DOTALL | re.MULTILINE)
 CITE_RE = re.compile(r"^\s*(?://[/!]?|#)\s*Verifies:\s*(.+?)\s*$")
@@ -84,6 +103,21 @@ class Requirement:
     file: str
     parent: str | None = None
     related: list[str] = field(default_factory=list)
+    gate: str | None = None
+
+    @property
+    def gate_counts(self) -> bool:
+        """Whether the gate counts as verification evidence (ADR-0010 conditions 1 and 3)."""
+        return (
+            self.gate is not None
+            and self.id in GATE_SCOPE
+            and (self.criticality != "high" or self.gate in PINNED_GATES)
+        )
+
+    @property
+    def gate_state(self) -> str:
+        """``gate`` when the gate evidence counts, else ``gate (unpinned)``."""
+        return "gate" if self.gate_counts else "gate (unpinned)"
 
 
 @dataclass
@@ -119,6 +153,16 @@ def _parse_block(text: str, where: str, stem: str) -> tuple[Requirement | None, 
         for key, allowed in ENUMS.items()
         if data[key] not in allowed
     ]
+    gate = data.get("verified_by_gate")
+    if gate is not None:
+        if not isinstance(gate, str) or not GATE_RE.match(gate):
+            errors.append(f"{where}: {rid} verified_by_gate={gate!r} is not workflow/job[/step]")
+            gate = None
+        elif rid not in GATE_SCOPE:
+            errors.append(
+                f"{where}: {rid} has verified_by_gate but gate evidence is not allowed for it "
+                "(ADR-0010: only STD-001..011, TST-001, DEP-001/002/003/006, ORG-008)"
+            )
     req = Requirement(
         id=rid,
         title=str(data["title"]),
@@ -128,6 +172,7 @@ def _parse_block(text: str, where: str, stem: str) -> tuple[Requirement | None, 
         file=f"{stem}.md",
         parent=data.get("parent"),
         related=[str(r) for r in data.get("related") or []],
+        gate=gate,
     )
     return req, errors
 
@@ -217,19 +262,68 @@ def scan_vectors(vector_dir: Path) -> tuple[dict[str, list[str]], list[str]]:
     return dict(out), errors
 
 
+def _load_workflow(path: Path) -> dict[str, Any] | None:
+    """Parse one workflow file; None if it is missing or not a mapping."""
+    if not path.exists():
+        return None
+    data = yaml.safe_load(path.read_text(encoding="utf-8"))
+    return data if isinstance(data, dict) else None
+
+
+def check_gates(root: Path, reqs: dict[str, Requirement]) -> list[str]:
+    """Check that every ``verified_by_gate`` names a real workflow, job and step (ADR-0010)."""
+    errors: list[str] = []
+    workflows: dict[str, dict[str, Any] | None] = {}
+    for req in sorted(reqs.values(), key=lambda r: r.id):
+        if req.gate is None:
+            continue
+        match = GATE_RE.match(req.gate)
+        if match is None:  # already reported by _parse_block
+            continue
+        stem, job_id, step = match.groups()
+        if stem not in workflows:
+            wf_dir = root / WORKFLOW_DIR
+            path = next(
+                (p for p in (wf_dir / f"{stem}.yml", wf_dir / f"{stem}.yaml") if p.exists()),
+                wf_dir / f"{stem}.yml",
+            )
+            workflows[stem] = _load_workflow(path)
+        workflow = workflows[stem]
+        where = f"{req.id} verified_by_gate={req.gate!r}"
+        if workflow is None:
+            errors.append(f"{where}: workflow {WORKFLOW_DIR.as_posix()}/{stem}.yml does not exist")
+            continue
+        job = (workflow.get("jobs") or {}).get(job_id)
+        if not isinstance(job, dict):
+            errors.append(f"{where}: workflow {stem} has no job {job_id!r}")
+            continue
+        steps = [s for s in job.get("steps") or [] if isinstance(s, dict)]
+        if step is not None and not any(step in (s.get("name"), s.get("id")) for s in steps):
+            errors.append(f"{where}: job {stem}/{job_id} has no step named {step!r}")
+    return errors
+
+
 def build_report(root: Path = ROOT) -> Report:
     """Collect requirements, citations and vectors, and every consistency error."""
     reqs, errors = parse_requirements(root / "docs" / "requirements")
     tests, cite_errors = scan_citations(root)
     vectors, vec_errors = scan_vectors(root / "tests" / "vectors")
-    errors += cite_errors + vec_errors
+    errors += cite_errors + vec_errors + check_gates(root, reqs)
     for kind, mapping in (("test", tests), ("vector", vectors)):
         for rid, users in sorted(mapping.items()):
             if rid not in reqs:
                 errors.append(f"{kind} cites unknown requirement {rid}: {', '.join(users)}")
     for req in reqs.values():
-        if req.status in COVERAGE_STATUSES and req.verification == "test" and not tests.get(req.id):
-            errors.append(f"{req.id} is {req.status} with verification: test but no citing test")
+        if (
+            req.status in COVERAGE_STATUSES
+            and req.verification == "test"
+            and not tests.get(req.id)
+            and not req.gate_counts
+        ):
+            unpinned = f" (gate {req.gate} is unpinned, #12)" if req.gate else ""
+            errors.append(
+                f"{req.id} is {req.status} with verification: test but no citing test{unpinned}"
+            )
     return Report(reqs, tests, vectors, errors)
 
 
@@ -241,6 +335,9 @@ def render(report: Report) -> str:
         by_status[r.status] += 1
     test_reqs = [r for r in reqs.values() if r.verification == "test"]
     covered = sum(1 for r in test_reqs if report.tests.get(r.id))
+    gated = sorted((r for r in reqs.values() if r.gate), key=_order)
+    gate_only = sum(1 for r in test_reqs if r.gate_counts and not report.tests.get(r.id))
+    n_counted = sum(1 for r in gated if r.gate_counts)
     status_line = ", ".join(f"{s} {by_status[s]}" for s in ENUMS["status"] if by_status[s])
     lines = [
         # REUSE-IgnoreStart
@@ -259,11 +356,16 @@ def render(report: Report) -> str:
         f"{len(test_reqs)}**",
         f"- Citing tests: **{sum(len(v) for v in report.tests.values())}**; "
         f"vectors referencing a requirement: **{sum(len(v) for v in report.vectors.values())}**",
+        f"- Gate evidence (ADR-0010): **{len(gated)}** requirements name a gate; "
+        f"**{n_counted}** counted, **{len(gated) - n_counted}** `gate (unpinned)`; "
+        f"`verification: test` requirements covered by a counted gate alone: **{gate_only}**",
+        "",
+        "## Test evidence",
         "",
         "| ID | Status | Crit. | Verification | Tests | Vectors |",
         "|---|---|---|---|---|---|",
     ]
-    for rid in sorted(reqs, key=lambda r: (PREFIXES.index(r.split("-")[0]), r)):
+    for rid in sorted(reqs, key=lambda r: _order(reqs[r])):
         r = reqs[rid]
         tests = "<br>".join(f"`{t}`" for t in sorted(set(report.tests.get(rid, [])))) or "—"
         vecs = "<br>".join(f"`{v}`" for v in sorted(set(report.vectors.get(rid, [])))) or "—"
@@ -271,7 +373,33 @@ def render(report: Report) -> str:
             f"| [{rid}]({r.file}) | {r.status} | {r.criticality} | {r.verification} | "
             f"{tests} | {vecs} |"
         )
+    lines += [
+        "",
+        "## Gate evidence",
+        "",
+        "> CI-gate evidence, listed apart from test evidence (ADR-0010 ruling 2026-10-20). It is",
+        "> allowed only for STD-001…011, TST-001, DEP-001/002/003/006 and ORG-008. A `crit:high`",
+        "> gate counts only once it is a required check pinned to the default branch (#12); until",
+        "> then it shows as `gate (unpinned)` and does not count toward moving past `draft`.",
+        "",
+    ]
+    if not gated:
+        lines.append("No requirement names a gate.")
+    else:
+        lines += [
+            "| ID | Status | Crit. | Gate (`workflow/job[/step]`) | Evidence |",
+            "|---|---|---|---|---|",
+        ]
+        lines += [
+            f"| [{r.id}]({r.file}) | {r.status} | {r.criticality} | `{r.gate}` | {r.gate_state} |"
+            for r in gated
+        ]
     return "\n".join(lines) + "\n"
+
+
+def _order(req: Requirement) -> tuple[int, str]:
+    """Catalogue order: prefix order of ``PREFIXES``, then ID."""
+    return (PREFIXES.index(req.id.split("-")[0]), req.id)
 
 
 def main(argv: list[str] | None = None) -> int:

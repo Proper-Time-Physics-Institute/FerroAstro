@@ -9,14 +9,17 @@
 
 - Requirements: **121** (draft 121)
 - `verification: test` requirements cited by at least one test: **31 / 93**
-- Citing tests: **188**; vectors referencing a requirement: **104**
+- Citing tests: **196**; vectors referencing a requirement: **104**
+- Gate evidence (ADR-0010): **12** requirements name a gate; **6** counted, **6** `gate (unpinned)`; `verification: test` requirements covered by a counted gate alone: **6**
+
+## Test evidence
 
 | ID | Status | Crit. | Verification | Tests | Vectors |
 |---|---|---|---|---|---|
 | [ORG-001](ORG.md) | draft | low | inspection | — | — |
 | [ORG-002](ORG.md) | draft | high | test | — | — |
-| [ORG-003](ORG.md) | draft | medium | test | `tools/tests/test_trace.py::test_parses_real_catalogue`<br>`tools/tests/test_trace.py::test_rejects_bad_enum`<br>`tools/tests/test_trace.py::test_rejects_duplicate_and_malformed` | — |
-| [ORG-004](ORG.md) | draft | medium | test | `tools/tests/test_trace.py::test_approved_requirement_needs_a_citing_test`<br>`tools/tests/test_trace.py::test_render_is_deterministic`<br>`tools/tests/test_trace.py::test_unknown_cited_id_fails` | — |
+| [ORG-003](ORG.md) | draft | medium | test | `tools/tests/test_trace.py::test_gate_outside_scope_is_rejected`<br>`tools/tests/test_trace.py::test_malformed_gate_is_rejected`<br>`tools/tests/test_trace.py::test_parses_real_catalogue`<br>`tools/tests/test_trace.py::test_rejects_bad_enum`<br>`tools/tests/test_trace.py::test_rejects_duplicate_and_malformed` | — |
+| [ORG-004](ORG.md) | draft | medium | test | `tools/tests/test_trace.py::test_approved_requirement_needs_a_citing_test`<br>`tools/tests/test_trace.py::test_gate_evidence_is_a_separate_section`<br>`tools/tests/test_trace.py::test_gate_outside_scope_is_rejected`<br>`tools/tests/test_trace.py::test_high_criticality_gate_is_unpinned_and_not_counted`<br>`tools/tests/test_trace.py::test_malformed_gate_is_rejected`<br>`tools/tests/test_trace.py::test_medium_criticality_gate_counts`<br>`tools/tests/test_trace.py::test_missing_workflow_job_or_step_is_rejected`<br>`tools/tests/test_trace.py::test_render_is_deterministic`<br>`tools/tests/test_trace.py::test_unknown_cited_id_fails` | — |
 | [ORG-005](ORG.md) | draft | low | inspection | — | — |
 | [ORG-006](ORG.md) | draft | low | inspection | — | — |
 | [ORG-007](ORG.md) | draft | low | inspection | — | — |
@@ -134,3 +137,25 @@
 | [LIC-003](LIC.md) | draft | high | inspection | — | — |
 | [LIC-004](LIC.md) | draft | high | inspection | — | — |
 | [LIC-005](LIC.md) | draft | high | inspection | — | — |
+
+## Gate evidence
+
+> CI-gate evidence, listed apart from test evidence (ADR-0010 ruling 2026-10-20). It is
+> allowed only for STD-001…011, TST-001, DEP-001/002/003/006 and ORG-008. A `crit:high`
+> gate counts only once it is a required check pinned to the default branch (#12); until
+> then it shows as `gate (unpinned)` and does not count toward moving past `draft`.
+
+| ID | Status | Crit. | Gate (`workflow/job[/step]`) | Evidence |
+|---|---|---|---|---|
+| [ORG-008](ORG.md) | draft | high | `ci/dco/Check sign-off trailers` | gate (unpinned) |
+| [STD-001](STD.md) | draft | low | `ci/rust/cargo fmt --all --check` | gate |
+| [STD-002](STD.md) | draft | medium | `ci/rust/cargo clippy` | gate |
+| [STD-004](STD.md) | draft | low | `ci/rust/cargo doc` | gate |
+| [STD-005](STD.md) | draft | low | `ci/msrv` | gate |
+| [STD-006](STD.md) | draft | high | `ci/rust/cargo deny check` | gate (unpinned) |
+| [STD-008](STD.md) | draft | medium | `ci/rust/cargo nextest + doctests` | gate |
+| [STD-009](STD.md) | draft | low | `ci/python` | gate |
+| [STD-010](STD.md) | draft | high | `ci/reuse/reuse lint` | gate (unpinned) |
+| [DEP-001](DEP.md) | draft | high | `ci/rust/cargo deny check` | gate (unpinned) |
+| [DEP-002](DEP.md) | draft | high | `ci/rust/cargo deny check` | gate (unpinned) |
+| [DEP-003](DEP.md) | draft | high | `ci/rust/cargo deny check` | gate (unpinned) |
