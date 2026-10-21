@@ -15,8 +15,8 @@ use ferroastro_bench::accuracy::{
 };
 use ferroastro_bench::series::NAIF_MERCURY;
 use ferroastro_bench::{
-    Accuracy, Entry, Host, MIN_RUNS, Measure, ScenarioInfo, Series, SpeedTable, Status, Timing,
-    read_run, stability,
+    Accuracy, Entry, Host, MIN_RUNS, Measure, Published, ScenarioInfo, Series, SpeedTable, Status,
+    Timing, read_run, stability,
 };
 use ferroastro_constants::header440::Header;
 use ferroastro_propagate::{DataSources, initial_conditions, run, run_with_energy};
@@ -235,9 +235,16 @@ fn entry(scenario: &str, tool: &str, runs: Vec<f64>) -> Entry {
             mercury_dr_km: measure(),
             rate_minus_ferroastro: measure(),
             rate_minus_reference: measure(),
+            roundoff_vs_dd_km: None,
+            mercury_de440_km: None,
         },
+        ic_hash: Some("ic".into()),
+        steps: Some(STEPS),
     }
 }
+
+/// Synthetic step count of the table helpers.
+const STEPS: u64 = 1000;
 
 fn table(run_id: &str, cpu: &str, runs: Vec<f64>) -> SpeedTable {
     let mut refused = entry("x", "orekit", vec![]);
@@ -257,6 +264,8 @@ fn table(run_id: &str, cpu: &str, runs: Vec<f64>) -> SpeedTable {
             rustc: "r".into(),
             build: "b".into(),
             git_commit: "c".into(),
+            pin: None,
+            reference_score: None,
         },
         load_avg_run: [0.0, 0.0],
         scenarios: vec![ScenarioInfo {
@@ -267,6 +276,7 @@ fn table(run_id: &str, cpu: &str, runs: Vec<f64>) -> SpeedTable {
         }],
         entries: vec![entry("x", "ferroastro", runs), refused],
         notes: Vec::new(),
+        published: Vec::new(),
     }
 }
 
@@ -311,4 +321,98 @@ fn table_rules_markdown_and_stability() {
         stability(&t1, &table("r4", "other cpu", five), "ferroastro").is_err(),
         "CI-008: no comparison across machines"
     );
+}
+
+/// WP28 S1: schema-2 tables. The NUM-024 section lists the published rows with their vector
+/// values, FerroAstro's median, the per-step costs and the cost ratios; a timed FerroAstro entry
+/// without its IC hash is refused; the committed schema-1 tables still validate.
+///
+/// Verifies: NUM-024, CI-008
+#[test]
+fn schema_two_published_rows_and_ic_hash() {
+    let vs = ferroastro_vectors::VectorSet::load_canonical().unwrap();
+    let wall = |id: &str| vs.get(id).unwrap().value().unwrap();
+    let five = vec![10.0, 11.0, 12.0, 13.0, 14.0]; // lint: allow-literal(synthetic wall-clock seconds for the table logic)
+    let mut t = table("r2", "cpu", five.clone());
+    let mut mixed = entry("y", "ferroastro", five.iter().map(|x| 3.0 * x).collect()); // lint: allow-literal(synthetic: mixed costs 3x f64)
+    mixed.accuracy.roundoff_vs_dd_km = Some(Measure::of(2.0e-5, "km", "vs DD")); // lint: allow-literal(synthetic accuracy value)
+    mixed.accuracy.mercury_de440_km = Some(Measure::none("km", "no spk in this test"));
+    t.entries.push(mixed);
+    t.scenarios.push(ScenarioInfo {
+        name: "y".into(),
+        label: "(y)".into(),
+        daily_twin: None,
+        sha256: "1".into(),
+    });
+    let row = |id: &str, sc: Option<&str>| Published {
+        label: id.to_lowercase(),
+        vector_id: id.into(),
+        wall_s: wall(id),
+        steps: STEPS,
+        ferroastro_scenario: sc.map(str::to_owned),
+        note: "different machine (OI-44)".into(),
+    };
+    t.published = vec![
+        row("SUBBOTIN23-T1-WALL-F64-S", Some("x")),
+        row("SUBBOTIN23-T1-WALL-MIXED-S", Some("y")),
+        row("SUBBOTIN23-T1-WALL-DD-S", None),
+    ];
+    t.validate().unwrap();
+    let md = t.to_markdown();
+    println!("{md}");
+    for id in [
+        "SUBBOTIN23-T1-WALL-F64-S",
+        "SUBBOTIN23-T1-WALL-MIXED-S",
+        "SUBBOTIN23-T1-WALL-DD-S",
+    ] {
+        assert!(
+            md.contains(&format!("(`{id}`) | {:.0} |", wall(id))),
+            "{id}"
+        );
+    }
+    let f64_ms = wall("SUBBOTIN23-T1-WALL-F64-S") * 1e3 / 1000.0; // lint: allow-literal(ms per s; synthetic step count)
+    assert!(
+        md.contains(&format!("| {f64_ms:.4} |")),
+        "published ms/step"
+    );
+    assert!(
+        md.contains("| 12.000 | 4.000 | 12.0000 |"),
+        "FerroAstro median, range, ms/step"
+    );
+    let ratios = t.cost_ratios();
+    let published = wall("SUBBOTIN23-T1-WALL-MIXED-S") / wall("SUBBOTIN23-T1-WALL-F64-S");
+    assert_eq!(
+        ratios[0],
+        format!(
+            "cost ratio subbotin23-t1-wall-mixed-s / subbotin23-t1-wall-f64-s: FerroAstro 3.000 (same machine, same invocation), published {published:.3}"
+        )
+    );
+    assert!(md.contains("round-off vs DD (km)") && md.contains("2.000e-5"));
+    assert!(md.contains("UNVERIFIED (OI-44)"));
+
+    let mut no_hash = t.clone();
+    no_hash.entries[0].ic_hash = None;
+    assert!(no_hash.validate().is_err(), "schema 2 needs the IC hash");
+    let mut bad_row = t.clone();
+    bad_row.published[0].vector_id.clear();
+    assert!(
+        bad_row.validate().is_err(),
+        "a published row needs its vector id"
+    );
+    let mut v1 = no_hash;
+    v1.schema_version = 1;
+    v1.validate().unwrap();
+
+    let dir = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("../../docs/validation/speed-tables");
+    for name in [
+        "run1-20261020T031916Z.json",
+        "run2-20261020T051024Z.json",
+        "run3-wp21-e-20261020T110212Z.json",
+    ] {
+        let old: SpeedTable =
+            serde_json::from_str(&std::fs::read_to_string(dir.join(name)).unwrap()).unwrap();
+        assert_eq!(old.schema_version, 1);
+        old.validate().unwrap();
+    }
 }
