@@ -354,12 +354,12 @@ mod tests {
         let year = DAYS_PER_JULIAN_YEAR * SECONDS_PER_DAY;
         // (years, cadence in days): the ci/scenarios grids and some non-multiples.
         let cases = [
-            (252.0, 1.0),
-            (1000.0, DAYS_PER_JULIAN_YEAR),
-            (100.0, 10.0 * DAYS_PER_JULIAN_YEAR),
-            (2000.0, 1.0),
-            (1.0, 0.1),
-            (1.0, 1.0 / 128.0),
+            (252.0, 1.0), // lint: allow-literal(sampling grid of a ci/scenarios file or a non-multiple, run control)
+            (1000.0, DAYS_PER_JULIAN_YEAR), // lint: allow-literal(sampling grid of a ci/scenarios file or a non-multiple, run control)
+            (100.0, 10.0 * DAYS_PER_JULIAN_YEAR), // lint: allow-literal(sampling grid of a ci/scenarios file or a non-multiple, run control)
+            (2000.0, 1.0), // lint: allow-literal(sampling grid of a ci/scenarios file or a non-multiple, run control)
+            (1.0, 0.1), // lint: allow-literal(sampling grid of a ci/scenarios file or a non-multiple, run control)
+            (1.0, 1.0 / 128.0), // lint: allow-literal(sampling grid of a ci/scenarios file or a non-multiple, run control)
             (0.25, 0.5),
             (3.0, 7.0),
             (1.0, 2.0 * DAYS_PER_JULIAN_YEAR),
