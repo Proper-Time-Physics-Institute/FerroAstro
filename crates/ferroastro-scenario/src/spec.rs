@@ -12,6 +12,12 @@ pub const SCHEMA_VERSION: u32 = 1;
 /// Julian year in days (the span unit).
 pub const DAYS_PER_JULIAN_YEAR: f64 = 365.25;
 
+/// Largest number of output samples (`|span| / output.cadence_days` whole intervals, plus the
+/// initial state) a scenario may request: 2²⁶ = 67 108 864, about 184 000 Julian years of daily
+/// samples. [`ScenarioSpec::validate`] refuses more, and the sampling drivers refuse a grid past
+/// it with an error instead of counting it (AGENTS rule 5; PR #13 review B4).
+pub const MAX_OUTPUT_SAMPLES: u32 = 1 << 26;
+
 /// How the bodies are integrated.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "kebab-case")]
@@ -545,6 +551,16 @@ impl ScenarioSpec {
         if let Some(c) = self.output.cadence_days {
             if !(c.is_finite() && c > 0.0) {
                 return err("output.cadence_days", &c, "finite and > 0");
+            }
+            // Closed form, no loop: whole cadence intervals in the span. A ratio that overflows
+            // to infinity fails the comparison too.
+            let intervals = (self.span.years.abs() * DAYS_PER_JULIAN_YEAR / c).floor();
+            if intervals >= f64::from(MAX_OUTPUT_SAMPLES) {
+                return err(
+                    "output.cadence_days",
+                    &c,
+                    "|span| / cadence exceeds MAX_OUTPUT_SAMPLES (2^26 samples); use a longer cadence or a shorter span",
+                );
             }
         }
         for b in &self.output.perihelion {

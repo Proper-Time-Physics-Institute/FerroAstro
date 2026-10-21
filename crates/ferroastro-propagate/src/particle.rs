@@ -307,7 +307,7 @@ fn run_sampled(spec: &ScenarioSpec, data: &DataSources<'_>) -> Result<RunOutput,
         .cadence_days
         .map_or(0.0, |c| c * ferroastro_core::time::SECONDS_PER_DAY);
     let span_s = spec.span_seconds();
-    let samples = grid_samples(span_s, cadence_s);
+    let samples = grid_samples(&spec.name, span_s, cadence_s)?;
     let (t, r, v) = sample_uniform(&model, r0, v0, cadence_s, samples, cfg)?;
     let p64 = |z: [f64; 3]| z.map(|c| [c, 0.0]);
     let zero = [[0.0, 0.0]; 3];

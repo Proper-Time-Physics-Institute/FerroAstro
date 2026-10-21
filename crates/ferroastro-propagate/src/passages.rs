@@ -23,6 +23,7 @@ use ferroastro_precession::PrecessionError;
 use ferroastro_precession::lrl::PerihelionTracker;
 use ferroastro_precession::passages::Passage;
 use ferroastro_real::Real;
+use ferroastro_scenario::MAX_OUTPUT_SAMPLES;
 
 /// Output of [`find_perihelia`].
 #[derive(Debug, Clone)]
@@ -175,14 +176,62 @@ pub fn sample_uniform<S: SecondOrderSystem + ?Sized>(
 
 /// Number of samples on the grid `0, step, 2·step, …` within a span of `span_s` seconds (whole
 /// steps, with a few ulp of slack for spans that are an exact multiple), the initial one included.
-#[must_use]
-pub fn grid_samples(span_s: f64, step_s: f64) -> usize {
+/// A non-positive span or step gives the initial sample only.
+///
+/// The count is computed in closed form (`floor(limit / step)`, corrected by at most one step for
+/// the rounding of the division) and converted only after it is checked against
+/// [`MAX_OUTPUT_SAMPLES`], so no span or step can make it loop, overflow or wrap (PR #13 review
+/// B4; AGENTS rule 5).
+///
+/// # Errors
+/// `FA-E1300` naming `scenario` for a non-finite span or step, or for a grid of more than
+/// [`MAX_OUTPUT_SAMPLES`] samples (which [`ScenarioSpec::validate`] already refuses).
+///
+/// [`ScenarioSpec::validate`]: ferroastro_scenario::ScenarioSpec::validate
+pub fn grid_samples(scenario: &str, span_s: f64, step_s: f64) -> Result<usize, PropagateError> {
+    let refuse = |problem: String| PropagateError::Setup {
+        scenario: scenario.to_owned(),
+        problem,
+        fix: "use a finite span and an output cadence that gives at most MAX_OUTPUT_SAMPLES samples",
+    };
+    if !(span_s.is_finite() && step_s.is_finite()) {
+        return Err(refuse(format!(
+            "sampling grid needs a finite span and step (span {span_s} s, step {step_s} s)"
+        )));
+    }
+    if step_s <= 0.0 || span_s <= 0.0 {
+        return Ok(1);
+    }
     let limit = span_s * 4.0f64.mul_add(f64::EPSILON, 1.0);
-    let mut intervals: u32 = 0;
-    while step_s > 0.0 && f64::from(intervals + 1) * step_s <= limit {
+    let max = f64::from(MAX_OUTPUT_SAMPLES);
+    let quotient = (limit / step_s).floor();
+    let too_many = || {
+        refuse(format!(
+            "sampling grid of span {span_s} s at step {step_s} s has more than {MAX_OUTPUT_SAMPLES} samples"
+        ))
+    };
+    // Span and step are finite and positive here, so `quotient` is >= 0 or +inf (overflow); after
+    // this check it is a whole number < 2^26 and the conversion below is exact.
+    if quotient >= max {
+        return Err(too_many());
+    }
+    #[expect(
+        clippy::cast_possible_truncation,
+        clippy::cast_sign_loss,
+        reason = "quotient is a whole number in [0, 2^26), checked above"
+    )]
+    let mut intervals = quotient as u32;
+    // The division rounds; settle on the largest k with k·step <= limit, as the grid is built.
+    if intervals > 0 && f64::from(intervals) * step_s > limit {
+        intervals -= 1;
+    }
+    if f64::from(intervals + 1) * step_s <= limit {
         intervals += 1;
     }
-    usize::try_from(intervals).unwrap_or(usize::MAX) + 1
+    if intervals >= MAX_OUTPUT_SAMPLES {
+        return Err(too_many());
+    }
+    usize::try_from(intervals + 1).map_err(|_| too_many())
 }
 
 /// A point of the trajectory: time (s), position (km), velocity (km/s).
@@ -281,5 +330,76 @@ mod tests {
         assert!((fit.period.seconds() - TAU).abs() < 1e-11); // lint: allow-literal(integration accuracy bound)
         assert!(fit.advance.radians().abs() < 1e-13); // lint: allow-literal(integration accuracy bound)
         assert!(fit_per_orbit(&run.passages[..2], &plane).is_err());
+    }
+
+    /// The pre-B4 counting loop, as a reference for the closed form (bounded inputs only).
+    fn grid_samples_by_loop(span_s: f64, step_s: f64) -> usize {
+        let limit = span_s * 4.0f64.mul_add(f64::EPSILON, 1.0);
+        let mut intervals: u32 = 0;
+        while step_s > 0.0 && f64::from(intervals + 1) * step_s <= limit {
+            intervals += 1;
+        }
+        usize::try_from(intervals).unwrap() + 1
+    }
+
+    /// B4 (PR #13 review): the closed-form count equals the old loop on the scenario grids
+    /// (exact multiples included), and spans, steps or counts that the loop would overflow, wrap
+    /// or never finish return `FA-E1300` at once.
+    ///
+    /// Verifies: API-002
+    #[test]
+    fn grid_samples_closed_form_and_refusals() {
+        use ferroastro_core::ErrorCode;
+        use ferroastro_core::time::{DAYS_PER_JULIAN_YEAR, SECONDS_PER_DAY};
+        let year = DAYS_PER_JULIAN_YEAR * SECONDS_PER_DAY;
+        // (years, cadence in days): the ci/scenarios grids and some non-multiples.
+        let cases = [
+            (252.0, 1.0),
+            (1000.0, DAYS_PER_JULIAN_YEAR),
+            (100.0, 10.0 * DAYS_PER_JULIAN_YEAR),
+            (2000.0, 1.0),
+            (1.0, 0.1),
+            (1.0, 1.0 / 128.0),
+            (0.25, 0.5),
+            (3.0, 7.0),
+            (1.0, 2.0 * DAYS_PER_JULIAN_YEAR),
+            (0.0, 1.0),
+            (-5.0, 1.0),
+        ];
+        for (years, days) in cases {
+            let (span, step) = (years * year, days * SECONDS_PER_DAY);
+            assert_eq!(
+                grid_samples("t", span, step).unwrap(),
+                grid_samples_by_loop(span, step),
+                "{years} yr at {days} d"
+            );
+        }
+        assert_eq!(grid_samples("t", year, 0.0).unwrap(), 1);
+        // At the cap: MAX_OUTPUT_SAMPLES samples are allowed, one more interval is refused.
+        let cap = f64::from(MAX_OUTPUT_SAMPLES);
+        assert_eq!(
+            grid_samples("t", (cap - 1.0) * SECONDS_PER_DAY, SECONDS_PER_DAY).unwrap(),
+            usize::try_from(MAX_OUTPUT_SAMPLES).unwrap()
+        );
+        let t0 = std::time::Instant::now();
+        for (span, step) in [
+            (cap * SECONDS_PER_DAY, SECONDS_PER_DAY),
+            // 2^32 intervals and more: the old u32 loop panicked in debug and wrapped forever in
+            // release.
+            (f64::from(u32::MAX) * 2.0, 1.0),
+            (1.0e6 * year, 1.0), // lint: allow-literal(a million-year span, run control)
+            (year, 1.0e-300),    // lint: allow-literal(a tiny step, run control)
+            (year, f64::MIN_POSITIVE / 4.0), // subnormal step: span/step overflows to infinity
+            (f64::MAX, 1.0),
+            (f64::INFINITY, 1.0),
+            (year, f64::INFINITY),
+            (f64::NAN, 1.0),
+            (year, f64::NAN),
+        ] {
+            let e = grid_samples("huge", span, step).unwrap_err();
+            assert_eq!(e.code(), ErrorCode::PropagateSetup, "{span} s at {step} s");
+            assert!(e.to_string().contains("huge"), "{e}");
+        }
+        assert!(t0.elapsed().as_secs_f64() < 1.0, "refusals must not count");
     }
 }

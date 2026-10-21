@@ -195,7 +195,7 @@ pub(crate) fn run(
         ));
     }
     let cadence_s = cadence_days * SECONDS_PER_DAY;
-    let samples = grid_samples(spec.span_seconds(), cadence_s);
+    let samples = grid_samples(&spec.name, spec.span_seconds(), cadence_s)?;
     let cfg = ias15_config(spec, false);
     let (t, r, v) = sample_uniform(&field, r0, v0, cadence_s, samples, cfg)?;
 
