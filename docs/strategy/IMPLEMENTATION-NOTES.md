@@ -6169,3 +6169,160 @@ Provenance: header.440 `0f4636b6…6ac3359` and de440.bsp `a4ce9bf9…fff7c4b5`.
   - `IRK16-GL8-AS-TABLE-25-4` was transcribed from memory. The reviewer checked the eight numbers against the 8-point Gauss–Legendre values computed independently with `numpy.polynomial.legendre.leggauss(8)`, and they agree within the printed 15 decimals (largest difference 1e-15 in the last weight, at the f64 accuracy of numpy's weights).
   - The S1 finding (Swiftest stage A, up to 28.7 km, against FerroAstro WH at the same step, ≤ 0.1 km) supports the builder's NEEDS HUMAN REVIEW: the 60 km widening of `ORACLE-STAGE-A-SWIFTEST-MAX-DR` in WP17 should be revisited.
 - **Verdict:** pass for what landed. NUM-005 (Saha–Tremaine) is honestly reported as blocked by OI-34.
+
+## 📈 Progress review: after WP29
+
+I am the independent progress reviewer (an agent, not the builder). I audited `m5-performance` at `52fe669` (WP28 and WP29, since the last review at `6cae36b`), and the five commits that landed on `m4-eih` since `m5-performance` was cut (`78d5a4c..92ca0bb`). Everything below ran on 2026-10-21 between 03:09 and 03:50 UTC on the local machine (i9-13900, 32 logical CPUs, toolchain 1.95.0 and MSRV 1.85.0). The machine was very heavily shared: the load average was **140–165** (other sessions' Brouwer/PHY-013 nightlies and unrelated jobs), so no timing in this review is a speed claim.
+- I loosened nothing and committed no mutation. The mutants ran in a scratch clone (`git clone --local`, its own target directory); it was clean afterwards (`git status` empty).
+- The worktree stayed clean apart from this section.
+
+### Overall health: 🟡 YELLOW
+- **Green:**
+  - Every AGENTS.md gate passes locally on `52fe669` (`tools/pre_push.sh`, full, including MSRV).
+  - The data tier passes **35/35** (270.7 s; cache hits, every SHA-256 equal to its pin; Horizons `signature.version` 1.2 / DE441 throughout).
+  - Every nightly number I re-ran equals the builders' reports to the printed digit: W4, I4, I5, S1, B2 and C3b. `tools/nightly_summary.py` labels B2 and C3b as known and unchanged and finds no NEW failure, so the W3 correction works.
+  - Four key numbers reproduce in independent Python (no FerroAstro code): the analytic GR rate, the WP29 D1 8 711 km offset of the GR effective potential, the solar-J2 offset behind the PHY-014 oracle, and the WP28 T1 ABM experiment. The T1 recomputation reproduces the number but not its interpretation (finding X1).
+  - The vectors changed by additions only, apart from one disclosed edit to the text of a quantity. No value or tolerance moved. `check_layers` (24 crates, 151 edges), `lint_literals` (0) and `validate_scenarios` (45 files) are clean. No anise, nyx or GPL crate was added, and no requirement or ADR text was edited on this branch.
+- **Not green:**
+  - **X0 (high, process): GitHub CI has not run on the last 8 commits of PR #18** (`4bf63ff`…`52fe669`, from 02:14 UTC). The PR is `CONFLICTING` with its base (`mergeStateStatus: DIRTY`): `m4-eih` gained 5 commits (`1d56668`…`92ca0bb`: the vectors `provisional` field, PHY-012 P-remove and PHY-019 gating, ADR-0014) after `m5-performance` was cut. The conflicts are only in `docs/requirements/TRACE.md` and this file, but GitHub does not run `pull_request` workflows on a conflicting PR. The last CI run on the branch (`32e5e09`) **failed** (python, reuse); the builder's local fix (`6205407`) has never been confirmed by CI. The tip also does not contain the M4 changes now on `m4-eih`, so this branch tests a superseded PHY-012 assertion set.
+  - **X1 (medium): WP28 T1 does not isolate the compensated update.** Its margin of 1.04 comes from the f64 DP8 start-up, not from the compensation (details below).
+  - **X2 (medium): the IRK16 compensated update is untested**, the same class of gap as W1 was for ABM. A mutant that disables it survives the PR and data tiers.
+  - **X3 (low/medium): WH's Jacobi centre-of-mass drift is untested.** A mutant that freezes it survives every PR test.
+  - **X4 (process): the failing pre-registered checks I2 and I2b were removed, not kept.** The asserting test is the post-hoc I2c. This is disclosed as NEEDS HUMAN REVIEW, but it is the pattern the WP26 review asked builders to avoid (correction 3).
+
+### 1. Commands (tip `52fe669`)
+| command | result |
+|---|---|
+| `cargo fmt --all --check` | pass |
+| `cargo clippy --workspace --all-targets --all-features -- -D warnings` | pass |
+| `cargo nextest run --workspace` + `cargo test --doc --workspace` | **324 passed, 59 skipped**. The 59 are 35 `data_*` and 24 `nightly_*` tests, which are exactly the 59 `#[ignore]`s. Doctests ok. |
+| SIMD step (`--features ferroastro-propagate/simd`) | 12/12 |
+| `cargo deny check` | advisories, bans, licenses and sources ok (only warnings: unused allowed licences, duplicate `syn`) |
+| `RUSTDOCFLAGS="-D warnings" cargo doc --no-deps --workspace` | pass |
+| `ruff check`, `ruff format --check`, `mypy`, `pytest` (tools) | pass; pytest 89 passed |
+| `reuse lint` | compliant (592/592) |
+| `trace.py --check` | 121 requirements, 763 citing tests, 0 errors |
+| MSRV 1.85.0 `check` + nextest | pass, 321 passed |
+| `check_layers` / `lint_literals` / `validate_scenarios` | 24 crates, 151 edges, 0 errors / 0 findings / 45 files, 0 problems |
+| **GitHub CI on the tip** | **none (X0).** Last run on the branch: 39531508823 at `32e5e09`, **failure** (python, reuse lint). |
+| **data tier** (`tools/run_long_local.sh --data-only`, `FA_DATA_DIR=target/fa-data`, log `target/long-local/20261021T031451Z-52fe66968fed.log`) | **35/35 pass** (270.7 s). All 8 manifest products were cache hits with the SHA-256 equal to the pin (header.440 `0f4636b6…6ac3359`, de440.bsp `a4ce9bf9…fff7c4b5`, sb441-n373s.bsp `21431132…8da10b`, retrieved 2026-10-15). Horizons answered `signature.version` 1.2 / DE441 every time. |
+| **nightly** (release, `--profile nightly`). I ran the six WP24–WP29 nightlies that fit in an hour at load 160: W4, I4/I5, S1, N1 (WP28), B2 and C3b. | 709.9 s. **4 pass and 2 fail, both known:** B2 2.241986e-3 km and C3b 3.927e-6. `nightly_summary.py`: "ONLY KNOWN, UNCHANGED", 0 NEW. I did not re-run WP25 Table 1 (~35 min alone), the speed tables, PHY-012/013 or the Brouwer ensemble. The last two were running at the time in another session's worktree. |
+
+### 2. Real-data and benchmark results
+Margin = |Δ| / tolerance (or bound / measured for a lower bound).
+
+| test (tier) | measured (this review) | oracle (source) | tolerance | margin |
+|---|---|---|---|---|
+| WP29 D1 `data_wh_irk16_and_ias15_ten_years_vs_de440_bsp` (data) | Mercury max barycentric residual: IAS15 8710.691196, WHFast 8710.691213, IRK16 8710.691203 km. \|WH − IAS15\| **1.708e-5**, \|IRK16 − IAS15\| **6.872e-6** km. With `gr_eih`, IAS15 gives 1.447752 km. | de440.bsp (JPL) | 0.1 km / 1e-3 km | 1.7e-4 / 6.9e-3 |
+| ↳ **independent D1 mechanism** (mine: scipy DOP853, rtol 1e-13; Sun–Mercury from header.440 JDEPOC; μ = GMS + GM1) | Newton + Nobili–Roxburgh against the 1PN harmonic test particle, same ICs, 10 yr: **max \|Δr\| = 8710.2 km** (Newton alone against 1PN: 3409 km) | — | — | reproduces the 8 711 km to 0.006 %. The offset is a two-body effect. **But** the implied mean-motion offset is **5.77e-7 = 22.6 GM/(c²a)**, not "O(6GM/(c²a)) ≈ 1.5e-7" as WP29 item 6 says. The magnitude in the notes is right; its explanation is wrong by 3.8×. |
+| WP28 D1 `data_num024_de440_column…` (data) | library 0.786160078 km = direct 0.786160078 km, \|diff\| 0 (IC hash `4e2523b6…7e7a87`) | de440.bsp | 1e-6 km | 0 |
+| WP25 D1 ephemeris mode (data) | Mercury \|mixed − DD\| 1.828e-7 km (f64 plain 1.492e-6) | de440.bsp | 1e-5 km | 0.018 |
+| WP24 B5 / WP26 D1 (data) | Mercury bary: IAS15 1.441927, ABM 1.441823, soa 1.441915 km; Moon 219.99 km | de440.bsp | 1e-3 km | unchanged (0.10 / 0.012) |
+| WP29 W4 NUM-004 (nightly) | 1e6 yr, 9e7 steps (709.8 s): max \|ΔE/E\| **1.173e-9**; drift fraction **0.0017**; slope −2.986e-18 ± 7.5e-18 per yr. Corrected (order 11): 3.060e-12. | NUM-004 | 1e-8; 0.1 | 0.12; 0.017 |
+| WP29 I4 / I5 NUM-003 (nightly) | IRK16 1000 yr there and back, Mercury **0.16519 km**; IRK16 − IAS15 **0.074108 km**; 4.38 iterations per step, 0 capped | analytic / IAS15 | 3 km / 1 km | 0.055 / 0.074 |
+| WP29 S1 Swiftest WHM stage A (nightly, informational) | FerroAstro WH at 1/128 d against FerroAstro IAS15: ≤ 0.098 km (corrector 0), ≤ 0.036 km (corrector 11). The committed Swiftest golden is off by up to 28.7 km (Mars). | Swiftest golden (WP17) | reported | supports WP29 NEEDS HUMAN REVIEW 4 |
+| WP28 N1 (nightly) | committed table complete; Subbotin rows equal to the vectors | `SUBBOTIN23-T1-WALL-*` (OI-44, not gated) | exact | pass |
+| WP28 T1 (PR) | compensated **2.0972e-5 km**, plain **2.1732e-4 km**, ratio **10.36** (P = 671.020 d, 1677 samples) | lower bound `ABM-COMPENSATION-GAIN-MIN` | ≥ 10 | **1.04 (thin)** |
+| ↳ **independent T1** (mine: Python ABM13 PECEC with exact rational coefficients, Kahan update, exact-Kepler start-up shared bit for bit by all three runs, 80-bit `longdouble` truth) | phase 0: compensated **8.83e-6**, plain **1.025e-3** km, ratio **116**. Over 5 starting phases the ratio ranges **43–412** (plain 1.8e-4 to 1.0e-3 km). Adding 3 ulp of Gaussian noise to the f64 start-up history only (not to the truth) gives compensated 6.6e-5 and **ratio 6.2**. At 10 ulp the ratio is 0.5. | — | — | **X1:** the update gains about 100×, as pre-registered (30–100) and as B3 found for Mars. FerroAstro's 10.36 is set by the f64-versus-DD difference of the DP8 start-up, which the f64 runs share and the DD truth does not. |
+| WP29 G1 NUM-004 (PR) | 42.979635 ″/cy (formal ±2.1e-3) | `PHY005-GR-NUM-RATE` 42.98 | ±1e-3 | 0.37 |
+| ↳ **independent G1-type rate** (mine: NR potential, Sun–Mercury test particle, 100 yr daily, LRL-angle line fit) | **42.979837 ″/cy** | — | — | within 2.0e-4 of G1. The difference is the solar reaction plus the test-particle μ. |
+| PHY-005 / GR rungs (data, unchanged to the digit) | header.440 GR-SCHW 42.980085160; from DE441 42.9806442 (Park GE 42.9799 ± 0.0009, +7.44e-4); Horizons osculating 42.980669 | PHY-005; Park17 Table 3 | 1e-3; 2.7e-3 | 0.085; 0.28 |
+| ↳ **independent analytic GR rate** (mine: own header.440 parser, SHA pin checked, JDEPOC osculating orbit) | 6πμ/(c²a(1−e²)) with μ = GMS + GM1: **42.980126 ″/cy** (a = 57 909 228.05 km, e = 0.20561659) | 42.980 (PHY-005) | ±1e-3 | equals the WP26 review's value. The 4.1e-5 offset from the numerical 42.980085 is the osculating-versus-mean element difference. |
+| J2-REAL / LT-REAL (data, unchanged) | J2 0.028452375 (analytic 0.028452373); LT −0.002014843; Park-frame total 575.309163 ″/cy (jack-knife 0.00153) | Park17 Table 3 0.0286 / −0.0020 / 575.3100 | ±0.0011 / ±0.0002 | 0.13 / 0.074 |
+| ↳ **independent solar-J2 offset for the PHY-014 oracle** (mine: first-order secular dω/dt + dΩ/dt, JDEPOC elements, i = 3.381087°) | DE440 J2 0.027722 ″/cy. Scaled to J2 = 2.25e-7: 0.028402 (0.18 % below FerroAstro's 0.0284524 with J2000 elements, within the inclination-convention spread). **DE440 − Park J2 offset: −0.000680 ″/cy.** | maintainer: Δ −0.000684 (575.3100 → 575.3093) | — | agrees to 4e-6 ″/cy, below the ±0.005 PHY-014 tolerance by 3 orders. |
+
+### 3. Drift audit
+- **`git log -p 6cae36b..52fe669 -- tests/vectors ci/`:**
+  - Only additions, apart from `scenario.schema.json` (2 lines, new optional keys) and one vector-text edit.
+  - The additions are abm.toml (+17, T1), bench.toml (+72: the three Subbotin rows `blocked_by = "OI-44"` and D1), symplectic.toml (+232), `ci/nightly-known-failures.toml` and 11 scenarios.
+  - **No expected value moved, and no tolerance was widened.**
+- **The one post-hoc vector edit** is `IRK16-OBSERVED-ORDER-DD` (`c93b274` then `52fe669`). It was pre-registered for I2b (the 12/16 pair). I2b failed (11.79), and the asserting test became I2c (a least-squares fit over 24–48 steps per orbit), chosen after a diagnostic sweep. The quantity text was rewritten for I2c, with value and tolerance unchanged, and `verified_by` says plainly that this bound is not a pre-registered confirmation (NEEDS HUMAN REVIEW). The provenance is honest. Two problems remain:
+  - (a) its `tolerance_rationale` still says "allows pre-asymptotic behaviour at 12 steps per orbit", which belongs to the abandoned design;
+  - (b) the failing pre-registered checks I2 (f64) and I2b (DD) no longer exist as tests (X4). The f64 vector `IRK16-OBSERVED-ORDER` is now cited by no test.
+- **Pre-registration in git:**
+  - `16a5fca` (WP28 vectors, 23:56 UTC) precedes T1/S1, and `7f4418f` precedes D1.
+  - `7f75079` (WP29 plan + vectors, 01:50) precedes `4b8b0fc`/`c93b274`/`32e5e09`.
+  - The D1 vectors were added in the same commit as the test (`4f01ecc`) but were written into plan addendum 3 first. Their bounds were sized from the already-measured P1 (disclosed).
+- **`#[ignore]` count:** 59, up from 53 (+2 `data_*`, +4 `nightly_*`). All are named for their tier. None is cfg-gated, and no PR-tier check was demoted this time.
+- **UNVERIFIED values used as oracles:** none.
+  - The Subbotin wall times are `blocked_by = "OI-44"` and are transcription checks only.
+  - NUM-005 (ST94, OI-34) is not implemented and not asserted.
+  - `IRK16-GL8-AS-TABLE-25-4` was transcribed from memory, but the WP29 reviewer checked it against numpy's `leggauss(8)`.
+- **Circular oracles:**
+  - WP29 D1 compares two FerroAstro integrators on the same model. That is a consistency check, which is how it is labelled; the de440 residual itself (8711 km) is reported, not asserted, and I reproduced it independently.
+  - G1 reuses `PHY005-GR-NUM-RATE`, an analytic oracle, so it is not circular.
+  - WP28 D1 compares `body_vs_spk` with a direct computation inside the test, and my M5 mutant shows that this has power.
+- **Layer violations:** none. `check_layers` reports 0 errors; the CLI → vectors exception stays NEEDS HUMAN REVIEW (WP6).
+- **`m4-eih` since the branch point (`78d5a4c..92ca0bb`, not on this branch):**
+  - The seven PHY-012 rows of `park2017-table3.toml` go from `blocked_by = "OI-38"` (P-add, non-gating) to **asserted under P-remove** with `provisional = "OI-38"`, and the asteroid row (PHY-019) to asserted.
+  - Values and tolerances are unchanged. Each rationale states that P-remove was chosen after the results were known, lists the 4 P-add misses, and gives a revert condition. The authority cited is ADR-0014 / requirements PR #19 (merged).
+  - This is a disclosed post-hoc protocol switch made by a human decision. However, the maintainer-decision text this workflow hands to agents still says "PHY-012 protocol: contribution = (Sun+Mercury+planet) − (Sun+Mercury)", which is P-add. That text is stale against ADR-0014 (**NEEDS HUMAN REVIEW**, see section 5).
+- **Mutation probes** (scratch clone at `52fe669`, `FA_DATA_DIR` = the pinned cache; baseline 112/112 PR tests of analytic, symplectic, integrators, forces, propagate and bench; reverted with `git checkout`):
+
+| crate | mutant | result |
+|---|---|---|
+| symplectic | **Jacobi centre of mass not drifted** (`x0 += τ v0` removed) | **survived the PR tier 37/37 (X3).** It is equivalent for every test system, which are all barycentric with P = 0, but not for the public `Whfast` API given an inertial state with a non-zero total momentum. |
+| integrators | **IRK16 Kahan update replaced by the plain one** | **survived the PR tier 57/57 and data D1 (X2)** |
+| analytic | Kepler-drift stagnation floor 64 → 1e4 ulp (the WP29 regression) | killed (K2 `kepler_drift_is_reversible…`) |
+| forces | GR-potential energy (`potential_over_g`) doubled | killed (`gr_potential_is_conservative_with_reaction`) |
+| bench | `body_vs_spk` drops the SPK Sun (heliocentric run against barycentric SPK) | survived the PR tier (5/5); **killed in the data tier** (WP28 D1) |
+
+- **Hygiene:**
+  - No `unsafe`. No `unwrap` or `panic!` in the new library code (WP28/29 `unwrap`s are in tests).
+  - Every new test has a `Verifies:` tag. Nothing under docs/requirements changed except the generated TRACE.md.
+- **Labels:** PR #18 still has no `golden-change` label (R7, asked for three times now).
+
+**Findings (new in this review):**
+- **X0 (high, process): no CI on the tip.** PR #18 conflicts with `m4-eih`, so GitHub has run no workflow on `4bf63ff`…`52fe669`, and the last branch run failed. Resolving it needs `m4-eih` brought into `m5-performance`, either by a merge commit or by a maintainer resolving the conflict. The workflow rules forbid agents to merge, so this needs a human decision.
+- **X1 (medium): T1's margin of 1.04 reflects the start-up, not the update.**
+  - The DD truth runs its own DP8 start-up in DD, while both f64 runs share an f64 start-up that is a few ulp off. That shared offset grows along-track and sets the compensated floor.
+  - My independent ABM13 reproduces both regimes: ratio 43–412 with a shared start-up, and 6.2 with 3 ulp of start-up noise.
+  - So T1 still kills a mutant that disables compensation, but its pre-registered premise (an update gain of 30–100) is right and its design is wrong. A future start-up change of a few ulp could fail T1 with no defect in the update.
+- **X2 (medium): the IRK16 compensated update is unpinned.** It is the reference integrator for NUM-003, so its round-off matters at 1000 yr (I4 0.165 km there and back).
+- **X3 (low/medium): WH centre-of-mass drift is unpinned** for non-barycentric inputs.
+- **X4 (process): the failed pre-registered I2/I2b checks were deleted, not kept as known failures, and the `IRK16-OBSERVED-ORDER-DD` rationale is stale.**
+- **X5 (low, documentation): WP29 item 6's explanation of D1's 8 711 km is off by 3.8×.** The mean-motion offset is ≈ 22.6 GM/(c²a) ≈ 5.8e-7, not 6 GM/(c²a). The measurement is right.
+- **X6 (low): `IRK16-OBSERVED-ORDER`** (the f64 I2 vector) is cited by no test.
+
+### 4. Requirement coverage
+`trace.py` reports **68/93** `test` requirements cited (66 at the last review) and 763 citing tests (718).
+- **Newly cited:** NUM-003 (IRK16) and NUM-004 (WH/WHFast).
+- **M5** (NUM-002, NUM-007, NUM-021/022/024, DEP-011, REF-001, CI-007/008/010): every one is cited. Acceptance is still not met for:
+  - NUM-007 (N1 2.04×);
+  - NUM-009 (N4 Mars);
+  - NUM-021 (AVX-only);
+  - NUM-022 (scaling);
+  - NUM-024's mixed median, which was measured on a contended core.
+
+  The M5 exit criterion "residuals vs de440.bsp over 1550–2650" is **WP27, not started**.
+- **M4, uncited:** PHY-014 (WP22; NUM-020 was signed on 2026-10-21 per PR #29 on main, so check whether WP22 is unblocked), NUM-005 (blocked by OI-34) and AGT-004 (WP23, not started).
+- **M0, uncited (gate-enforced, not test-cited):** ORG-002, ORG-008, STD-001…011, TST-001, DEP-001/002/003 and DEP-016. ADR-0010's gate-evidence mechanism (`tools/trace-gate-evidence`, PR #26) is merged on main but is not on this branch.
+- **Not yet due:** NUM-025, DEP-005/006 and ORG-010 (M6).
+
+### 5. Corrections for the next builder (apply first)
+1. **X0:** do not keep stacking on a conflicting PR. Ask the maintainer, in the PR #18 comment (done in this review), to choose one of:
+   - (a) authorise a merge of `m4-eih` into `m5-performance` (resolve TRACE.md by regenerating it, and IMPLEMENTATION-NOTES by keeping both sections);
+   - (b) resolve it themselves.
+
+   Until then, run `tools/pre_push.sh` before every push and quote its result, because CI gives no evidence. Do not rebase or force-push.
+2. **X1:** pre-register a T1 redesign (new vector, the old one kept and cross-referenced; NEEDS HUMAN REVIEW). The DD truth must start from the f64 runs' start-up history, either by widening the 13 f64 start-up states or by seeding all three runs from one history computed in DD and rounded. Then T1 measures only the update. The expected ratio is ≥ 30, from my 43–412. Leave `ABM-COMPENSATION-GAIN-MIN` unchanged.
+3. **X2:** add a PR-tier IRK16 test that pins the compensation, as T1 does for ABM (compensated against plain f64, against an IRK16 DD twin from identical bits). The mutant `if self.cfg.compensated` → `if false` in `irk16.rs` must fail it.
+4. **X3:** add a WH test with a non-zero total momentum, for example a boosted two-body system: the result must equal the unboosted run plus V·t to round-off. The mutant that removes `x0 += τ·v0` in `Jacobi::drift` must fail it.
+5. **X4/X6:** restore I2 and I2b as tests that report their values. Either list them in a known-failures mechanism or mark them as superseded with an explicit "superseded, not asserted" output, so the failed pre-registered designs stay visible. Fix the stale `tolerance_rationale` of `IRK16-OBSERVED-ORDER-DD`, as a text-only change with a NEEDS HUMAN REVIEW note.
+6. **X5:** correct WP29 item 6. The mean-motion offset is ≈ 22.6 GM/(c²a) ≈ 5.8e-7, reproduced independently in two-body as 8 710.2 km. Leave the measurement unchanged.
+7. **Next WP:**
+   - WP27 (stage D, 1550–2650 against de440.bsp, the M5 exit) is next. Report the lunar residual separately (W6).
+   - Check whether WP22 is unblocked by the 2026-10-21 NUM-020 sign-off (PR #29 on main).
+   - V2 stays open.
+8. **Still for humans:**
+   - X0 (the merge decision);
+   - the stale PHY-012 protocol line in the workflow's maintainer-decision text (P-add) against ADR-0014 (P-remove, provisional under OI-38);
+   - `golden-change` on PR #18 (R7);
+   - the WP29 NEEDS HUMAN REVIEW items 1, 3 and 4 (IRK16 order design, the derived corrector coefficients, the Swiftest stage A 60 km widening);
+   - the WP28 items (T1, the contended (i)/(j) timings, the NUM-024 workload gap);
+   - the WP24–WP26 items as before.
+
+Reviewer artefacts are in the session scratchpad `rev29/`, not committed:
+- logs: `prepush.log`, `data.log`, `nightly.log`, `mutate.log`, `mutate_data.log`;
+- `mutate.py`;
+- `py/hdr.py`, `py/abm_t1.py` (+ `abm_t1v.py`, `abm_t1n.py`), `py/gr2body.py` and `py/j2rate.py`.
