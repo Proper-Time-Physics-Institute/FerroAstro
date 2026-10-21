@@ -179,9 +179,10 @@ fn plan_shares_identical_ics_and_rows_are_signed_sums() {
         (in_park - park_pair).abs() <= 8.0 * f64::EPSILON * scale, // lint: allow-literal(rounding bound of a 4-term sum, ulps)
         "to_park17 must equal pair removal minus single removals"
     );
+    // The P-add cross term is the same kind of second difference (about the base): negated too.
     assert_eq!(
         Protocol::CrossTerm.to_park17(cross).to_bits(),
-        cross.to_bits()
+        (-cross).to_bits()
     );
     let md =
         r.markdown(&|l, p| (p == Protocol::CrossTermRemove && l == "Venus+Jupiter").then_some(0.0));

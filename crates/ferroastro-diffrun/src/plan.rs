@@ -19,7 +19,9 @@ pub enum Protocol {
     /// ADR-0014; PROVISIONAL for PHY-012 while OI-38 is open).
     Remove,
     /// `ϖ̇(base + X + Y) − ϖ̇(base + X) − ϖ̇(base + Y) + ϖ̇(base)`: the interaction of two
-    /// toggles under [`Protocol::Add`] (reported separately).
+    /// toggles under [`Protocol::Add`] (reported separately). Like [`Protocol::CrossTermRemove`],
+    /// an inclusion–exclusion second difference, so the NEGATIVE of Park17's pair-row sign
+    /// (ADR-0014); compare it with Park only through [`Protocol::to_park17`].
     CrossTerm,
     /// `ϖ̇(full) − ϖ̇(full − X) − ϖ̇(full − Y) + ϖ̇(full − X − Y)`: the interaction of two toggles
     /// under [`Protocol::Remove`] (informational). This inclusion–exclusion second difference is
@@ -47,9 +49,7 @@ impl Protocol {
         match self {
             Protocol::Add => "P-add contribution",
             Protocol::Remove => "P-remove contribution",
-            Protocol::CrossTerm => {
-                "Park17 sign: pair addition − single additions = ϖ̇(base+X+Y) − ϖ̇(base+X) − ϖ̇(base+Y) + ϖ̇(base)"
-            }
+            Protocol::CrossTerm => "Park17 sign = −[ϖ̇(base+X+Y) − ϖ̇(base+X) − ϖ̇(base+Y) + ϖ̇(base)]",
             Protocol::CrossTermRemove => {
                 "Park17 sign: pair removal − single removals = −[ϖ̇(full) − ϖ̇(full−X) − ϖ̇(full−Y) + ϖ̇(full−X−Y)]"
             }
@@ -59,16 +59,16 @@ impl Protocol {
     /// Maps a row value of this protocol (the harness's signed sum) into Park et al. 2017's
     /// Table 3 convention, so it can be compared with Park's rows (ADR-0014).
     ///
-    /// Park's pair rows are "the pair's contribution minus the two single contributions". Under
-    /// P-remove that is `[ϖ̇(full) − ϖ̇(full−X−Y)] − [ϖ̇(full) − ϖ̇(full−X)] − [ϖ̇(full) −
-    /// ϖ̇(full−Y)]`, the negative of [`Protocol::CrossTermRemove`]'s inclusion–exclusion sum.
-    /// Under P-add the same construction equals [`Protocol::CrossTerm`] unchanged. Single-body
-    /// rows are already contributions.
+    /// Park's pair rows are "pair removal minus single removals": `[ϖ̇(full) − ϖ̇(full−X−Y)] −
+    /// [ϖ̇(full) − ϖ̇(full−X)] − [ϖ̇(full) − ϖ̇(full−Y)]`, the negative of the inclusion–exclusion
+    /// second difference ADR-0014 names. Both cross-term protocols compute that second difference
+    /// (about the full system for P-remove, about the base for P-add), so both are negated to be
+    /// read against Park's rows. Single-body rows are already contributions and are unchanged.
     #[must_use]
     pub fn to_park17(self, value: f64) -> f64 {
         match self {
-            Protocol::Add | Protocol::Remove | Protocol::CrossTerm => value,
-            Protocol::CrossTermRemove => -value,
+            Protocol::Add | Protocol::Remove => value,
+            Protocol::CrossTerm | Protocol::CrossTermRemove => -value,
         }
     }
 }
