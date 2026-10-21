@@ -80,9 +80,16 @@ notes: >-
   obtained (parsed from header.440, never hand-transcribed). PHY-002 is
   authoritative for WHICH constants are used and the asserted values. The
   versioned table SHALL be generated from header.440. UNVERIFIED: the units of
-  GMSDOT (−9.0×10⁻¹⁴, presumably au³/d² per year); the IAU 2012 Resolution B2
-  text behind the exact au; whether the DE440 paper quotes a GM☉ uncertainty or a
-  J2 rationale (text past character 100k not yet read). Planetary GMs (km³ s⁻²):
+  GMSDOT (−9.0×10⁻¹⁴, presumably au³/d² per year; OI-04, now the only open item
+  blocking this requirement, and only for its GMSDOT entry, which the committed
+  table carries with open_item and unit "unverified" and never asserts);
+  whether the DE440 paper quotes a GM☉ uncertainty or a J2 rationale (OI-06,
+  qualifies only). Closed 2026-10-20: the exact au (OI-05: IAU 2012
+  Resolution B2 read, au = 149 597 870 700 m exactly) and the header state
+  frame and units (OI-23: SSB-centred ICRF, au and au/day; see REF-002 notes).
+  Build evidence (WP2, m3-newtonian-nbody): crates/ferroastro-constants/data/de440-constants.toml is generated from header.440 by the gen_de440_table
+  example; the data test data_de440_table_matches_header checks 23/23 entries
+  token for token. Planetary GMs (km³ s⁻²):
   Mercury 22031.868551, Venus 324858.592, Earth 398600.435507, Moon 4902.800118,
   Mars 42828.375816, Jupiter 126712764.1, Saturn 37940584.8418, Uranus 5794556.4,
   Neptune 6836527.10058, Pluto 975.5 (Park21 [P]).
@@ -150,6 +157,23 @@ notes: >-
   2026-10-14, red-team review, Journal #9). The ±0.0001 tolerance here is
   stated for the SW92 elements named above. The μ choice (GM☉ alone or
   GM☉ + GM_Mercury) SHALL be documented (caveat C7).
+  μ CONVENTION, build evidence (sync 2026-10-20; WP11, WP13, WP14 on
+  m3-newtonian-nbody): the analytic rate splits into a per-orbit advance and
+  a mean motion n that converts it to ″/cy, and the two may use different μ.
+  WP13 (review correction F5, commit 9fd3b40) adopted one convention for
+  every analytic rate in ferroastro-analytic and ferroastro-ladder: the
+  per-orbit advance uses the μ of the integrated dynamics (GM☉ for the test
+  particle), and n = √((GM☉ + GM☿)/a³), as this acceptance states; the
+  constant RATE_CONVENTION is printed in each rung's metadata. The shift
+  against GM☉-only n is 3.567e-6 ″/cy. WP11 had proposed instead the rule
+  "n uses the μ of the Keplerian problem that produced the elements" (test
+  particle: GM☉; Sun–Mercury relative motion and Horizons elements:
+  GM☉ + GM☿), and the WP14 NUM-013(a) scenario check
+  (crates/ferroastro-diffrun/tests/num013a_scenario.rs, vector
+  NUM013-ISOLATION-DIFF-SCENARIO) uses n from GM☉. The code therefore uses
+  more than one convention; which rule becomes requirement text is a
+  maintainer decision (OI-77). Every current tolerance exceeds the 3.6e-6
+  ″/cy difference.
 ```
 
 ### PHY-005 — Rung GR-SCHW, numerical
@@ -320,6 +344,20 @@ notes: >-
   NUM-015 adds the inclined-orbit check (citation for the inclined formula
   UNVERIFIED). NUM-013 asserts the differential-run value within 10⁻⁴; see the
   NUM-013 notes for how the two tolerances relate.
+  SOLAR POLE, build evidence (sync 2026-10-20; WP9 and WP12 on
+  m3-newtonian-nbody): the default solar pole is the IAU WGCCRE 2015 pole,
+  RA 286.13°, Dec 63.87° (Pole::sun_wgccre2015 in ferroastro-frames), read
+  from NAIF pck00011.tpc (BODY10_POLE_RA/DEC, sha256 3dff7b1d…e28bb1, citing
+  Archinal et al. 2018, which itself was not opened) into vectors
+  SUN-POLE-IAU-RA/DEC; data test data_naif_pck_solar_pole checks them, and
+  data_frame_rotations_reproduce_horizons… reproduces Horizons' IAU_SUN frame
+  to 4.7e-16. The pole is configurable and travels with the rotation as
+  metadata (crates/ferroastro-frames/tests/num014_frame_definitions.rs::solar_equator_pole_is_configurable_and_recorded). In that real geometry
+  (i = 3.381087°) the numerical J2 rung at Park's J2 gives 0.0284524 ″/cy
+  against Park17 Table 3 0.0286 ± 0.0011 (WP4). Not verified: that DE440's
+  own J2 term uses this pole, and whether DE440 applies solar J2 to the
+  asteroids; FerroAstro's N-body SolarJ2WithReaction acts on Major bodies
+  only (WP12 deviations 3 and 4; OI-76).
 ```
 
 ### PHY-011 — Rung LT: solar Lense–Thirring
@@ -347,6 +385,21 @@ notes: >-
   to the DE440 equation is UNVERIFIED. The INPOP21a Eq. 1 form named here and the
   NUM-019 implementation SHALL be shown to agree. LT is ~7% of the oblateness
   precession (Park21); INPOP21a says ~10% of the oblateness acceleration.
+  OI-35 EVIDENCE (sync 2026-10-20; WP4 on m3-newtonian-nbody; evidence
+  available, pending human sign-off, not a closure): INPOP21a (IMCCE note
+  S110) could not be retrieved (the IMCCE URL returned 404 and arXiv has no
+  INPOP21a paper), so equivalence with INPOP21a Eq. 1 is NOT demonstrated.
+  What is shown: the implemented R3b acceleration (LenseThirring in
+  ferroastro-forces) reproduces Park et al. 2017 Eq. 2 (read in the PDF,
+  sha256 24fb2153…2433380b), including its sign, (1+γ) factor and cos i
+  dependence, to 1.25e-6 relative in equatorial geometry (passing NUM-015
+  only through its 1e-7 ″/cy absolute floor) and 7.7e-8 relative in the real
+  solar-equator geometry (data tier). The rung gives −0.0020184 ″/cy
+  (equatorial) and −0.0020148 ″/cy (real geometry), within −0.0020 ± 0.0002.
+  G·S = 1.2680765843106158e16 km⁵/s³ from header.440 tokens (S = 1.8999e41
+  kg m² s⁻¹), recomputed independently by data_solar_spin_from_fresh_header_440.
+  Whether the Park17 Eq. 2 evidence suffices to close OI-35, or the statement's
+  "INPOP21a Eq. 1" should be re-pointed, is a human decision.
 ```
 
 ### PHY-012 — Rungs N-VEN … N-NEP: single-planet contributions
@@ -363,11 +416,15 @@ statement: >-
   computed with the Park17 procedure: Mercury mean-orbit frame, 1000–3000 CE
   span, quadratic + periodic fit.
 acceptance: >-
-  PROVISIONAL protocol: each contribution is the differential rate of
-  Sun + Mercury + planet X minus Sun + Mercury, both Newtonian, from identical
-  initial conditions (NUM-013 harness). Each value within ±0.005 ″/cy of:
+  PROVISIONAL protocol "report both" (ADR-0014; maintainer decision
+  2026-10-20): both protocols are computed from identical initial conditions
+  with the NUM-013 harness and one estimator, Newtonian. ASSERTED (P-remove):
+  the contribution of planet X is the rate of the full system minus the rate
+  of the full system without X; each value within ±0.005 ″/cy of:
   Venus 277.4176, Earth/Moon 90.8881, Mars 2.4814, Jupiter 153.9899,
-  Saturn 7.3227, Uranus 0.1425, Neptune 0.0424.
+  Saturn 7.3227, Uranus 0.1425, Neptune 0.0424. REPORTED, not asserted
+  (P-add): Sun + Mercury + X minus Sun + Mercury, printed next to the
+  asserted value with its difference from Park17.
 source: >-
   docs/strategy/journal/01-physics-truth-data.md §2 and PHY-012; Park et al.
   2017, AJ 153, 121, Table 3 [P].
@@ -376,14 +433,45 @@ related: [NUM-011, NUM-013, CI-009]
 notes: >-
   AUTHORITATIVE over NUM-013 for expected values and tolerances of the
   per-planet contributions; NUM-013 is authoritative for the differential-run
-  harness that produces them. BLOCKED until OI-38 confirms Park 2017's
-  switch-on/switch-off protocol (UNVERIFIED, Journal #4 §3.1). Without a fixed
-  protocol the oracle is ill-posed: cross terms reach 0.0411 (J+S) and −0.0209
-  (V+E/M), so toggling a planet off from the full model versus on from
-  Sun + Mercury can differ by up to ~0.04 ″/cy, 8× the tolerance (red-team
-  review 2026-10-14, Journal #9). The provisional protocol above is the most
-  likely reading, since Park lists cross terms separately as pairs; it SHALL
-  NOT be tuned to make a test pass. Clemence 1947
+  harness that produces them. Park 2017's own switch-on/switch-off protocol is
+  not yet confirmed by a maintainer against the Park 2017 text (OI-38, which
+  stays open). Without a fixed protocol the oracle is ill-posed: cross terms
+  reach 0.0411 (J+S) and −0.0209 (V+E/M), so toggling a planet off from the
+  full model versus on from Sun + Mercury can differ by up to ~0.04 ″/cy, 8×
+  the tolerance (red-team review 2026-10-14, Journal #9). PROTOCOL CHANGE
+  2026-10-20 (maintainer decision; ADR-0014). The protocol written down
+  before any run was P-add (Sun + Mercury + X minus Sun + Mercury; this
+  requirement's earlier acceptance and the WP14 pre-registration in
+  tests/vectors/park2017-table3.toml). P-remove was chosen AFTER the WP14 and
+  WP17 results were known, so this choice is post hoc and is stated as such.
+  Evidence on m3-newtonian-nbody (crates/ferroastro-diffrun/tests/nightly_phy012.rs::nightly_phy012_park17_table3_newtonian_contributions,
+  WP14, re-run identically in the progress review after WP18): P-add missed
+  4 of 7 rows: Venus 277.394894 (−0.022706), Earth/Moon 90.869103
+  (−0.018997), Jupiter 154.028732 (+0.038832), Saturn 7.365749 (+0.043049);
+  within ±0.005 only Mars (−0.002016), Uranus (−0.002898) and Neptune
+  (−0.000332). P-remove passes all 7 within 0.0007 ″/cy (largest Earth/Moon
+  +0.000695). Four independent integrators (FerroAstro IAS15, REBOUND 5.2.2,
+  Mercury6 RA15, Swiftest WHM) give the same P-add Venus value to 2e-8 ″/cy
+  through one estimator (WP17 check 4,
+  crates/ferroastro-oracle/tests/nightly_oracle_differentials.rs), and two
+  independent scipy DOP853 integrations reproduce it to ≤ 1.7e-4 ″/cy
+  (progress reviews after WP15 and WP18), so the P-add misses are a protocol difference, not an
+  integrator error. Park17 §4 (WP14 notes quote it verbatim) describes rows
+  made by setting a GM to zero in the nominal ephemeris, and Park's pair rows
+  equal P-remove's joint removal minus the two single removals to
+  ≤ 1.2e-4 ″/cy for all six pairs (progress review after WP18, R1; that
+  comparison is post hoc). REVERT CONDITION: the P-remove assertion is
+  PROVISIONAL until a maintainer confirms OI-38 against the Park 2017 text;
+  if the text says P-add, the assertion reverts to P-add and the 4 misses
+  above are treated as real discrepancies (type:physics-discrepancy). SCOPE
+  OF THE GATE: the ±0.005 ″/cy tolerance remains tighter than the protocol
+  ambiguity (cross terms up to 0.041 ″/cy), so a pass establishes
+  "consistent with Park 2017 under P-remove", not agreement independent of
+  the protocol. The vectors still carry blocked_by = "OI-38"; switching the
+  harness's asserted protocol and its vectors happens in the build PR, never
+  by ticking OI-38 alone (the WP15 review's F13: ticking OI-38 auto-arms the
+  P-add rows). The tolerance and the expected values are unchanged; the
+  protocol SHALL NOT be tuned further to make a test pass. Clemence 1947
   per-planet values are [S] and are not asserted. Journal #5's illustrative
   example used "PHY-012" for the 1PN Schwarzschild advance; that example is
   superseded: the Schwarzschild rung is PHY-004/PHY-005.
@@ -579,9 +667,12 @@ statement: >-
   rate (rung N-AST) SHALL be computed as a differential run and SHALL reproduce
   the Park17 Table 3 value in the Park17 mean-orbit frame with the Park17 fit.
 acceptance: >-
-  PROVISIONAL protocol, as PHY-012: Sun + Mercury + asteroid set minus
-  Sun + Mercury, both Newtonian, from identical initial conditions (NUM-013
-  harness). The differential rate is 0.0012 ± 0.0003 ″/cy.
+  Protocol as PHY-012 ("report both", ADR-0014): ASSERTED (P-remove) planets
+  + asteroid set minus planets; REPORTED (P-add) Sun + Mercury + asteroid
+  set minus Sun + Mercury; both Newtonian, from identical initial conditions
+  (NUM-013 harness). The asserted differential rate is 0.0012 ± 0.0003 ″/cy.
+  This rung gates independently of OI-38, because its protocol dependence is
+  about 1% of the tolerance (notes).
 source: >-
   docs/strategy/journal/01-physics-truth-data.md §2 rung N-AST; Park et al.
   2017, AJ 153, 121, Table 3 [P]; docs/strategy/journal/09-red-team-review.md
@@ -591,8 +682,23 @@ related: [PHY-012, PHY-013, PHY-014, NUM-013, REF-003]
 notes: >-
   Added 2026-10-14 after the red-team review (Journal #9): PHY-014's ±0.005
   cannot detect a dropped asteroid set, so this differential rung catches it.
-  BLOCKED until OI-38 confirms Park 2017's switch-on/switch-off protocol (same
-  caveat as PHY-012) and until asteroid initial conditions exist (REF-003,
-  OI-24). Which bodies Park's asteroid row covers (343 asteroids only, or also
-  the 30 KBOs and the ring) is UNVERIFIED (OI-24).
+  OI-38 DECOUPLING (maintainer decision 2026-10-20): the earlier text blocked
+  this rung on OI-38. Evidence that the protocol does not matter here:
+  crates/ferroastro-diffrun/tests/nightly_phy013.rs::nightly_phy013_n_sum_and_asteroid_differential (WP15, re-run identically by
+  the WP15 reviewer and the progress review after WP18) gives P-add 0.001242
+  and P-remove 0.001245 ″/cy; the protocol dependence of about 3e-6 ″/cy is
+  1% of ±0.0003 (progress review after WP15, finding F9; restated in WP16).
+  Both values pass. The ±0.0003 tolerance and 0.0012 are unchanged. The
+  vector PARK17-T3-ASTEROIDS still carries blocked_by = "OI-38" and cites
+  PHY-013/NUM-013 but not this requirement, and the nightly test does not yet
+  cite PHY-019 (progress review after WP18, R8); unblocking and citing are
+  build-PR work. Initial conditions: the 343 numbered asteroids are placed
+  from sb441-n373s.bsp, a DE441 product, because DE440's own asteroid ICs are
+  in no pinned product (REF-003 notes; OI-24 still qualifies this rung).
+  Which bodies Park's row covers: the WP15 builder re-read Park17 (PDF sha256
+  24fb2153…2433380b): its ephemeris has no KBOs (they arrived in DE440), and
+  the row's uncertainty "comes from the estimated mass parameters of the 343
+  asteroids", which points to the 343 asteroids only; a human reading of that
+  text is still pending (OI-24). The KBOs + ring add +0.000019 ″/cy in
+  FerroAstro's full model (WP15, reported only).
 ```
