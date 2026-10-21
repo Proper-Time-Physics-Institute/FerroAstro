@@ -13,8 +13,11 @@
 //!   Park2017 estimator (CI-009: one estimator for every tool).
 
 use crate::BenchError;
-use crate::series::{NAIF_MERCURY, Row, Series, sub3};
+use crate::series::{NAIF_MERCURY, NAIF_SUN, Row, Series, sub3};
+use ferroastro_core::frames::Barycentric;
+use ferroastro_core::time::{Epoch, Tdb};
 use ferroastro_diffrun::Track;
+use ferroastro_ephem::{Ephemeris, NaifId, Spk};
 use std::collections::BTreeMap;
 
 /// Two output times are the same sample when they differ by at most this (days; ~0.1 ms):
@@ -199,6 +202,49 @@ pub fn max_dr(
 /// As [`max_dr`].
 pub fn mercury_max_dr(a: &Series, b: &Series) -> Result<(f64, f64, usize), BenchError> {
     max_dr(a, b, NAIF_MERCURY, Centre::Sun)
+}
+
+/// `body`'s heliocentric position difference from an SPK ephemeris (WP28: de440.bsp) over the
+/// samples of `series` up to `t_at_days`: `(|Δr| at t_at_days, max |Δr|, time of the max)` (km,
+/// km, days). Both positions are relative to the Sun, so the result does not depend on how the
+/// run's barycentre was defined.
+///
+/// # Errors
+/// As [`Series::heliocentric`]; `FA-E1600` if the SPK cannot evaluate an epoch, or there is no
+/// sample at `t_at_days` (within [`TIME_MATCH_DAYS`]).
+pub fn body_vs_spk(
+    series: &Series,
+    spk: &Spk<'_>,
+    body: i32,
+    t_at_days: f64,
+) -> Result<(f64, f64, f64), BenchError> {
+    let bad = |p: String| BenchError::input(&series.file, p);
+    let pos = |id: i32, t: f64| -> Result<[f64; 3], BenchError> {
+        let e = Epoch::<Tdb>::from_jd_parts(series.epoch_jd_tdb, t)
+            .map_err(|e| bad(format!("epoch {t} d: {e}")))?;
+        let s = spk
+            .state::<Barycentric, f64>(NaifId(id), e)
+            .map_err(|e| bad(format!("SPK body {id} at {t} d: {e}")))?;
+        Ok(s.position()
+            .components()
+            .map(ferroastro_core::units::Length::km))
+    };
+    let (mut at, mut worst, mut t_worst) = (None, 0.0_f64, 0.0);
+    for (t, r, _) in series.heliocentric(body)? {
+        if t > t_at_days + TIME_MATCH_DAYS {
+            break;
+        }
+        let d = sub3(r, sub3(pos(body, t)?, pos(NAIF_SUN, t)?));
+        let dr = dot(d, d).sqrt();
+        if dr > worst {
+            (worst, t_worst) = (dr, t);
+        }
+        if (t - t_at_days).abs() <= TIME_MATCH_DAYS {
+            at = Some(dr);
+        }
+    }
+    at.map(|a| (a, worst, t_worst))
+        .ok_or_else(|| bad(format!("no sample of body {body} at t = {t_at_days} d")))
 }
 
 /// Mercury relative to the Sun as a [`Track`] (sample times in TDB seconds since the epoch).

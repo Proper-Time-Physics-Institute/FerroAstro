@@ -28,7 +28,7 @@
     reason = "a command-line driver: a failure aborts the run with its message"
 )]
 
-use ferroastro_bench::accuracy::{Centre, max_dr};
+use ferroastro_bench::accuracy::{Centre, body_vs_spk, max_dr};
 use ferroastro_bench::accuracy::{mercury_max_dr, mercury_track, relative_energy_change};
 use ferroastro_bench::series::{FERROASTRO_RECORD, RunInfo, Series};
 use ferroastro_bench::{
@@ -604,44 +604,6 @@ fn reference_tool(kind: Kind) -> Option<&'static str> {
     }
 }
 
-/// Mercury's heliocentric |Δr| against de440.bsp at t = `DE440_COLUMN_YEARS`, and the max over
-/// the samples up to then: `(at 40 yr, max, time of the max)` (km, km, days).
-fn mercury_vs_de440(series: &Series, spk: &Spk<'_>) -> Result<(f64, f64, f64), String> {
-    use ferroastro_core::frames::Barycentric;
-    use ferroastro_core::time::{Epoch, Tdb};
-    use ferroastro_ephem::{Ephemeris, NaifId};
-    let t40 = DE440_COLUMN_YEARS * ferroastro_core::time::DAYS_PER_JULIAN_YEAR;
-    let helio = series
-        .heliocentric(ferroastro_bench::series::NAIF_MERCURY)
-        .map_err(|e| e.to_string())?;
-    let pos = |id: i32, t: f64| -> Result<[f64; 3], String> {
-        let e = Epoch::<Tdb>::from_jd_parts(series.epoch_jd_tdb, t).map_err(|e| e.to_string())?;
-        let s = spk
-            .state::<Barycentric, f64>(NaifId(id), e)
-            .map_err(|e| e.to_string())?;
-        Ok(s.position()
-            .components()
-            .map(ferroastro_core::units::Length::km))
-    };
-    let (mut at40, mut worst, mut t_worst) = (None, 0.0_f64, 0.0);
-    for (t, r, _) in &helio {
-        if *t > t40 + ferroastro_bench::accuracy::TIME_MATCH_DAYS {
-            break;
-        }
-        let (m, sun) = (pos(1, *t)?, pos(10, *t)?);
-        let d = ferroastro_bench::series::sub3(*r, ferroastro_bench::series::sub3(m, sun));
-        let dr = d[0].hypot(d[1]).hypot(d[2]);
-        if dr > worst {
-            (worst, t_worst) = (dr, *t);
-        }
-        if (t - t40).abs() <= ferroastro_bench::accuracy::TIME_MATCH_DAYS {
-            at40 = Some(dr);
-        }
-    }
-    at40.map(|a| (a, worst, t_worst))
-        .ok_or_else(|| format!("no Mercury sample at t = {t40} d"))
-}
-
 /// WP28: the round-off column (Mercury's barycentric `|r − r_DD|` against the scenario's
 /// double-double twin) and Mercury vs de440.bsp at 40 yr, for one tool's entry.
 fn wp28_columns(c: &mut Collected, p: &Planned, tool: &str, run_dir: &Path, spk: Option<&Spk<'_>>) {
@@ -696,7 +658,12 @@ fn wp28_columns(c: &mut Collected, p: &Planned, tool: &str, run_dir: &Path, spk:
             (Some(r), _, _) => Measure::none("km", r.clone()),
             (None, None, _) => Measure::none("km", "no output series"),
             (None, _, None) => Measure::none("km", "de440.bsp not loaded"),
-            (None, Some(s), Some(spk)) => match mercury_vs_de440(s, spk) {
+            (None, Some(s), Some(spk)) => match body_vs_spk(
+                s,
+                spk,
+                ferroastro_bench::series::NAIF_MERCURY,
+                DE440_COLUMN_YEARS * ferroastro_core::time::DAYS_PER_JULIAN_YEAR,
+            ) {
                 Ok((at40, worst, t)) => Measure::of(
                     at40,
                     "km",
@@ -705,7 +672,7 @@ fn wp28_columns(c: &mut Collected, p: &Planned, tool: &str, run_dir: &Path, spk:
                         DE440_COLUMN_YEARS * ferroastro_core::time::DAYS_PER_JULIAN_YEAR
                     ),
                 ),
-                Err(e) => Measure::none("km", e),
+                Err(e) => Measure::none("km", e.to_string()),
             },
         };
         c.entry.accuracy.mercury_de440_km = Some(m);
