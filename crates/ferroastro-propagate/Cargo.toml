@@ -33,6 +33,7 @@ default = []
 parallel = ["dep:rayon"]
 
 [dev-dependencies]
+proptest.workspace = true
 ferroastro-testdata.workspace = true
 ferroastro-vectors.workspace = true
 

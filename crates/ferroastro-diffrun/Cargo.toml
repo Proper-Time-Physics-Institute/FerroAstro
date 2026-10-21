@@ -21,6 +21,7 @@ serde_json.workspace = true
 thiserror.workspace = true
 
 [dev-dependencies]
+proptest.workspace = true
 ferroastro-analytic.workspace = true
 ferroastro-constants.workspace = true
 ferroastro-ephem.workspace = true

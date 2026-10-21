@@ -362,6 +362,7 @@ dependencies = [
  "ferroastro-testdata",
  "ferroastro-vectors",
  "postcard",
+ "proptest",
  "serde",
  "serde_json",
  "thiserror",
@@ -469,6 +470,7 @@ dependencies = [
  "ferroastro-system",
  "ferroastro-testdata",
  "ferroastro-vectors",
+ "proptest",
  "serde",
  "serde_json",
  "sha2",
@@ -506,6 +508,7 @@ dependencies = [
  "ferroastro-testdata",
  "ferroastro-vectors",
  "postcard",
+ "proptest",
  "rayon",
  "serde",
  "thiserror",
@@ -526,6 +529,7 @@ name = "ferroastro-scenario"
 version = "0.0.0"
 dependencies = [
  "ferroastro-core",
+ "proptest",
  "schemars",
  "serde",
  "serde_json",
