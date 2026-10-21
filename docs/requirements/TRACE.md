@@ -10,7 +10,7 @@
 - Requirements: **121** (draft 121)
 - `verification: test` requirements cited by at least one test: **31 / 93**
 - Citing tests: **196**; vectors referencing a requirement: **104**
-- Gate evidence (ADR-0010): **14** requirements name a gate; **7** counted, **7** `gate (unpinned)`; `verification: test` requirements covered by a counted gate alone: **7**
+- Gate evidence (ADR-0010): **12** requirements name a gate; **6** counted, **6** `gate (unpinned)`; `verification: test` requirements covered by a counted gate alone: **6**
 
 ## Test evidence
 
@@ -150,14 +150,12 @@
 | [ORG-008](ORG.md) | draft | high | `ci/dco/Check sign-off trailers` | gate (unpinned) |
 | [STD-001](STD.md) | draft | low | `ci/rust/cargo fmt --all --check` | gate |
 | [STD-002](STD.md) | draft | medium | `ci/rust/cargo clippy` | gate |
-| [STD-003](STD.md) | draft | medium | `ci/rust/cargo clippy` | gate |
 | [STD-004](STD.md) | draft | low | `ci/rust/cargo doc` | gate |
 | [STD-005](STD.md) | draft | low | `ci/msrv` | gate |
 | [STD-006](STD.md) | draft | high | `ci/rust/cargo deny check` | gate (unpinned) |
 | [STD-008](STD.md) | draft | medium | `ci/rust/cargo nextest + doctests` | gate |
 | [STD-009](STD.md) | draft | low | `ci/python` | gate |
 | [STD-010](STD.md) | draft | high | `ci/reuse/reuse lint` | gate (unpinned) |
-| [TST-001](TST.md) | draft | high | `ci/rust/cargo clippy` | gate (unpinned) |
 | [DEP-001](DEP.md) | draft | high | `ci/rust/cargo deny check` | gate (unpinned) |
 | [DEP-002](DEP.md) | draft | high | `ci/rust/cargo deny check` | gate (unpinned) |
 | [DEP-003](DEP.md) | draft | high | `ci/rust/cargo deny check` | gate (unpinned) |

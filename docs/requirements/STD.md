@@ -79,7 +79,6 @@ source: >-
   docs/strategy/journal/05-organization-standards.md §3.3 and STD-003.
 parent: null
 related: [NUM-021, ORG-005]
-verified_by_gate: "ci/rust/cargo clippy"
 notes: >-
   A future SIMD crate (NUM-021) is the likely first exception.
 ```

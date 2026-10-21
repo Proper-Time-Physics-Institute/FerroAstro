@@ -29,7 +29,6 @@ source: >-
   (renumbered from NUM-).
 parent: null
 related: [STD-002]
-verified_by_gate: "ci/rust/cargo clippy"
 notes: >-
   Test modules may allow float_cmp only for exact-by-construction checks.
   float_cmp_const group membership is UNVERIFIED.
