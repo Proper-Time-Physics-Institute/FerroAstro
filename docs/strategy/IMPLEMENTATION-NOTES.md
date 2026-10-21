@@ -5879,3 +5879,8 @@ Branch `m5-performance` (stacked on `m4-eih`), draft PR #18, continuing after th
 | N1 | Nightly `nightly_num024_speed_table_is_complete`: the most recent committed WP28 table has (f)–(j) timed with ≥ 5 runs, a scenario SHA-256 and IC hash per FerroAstro entry, both Subbotin rows equal to the vectors, the round-off and de440 columns with values for (h)–(j), the mixed/f64 ratio and the single-core score | nightly | structure (exact) |
 
 Nothing above is tuned after a run. If a bound fails, the value, the failure and its diagnosis are reported, and the bound is not changed.
+
+### Plan addendum (written 2026-10-21 00:10 UTC, before the test exists or runs): D1, data tier
+| # | check | tier | bound (vector) | expectation and rationale |
+|---|---|---|---|---|
+| D1 | The de440.bsp column's library function (`accuracy::body_vs_spk`, moved out of the driver) on the NUM-024 mixed scenario over 5 yr with 10-d samples (the WP25 D1 run), header.440 and de440.bsp fetched or re-verified with provenance printed. Check: its Mercury heliocentric max residual equals an independent in-test computation from the `RunOutput` records (the WP25 D1 method) | data | ≤ 1e-6 km (`BENCH-DE440-COLUMN-CONSISTENCY-KM`) | The two paths differ only in how the epoch is split and in the CSV-free f64 sum of each (hi, lo) pair: ≤ 1e-8 s of time × 48 km/s ≈ 5e-7 km. Reported, not asserted: the value against WP25 D1's printed 0.784621 km (mixed). |

@@ -55,3 +55,18 @@ tolerance = { abs = 30.0 }
 tolerance_rationale = "Transcription check only: the value is printed in whole minutes (+/- 0.5 min). Never a timing gate (CI-008, OI-44)."
 verified_by = "WP28 builder agent, 2026-10-20: transcribed from the WP25 reading of Table 1 (IMPLEMENTATION-NOTES WP25, Sources)."
 blocked_by = "OI-44"
+
+# WP28 plan addendum D1 (2026-10-21 00:10 UTC), committed before the test that reads it.
+[[vector]]
+id = "BENCH-DE440-COLUMN-CONSISTENCY-KM"
+requirement = ["NUM-024", "REF-001"]
+quantity = "|max over 5 yr of Mercury's heliocentric |r - r_de440.bsp| from the speed table's library function (accuracy::body_vs_spk on the run's state series) - the same max computed directly from the RunOutput records|, scenario ephemeris-mixed-epm16-40yr shortened to 5 yr with 10-d samples, mixed mode"
+value = 0.0
+unit = "km"
+kind = "analytic"
+source = "Both paths evaluate the same de440.bsp segments at the same TDB epochs up to the epoch split (one f64 JD + days vs JD parts), <= 1e-8 s, times Mercury's 48 km/s ~ 5e-7 km; positions are the same f64 sums of the (hi, lo) pairs."
+citation = "WP28 plan addendum D1 (IMPLEMENTATION-NOTES); WP25 D1 (the direct method); JPL de440.bsp (Park et al. 2021, AJ 161, 105)"
+retrieved = "2026-10-21"
+tolerance = { abs = 1.0e-6 }
+tolerance_rationale = "Twice the epoch-split estimate; a wrong body, centre, epoch or a missing Sun subtraction gives >= 1e3 km."
+verified_by = "WP28 builder agent, 2026-10-21: fixed in the WP28 plan addendum before the test was written."
