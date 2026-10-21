@@ -99,8 +99,43 @@ source = "Orekit 13.1.9 / Hipparchus 4.0.3 run in the local ci/oracles/orekit im
 citation = "Orekit 13.1.9 (Apache-2.0; NewtonianAttraction, ThirdBodyAttraction); Montenbruck & Gill 2000, Satellite Orbits, Eq. 3.37 (third-body acceleration); Park et al. 2021, AJ 161, 105 (DE440); WP17 plan"
 retrieved = "2026-10-15"
 tolerance = { abs = 1.0 }
-tolerance_rationale = "PROVISIONAL 1 km, pre-registered in the WP17 plan before any run (NEEDS HUMAN REVIEW); unchanged. Both integrators were meant to run far below their truncation limits (IAS15 epsilon 1e-9; DP853 as in engine.settings) and both evaluate the same DE440 Chebyshev data (SPK vs binary file), so metres were expected; 1 km is the ceiling shared with stage A: a missing field body or a GM error of 1e-8 gives far more than 1 km in 100 yr."
+tolerance_rationale = "PROVISIONAL 1 km, pre-registered in the WP17 plan before any run (NEEDS HUMAN REVIEW); unchanged. Both integrators were meant to run far below their truncation limits (IAS15 epsilon 1e-9; DP853 as in engine.settings) and both evaluate the same DE440 Chebyshev data (SPK vs binary file), so metres were expected; 1 km is the ceiling shared with stage A: a missing field body or a GM error of 1e-8 gives far more than 1 km in 100 yr. The bound is unchanged, but the oracle settings are not the pre-registered ones: they were tightened (DP853 abs 1e-3 m / rel 1e-14 -> abs 1e-4 m / rel 1e-15) after the pre-registered run (1.102 km) failed this bound; see ci/oracles/orekit/settings.toml and the notes (review R6, NEEDS HUMAN REVIEW)."
 verified_by = "WP17 builder agent, 2026-10-15: tolerance from the WP17 plan, written before the first Orekit run."
 generated_by = "tools/oracles/orekit_runner.py@5fad884"
 engine = { name = "Orekit", version = "13.1.9 with Hipparchus 4.0.3, OpenJDK 17.0.20.1, orekit-data 2422a7d0", settings = "DormandPrince853Integrator(min 1e-3 s, max 2 d, abs 1e-4 m, rel 1e-15; tightened after measurement, see notes); CartesianOrbit in the Sun's inertially oriented frame; NewtonianAttraction(GM_sun) + ThirdBodyAttraction(Venus, Earth, Moon, Mars, Jupiter, Saturn, Uranus, Neptune, Pluto); fixed-step handler every 5 d" }
 notes = "Measured 2026-10-15 (WP17): 0.1310 km (t = 36465 d; margin 0.13) with the settings above. With the PRE-REGISTERED settings (DP853 abs 1e-3 m, rel 1e-14) the value was 1.102 km, which FAILED the 1 km bound; a convergence check showed the oracle itself was not converged (its loose and tight runs differ by up to 0.97 km, growing as t^2 along track, i.e. a secular energy error of the non-symplectic DP853), while FerroAstro moves by < 1 m between IAS15 epsilon 1e-8 and 1e-11. The oracle settings were tightened after that measurement (NEEDS HUMAN REVIEW: a post-measurement change of the oracle configuration, recorded in ci/oracles/orekit/settings.toml and IMPLEMENTATION-NOTES WP17). The remaining 0.13 km is still along track and may be Orekit's residual DP853 error at rel 1e-15 (f64 limit). Orekit's GMs read from the binary file equal header.440 to <= 4e-16 relative."
+
+# WP21 (stage C, REF-005): REBOUNDx 5.1.0 gr_full against FerroAstro gr_eih. Both vectors were written
+# in the WP21 plan (IMPLEMENTATION-NOTES) before the first stage C oracle or FerroAstro run.
+
+[[vector]]
+id = "ORACLE-STAGE-C-REBOUNDX-MERCURY-MAX-DR"
+requirement = ["REF-005", "CI-005", "CI-009"]
+quantity = "largest Euclidean position difference of Mercury (SSB-centred, ICRF axes) over the 101 yearly output times between FerroAstro IAS15 (f64) with gr_eih (DE440 Eq. 27, beta = gamma = 1, Newtonian right-hand-side accelerations) and REBOUND 5.2.2 IAS15 with REBOUNDx 5.1.0 gr_full (c from header.440 CLIGHT and AU) on scenario stage-c-sun-planets-moon-eih-100yr (Sun, 8 planets with Earth and Moon resolved, header.440 ICs at JDEPOC, 100 Julian years, epsilon 1e-9, first step 0.1 d)"
+value = 0.0
+unit = "km"
+kind = "computed-reference"
+source = "REBOUND 5.2.2 + REBOUNDx 5.1.0 gr_full run in the local ci/oracles/rebound image on the same scenario file; golden ci/golden/rebound/stage-c-sun-planets-moon-eih-100yr/ with its MANIFEST.json (image digest, runner commit, input and output SHA-256s)"
+citation = "Tamayo, Rein, Shi & Hernandez 2020, MNRAS 491, 2885 (REBOUNDx; gr_full based on Newhall, Standish & Williams 1983, A&A 125, 150), REBOUNDx documentation 'Astrophysical Effects' (gr_full: parameter c only); Rein & Spiegel 2015 (IAS15); Park et al. 2021, AJ 161, 105, Eq. 27; WP21 task (crate-plan.json): PROVISIONAL 1 m"
+retrieved = "2026-10-20"
+tolerance = { abs = 1.0e-3 }
+tolerance_rationale = "PROVISIONAL 1 m from the WP21 task text (NEEDS HUMAN REVIEW), pre-registered in the WP21 plan before any run. Same ICs, GMs and 1PN equations (DE440 Eq. 27 and gr_full both follow Newhall et al. 1983, beta = gamma = 1); the difference of the right-hand-side acceleration treatment (FerroAstro: Newtonian a_j; gr_full: undocumented) is O(c^-4), ~1e-18 relative in Mercury's acceleration (WP19 C5b), i.e. micrometres over 100 yr. What remains is f64 round-off and step-sequence noise: WP16 measured 0.71 m for the Newtonian stage A without the Moon, of which REBOUND's own round-off was 0.685 m against a DD reference. The Moon shortens the steps of both codes (more steps, more round-off), so the pre-registered expectation is 0.5-2 m: the 1 m bound may fail on round-off alone, and a failure is a finding to be diagnosed with the Newtonian control stage-c-sun-planets-moon-newton-100yr, not a reason to tune. A wrong 1PN coefficient of relative size 1e-3 moves Mercury by ~2 km over 100 yr (GR shifts its perihelion by 43 arcsec/cy, ~2000 km along the orbit), so 1 m tests the 1PN term at ~5e-4 relative."
+verified_by = "WP21 builder agent, 2026-10-20: tolerance from the WP21 task, expectation derived above from the WP16/WP19 measurements before the first stage C run."
+generated_by = "tools/oracles/rebound_runner.py@1bc1106"
+engine = { name = "REBOUND + REBOUNDx", version = "5.2.2 + 5.1.0", settings = "IAS15, epsilon 1e-9, sim.dt = 0.1 d, G = 1, units au/day, REBOUNDx gr_full with c = CLIGHT * 86400 / AU au/day, exact_finish_time = 1 at each yearly output" }
+
+[[vector]]
+id = "ORACLE-STAGE-C-GR-TOOL-AGREEMENT"
+requirement = ["CI-009", "REF-005", "PHY-005"]
+quantity = "difference between REBOUNDx gr_full's and FerroAstro gr_eih's GR contribution to Mercury's perihelion rate, rate(GR on) - rate(GR off) from identical header.440 ICs, legs back and forward over 1000-3000 CE (scenarios oracle-c-planets-moon-{eih,newton}-{back,fwd} and oracle-c-sun-mercury-{eih,newton}-{back,fwd}), one Park2017 estimator (Park17 mean-orbit plane, sampled-state passages, quadratic + 14 Table-2 terms, fit window J2000 +/- 1000 Julian yr) applied by FerroAstro's tooling to both tools' daily series"
+value = 0.0
+unit = "arcsec/cy"
+kind = "computed-reference"
+source = "REBOUND 5.2.2 + REBOUNDx 5.1.0 series from the local oracle image (tools/oracles/nightly.sh; not committed, verified through their MANIFEST.json), against FerroAstro IAS15 f64 runs of the same scenario files"
+citation = "Park et al. 2017, AJ 153, 121 (estimator; NUM-011 canonical); Tamayo et al. 2020 (REBOUNDx gr_full); WP21 task (crate-plan.json): PROVISIONAL 1e-3 arcsec/cy"
+retrieved = "2026-10-20"
+tolerance = { abs = 1.0e-3 }
+tolerance_rationale = "PROVISIONAL 1e-3 arcsec/cy from the WP21 task (NEEDS HUMAN REVIEW), pre-registered in the WP21 plan before any run. Same ICs, GMs and 1PN equations, one estimator: a difference is integrator or round-off error. The Newtonian P-add Venus comparison with the same estimator agreed with REBOUND to 7e-9 arcsec/cy (WP19 R3 nightly), so the expectation is |difference| < 1e-6 arcsec/cy for both the full system and Sun + Mercury; 1e-3 is three orders above that and below every PHY-012 single-planet row except the smallest."
+verified_by = "WP21 builder agent, 2026-10-20: tolerance from the WP21 task; expectation written in the WP21 plan before the first run."
+generated_by = "tools/oracles/rebound_runner.py@1bc1106"
+engine = { name = "REBOUND + REBOUNDx", version = "5.2.2 + 5.1.0", settings = "IAS15 epsilon 1e-9 (default), G = 1, au/day, gr_full with c = CLIGHT * 86400 / AU, exact_finish_time = 1 at each daily output" }

@@ -1,0 +1,34 @@
+# SPDX-FileCopyrightText: 2026 Proper-Time Physics Institute
+# SPDX-License-Identifier: Apache-2.0
+# Oracle stage C nightly, single-body isolation (WP21; PHY-005, CI-009, REF-005): Sun + Mercury as two
+# bodies with their DE440 GMs, Sun-only 1PN (gr_1pn_central; REBOUNDx gr, plus the gr_potential variant), header.440 ICs at
+# JDEPOC, one leg forwards to J2000 + 1000 Julian yr + 30 d. GR on minus GR off
+# with identical ICs, one Park2017 estimator. Mercury and the Sun sampled daily. REBOUND only.
+# Schema: scenario.schema.json (CI-002).
+schema_version = 1
+name = "oracle-c-sun-mercury-gr1pn-fwd"
+description = "Oracle C: Sun + Mercury, Sun-only 1PN, header.440 ICs, fwd leg of 1000-3000 CE, daily samples"
+mode = "n-body"
+bodies = ["Sun", "Mercury"]
+central_body = "Sun"
+
+[initial_conditions]
+source = "de440-header"
+
+[constants]
+gm_set = "de440"
+
+[forces]
+newton = true
+gr_1pn_central = true
+
+[integrator]
+name = "ias15"
+precision = "f64"
+
+[span]
+years = 1030.5941136208078
+
+[output]
+cadence_days = 1.0
+sample_bodies = ["Sun", "Mercury"]

@@ -584,3 +584,99 @@ fn energy_diagnostic_is_consistent_with_the_forces() {
     println!("geocentric vs barycentric energy: relative difference {rel:.3e}");
     assert!(rel < 1e-12, "{rel:e}"); // lint: allow-literal(round-off budget of the state conversion)
 }
+
+fn lt_term(gamma: f64, reaction: LtReaction) -> SolarLenseThirring<Icrf> {
+    use ferroastro_core::units::SpinGm;
+    SolarLenseThirring::new(
+        SpinGm::from_km5_per_s3(1.27e16).unwrap(), // lint: allow-literal(synthetic G S of solar order, WP20 plan L1)
+        Velocity::from_km_per_s(3.0e5).unwrap(),   // lint: allow-literal(synthetic c, WP20 plan L1)
+        gamma,
+        pole(),
+        reaction,
+    )
+    .unwrap()
+}
+
+fn lt_model(gamma: f64, reaction: LtReaction) -> (Vec<NBody>, Vec<f64>, Vec<f64>, Vec<f64>) {
+    let (bodies, x, v) = fixture();
+    let terms: Vec<Box<dyn ForceTerm<Icrf>>> = vec![Box::new(lt_term(gamma, reaction))];
+    let m = Model::new(&bodies, MoonVariables::Barycentric, terms).unwrap();
+    assert_eq!(m.gauge(), Gauge::PpnIsotropicHarmonic);
+    let a = accel(&m, &x, &v);
+    (bodies, x, v, a)
+}
+
+/// WP20 L1a, L1c: the Lense–Thirring term with its reaction leaves Σ μᵢ aᵢ = 0 to round-off;
+/// without it the Sun gets exactly nothing and the other bodies are unchanged bit for bit.
+///
+/// Verifies: NUM-019
+#[test]
+fn solar_lense_thirring_reaction_balances_momentum() {
+    for gamma in [1.0, 0.999] {
+        // lint: allow-literal(PPN test points)
+        let (bodies, _, _, a) = lt_model(gamma, LtReaction::On);
+        let n = bodies.len();
+        let mut sum = [0.0_f64; 3];
+        let mut scale = 0.0;
+        for (i, b) in bodies.iter().enumerate() {
+            let ai = [a[i], a[n + i], a[2 * n + i]];
+            for k in 0..3 {
+                sum[k] += b.gm * ai[k];
+            }
+            scale += b.gm * ai[0].hypot(ai[1]).hypot(ai[2]);
+        }
+        let ulps = sum[0].hypot(sum[1]).hypot(sum[2]) / (eps() * scale);
+        println!("L1a (gamma = {gamma}): |sum GM_i a_i| / (eps sum GM_i |a_i|) = {ulps:.3}");
+        vectors()
+            .get("NBODY-LT-REACTION-MOMENTUM-ULPS")
+            .unwrap()
+            .check(ulps)
+            .unwrap();
+        assert!(a[0] != 0.0 || a[n] != 0.0 || a[2 * n] != 0.0);
+        let (_, _, _, off) = lt_model(gamma, LtReaction::Off);
+        assert_eq!([off[0], off[n], off[2 * n]], [0.0; 3]);
+        for i in 1..n {
+            for k in 0..3 {
+                assert_eq!(off[k * n + i].to_bits(), a[k * n + i].to_bits());
+            }
+        }
+    }
+}
+
+/// WP20 L1b: DE440 Eqs. 37–38 (2Ω×v, the N-body term) equal the Journal #4 R3b form (the
+/// single-body [`crate::LenseThirring`]) at every body's heliocentric state, γ = 1 and 0.999.
+///
+/// Verifies: NUM-019, PHY-011
+#[test]
+fn solar_lense_thirring_equals_the_r3b_form() {
+    use ferroastro_core::units::SpinGm;
+    let vs = vectors();
+    let tol = vs.get("LT-DE440-VS-R3B-REL").unwrap();
+    for gamma in [1.0, 0.999] {
+        // lint: allow-literal(PPN test points)
+        let (bodies, x, v, a) = lt_model(gamma, LtReaction::Off);
+        let n = bodies.len();
+        let r3b = crate::LenseThirring::<Icrf>::new(
+            SpinGm::from_km5_per_s3(1.27e16).unwrap(), // lint: allow-literal(same synthetic G S)
+            Velocity::from_km_per_s(3.0e5).unwrap(),   // lint: allow-literal(same synthetic c)
+            gamma,
+            pole(),
+        )
+        .unwrap();
+        let mut worst = 0.0_f64;
+        for i in 1..n {
+            let r = [x[i] - x[0], x[n + i] - x[n], x[2 * n + i] - x[2 * n]];
+            let w = [v[i] - v[0], v[n + i] - v[n], v[2 * n + i] - v[2 * n]];
+            let mut want = [0.0; 3];
+            r3b.add_acceleration(r, w, &mut want);
+            let got = [a[i], a[n + i], a[2 * n + i]];
+            let d = (got[0] - want[0])
+                .hypot(got[1] - want[1])
+                .hypot(got[2] - want[2]);
+            let rel = d / want[0].hypot(want[1]).hypot(want[2]);
+            worst = worst.max(rel);
+        }
+        println!("L1b (gamma = {gamma}): max relative |DE440 Eq. 37-38 - R3b| = {worst:.3e}");
+        tol.check(worst).unwrap();
+    }
+}

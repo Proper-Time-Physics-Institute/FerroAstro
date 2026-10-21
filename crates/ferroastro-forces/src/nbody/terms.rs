@@ -4,15 +4,18 @@
 //!
 //! Every term declares its gauge, its parameters and the tiers it acts on, resolves its body
 //! indices once ([`ForceTerm::bind`]) and adds accelerations in a fixed order. All terms here are
-//! Newtonian. Clean-room (DEP-008): the equations are the textbook point-mass sums, the DE440 J2
-//! description (Park et al. 2021, NUM-019) and the classical third-body expansion derived in
-//! [`GeocentricMoon`]; no REBOUND/REBOUNDx/ASSIST/Swiftest/Mercury6 source was consulted.
+//! Newtonian except [`SolarLenseThirring`] (PPN isotropic/harmonic). Clean-room (DEP-008): the
+//! equations are the textbook point-mass sums, the DE440 J2 description (Park et al. 2021,
+//! NUM-019), DE440 Eqs. 37–39 for the Lense–Thirring acceleration and the classical third-body
+//! expansion derived in [`GeocentricMoon`]; no REBOUND/REBOUNDx/ASSIST/Swiftest/Mercury6 source
+//! was consulted.
 
 use super::layout::{Accelerations, Layout, View};
-use crate::central::{Pole, dot};
+use crate::central::{Pole, cross, dot};
 use crate::oblateness::{j2_field, j2_potential};
 use crate::{ForceError, Gauge};
 use ferroastro_core::frames::Frame;
+use ferroastro_core::units::{SpinGm, Velocity};
 use ferroastro_ephem::NaifId;
 use ferroastro_real::Real;
 use ferroastro_system::Tier;
@@ -635,5 +638,227 @@ impl<F: Frame, R: Real> ForceTerm<F, R> for SolarJ2WithReaction<F, R> {
             u += view.layout().gm(i) * j2_potential(self.sun_gm, self.j2, self.radius, k_hat, r);
         }
         Some(u)
+    }
+}
+
+/// Whether the Sun receives the reaction of the Lense–Thirring accelerations.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum LtReaction {
+    /// The Sun receives `−(GMᵢ/GM☉) aᵢ` for every body `i`, as for J2: total linear momentum is
+    /// conserved (NUM-019 acceptance; WP20 default, NEEDS HUMAN REVIEW).
+    On,
+    /// The literal DE440 §3.4 reading: only the bodies other than the Sun are accelerated.
+    Off,
+}
+
+/// Solar Lense–Thirring acceleration on every Major body other than the Sun (NUM-019, PHY-011),
+/// DE440 (Park et al. 2021) Eqs. 37–39, evaluated as written:
+///
+/// `aᵢ = 2 Ωᵢ × vᵢ`, `Ωᵢ = (1+γ) G/(2c²rᵢ³) [−J + 3 (J·rᵢ) rᵢ/rᵢ²]`, `J = C☉ M☉ R☉² ω☉ p̂`,
+///
+/// with `rᵢ`, `vᵢ` relative to the Sun (`INPOP21a`, Fienga et al. 2021, Eq. 1 defines both so;
+/// DE440 defines `rᵢ` only). The term stores `G·J` = `G·S` (km⁵/s³) and the unit pole `p̂`.
+/// Expanded, this is the `INPOP21a` Eq. 1 and the Journal #4 R3b expression
+/// `(1+γ) GS/(c²r³)[(3/r²)(r×v)(r·p̂) + v×p̂]` (the single-body [`crate::LenseThirring`]); the
+/// identity is open item OI-35's question and is checked in `tools/lt_forms.py` and the WP20
+/// tests. With [`LtReaction::On`] the Sun receives the reaction. Velocity dependent, so it has no
+/// potential.
+#[derive(Debug, Clone)]
+pub struct SolarLenseThirring<F: Frame, R: Real = f64> {
+    gs: R,
+    c2: R,
+    gamma: R,
+    pole: Pole<F, R>,
+    reaction: LtReaction,
+    sun: usize,
+    sun_gm: R,
+    bodies: Vec<usize>,
+}
+
+impl<F: Frame, R: Real> SolarLenseThirring<F, R> {
+    /// `G·S` of the Sun, the speed of light, PPN γ, the spin pole and the reaction setting.
+    ///
+    /// # Errors
+    /// `FA-E0500` if `G·S` is negative or not finite, `c` is not positive and finite, or γ is
+    /// not finite.
+    pub fn new(
+        gs: SpinGm<R>,
+        c: Velocity<R>,
+        gamma: R,
+        pole: Pole<F, R>,
+        reaction: LtReaction,
+    ) -> Result<Self, ForceError> {
+        let g = gs.km5_per_s3();
+        if !(g.is_finite() && g >= R::ZERO) {
+            return Err(ForceError::Invalid {
+                name: "G S (km^5/s^3)",
+                value: g.to_f64(),
+                valid: "finite and >= 0",
+            });
+        }
+        let cc = c.km_per_s();
+        if !(cc.is_finite() && cc > R::ZERO) {
+            return Err(ForceError::Invalid {
+                name: "c (km/s)",
+                value: cc.to_f64(),
+                valid: "finite and > 0",
+            });
+        }
+        if !gamma.is_finite() {
+            return Err(ForceError::Invalid {
+                name: "PPN gamma",
+                value: gamma.to_f64(),
+                valid: "finite",
+            });
+        }
+        Ok(Self {
+            gs: g,
+            c2: cc * cc,
+            gamma,
+            pole,
+            reaction,
+            sun: 0,
+            sun_gm: R::ZERO,
+            bodies: Vec::new(),
+        })
+    }
+
+    /// The pole.
+    #[must_use]
+    pub const fn pole(&self) -> Pole<F, R> {
+        self.pole
+    }
+
+    /// The reaction setting.
+    #[must_use]
+    pub const fn reaction(&self) -> LtReaction {
+        self.reaction
+    }
+
+    /// DE440 Eq. 38–37 at a heliocentric `r`, `v`: `Ω = (1+γ) G/(2c²r³)[−J + 3(J·r) r/r²]`,
+    /// then `a = 2 Ω × v` (km/s²).
+    #[must_use]
+    pub fn acceleration(&self, r: [R; 3], v: [R; 3]) -> [R; 3] {
+        let j = self.pole.unit().map(|p| self.gs * p);
+        let r2 = dot(r, r);
+        let k = (R::ONE + self.gamma) / (R::TWO * self.c2 * r2 * r2.sqrt());
+        let w = R::from_f64(3.0) * dot(j, r) / r2;
+        let [j0, j1, j2] = j;
+        let [r0, r1, r2c] = r;
+        let omega = [
+            k * w.mul_add(r0, -j0),
+            k * w.mul_add(r1, -j1),
+            k * w.mul_add(r2c, -j2),
+        ];
+        cross(omega, v).map(|x| R::TWO * x)
+    }
+}
+
+impl<F: Frame, R: Real> ForceTerm<F, R> for SolarLenseThirring<F, R> {
+    fn name(&self) -> &'static str {
+        match self.reaction {
+            LtReaction::On => "solar-lense-thirring-with-reaction",
+            LtReaction::Off => "solar-lense-thirring",
+        }
+    }
+    fn gauge(&self) -> Gauge {
+        Gauge::PpnIsotropicHarmonic
+    }
+    fn parameters(&self) -> Vec<TermParameter> {
+        let [px, py, pz] = self.pole.unit().map(Real::to_f64);
+        vec![
+            TermParameter {
+                name: "G S",
+                value: self.gs.to_f64(),
+                unit: "km^5/s^3",
+            },
+            TermParameter {
+                name: "PPN gamma",
+                value: self.gamma.to_f64(),
+                unit: "1",
+            },
+            TermParameter {
+                name: "c^2",
+                value: self.c2.to_f64(),
+                unit: "km^2/s^2",
+            },
+            TermParameter {
+                name: "pole x",
+                value: px,
+                unit: "1",
+            },
+            TermParameter {
+                name: "pole y",
+                value: py,
+                unit: "1",
+            },
+            TermParameter {
+                name: "pole z",
+                value: pz,
+                unit: "1",
+            },
+            TermParameter {
+                name: "reaction on the Sun",
+                value: if self.reaction == LtReaction::On {
+                    1.0
+                } else {
+                    0.0
+                },
+                unit: "1",
+            },
+        ]
+    }
+    fn tiers(&self) -> &'static [Tier] {
+        &[Tier::Major]
+    }
+    fn bind(&mut self, layout: &Layout<R>) -> Result<(), ForceError> {
+        let sun = layout
+            .index_of(NaifId::SUN)
+            .filter(|&i| layout.tiers().get(i) == Some(&Tier::Major))
+            .ok_or(ForceError::Invalid {
+                name: "solar Lense-Thirring needs the Sun (NAIF 10) as a Major body",
+                value: f64::from(NaifId::SUN.0),
+                valid: "a Major Sun",
+            })?;
+        self.sun_gm = layout.gm(sun);
+        if self.sun_gm <= R::ZERO {
+            return Err(ForceError::Invalid {
+                name: "solar GM (km^3/s^2)",
+                value: self.sun_gm.to_f64(),
+                valid: "> 0",
+            });
+        }
+        self.sun = sun;
+        self.bodies = layout
+            .indices(Tier::Major)
+            .iter()
+            .copied()
+            .filter(|&i| i != sun)
+            .collect();
+        Ok(())
+    }
+    fn accumulate(
+        &self,
+        t: R,
+        view: &View<'_, R>,
+        acc: &mut Accelerations<'_, R>,
+    ) -> Result<(), ForceError> {
+        let (ps, vs) = (view.position(self.sun), view.velocity(self.sun));
+        for &i in &self.bodies {
+            let r = sub(view.position(i), ps);
+            if r2_of(r) == R::ZERO {
+                return Err(singular(self.sun, i, t));
+            }
+            let a = self.acceleration(r, sub(view.velocity(i), vs));
+            acc.add(i, a);
+            if self.reaction == LtReaction::On {
+                let ratio = view.layout().gm(i) / self.sun_gm;
+                acc.add(self.sun, a.map(|x| -(ratio * x)));
+            }
+        }
+        Ok(())
+    }
+    fn potential_over_g(&self, _view: &View<'_, R>) -> Option<R> {
+        None
     }
 }

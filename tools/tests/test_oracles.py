@@ -68,23 +68,80 @@ def test_rebound_runner_refuses_the_ppn_canary_by_name(capsys: pytest.CaptureFix
     err = capsys.readouterr().err
     assert status == common.REFUSAL_EXIT
     assert "`ppn`" in err
-    assert "`gr_eih`" in err
+    # Stage C (WP21): gr_eih itself is implemented (REBOUNDx gr_full); only ppn is refused.
+    assert "`gr_eih`" not in err
     assert "REF-011" in err
 
 
-# Verifies: REF-011
-def test_rebound_runner_refuses_every_switch_but_newton() -> None:
-    """Each CI-002 switch other than `newton`, and an unknown one, is refused by its name."""
+# Verifies: REF-011, REF-005
+def test_rebound_runner_refuses_every_switch_but_newton_and_the_stage_c_relativity() -> None:
+    """`gr_eih` and `gr_1pn_central` run (stage C); every other switch, and an unknown one, is
+    refused by its name."""
     base = common.load_scenario(STAGE_A)
     rebound_runner.check(base)  # stage A is runnable
+    for switch in ("gr_eih", "gr_1pn_central"):
+        s = json.loads(json.dumps(base))
+        s["forces"][switch] = True
+        rebound_runner.check(s)
+        assert rebound_runner.relativity_switch(s) == switch
+    assert rebound_runner.relativity_switch(base) is None
     values: dict[str, object] = {"ppn": {"beta": 1.0, "gamma": 1.0}, "asteroids": 1}
-    for switch in [*common.SWITCHES[1:], "fifth_force"]:
+    stage_c = {"gr_eih", "gr_1pn_central"}
+    for switch in [*(s for s in common.SWITCHES[1:] if s not in stage_c), "fifth_force"]:
         s = json.loads(json.dumps(base))
         s["forces"][switch] = values.get(switch, True)
         with pytest.raises(common.Refusal) as exc:
             rebound_runner.check(s)
         assert f"`{switch}`" in str(exc.value)
         assert [i for i, _ in exc.value.items] == [switch]
+
+
+# Verifies: REF-011, REF-005
+def test_rebound_runner_stage_c_refusals_and_effect_mapping() -> None:
+    """Stage C (WP21): the REBOUNDx effects are mapped by switch; test-particle mode, a non-Sun
+    first body under `gr_1pn_central`, both relativistic switches together, `lense_thirring`
+    with `gr_eih`, and a header with BETA or GAMMA != 1 are refused by name."""
+    assert rebound_runner.REBOUNDX_EFFECT == {"gr_eih": "gr_full", "gr_1pn_central": "gr"}
+    assert rebound_runner.EXTRA_VARIANTS["gr_1pn_central"] == ("gr_potential",)
+    assert rebound_runner.series_name("x", None) == "x.rebound.states.csv"
+    assert rebound_runner.series_name("x", "gr_potential") == "x.rebound.gr_potential.states.csv"
+    for f in ("eih", "newton"):
+        rebound_runner.check(
+            common.load_scenario(SCENARIOS / f"stage-c-sun-planets-moon-{f}-100yr.toml")
+        )
+    for leg in ("back", "fwd"):
+        for f in ("eih", "newton", "gr1pn"):
+            rebound_runner.check(
+                common.load_scenario(SCENARIOS / f"oracle-c-sun-mercury-{f}-{leg}.toml")
+            )
+    # Test-particle mode with gr_1pn_central (the C-lite file): refused by its mode.
+    with pytest.raises(common.Refusal) as exc:
+        rebound_runner.check(common.load_scenario(CLITE_GR))
+    assert "`mode`" in str(exc.value)
+    base = common.load_scenario(SCENARIOS / "oracle-c-sun-mercury-gr1pn-fwd.toml")
+    s = json.loads(json.dumps(base))
+    s["bodies"] = ["Mercury", "Sun"]
+    with pytest.raises(common.Refusal) as exc:
+        rebound_runner.check(s)
+    assert "`forces.gr_1pn_central`" in str(exc.value)
+    assert "particles[0]" in str(exc.value)
+    s = json.loads(json.dumps(base))
+    s["forces"]["gr_eih"] = True
+    with pytest.raises(common.Refusal) as exc:
+        rebound_runner.check(s)
+    assert "`forces.gr_1pn_central`" in str(exc.value)
+    s = common.load_scenario(SCENARIOS / "stage-c-sun-planets-moon-eih-100yr.toml")
+    s["forces"]["lense_thirring"] = True
+    with pytest.raises(common.Refusal) as exc:
+        rebound_runner.check(s)
+    assert [i for i, _ in exc.value.items] == ["lense_thirring"]
+    header = Header440(("BETA", "GAMMA", "CLIGHT", "AU"), {})
+    for name in ("BETA", "GAMMA"):
+        values = {"BETA": 1.0, "GAMMA": 1.0, "CLIGHT": 1.0, "AU": 1.0}
+        values[name] = 1.001  # lint: allow-literal(any value != 1 is refused)
+        with pytest.raises(common.Refusal) as exc:
+            rebound_runner.speed_of_light_au_per_day(Header440(header.names, values))
+        assert f"`{name}`" in str(exc.value)
 
 
 # Verifies: REF-011
@@ -450,4 +507,23 @@ def test_nightly_runs_every_tool_that_has_a_committed_golden() -> None:
     assert golden_tools - single_shot <= scenario_tools, golden_tools - scenario_tools
     assert golden_tools | scenario_tools <= built
     for tool in single_shot:
-        assert re.search(rf"^\$R {tool} ", script, flags=re.MULTILINE), tool
+        # Each step runs through run_step (review R3: a waited-for child, so signals are recorded).
+        step = rf'^run_step "{tool}\|[^"]*" "[^"]*" \$R {tool} '
+        assert re.search(step, script, flags=re.MULTILINE), tool
+
+
+# Verifies: CI-006
+def test_drift_ignores_download_metadata_but_not_the_product_hash(tmp_path: Path) -> None:
+    """A warm-cache JPL run (no ``last_modified``) is not drift; a changed SHA-256 is (WP19)."""
+    golden = {
+        "date_utc": "2026-10-15",
+        "products": [{"sha256": "aa", "fetched": True, "last_modified": "x", "retrieved_utc": "t"}],
+    }
+    warm = {"date_utc": "2026-10-20", "products": [{"sha256": "aa", "fetched": False}]}
+    changed = {"date_utc": "2026-10-20", "products": [{"sha256": "bb", "fetched": False}]}
+    paths = {}
+    for name, doc in (("golden", golden), ("warm", warm), ("changed", changed)):
+        paths[name] = tmp_path / f"{name}.json"
+        paths[name].write_text(json.dumps(doc), encoding="utf-8")
+    assert drift.stable_json(paths["golden"]) == drift.stable_json(paths["warm"])
+    assert drift.stable_json(paths["golden"]) != drift.stable_json(paths["changed"])

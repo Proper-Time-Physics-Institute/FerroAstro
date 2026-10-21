@@ -105,7 +105,7 @@ jobs:
         run: cargo +1.85.0 nextest run --workspace -E 'not binary(compile_fail)'
 
   wasm32:
-    name: wasm32 (real, core, erfa, time, integrators, forces, analytic, frames, ephem)
+    name: wasm32 (real, core, erfa, time, integrators, forces, analytic, frames, ephem, eih)
     if: github.event_name != 'schedule'
     runs-on: ubuntu-24.04
     timeout-minutes: 20
@@ -121,7 +121,7 @@ jobs:
       # wasm32-unknown-unknown (DEP-006);
       # ferroastro-real also as no_std with the pure-Rust libm (no default features).
       - name: Build for wasm32-unknown-unknown
-        run: cargo build -p ferroastro-real -p ferroastro-core -p ferroastro-erfa -p ferroastro-time -p ferroastro-integrators -p ferroastro-forces -p ferroastro-analytic -p ferroastro-frames -p ferroastro-ephem -p ferroastro-system -p ferroastro-scenario -p ferroastro-propagate -p ferroastro-diffrun --target wasm32-unknown-unknown
+        run: cargo build -p ferroastro-real -p ferroastro-core -p ferroastro-erfa -p ferroastro-time -p ferroastro-integrators -p ferroastro-forces -p ferroastro-eih -p ferroastro-analytic -p ferroastro-frames -p ferroastro-ephem -p ferroastro-system -p ferroastro-scenario -p ferroastro-propagate -p ferroastro-diffrun --target wasm32-unknown-unknown
       - name: Build ferroastro-real and ferroastro-erfa no_std (libm) for wasm32-unknown-unknown
         run: cargo build -p ferroastro-real -p ferroastro-erfa --no-default-features --features libm --target wasm32-unknown-unknown
       # DEP-010 / WP8: the optional hifitime (UTC) feature must build for wasm32 too.

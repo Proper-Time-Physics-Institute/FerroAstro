@@ -10,7 +10,8 @@
 //! * 2b (nightly, release): the same for the committed 1000-yr scenarios, stopped at 500 yr, in
 //!   f64 and double-double (the WP13 brief).
 //! * 3 (TST-005): the uninterrupted run made twice in two processes is bitwise identical.
-//! * 4 (REF-011): a scenario with `gr_eih` exits with status 2 and a message naming the switch.
+//! * 4 (REF-011): a scenario with an unsupported switch (`gr_eih` or `asteroids` in test-particle
+//!   mode) exits with status 2 and a message naming the switch.
 
 #![expect(
     clippy::unwrap_used,
@@ -209,14 +210,17 @@ fn nightly_checkpoint_resume_1000yr_double_double() {
 #[test]
 fn cli_refuses_unsupported_and_unknown_switches_by_name() {
     let dir = workdir("refusal");
-    let base =
-        std::fs::read_to_string(scenarios().join("sun-mercury-newton-header440.toml")).unwrap();
-    for (switch, line, code) in [
-        ("forces.gr_eih", "gr_eih = true", "FA-E1201"),
-        // asteroids are implemented in N-body mode since WP15; a central-body term is not.
-        ("forces.lense_thirring", "lense_thirring = true", "FA-E1201"),
-        ("\"fifth_force\"", "fifth_force = true", "FA-E1202"),
+    let nbody = "sun-mercury-newton-header440.toml";
+    let particle = "sun-mercury-gr1pn-header440.toml";
+    for (file, switch, line, code) in [
+        // EIH is implemented in N-body mode since WP19; a test particle has no mutual terms.
+        (particle, "forces.gr_eih", "gr_eih = true", "FA-E1201"),
+        // asteroids are implemented in N-body mode only (WP15); Lense-Thirring is implemented in
+        // both modes since WP20.
+        (particle, "forces.asteroids", "asteroids = 343", "FA-E1201"),
+        (nbody, "\"fifth_force\"", "fifth_force = true", "FA-E1202"),
     ] {
+        let base = std::fs::read_to_string(scenarios().join(file)).unwrap();
         let p = dir.join("refused.toml");
         std::fs::write(
             &p,

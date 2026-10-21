@@ -7,7 +7,8 @@
 //!   2000 Julian yr forward from JDEPOC, daily samples. Swiftest (WHM), Mercury6 (RA15) and
 //!   REBOUND (IAS15) against FerroAstro IAS15 on the same two scenario files:
 //!   `ORACLE-PADD-VENUS-TOOL-AGREEMENT` (PROVISIONAL 1e-3 ″/cy). Each value is also reported
-//!   against Park17 Table 3 (`PARK17-T3-VENUS`, non-gating while OI-38 is open).
+//!   against Park17 Table 3 (`PARK17-T3-VENUS`) as information only: that vector gates P-remove
+//!   in the PHY-012 test, and P-add is never asserted against Park17 (ADR-0014).
 //! * **C-lite** (Swiftest only): the GR contribution ϖ̇(GR on) − ϖ̇(GR off) of the Sun + Mercury
 //!   test particle, Swiftest's `general_relativity` against FerroAstro's `gr_1pn_central`:
 //!   `ORACLE-CLITE-SWIFTEST-GR-AGREEMENT` (PROVISIONAL 1e-3 ″/cy).
@@ -105,6 +106,26 @@ fn estimator(vs: &VectorSet, window_jd: (f64, f64)) -> Estimator {
     }
 }
 
+/// Precondition of the nightly differentials (progress review after WP18, R3): every oracle
+/// series they read must exist under [`oracle_out`]. A missing series is reported as a distinct,
+/// named **precondition** failure (a configuration problem: the oracle step did not run or wrote
+/// elsewhere), before any FerroAstro run and never as a physics disagreement.
+fn require_oracle_series(series: &[(&str, &str)]) {
+    let missing: Vec<String> = series
+        .iter()
+        .filter(|(tool, scenario)| !oracle_out().join(tool).join(scenario).is_dir())
+        .map(|(tool, scenario)| format!("{tool}/{scenario}"))
+        .collect();
+    assert!(
+        missing.is_empty(),
+        "PRECONDITION FAILED (missing oracle series, not a physics result): {} under {} \
+         (FA_ORACLE_OUT_DIR); run tools/oracles/nightly.sh, or point FA_ORACLE_OUT_DIR at a \
+         complete oracle output directory",
+        missing.join(", "),
+        oracle_out().display()
+    );
+}
+
 /// Mercury relative to the Sun from an oracle's state CSV (heliocentric, or SSB with the Sun's
 /// rows), after verifying its manifest and the inputs it ran on.
 fn oracle_track(tool: &str, scenario: &str, header_sha: &str) -> Option<Track> {
@@ -183,9 +204,10 @@ fn show(label: &str, e: &Estimate) {
     );
 }
 
-/// P-add Venus from Swiftest, Mercury6 and REBOUND series vs FerroAstro; Park17 reported.
+/// P-add Venus from Swiftest, Mercury6 and REBOUND series vs FerroAstro; Park17 reported as
+/// information only (ADR-0014: PHY-012 asserts P-remove in `nightly_phy012`, not here).
 ///
-/// Verifies: CI-009, REF-007, REF-008, REF-005, PHY-012
+/// Verifies: CI-009, REF-007, REF-008, REF-005
 #[test]
 #[ignore = "nightly: 2000-yr FerroAstro runs and ~100 MB oracle series from tools/oracles/nightly.sh; cargo nextest run --cargo-profile release --profile nightly --run-ignored only"]
 fn nightly_oracle_padd_venus_same_estimator_every_tool() {
@@ -196,6 +218,14 @@ fn nightly_oracle_padd_venus_same_estimator_every_tool() {
     assert_eq!(win, window(PADD_VENUS, jdepoc));
     let est = estimator(&vs, win);
     println!("estimator: {}", est.id(PassageSource::SampledStates));
+    require_oracle_series(&[
+        ("swiftest", PADD_BASE),
+        ("swiftest", PADD_VENUS),
+        ("mercury6", PADD_BASE),
+        ("mercury6", PADD_VENUS),
+        ("rebound", PADD_BASE),
+        ("rebound", PADD_VENUS),
+    ]);
     let (fb, hash_b) = ferroastro_track(PADD_BASE, &h, &prov);
     let (fv, hash_v) = ferroastro_track(PADD_VENUS, &h, &prov);
     println!(
@@ -210,23 +240,16 @@ fn nightly_oracle_padd_venus_same_estimator_every_tool() {
 
     let agree = vs.get("ORACLE-PADD-VENUS-TOOL-AGREEMENT").unwrap();
     let park = vs.get("PARK17-T3-VENUS").unwrap();
-    let open_items =
-        std::fs::read_to_string(root().join("docs/requirements/OPEN-ITEMS.md")).unwrap();
-    let blocked = park.blocking_open_item(&open_items).map(str::to_owned);
     let park_value = park.value().unwrap();
-    let park_tol = park.tolerance.abs.unwrap();
+    let park_tol = park.tolerance.allowed(park_value);
+    // Information only: PHY-012 asserts P-remove (ADR-0014, PROVISIONAL under OI-38); P-add is
+    // never checked against Park17. If OI-38 reverts the protocol to P-add, this becomes a check.
     let report_park = |who: &str, x: f64| {
         let d = x - park_value;
         println!(
-            "  {who} P-add Venus {x:.6} vs Park17 {park_value}: {d:+.6} ″/cy, margin {:.2}{}",
+            "  {who} P-add Venus {x:.6} vs Park17 {park_value}: {d:+.6} ″/cy, margin {:.2} (information only, ADR-0014)",
             d.abs() / park_tol,
-            blocked
-                .as_ref()
-                .map_or_else(String::new, |oi| format!(" (non-gating: {oi} open)"))
         );
-        if blocked.is_none() {
-            park.check(x).unwrap();
-        }
     };
     report_park("FerroAstro", fa);
     let mut ran = Vec::new();
@@ -235,10 +258,7 @@ fn nightly_oracle_padd_venus_same_estimator_every_tool() {
             oracle_track(tool, PADD_BASE, &header_sha),
             oracle_track(tool, PADD_VENUS, &header_sha),
         ) else {
-            panic!(
-                "{tool}: oracle series missing under {}; run tools/oracles/nightly.sh first",
-                oracle_out().display()
-            );
+            unreachable!("{tool}: checked by require_oracle_series");
         };
         assert_eq!(tb.t.len(), fb.t.len(), "{tool}: sample count");
         let ob = est.estimate(&tb, PassageSource::SampledStates).unwrap();
@@ -273,6 +293,7 @@ fn nightly_oracle_clite_swiftest_gr_contribution() {
     let jdepoc = h.value("JDEPOC").unwrap();
     let win = window(CLITE_OFF, jdepoc);
     let est = estimator(&vs, win);
+    require_oracle_series(&[("swiftest", CLITE_OFF), ("swiftest", CLITE_ON)]);
     let (f_off, hash_off) = ferroastro_track(CLITE_OFF, &h, &prov);
     let (f_on, hash_on) = ferroastro_track(CLITE_ON, &h, &prov);
     assert_eq!(

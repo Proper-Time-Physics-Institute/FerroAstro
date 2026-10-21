@@ -10,17 +10,22 @@
 //! uninterrupted runs therefore take the same steps, and a resumed run continues bit for bit.
 
 use crate::output::{PassageRecord, RunOutput, StateRecord, parts, parts3};
-use crate::setup::{DataSources, constants_version, epoch, nbody_ics, setup};
+use crate::setup::{
+    DataSources, constants_version, epoch, nbody_ics, setup, solar_j2, solar_pole, solar_spin,
+    tag_overrides,
+};
 use crate::{PropagateError, ias15_config};
 use ferroastro_constants::{Body, De440};
 use ferroastro_core::frames::Barycentric;
 use ferroastro_core::frames::Icrf;
 use ferroastro_core::time::SECONDS_PER_DAY;
-use ferroastro_core::units::Length;
+use ferroastro_core::units::{Length, Velocity};
+use ferroastro_eih::{Eih, HeliocentricSchwarzschild, RhsAcceleration};
 use ferroastro_ephem::NaifId;
 use ferroastro_forces::{
-    ForceTerm, GeocentricMoon, MOON_TAYLOR_TERMS_DEFAULT, MinorFromMajors, MinorReaction,
-    MoonVariables, NBody, NBodyModel, NewtonianMutual, Pole, RingMasses, SolarJ2WithReaction,
+    ForceTerm, GeocentricMoon, LtReaction, MOON_TAYLOR_TERMS_DEFAULT, MinorFromMajors,
+    MinorReaction, MoonVariables, NBody, NBodyModel, NewtonianMutual, RingMasses,
+    SolarJ2WithReaction, SolarLenseThirring,
 };
 use ferroastro_integrators::{Ias15, Ias15Snapshot};
 use ferroastro_real::Real;
@@ -39,10 +44,65 @@ pub(crate) struct DriverState {
     pub(crate) passages: u64,
 }
 
-/// The model of an N-body scenario (term order: Newtonian mutual, geocentric Moon, solar J2 with
-/// reaction, as WP12) and the body order.
+/// The relativistic term of an N-body scenario (WP19): `gr_eih` gives the EIH term (Park et al.
+/// 2021 Eq. 27, Newtonian right-hand-side accelerations), `gr_1pn_central` the heliocentric
+/// Sun-only 1PN rung; PPN β, γ from `forces.ppn`, else the DE440 values; c from DE440.
+fn relativity<R: Real>(
+    spec: &ScenarioSpec,
+    de: &De440,
+    has_sun: bool,
+) -> Result<Vec<Box<dyn ForceTerm<Icrf, R>>>, PropagateError> {
+    let f = &spec.forces;
+    let value_err = |field: &'static str, problem: &str| -> PropagateError {
+        ScenarioError::Value {
+            name: spec.name.clone(),
+            field,
+            value: "true".into(),
+            problem: problem.into(),
+        }
+        .into()
+    };
+    if f.gr_eih && f.gr_1pn_central {
+        return Err(value_err(
+            "forces.gr_1pn_central",
+            "gr_eih already contains the Sun's 1PN field; gr_1pn_central (the Sun-only rung) is \
+             an alternative to it",
+        ));
+    }
+    let (beta, gamma) = f
+        .ppn
+        .map_or((de.ppn_beta(), de.ppn_gamma()), |p| (p.beta, p.gamma));
+    let c = Velocity::from_km_per_s(R::from_f64(de.speed_of_light().km_per_s()))
+        .map_err(|e| setup(&spec.name, e.to_string(), "check the DE440 table"))?;
+    let (beta, gamma) = (R::from_f64(beta), R::from_f64(gamma));
+    let mut terms: Vec<Box<dyn ForceTerm<Icrf, R>>> = Vec::new();
+    if f.gr_eih {
+        terms.push(Box::new(Eih::new(
+            c,
+            beta,
+            gamma,
+            RhsAcceleration::Newtonian,
+        )?));
+    }
+    if f.gr_1pn_central {
+        if !has_sun {
+            return Err(value_err(
+                "forces.gr_1pn_central",
+                "the Sun-only 1PN rung needs the Sun among the bodies",
+            ));
+        }
+        terms.push(Box::new(HeliocentricSchwarzschild::new(c, beta, gamma)?));
+    }
+    Ok(terms)
+}
+
+/// The model of an N-body scenario (term order: Newtonian mutual, Minor, Ring, geocentric Moon,
+/// the relativistic term (WP19), solar J2 with reaction, solar Lense–Thirring with reaction
+/// (WP20)) and the body order. The solar J2, pole and spin are DE440's unless `data` carries
+/// [`crate::SolarOverrides`].
 fn model<R: Real>(
     spec: &ScenarioSpec,
+    data: &DataSources<'_>,
     de: &De440,
     small: &[(NaifId, f64, Tier)],
 ) -> Result<(NBodyModel<Icrf, R>, Vec<IcRecordGm>), PropagateError> {
@@ -89,6 +149,7 @@ fn model<R: Real>(
     } else {
         MoonVariables::Barycentric
     };
+    terms.extend(relativity::<R>(spec, de, has(BodyName::Sun))?);
     if spec.forces.sun_j2 {
         if !has(BodyName::Sun) {
             return Err(ScenarioError::Value {
@@ -99,12 +160,32 @@ fn model<R: Real>(
             }
             .into());
         }
-        let k = ferroastro_frames::Pole::<R>::sun_wgccre2015()?.unit_vector();
         terms.push(Box::new(SolarJ2WithReaction::new(
-            R::from_f64(de.sun_j2()),
+            R::from_f64(solar_j2(de, data)),
             Length::from_km(R::from_f64(de.sun_radius().km()))
                 .map_err(|e| setup(&spec.name, e.to_string(), "check the DE440 table"))?,
-            Pole::from_components(k)?,
+            solar_pole::<R>(data)?,
+        )?));
+    }
+    if spec.forces.lense_thirring {
+        if !has(BodyName::Sun) {
+            return Err(ScenarioError::Value {
+                name: spec.name.clone(),
+                field: "forces.lense_thirring",
+                value: "true".into(),
+                problem: "solar Lense-Thirring needs the Sun among the bodies".into(),
+            }
+            .into());
+        }
+        let gamma = spec.forces.ppn.map_or(de.ppn_gamma(), |p| p.gamma);
+        let c = Velocity::from_km_per_s(R::from_f64(de.speed_of_light().km_per_s()))
+            .map_err(|e| setup(&spec.name, e.to_string(), "check the DE440 table"))?;
+        terms.push(Box::new(SolarLenseThirring::new(
+            solar_spin(de, data, &spec.name)?.cast(),
+            c,
+            R::from_f64(gamma),
+            solar_pole::<R>(data)?,
+            LtReaction::On,
         )?));
     }
     Ok((NBodyModel::new(&bodies, vars, terms)?, gms))
@@ -285,7 +366,7 @@ impl<R: Real> NBodyRun<R> {
         if !small_source.is_empty() {
             source = format!("{source}; {small_source}");
         }
-        let (model, gms) = model::<R>(spec, &de, &small)?;
+        let (model, gms) = model::<R>(spec, data, &de, &small)?;
         let (x0, v0) = model.pack(&states, pair.as_ref())?;
         let n = model.layout().len();
         let records: Vec<IcRecord> = gms
@@ -376,13 +457,16 @@ impl<R: Real> NBodyRun<R> {
             constants,
             ic_source: source,
             epoch_jd_tdb: parts(R::from_f64(jd)),
-            model: format!(
-                "{}; IAS15 epsilon = {:e}, safety = {}, PC tolerance = {:e}, dense output, {}",
-                model.describe(),
-                cfg.epsilon,
-                cfg.safety,
-                cfg.pc_tolerance,
-                R::NAME
+            model: tag_overrides(
+                format!(
+                    "{}; IAS15 epsilon = {:e}, safety = {}, PC tolerance = {:e}, dense output, {}",
+                    model.describe(),
+                    cfg.epsilon,
+                    cfg.safety,
+                    cfg.pc_tolerance,
+                    R::NAME
+                ),
+                data,
             ),
             states: Vec::new(),
             passages: Vec::new(),

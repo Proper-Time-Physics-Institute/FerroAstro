@@ -30,9 +30,9 @@
 //! use ferroastro_scenario::ScenarioSpec;
 //! let spec = ScenarioSpec::parse(r#"
 //! schema_version = 1
-//! name = "eih-canary"
-//! description = "a switch this runner does not implement yet"
-//! mode = "n-body"
+//! name = "eih-test-particle-canary"
+//! description = "a switch this runner does not implement in test-particle mode"
+//! mode = "test-particle"
 //! bodies = ["Sun", "Mercury"]
 //! central_body = "Sun"
 //! initial_conditions = { source = "de440-header" }
@@ -59,8 +59,8 @@ pub use error::PropagateError;
 pub use nbody::DEFAULT_DT0_DAYS;
 pub use output::{PassageRecord, RunOutput, StateRecord};
 pub use setup::{
-    DataSources, RUNNER, SuppliedState, constants_version, de440_solar_spin, refuse_unsupported,
-    supports,
+    DataSources, RUNNER, SolarOverrides, SuppliedState, constants_version, de440_solar_spin,
+    refuse_unsupported, supports,
 };
 
 use ferroastro_integrators::{Ias15Config, Ias15Snapshot};
@@ -70,7 +70,7 @@ use nbody::{DriverState, NBodyRun};
 use serde::{Deserialize, Serialize};
 
 /// Version tag of the checkpoint encoding.
-pub const CHECKPOINT_FORMAT: &str = "ferroastro-checkpoint v1";
+pub const CHECKPOINT_FORMAT: &str = "ferroastro-checkpoint v2";
 
 /// IAS15 settings of a scenario: the defaults (Rein & Spiegel 2015) with the scenario's
 /// overrides; dense output on for N-body runs (samples and events).
@@ -99,6 +99,8 @@ pub struct Checkpoint {
     pub ic_hash: String,
     /// `f64` or `dd`.
     pub precision: String,
+    /// [`SolarOverrides::describe`] of the run's overrides (empty if none; v2, WP20).
+    pub solar_overrides: String,
     /// The integrator state.
     pub integrator: Ias15Snapshot,
     /// Index of the next output sample.
@@ -254,6 +256,7 @@ pub fn run_with_energy(
 
 fn checkpoint_of(
     spec: &ScenarioSpec,
+    data: &DataSources<'_>,
     (integrator, driver, ic_hash): (Ias15Snapshot, DriverState, String),
 ) -> Checkpoint {
     Checkpoint {
@@ -262,6 +265,7 @@ fn checkpoint_of(
         scenario_digest: spec.digest(),
         ic_hash,
         precision: spec.integrator.precision.label().into(),
+        solar_overrides: data.solar_overrides_tag(),
         integrator,
         next_sample: driver.next_sample,
         passages: driver.passages,
@@ -307,16 +311,26 @@ pub fn run_until(
             (out, r.checkpoint_parts()?)
         }
     };
-    let ck = (!out.finished).then(|| checkpoint_of(spec, parts));
+    let ck = (!out.finished).then(|| checkpoint_of(spec, data, parts));
     Ok((out, ck))
 }
 
 fn matching<'c>(
     spec: &ScenarioSpec,
+    data: &DataSources<'_>,
     ck: &'c Checkpoint,
 ) -> Result<(DriverState, &'c Ias15Snapshot), PropagateError> {
     prepare(spec)?;
     not_for_test_particles(spec)?;
+    let tag = data.solar_overrides_tag();
+    if ck.solar_overrides != tag {
+        return Err(PropagateError::Checkpoint {
+            problem: format!(
+                "checkpoint of scenario {} was written with solar overrides {:?}, this run has {:?}",
+                ck.scenario, ck.solar_overrides, tag
+            ),
+        });
+    }
     if ck.scenario_digest != spec.digest() || ck.precision != spec.integrator.precision.label() {
         return Err(PropagateError::Checkpoint {
             problem: format!(
@@ -350,7 +364,7 @@ pub fn resume(
     data: &DataSources<'_>,
     ck: &Checkpoint,
 ) -> Result<RunOutput, PropagateError> {
-    let (driver, snap) = matching(spec, ck)?;
+    let (driver, snap) = matching(spec, data, ck)?;
     let restore = Some((snap, &driver, ck.ic_hash.as_str()));
     match spec.integrator.precision {
         Precision::F64 => NBodyRun::<f64>::new(spec, data, restore)?.advance(None),
@@ -372,7 +386,7 @@ pub fn resume_until(
     ck: &Checkpoint,
     stop_years: f64,
 ) -> Result<(RunOutput, Option<Checkpoint>), PropagateError> {
-    let (driver, snap) = matching(spec, ck)?;
+    let (driver, snap) = matching(spec, data, ck)?;
     let restore = Some((snap, &driver, ck.ic_hash.as_str()));
     let stop = Some(years_to_seconds(stop_years));
     let (out, parts) = match spec.integrator.precision {
@@ -387,7 +401,7 @@ pub fn resume_until(
             (out, r.checkpoint_parts()?)
         }
     };
-    let next = (!out.finished).then(|| checkpoint_of(spec, parts));
+    let next = (!out.finished).then(|| checkpoint_of(spec, data, parts));
     Ok((out, next))
 }
 

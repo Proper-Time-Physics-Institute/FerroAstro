@@ -74,6 +74,28 @@ pub(crate) fn model<R: Real>(
     moon: Moon,
     j2: bool,
 ) -> NBodyModel<Icrf, R> {
+    model_lt(de, ids, moon, j2, None)
+}
+
+/// `G·S` of the Sun from DE440: `GMS · MOISUN · ASUN² · OMGSUN` (km⁵/s³).
+pub(crate) fn de440_gs(de: &De440) -> f64 {
+    let r = de.sun_radius().km();
+    de.gm_sun().km3_per_s2()
+        * de.sun_moment_of_inertia()
+        * r
+        * r
+        * de.sun_rotation_rate().rad_per_s()
+}
+
+/// [`model`] plus, with `lt = Some(reaction)`, the solar Lense–Thirring term (DE440 spin, PPN γ,
+/// c, WGCCRE 2015 pole) after J2 (WP20).
+pub(crate) fn model_lt<R: Real>(
+    de: &De440,
+    ids: &[NaifId],
+    moon: Moon,
+    j2: bool,
+    lt: Option<ferroastro_forces::LtReaction>,
+) -> NBodyModel<Icrf, R> {
     let cat = Catalogue::de440_major(de);
     let bodies: Vec<NBody<R>> = ids
         .iter()
@@ -105,6 +127,24 @@ pub(crate) fn model<R: Real>(
                 R::from_f64(de.sun_j2()),
                 ferroastro_core::units::Length::from_km(R::from_f64(radius.km())).unwrap(),
                 Pole::from_components(k).unwrap(),
+            )
+            .unwrap(),
+        ));
+    }
+    if let Some(reaction) = lt {
+        let k = ferroastro_frames::Pole::<R>::sun_wgccre2015()
+            .unwrap()
+            .unit_vector();
+        terms.push(Box::new(
+            ferroastro_forces::SolarLenseThirring::new(
+                ferroastro_core::units::SpinGm::from_km5_per_s3(R::from_f64(de440_gs(de))).unwrap(),
+                ferroastro_core::units::Velocity::from_km_per_s(R::from_f64(
+                    de.speed_of_light().km_per_s(),
+                ))
+                .unwrap(),
+                R::from_f64(de.ppn_gamma()),
+                Pole::from_components(k).unwrap(),
+                reaction,
             )
             .unwrap(),
         ));

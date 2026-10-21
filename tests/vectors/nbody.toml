@@ -130,3 +130,31 @@ retrieved = "2026-10-15"
 tolerance = { abs = 100.0 }
 tolerance_rationale = "PROVISIONAL sanity bound (WP12 plan check 4): the model omits the 1PN terms (mean-motion change ~mu/(c^2 a), ~20 km for Jupiter over 10 yr), the 343 asteroids and the KBO masses. This is not a fidelity claim."
 verified_by = "WP12 builder agent, 2026-10-15: bound from the WP12 task text, fixed in the plan before the first run."
+
+[[vector]]
+id = "NBODY-LT-REACTION-MOMENTUM-ULPS"
+requirement = ["NUM-019"]
+quantity = "|sum_i GM_i a_i| / (eps * sum_i GM_i |a_i|) for the SolarLenseThirring term alone with LtReaction::On (synthetic 5-body configuration), f64"
+value = 0.0
+unit = "1"
+kind = "analytic"
+source = "The reaction a_Sun = -sum_i (GM_i/GM_Sun) a_i makes the GM-weighted sum vanish algebraically (the J2 reaction pattern of DE440 Eq. 29 applied to the DE440 Eq. 37-39 LT acceleration; WP20 interpretation, NEEDS HUMAN REVIEW)."
+citation = "Park et al. 2021, AJ 161, 105 (DE440), Eqs. 37-39; FerroAstro docs/requirements/NUM.md NUM-019"
+retrieved = "2026-10-20"
+tolerance = { abs = 8.0 }
+tolerance_rationale = "Round-off only, as NBODY-J2-REACTION-MOMENTUM-ULPS: each product and sum contributes <= 1/2 ulp of the running scale; 8 eps of the scale covers them. Pre-registered in IMPLEMENTATION-NOTES WP20 (L1a) before the first run."
+verified_by = "WP20 builder agent, 2026-10-20: fixed in the WP20 plan before the first run."
+
+[[vector]]
+id = "LT-DE440-VS-R3B-REL"
+requirement = ["NUM-019", "PHY-011"]
+quantity = "max over non-Sun bodies of |a(SolarLenseThirring, DE440 Eqs. 37-38 as 2 Omega x v) - a(LenseThirring, R3b form) at (r_i - r_Sun, v_i - v_Sun)| / |a(R3b)|, synthetic 5-body configuration, gamma = 1 and gamma = 0.999"
+value = 0.0
+unit = "1"
+kind = "analytic"
+source = "2 Omega x v with Omega = (1+gamma)G/(2c^2 r^3)[-J + 3(J.r)r/r^2] expands to (1+gamma)GS/(c^2 r^3)[v x s + 3(s.r)(r x v)/r^2], the R3b expression (WP20 notes; checked symbolically by tools/lt_forms.py)."
+citation = "Park et al. 2021, AJ 161, 105 (DE440), Eqs. 37-39; Fienga et al. 2021, INPOP21a, IMCCE scientific note, Eq. 1; Journal #4 R3b"
+retrieved = "2026-10-20"
+tolerance = { abs = 1.0e-13 }
+tolerance_rationale = "The same expression evaluated in two operation orders (~15 operations each, cross products with cancellation); about 450 ulp, as EIH-R3-LIMIT-CORRECTION-REL. A coefficient or sign error is O(1). Pre-registered in IMPLEMENTATION-NOTES WP20 (L1b) before the first run."
+verified_by = "WP20 builder agent, 2026-10-20: fixed in the WP20 plan before the first run."
