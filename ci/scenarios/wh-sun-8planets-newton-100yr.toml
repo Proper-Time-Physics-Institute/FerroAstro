@@ -1,0 +1,33 @@
+# SPDX-FileCopyrightText: 2026 Proper-Time Physics Institute
+# SPDX-License-Identifier: Apache-2.0
+# WP29 (NUM-004): the stage A system (Sun + 8 planets, EMB as one body, Newtonian point masses,
+# header.440 ICs) under the Wisdom-Holman map in Jacobi coordinates with the order-11 symplectic
+# corrector, h = 365.25/90 d (90 steps per Julian year, so the yearly samples fall on step ends).
+# FerroAstro only: every oracle runner refuses integrator "whfast" by name (REF-011).
+schema_version = 1
+name = "wh-sun-8planets-newton-100yr"
+description = "WP29: stage A system under WHFast (Jacobi, corrector 11), h = 365.25/90 d, 100 yr"
+mode = "n-body"
+bodies = ["Sun", "Mercury", "Venus", "EMB", "Mars", "Jupiter", "Saturn", "Uranus", "Neptune"]
+central_body = "Sun"
+
+[initial_conditions]
+source = "de440-header"
+
+[constants]
+gm_set = "de440"
+
+[forces]
+newton = true
+
+[integrator]
+name = "whfast"
+precision = "f64"
+step_days = 4.058333333333334
+wh_corrector = 11
+
+[span]
+years = 100.0
+
+[output]
+cadence_days = 365.25

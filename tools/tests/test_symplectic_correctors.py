@@ -14,8 +14,8 @@ def test_series_coefficients_of_phi() -> None:
     """``(x/2)/sinh(x/2) = 1 - x^2/24 + 7 x^4/5760 - 31 x^6/967680 + ...`` (Bernoulli form)."""
     assert [sc.d_coefficient(k) for k in range(3)] == [
         Fraction(-1, 24),
-        Fraction(7, 5760),
-        Fraction(-31, 967680),
+        Fraction(7, 5760),  # lint: allow-literal(series coefficient, exact rational)
+        Fraction(-31, 967680),  # lint: allow-literal(series coefficient, exact rational)
     ]
 
 

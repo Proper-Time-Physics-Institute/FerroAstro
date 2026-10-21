@@ -135,6 +135,10 @@ pub fn kepler_drift<R: Real>(
     let five = R::from_i32(5);
     let tol = R::EPSILON.scale(4.0);
     let mut converged = false;
+    // Round-off floor of the iteration: F is a sum of terms of size ~|τ|, so near the root a
+    // step can stay at a few ulp of s; stagnation below this floor also counts as converged.
+    let floor = R::EPSILON.scale(1e4);
+    let mut ds_prev: Option<R> = None;
     for _ in 0..100 {
         let [g0, g1, g2, g3] = g_functions(beta, s);
         let f = r0.mul_add(g1, eta.mul_add(g2, mu * g3)) - tau;
@@ -149,10 +153,15 @@ pub fn kepler_drift<R: Real>(
         }
         let ds = five * f / denom;
         s -= ds;
-        if ds.abs() <= tol * s.abs().max(tol) {
+        let size = ds.abs();
+        let scale = s.abs().max(tol);
+        if size <= tol * scale
+            || (size <= floor * scale && ds_prev.is_some_and(|p: R| size >= p.abs()))
+        {
             converged = true;
             break;
         }
+        ds_prev = Some(ds);
     }
     if !converged || !s.is_finite() {
         return Err(domain("Kepler drift universal anomaly (no convergence)", s));

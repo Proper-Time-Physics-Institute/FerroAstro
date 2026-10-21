@@ -26,6 +26,8 @@ default = []
 serde = ["dep:serde", "ferroastro-integrators/serde"]
 
 [dev-dependencies]
+# Turns on this crate's `serde` feature for the snapshot tests.
+ferroastro-symplectic = { workspace = true, features = ["serde"] }
 ferroastro-vectors.workspace = true
 postcard.workspace = true
 

@@ -589,6 +589,7 @@ dependencies = [
  "ferroastro-forces",
  "ferroastro-integrators",
  "ferroastro-real",
+ "ferroastro-symplectic",
  "ferroastro-system",
  "ferroastro-vectors",
  "postcard",

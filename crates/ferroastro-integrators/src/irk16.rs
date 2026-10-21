@@ -666,7 +666,8 @@ impl<R: Real> Irk16<R> {
         check_len("dense-output velocity", v.len(), self.n)?;
         let (t0, _) = self.last_step_span().ok_or_else(Self::no_dense)?;
         let theta = (t - t0) / self.h;
-        let slack = R::EPSILON.scale(16.0);
+        // The grid times t₀ + k·h are rounded, so θ at the step end can differ from 1 by ~k ulp.
+        let slack = R::EPSILON.scale(16.0) * (t.abs() / self.h.abs()).max(R::ONE);
         if !(theta >= -slack && theta <= R::ONE + slack) {
             return Err(IntegratorError::Config {
                 name: "dense-output time (fraction of the last step)",

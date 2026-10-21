@@ -1,0 +1,34 @@
+# SPDX-FileCopyrightText: 2026 Proper-Time Physics Institute
+# SPDX-License-Identifier: Apache-2.0
+# WP29 (NUM-004, GR-potential rung): Sun + Mercury from header.440, Newtonian plus the
+# Nobili-Roxburgh GR effective potential of the Sun (velocity independent, so the
+# Wisdom-Holman map stays symplectic), WHFast with the order-11 corrector, h = 1 d, 100 yr,
+# daily samples. FerroAstro only (oracle runners refuse whfast and gr_potential by name).
+schema_version = 1
+name = "wh-sun-mercury-grpotential-100yr"
+description = "WP29: Sun + Mercury, Newton + GR effective potential, WHFast h = 1 d, 100 yr"
+mode = "n-body"
+bodies = ["Sun", "Mercury"]
+central_body = "Sun"
+
+[initial_conditions]
+source = "de440-header"
+
+[constants]
+gm_set = "de440"
+
+[forces]
+newton = true
+gr_potential = true
+
+[integrator]
+name = "whfast"
+precision = "f64"
+step_days = 1.0
+wh_corrector = 11
+
+[span]
+years = 100.0
+
+[output]
+cadence_days = 1.0
