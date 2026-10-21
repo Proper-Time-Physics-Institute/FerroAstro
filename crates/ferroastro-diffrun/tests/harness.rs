@@ -150,6 +150,47 @@ fn plan_shares_identical_ics_and_rows_are_signed_sums() {
         ])
         .to_bits()
     );
+    // PO-4 / ADR-0014: the P-remove cross term is the inclusion-exclusion sum, and Park17's
+    // pair rows ("pair removal minus single removals") are its negative; the markdown prints the
+    // Park17-convention value.
+    let cross_rem = r.rows_of(Protocol::CrossTermRemove).next().unwrap().value;
+    assert_eq!(
+        cross_rem.to_bits(),
+        signed(&[
+            (1.0, "full"),
+            (-1.0, "full-Venus"),
+            (-1.0, "full-Jupiter"),
+            (1.0, "full-Venus-Jupiter")
+        ])
+        .to_bits()
+    );
+    let park_pair = (rate("full") - rate("full-Venus-Jupiter"))
+        - (rate("full") - rate("full-Venus"))
+        - (rate("full") - rate("full-Jupiter"));
+    let scale = ["full", "full-Venus", "full-Jupiter", "full-Venus-Jupiter"]
+        .iter()
+        .map(|l| rate(l).abs())
+        .sum::<f64>();
+    let in_park = Protocol::CrossTermRemove.to_park17(cross_rem);
+    println!(
+        "cross term (P-remove): harness {cross_rem:+.3e}, Park17 convention {in_park:+.3e}, direct {park_pair:+.3e}"
+    );
+    assert!(
+        (in_park - park_pair).abs() <= 8.0 * f64::EPSILON * scale, // lint: allow-literal(rounding bound of a 4-term sum, ulps)
+        "to_park17 must equal pair removal minus single removals"
+    );
+    assert_eq!(
+        Protocol::CrossTerm.to_park17(cross).to_bits(),
+        cross.to_bits()
+    );
+    let md =
+        r.markdown(&|l, p| (p == Protocol::CrossTermRemove && l == "Venus+Jupiter").then_some(0.0));
+    assert!(
+        md.contains(&format!("| Venus+Jupiter | {in_park:.6} |"))
+            && md.contains(&format!("| {in_park:+.6} |"))
+            && md.contains("Park17 sign: pair removal − single removals"),
+        "markdown must print the P-remove cross term in Park17's convention:\n{md}"
+    );
     // The base run (Sun + Mercury, Newtonian) has no secular precession: its rate is the
     // estimator's numerical floor over 20 years, printed.
     println!(

@@ -568,6 +568,8 @@ impl PlanResult {
 
     /// A markdown table: the per-configuration rates, then the rows by protocol, with
     /// `reference(label, protocol)` (e.g. Park17 Table 3) printed beside each row when given.
+    /// Row values are printed in Park17's sign convention ([`Protocol::to_park17`], ADR-0014),
+    /// labelled in each table header; [`Row::value`] and the JSON keep the raw signed sums.
     #[must_use]
     pub fn markdown(&self, reference: &dyn Fn(&str, Protocol) -> Option<f64>) -> String {
         use std::fmt::Write as _;
@@ -614,24 +616,29 @@ impl PlanResult {
             if self.rows_of(p).next().is_none() {
                 continue;
             }
+            // Every value column is in Park17's convention (ADR-0014, `Protocol::to_park17`), so
+            // `value − reference` compares like with like; the JSON keeps the raw signed sums.
             let _ = writeln!(
                 s,
-                "\n| {} row | value (″/cy) | σ_rss | cross-check | reference | value − reference |",
-                p.label()
+                "\n| {} row | value (″/cy; {}) | σ_rss | cross-check | reference | value − reference |",
+                p.label(),
+                p.park17_convention()
             );
             let _ = writeln!(s, "|---|---|---|---|---|---|");
             for r in self.rows_of(p) {
                 let reference = reference(&r.combination.label, p);
+                let value = p.to_park17(r.value);
                 let _ = writeln!(
                     s,
                     "| {} | {:.6} | {:.6} | {} | {} | {} |",
                     r.combination.label,
-                    r.value,
+                    value,
                     r.sigma_rss,
                     r.cross_check
+                        .map(|x| p.to_park17(x))
                         .map_or_else(|| "—".into(), |x| format!("{x:.6}")),
                     reference.map_or_else(|| "—".into(), |x| format!("{x}")),
-                    reference.map_or_else(|| "—".into(), |x| format!("{:+.6}", r.value - x))
+                    reference.map_or_else(|| "—".into(), |x| format!("{:+.6}", value - x))
                 );
             }
         }

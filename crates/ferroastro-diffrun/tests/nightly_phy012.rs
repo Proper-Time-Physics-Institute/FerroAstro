@@ -163,15 +163,21 @@ fn nightly_phy012_park17_table3_newtonian_contributions() {
         "base (Sun + Mercury) rate {:.3e} arcsec/cy: the estimator floor on a closed Kepler orbit (true 0)",
         rate("base")
     );
+    // Cross terms, information only, printed in Park17's sign convention (ADR-0014): the
+    // P-remove inclusion-exclusion sum is the negative of Park's "pair removal minus single
+    // removals" (`Protocol::to_park17`).
     for p in [Protocol::CrossTerm, Protocol::CrossTermRemove] {
         for w in r.rows_of(p) {
             let park = reference(&w.combination.label, p);
+            let v = p.to_park17(w.value);
             println!(
-                "{} {}: {:+.6} vs Park17 interaction row {} (informational, OI-38)",
+                "{} {}: {v:+.6} ({}; harness signed sum {:+.6}) vs Park17 interaction row {}, difference {} (information only, OI-38)",
                 p.label(),
                 w.combination.label,
+                p.park17_convention(),
                 w.value,
-                park.map_or_else(|| "-".into(), |x| format!("{x:+.4}"))
+                park.map_or_else(|| "-".into(), |x| format!("{x:+.4}")),
+                park.map_or_else(|| "-".into(), |x| format!("{:+.6}", v - x))
             );
         }
     }

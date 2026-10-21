@@ -22,7 +22,9 @@ pub enum Protocol {
     /// toggles under [`Protocol::Add`] (reported separately).
     CrossTerm,
     /// `ϖ̇(full) − ϖ̇(full − X) − ϖ̇(full − Y) + ϖ̇(full − X − Y)`: the interaction of two toggles
-    /// under [`Protocol::Remove`] (informational).
+    /// under [`Protocol::Remove`] (informational). This inclusion–exclusion second difference is
+    /// the NEGATIVE of Park et al. 2017's pair rows ("pair removal minus single removals",
+    /// ADR-0014); compare it with Park only through [`Protocol::to_park17`].
     CrossTermRemove,
 }
 
@@ -35,6 +37,38 @@ impl Protocol {
             Protocol::Remove => "P-remove",
             Protocol::CrossTerm => "cross term (P-add)",
             Protocol::CrossTermRemove => "cross term (P-remove)",
+        }
+    }
+
+    /// The sign convention in which [`Protocol::to_park17`] reports this protocol's rows
+    /// (ADR-0014: every cross-term column carries its convention).
+    #[must_use]
+    pub const fn park17_convention(self) -> &'static str {
+        match self {
+            Protocol::Add => "P-add contribution",
+            Protocol::Remove => "P-remove contribution",
+            Protocol::CrossTerm => {
+                "Park17 sign: pair addition − single additions = ϖ̇(base+X+Y) − ϖ̇(base+X) − ϖ̇(base+Y) + ϖ̇(base)"
+            }
+            Protocol::CrossTermRemove => {
+                "Park17 sign: pair removal − single removals = −[ϖ̇(full) − ϖ̇(full−X) − ϖ̇(full−Y) + ϖ̇(full−X−Y)]"
+            }
+        }
+    }
+
+    /// Maps a row value of this protocol (the harness's signed sum) into Park et al. 2017's
+    /// Table 3 convention, so it can be compared with Park's rows (ADR-0014).
+    ///
+    /// Park's pair rows are "the pair's contribution minus the two single contributions". Under
+    /// P-remove that is `[ϖ̇(full) − ϖ̇(full−X−Y)] − [ϖ̇(full) − ϖ̇(full−X)] − [ϖ̇(full) −
+    /// ϖ̇(full−Y)]`, the negative of [`Protocol::CrossTermRemove`]'s inclusion–exclusion sum.
+    /// Under P-add the same construction equals [`Protocol::CrossTerm`] unchanged. Single-body
+    /// rows are already contributions.
+    #[must_use]
+    pub fn to_park17(self, value: f64) -> f64 {
+        match self {
+            Protocol::Add | Protocol::Remove | Protocol::CrossTerm => value,
+            Protocol::CrossTermRemove => -value,
         }
     }
 }
