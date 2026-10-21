@@ -13,9 +13,10 @@ use std::collections::BTreeSet;
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum Protocol {
     /// `ϖ̇(base + X) − ϖ̇(base)`: switch the body or term on against the minimal system
-    /// (PHY-012 primary protocol, maintainer decision; provisional while OI-38 is open).
+    /// (pre-registered for PHY-012 in WP14; reported as information only since ADR-0014).
     Add,
-    /// `ϖ̇(full) − ϖ̇(full without X)` (informational).
+    /// `ϖ̇(full) − ϖ̇(full without X)` (the protocol PHY-012, NUM-013(b) and PHY-019 assert,
+    /// ADR-0014; PROVISIONAL for PHY-012 while OI-38 is open).
     Remove,
     /// `ϖ̇(base + X + Y) − ϖ̇(base + X) − ϖ̇(base + Y) + ϖ̇(base)`: the interaction of two
     /// toggles under [`Protocol::Add`] (reported separately).

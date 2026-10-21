@@ -7,7 +7,8 @@
 //!   2000 Julian yr forward from JDEPOC, daily samples. Swiftest (WHM), Mercury6 (RA15) and
 //!   REBOUND (IAS15) against FerroAstro IAS15 on the same two scenario files:
 //!   `ORACLE-PADD-VENUS-TOOL-AGREEMENT` (PROVISIONAL 1e-3 ″/cy). Each value is also reported
-//!   against Park17 Table 3 (`PARK17-T3-VENUS`, non-gating while OI-38 is open).
+//!   against Park17 Table 3 (`PARK17-T3-VENUS`) as information only: that vector gates P-remove
+//!   in the PHY-012 test, and P-add is never asserted against Park17 (ADR-0014).
 //! * **C-lite** (Swiftest only): the GR contribution ϖ̇(GR on) − ϖ̇(GR off) of the Sun + Mercury
 //!   test particle, Swiftest's `general_relativity` against FerroAstro's `gr_1pn_central`:
 //!   `ORACLE-CLITE-SWIFTEST-GR-AGREEMENT` (PROVISIONAL 1e-3 ″/cy).
@@ -183,9 +184,10 @@ fn show(label: &str, e: &Estimate) {
     );
 }
 
-/// P-add Venus from Swiftest, Mercury6 and REBOUND series vs FerroAstro; Park17 reported.
+/// P-add Venus from Swiftest, Mercury6 and REBOUND series vs FerroAstro; Park17 reported as
+/// information only (ADR-0014: PHY-012 asserts P-remove in `nightly_phy012`, not here).
 ///
-/// Verifies: CI-009, REF-007, REF-008, REF-005, PHY-012
+/// Verifies: CI-009, REF-007, REF-008, REF-005
 #[test]
 #[ignore = "nightly: 2000-yr FerroAstro runs and ~100 MB oracle series from tools/oracles/nightly.sh; cargo nextest run --cargo-profile release --profile nightly --run-ignored only"]
 fn nightly_oracle_padd_venus_same_estimator_every_tool() {
@@ -210,23 +212,16 @@ fn nightly_oracle_padd_venus_same_estimator_every_tool() {
 
     let agree = vs.get("ORACLE-PADD-VENUS-TOOL-AGREEMENT").unwrap();
     let park = vs.get("PARK17-T3-VENUS").unwrap();
-    let open_items =
-        std::fs::read_to_string(root().join("docs/requirements/OPEN-ITEMS.md")).unwrap();
-    let blocked = park.blocking_open_item(&open_items).map(str::to_owned);
     let park_value = park.value().unwrap();
-    let park_tol = park.tolerance.abs.unwrap();
+    let park_tol = park.tolerance.allowed(park_value);
+    // Information only: PHY-012 asserts P-remove (ADR-0014, PROVISIONAL under OI-38); P-add is
+    // never checked against Park17. If OI-38 reverts the protocol to P-add, this becomes a check.
     let report_park = |who: &str, x: f64| {
         let d = x - park_value;
         println!(
-            "  {who} P-add Venus {x:.6} vs Park17 {park_value}: {d:+.6} ″/cy, margin {:.2}{}",
+            "  {who} P-add Venus {x:.6} vs Park17 {park_value}: {d:+.6} ″/cy, margin {:.2} (information only, ADR-0014)",
             d.abs() / park_tol,
-            blocked
-                .as_ref()
-                .map_or_else(String::new, |oi| format!(" (non-gating: {oi} open)"))
         );
-        if blocked.is_none() {
-            park.check(x).unwrap();
-        }
     };
     report_park("FerroAstro", fa);
     let mut ran = Vec::new();

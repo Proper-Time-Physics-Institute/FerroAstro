@@ -3,16 +3,20 @@
 //! WP14 checks 4 and 5 (nightly, run locally): per-planet Newtonian contributions to Mercury's
 //! perihelion rate over 1000–3000 CE vs Park et al. 2017 Table 3 (PHY-012, NUM-013(b)).
 //!
-//! Protocol, fixed before any run (IMPLEMENTATION-NOTES WP14): P-add = ϖ̇(Sun + Mercury + X) −
-//! ϖ̇(Sun + Mercury) is primary; P-remove = ϖ̇(full) − ϖ̇(full − X) and the P-add cross terms of
-//! Park17's six planet pairs are informational. Every configuration starts from the header.440
-//! records at JDEPOC (identical per body, asserted by the harness), runs Newtonian point masses
-//! with IAS15 backwards and forwards, and is measured by one Park2017 estimator (daily samples,
-//! mean-orbit plane, quadratic + 14 Table-2 terms, J2000 ± 1000 Julian yr).
+//! Protocol (ADR-0014, maintainer decision C of 2026-10-20, requirements PR #19): "report both".
+//! P-remove = ϖ̇(full) − ϖ̇(full − X) is ASSERTED for the seven rows within each vector's
+//! tolerance; P-add = ϖ̇(Sun + Mercury + X) − ϖ̇(Sun + Mercury) and the cross terms of Park17's six
+//! planet pairs (both protocols, sign convention labelled) are printed as information only.
+//! Every configuration starts from the header.440 records at JDEPOC (identical per body, asserted
+//! by the harness), runs Newtonian point masses with IAS15 backwards and forwards, and is
+//! measured by one Park2017 estimator (daily samples, mean-orbit plane, quadratic + 14 Table-2
+//! terms, J2000 ± 1000 Julian yr).
 //!
-//! The Park17 vectors carry `blocked_by = "OI-38"`: while OI-38 is open in OPEN-ITEMS.md the rows
-//! are reported, not asserted (Park's own protocol is UNVERIFIED for FerroAstro). The evidence
-//! table is written to `target/diffrun/` as markdown and JSON.
+//! The assertion is PROVISIONAL: P-add was pre-registered (WP14) and missed 4 of 7 rows; P-remove
+//! was chosen after those results were known. The Park17 rows carry `provisional = "OI-38"`.
+//! Revert condition: if a maintainer's reading of the Park 2017 text (OI-38) says P-add, the gate
+//! asserts P-add again and its misses are physics discrepancies. The evidence table is written to
+//! `target/diffrun/` as markdown and JSON.
 
 mod common;
 
@@ -172,30 +176,86 @@ fn nightly_phy012_park17_table3_newtonian_contributions() {
         }
     }
 
-    // PHY-012 rows (P-add), gating only once OI-38 is closed.
-    let mut misses = Vec::new();
+    // P-add rows: information only (ADR-0014), never asserted.
+    let mut add_misses = Vec::new();
     for w in r.rows_of(Protocol::Add) {
-        let id = vector_id(&w.combination.label, Protocol::Add);
-        let v = vs.get(&id).unwrap();
+        let v = vs
+            .get(&vector_id(&w.combination.label, Protocol::Add))
+            .unwrap();
         let expected = v.value().unwrap();
-        let tol = v.tolerance.abs.unwrap();
+        let tol = v.tolerance.allowed(expected);
         let d = w.value - expected;
-        let pass = d.abs() <= tol;
-        let blocked = v.blocking_open_item(&open_items);
         println!(
-            "PHY-012 {:<10} P-add {:.6} vs Park17 {expected} : {d:+.6} arcsec/cy, margin {:.2} ({}){}",
+            "PHY-012 {:<10} P-add    {:.6} vs Park17 {expected} : {d:+.6} arcsec/cy, margin {:.2} ({}), information only (ADR-0014)",
             w.combination.label,
             w.value,
             d.abs() / tol,
-            if pass { "within" } else { "OUTSIDE" },
-            blocked.map_or_else(String::new, |oi| format!(", non-gating: {oi} open")),
+            if d.abs() <= tol { "within" } else { "OUTSIDE" },
         );
-        if !pass {
-            misses.push((id.clone(), d));
-        }
-        if blocked.is_none() {
-            v.check(w.value).unwrap();
+        if d.abs() > tol {
+            add_misses.push(format!("{} {d:+.6}", w.combination.label));
         }
     }
-    println!("PHY-012 rows outside +/-0.005 under P-add: {misses:?}");
+    println!(
+        "P-add (pre-registered in WP14, now information only): {} of {} rows outside the tolerance: {add_misses:?}",
+        add_misses.len(),
+        r.rows_of(Protocol::Add).count()
+    );
+
+    // PHY-012 / NUM-013(b) rows: P-remove ASSERTED (ADR-0014), PROVISIONAL under OI-38.
+    let mut failures = Vec::new();
+    let mut labels = std::collections::BTreeSet::new();
+    let mut asserted = 0_usize;
+    for w in r.rows_of(Protocol::Remove) {
+        let id = vector_id(&w.combination.label, Protocol::Remove);
+        let v = vs.get(&id).unwrap();
+        assert!(
+            v.blocking_open_item(&open_items).is_none(),
+            "{id}: the PHY-012 rows gate under ADR-0014; use `provisional`, not `blocked_by`"
+        );
+        let provisional = v.provisional_open_item(&open_items).unwrap();
+        let expected = v.value().unwrap();
+        let tol = v.tolerance.allowed(expected);
+        let d = w.value - expected;
+        println!(
+            "PHY-012 {:<10} P-remove {:.6} vs Park17 {expected} : {d:+.6} arcsec/cy, margin {:.2} ({}), ASSERTED{}",
+            w.combination.label,
+            w.value,
+            d.abs() / tol,
+            if d.abs() <= tol { "within" } else { "OUTSIDE" },
+            provisional.map_or_else(String::new, |p| format!(", PROVISIONAL ({})", p.open_item)),
+        );
+        if let Some(p) = provisional {
+            labels.insert(p.to_string());
+        }
+        if let Err(e) = v.check(w.value) {
+            failures.push(e.to_string());
+        }
+        asserted += 1;
+    }
+    assert_eq!(
+        asserted,
+        toggles.len(),
+        "one asserted P-remove row per planet"
+    );
+    for l in &labels {
+        println!("{l}");
+    }
+    if !labels.is_empty() {
+        println!(
+            "PROVISIONAL (ADR-0014): P-remove was chosen after the WP14/WP17 results were known; P-add was \
+             pre-registered and missed 4 of 7 rows. Revert condition: if a maintainer's reading of the Park 2017 \
+             text (OI-38) says P-add, the gate asserts P-add again and the P-add misses above are physics \
+             discrepancies (type:physics-discrepancy)."
+        );
+    }
+    println!(
+        "PHY-012 rows outside the tolerance under P-remove (asserted): {}",
+        failures.len()
+    );
+    assert!(
+        failures.is_empty(),
+        "PHY-012 P-remove rows outside tolerance:\n{}",
+        failures.join("\n")
+    );
 }

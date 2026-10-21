@@ -1,9 +1,12 @@
 # SPDX-FileCopyrightText: 2026 Proper-Time Physics Institute
 # SPDX-License-Identifier: Apache-2.0
 # WP14: Park et al. 2017 Table 3 per-planet Newtonian contributions (PHY-012, NUM-013(b)) and the planet-pair
-# interaction rows (informational). The contribution protocol behind these values is UNVERIFIED for FerroAstro
-# (OI-38), so every row is non-gating (blocked_by) until a maintainer closes OI-38. Derivations and the protocol
-# used: docs/strategy/IMPLEMENTATION-NOTES.md, WP14.
+# interaction rows (informational). ADR-0014 (maintainer decision C of 2026-10-20, requirements PR #19): the seven
+# single-planet rows GATE under P-remove = rate(full) - rate(full - X) and carry `provisional = "OI-38"`, because
+# P-remove was chosen after the WP14/WP17 results were known and Park's own protocol is not yet confirmed against
+# the Park 2017 text (OI-38). P-add (pre-registered) is reported, not asserted. The pair rows stay informational
+# (blocked_by OI-38, never asserted). The asteroid row (PHY-019) gates under P-remove independently of OI-38.
+# Derivations: docs/strategy/IMPLEMENTATION-NOTES.md, WP14, WP15, WP17 and the ADR-0014 section.
 schema_version = 1
 
 [[vector]]
@@ -17,9 +20,9 @@ source = "Park17 Table 3, row 'Venus': 277.4176 +/- <0.0001 arcsec/Julian centur
 citation = 'Park, R. S., Folkner, W. M., Konopliv, A. S., et al. 2017, AJ 153, 121, doi:10.3847/1538-3881/aa5be2, Table 3'
 retrieved = "2026-10-15"
 tolerance = { abs = 0.005 }
-tolerance_rationale = "PHY-012 acceptance (each value within +/- 0.005 arcsec/cy), copied; NUM-013(b) uses the same bound. FerroAstro computes the row with the maintainer protocol P-add = rate(Sun + Mercury + X) - rate(Sun + Mercury), identical ICs, one estimator (WP14 pre-registration). Non-gating while OI-38 (Park's own protocol) is open; red-team PHY-012 finding: the bound is tighter than the protocol ambiguity (cross terms up to 0.0411)."
+tolerance_rationale = "PHY-012 acceptance (each value within +/- 0.005 arcsec/cy), copied; NUM-013(b) uses the same bound; value and tolerance unchanged since WP14. ASSERTED under P-remove = rate(full) - rate(full - X), identical ICs, one estimator, per ADR-0014 (maintainer decision C of 2026-10-20, requirements PR #19). PROVISIONAL (provisional = OI-38): P-remove was chosen AFTER the results were known. P-add = rate(Sun + Mercury + X) - rate(Sun + Mercury) was pre-registered (WP14) and missed 4 of 7 rows (IMPLEMENTATION-NOTES WP14: Venus -0.022706, Earth/Moon -0.018997, Jupiter +0.038832, Saturn +0.043049 arcsec/cy; WP17: P-add Venus -0.029820 on the forward window, the same for FerroAstro, REBOUND, Mercury6 and Swiftest to 2e-8). This row in WP14: P-remove 277.418142 (+0.000542), P-add 277.394894 (-0.022706, OUTSIDE); P-add is now reported, not asserted. A pass therefore means consistent with Park 2017 under P-remove, not protocol-independent agreement; the bound is tighter than the protocol ambiguity (cross terms up to 0.0411; red-team PHY-012 finding). REVERT CONDITION: if a maintainer's reading of the Park 2017 text (OI-38) says P-add, this row reverts to asserting P-add and the 4 P-add misses are real discrepancies (type:physics-discrepancy)."
 verified_by = "WP14 builder agent, 2026-10-15: read in the published PDF (iopscience.iop.org/article/10.3847/1538-3881/aa5be2/pdf, sha256 24fb2153f6b78109daa80171cd37006157b73564f8d0ac383532b5c92433380b, the copy WP5 read; re-downloaded 2026-10-15, same sha256), pdftotext -layout of page 6, Table 3."
-blocked_by = "OI-38"
+provisional = "OI-38"
 
 [[vector]]
 id = "PARK17-T3-EARTH-MOON"
@@ -32,9 +35,9 @@ source = "Park17 Table 3, row 'Earth/Moon': 90.8881 +/- <0.0001 arcsec/Julian ce
 citation = 'Park, R. S., Folkner, W. M., Konopliv, A. S., et al. 2017, AJ 153, 121, doi:10.3847/1538-3881/aa5be2, Table 3'
 retrieved = "2026-10-15"
 tolerance = { abs = 0.005 }
-tolerance_rationale = "PHY-012 acceptance (each value within +/- 0.005 arcsec/cy), copied; NUM-013(b) uses the same bound. FerroAstro computes the row with the maintainer protocol P-add = rate(Sun + Mercury + X) - rate(Sun + Mercury), identical ICs, one estimator (WP14 pre-registration). Non-gating while OI-38 (Park's own protocol) is open; red-team PHY-012 finding: the bound is tighter than the protocol ambiguity (cross terms up to 0.0411)."
+tolerance_rationale = "PHY-012 acceptance (each value within +/- 0.005 arcsec/cy), copied; NUM-013(b) uses the same bound; value and tolerance unchanged since WP14. ASSERTED under P-remove = rate(full) - rate(full - X), identical ICs, one estimator, per ADR-0014 (maintainer decision C of 2026-10-20, requirements PR #19). PROVISIONAL (provisional = OI-38): P-remove was chosen AFTER the results were known. P-add = rate(Sun + Mercury + X) - rate(Sun + Mercury) was pre-registered (WP14) and missed 4 of 7 rows (IMPLEMENTATION-NOTES WP14: Venus -0.022706, Earth/Moon -0.018997, Jupiter +0.038832, Saturn +0.043049 arcsec/cy; WP17: P-add Venus -0.029820 on the forward window, the same for FerroAstro, REBOUND, Mercury6 and Swiftest to 2e-8). This row in WP14: P-remove 90.888795 (+0.000695), P-add 90.869103 (-0.018997, OUTSIDE); P-add is now reported, not asserted. A pass therefore means consistent with Park 2017 under P-remove, not protocol-independent agreement; the bound is tighter than the protocol ambiguity (cross terms up to 0.0411; red-team PHY-012 finding). REVERT CONDITION: if a maintainer's reading of the Park 2017 text (OI-38) says P-add, this row reverts to asserting P-add and the 4 P-add misses are real discrepancies (type:physics-discrepancy)."
 verified_by = "WP14 builder agent, 2026-10-15: read in the published PDF (iopscience.iop.org/article/10.3847/1538-3881/aa5be2/pdf, sha256 24fb2153f6b78109daa80171cd37006157b73564f8d0ac383532b5c92433380b, the copy WP5 read; re-downloaded 2026-10-15, same sha256), pdftotext -layout of page 6, Table 3."
-blocked_by = "OI-38"
+provisional = "OI-38"
 
 [[vector]]
 id = "PARK17-T3-MARS"
@@ -47,9 +50,9 @@ source = "Park17 Table 3, row 'Mars': 2.4814 +/- <0.0001 arcsec/Julian century"
 citation = 'Park, R. S., Folkner, W. M., Konopliv, A. S., et al. 2017, AJ 153, 121, doi:10.3847/1538-3881/aa5be2, Table 3'
 retrieved = "2026-10-15"
 tolerance = { abs = 0.005 }
-tolerance_rationale = "PHY-012 acceptance (each value within +/- 0.005 arcsec/cy), copied; NUM-013(b) uses the same bound. FerroAstro computes the row with the maintainer protocol P-add = rate(Sun + Mercury + X) - rate(Sun + Mercury), identical ICs, one estimator (WP14 pre-registration). Non-gating while OI-38 (Park's own protocol) is open; red-team PHY-012 finding: the bound is tighter than the protocol ambiguity (cross terms up to 0.0411)."
+tolerance_rationale = "PHY-012 acceptance (each value within +/- 0.005 arcsec/cy), copied; NUM-013(b) uses the same bound; value and tolerance unchanged since WP14. ASSERTED under P-remove = rate(full) - rate(full - X), identical ICs, one estimator, per ADR-0014 (maintainer decision C of 2026-10-20, requirements PR #19). PROVISIONAL (provisional = OI-38): P-remove was chosen AFTER the results were known. P-add = rate(Sun + Mercury + X) - rate(Sun + Mercury) was pre-registered (WP14) and missed 4 of 7 rows (IMPLEMENTATION-NOTES WP14: Venus -0.022706, Earth/Moon -0.018997, Jupiter +0.038832, Saturn +0.043049 arcsec/cy; WP17: P-add Venus -0.029820 on the forward window, the same for FerroAstro, REBOUND, Mercury6 and Swiftest to 2e-8). This row in WP14: P-remove 2.481426 (+0.000026), P-add 2.479384 (-0.002016, within); P-add is now reported, not asserted. A pass therefore means consistent with Park 2017 under P-remove, not protocol-independent agreement; the bound is tighter than the protocol ambiguity (cross terms up to 0.0411; red-team PHY-012 finding). REVERT CONDITION: if a maintainer's reading of the Park 2017 text (OI-38) says P-add, this row reverts to asserting P-add and the 4 P-add misses are real discrepancies (type:physics-discrepancy)."
 verified_by = "WP14 builder agent, 2026-10-15: read in the published PDF (iopscience.iop.org/article/10.3847/1538-3881/aa5be2/pdf, sha256 24fb2153f6b78109daa80171cd37006157b73564f8d0ac383532b5c92433380b, the copy WP5 read; re-downloaded 2026-10-15, same sha256), pdftotext -layout of page 6, Table 3."
-blocked_by = "OI-38"
+provisional = "OI-38"
 
 [[vector]]
 id = "PARK17-T3-JUPITER"
@@ -62,9 +65,9 @@ source = "Park17 Table 3, row 'Jupiter': 153.9899 +/- <0.0001 arcsec/Julian cent
 citation = 'Park, R. S., Folkner, W. M., Konopliv, A. S., et al. 2017, AJ 153, 121, doi:10.3847/1538-3881/aa5be2, Table 3'
 retrieved = "2026-10-15"
 tolerance = { abs = 0.005 }
-tolerance_rationale = "PHY-012 acceptance (each value within +/- 0.005 arcsec/cy), copied; NUM-013(b) uses the same bound. FerroAstro computes the row with the maintainer protocol P-add = rate(Sun + Mercury + X) - rate(Sun + Mercury), identical ICs, one estimator (WP14 pre-registration). Non-gating while OI-38 (Park's own protocol) is open; red-team PHY-012 finding: the bound is tighter than the protocol ambiguity (cross terms up to 0.0411)."
+tolerance_rationale = "PHY-012 acceptance (each value within +/- 0.005 arcsec/cy), copied; NUM-013(b) uses the same bound; value and tolerance unchanged since WP14. ASSERTED under P-remove = rate(full) - rate(full - X), identical ICs, one estimator, per ADR-0014 (maintainer decision C of 2026-10-20, requirements PR #19). PROVISIONAL (provisional = OI-38): P-remove was chosen AFTER the results were known. P-add = rate(Sun + Mercury + X) - rate(Sun + Mercury) was pre-registered (WP14) and missed 4 of 7 rows (IMPLEMENTATION-NOTES WP14: Venus -0.022706, Earth/Moon -0.018997, Jupiter +0.038832, Saturn +0.043049 arcsec/cy; WP17: P-add Venus -0.029820 on the forward window, the same for FerroAstro, REBOUND, Mercury6 and Swiftest to 2e-8). This row in WP14: P-remove 153.990192 (+0.000292), P-add 154.028732 (+0.038832, OUTSIDE); P-add is now reported, not asserted. A pass therefore means consistent with Park 2017 under P-remove, not protocol-independent agreement; the bound is tighter than the protocol ambiguity (cross terms up to 0.0411; red-team PHY-012 finding). REVERT CONDITION: if a maintainer's reading of the Park 2017 text (OI-38) says P-add, this row reverts to asserting P-add and the 4 P-add misses are real discrepancies (type:physics-discrepancy)."
 verified_by = "WP14 builder agent, 2026-10-15: read in the published PDF (iopscience.iop.org/article/10.3847/1538-3881/aa5be2/pdf, sha256 24fb2153f6b78109daa80171cd37006157b73564f8d0ac383532b5c92433380b, the copy WP5 read; re-downloaded 2026-10-15, same sha256), pdftotext -layout of page 6, Table 3."
-blocked_by = "OI-38"
+provisional = "OI-38"
 
 [[vector]]
 id = "PARK17-T3-SATURN"
@@ -77,9 +80,9 @@ source = "Park17 Table 3, row 'Saturn': 7.3227 +/- <0.0001 arcsec/Julian century
 citation = 'Park, R. S., Folkner, W. M., Konopliv, A. S., et al. 2017, AJ 153, 121, doi:10.3847/1538-3881/aa5be2, Table 3'
 retrieved = "2026-10-15"
 tolerance = { abs = 0.005 }
-tolerance_rationale = "PHY-012 acceptance (each value within +/- 0.005 arcsec/cy), copied; NUM-013(b) uses the same bound. FerroAstro computes the row with the maintainer protocol P-add = rate(Sun + Mercury + X) - rate(Sun + Mercury), identical ICs, one estimator (WP14 pre-registration). Non-gating while OI-38 (Park's own protocol) is open; red-team PHY-012 finding: the bound is tighter than the protocol ambiguity (cross terms up to 0.0411)."
+tolerance_rationale = "PHY-012 acceptance (each value within +/- 0.005 arcsec/cy), copied; NUM-013(b) uses the same bound; value and tolerance unchanged since WP14. ASSERTED under P-remove = rate(full) - rate(full - X), identical ICs, one estimator, per ADR-0014 (maintainer decision C of 2026-10-20, requirements PR #19). PROVISIONAL (provisional = OI-38): P-remove was chosen AFTER the results were known. P-add = rate(Sun + Mercury + X) - rate(Sun + Mercury) was pre-registered (WP14) and missed 4 of 7 rows (IMPLEMENTATION-NOTES WP14: Venus -0.022706, Earth/Moon -0.018997, Jupiter +0.038832, Saturn +0.043049 arcsec/cy; WP17: P-add Venus -0.029820 on the forward window, the same for FerroAstro, REBOUND, Mercury6 and Swiftest to 2e-8). This row in WP14: P-remove 7.322772 (+0.000072), P-add 7.365749 (+0.043049, OUTSIDE); P-add is now reported, not asserted. A pass therefore means consistent with Park 2017 under P-remove, not protocol-independent agreement; the bound is tighter than the protocol ambiguity (cross terms up to 0.0411; red-team PHY-012 finding). REVERT CONDITION: if a maintainer's reading of the Park 2017 text (OI-38) says P-add, this row reverts to asserting P-add and the 4 P-add misses are real discrepancies (type:physics-discrepancy)."
 verified_by = "WP14 builder agent, 2026-10-15: read in the published PDF (iopscience.iop.org/article/10.3847/1538-3881/aa5be2/pdf, sha256 24fb2153f6b78109daa80171cd37006157b73564f8d0ac383532b5c92433380b, the copy WP5 read; re-downloaded 2026-10-15, same sha256), pdftotext -layout of page 6, Table 3."
-blocked_by = "OI-38"
+provisional = "OI-38"
 
 [[vector]]
 id = "PARK17-T3-URANUS"
@@ -92,9 +95,9 @@ source = "Park17 Table 3, row 'Uranus': 0.1425 +/- <0.0001 arcsec/Julian century
 citation = 'Park, R. S., Folkner, W. M., Konopliv, A. S., et al. 2017, AJ 153, 121, doi:10.3847/1538-3881/aa5be2, Table 3'
 retrieved = "2026-10-15"
 tolerance = { abs = 0.005 }
-tolerance_rationale = "PHY-012 acceptance (each value within +/- 0.005 arcsec/cy), copied; NUM-013(b) uses the same bound. FerroAstro computes the row with the maintainer protocol P-add = rate(Sun + Mercury + X) - rate(Sun + Mercury), identical ICs, one estimator (WP14 pre-registration). Non-gating while OI-38 (Park's own protocol) is open; red-team PHY-012 finding: the bound is tighter than the protocol ambiguity (cross terms up to 0.0411)."
+tolerance_rationale = "PHY-012 acceptance (each value within +/- 0.005 arcsec/cy), copied; NUM-013(b) uses the same bound; value and tolerance unchanged since WP14. ASSERTED under P-remove = rate(full) - rate(full - X), identical ICs, one estimator, per ADR-0014 (maintainer decision C of 2026-10-20, requirements PR #19). PROVISIONAL (provisional = OI-38): P-remove was chosen AFTER the results were known. P-add = rate(Sun + Mercury + X) - rate(Sun + Mercury) was pre-registered (WP14) and missed 4 of 7 rows (IMPLEMENTATION-NOTES WP14: Venus -0.022706, Earth/Moon -0.018997, Jupiter +0.038832, Saturn +0.043049 arcsec/cy; WP17: P-add Venus -0.029820 on the forward window, the same for FerroAstro, REBOUND, Mercury6 and Swiftest to 2e-8). This row in WP14: P-remove 0.142531 (+0.000031), P-add 0.139602 (-0.002898, within); P-add is now reported, not asserted. A pass therefore means consistent with Park 2017 under P-remove, not protocol-independent agreement; the bound is tighter than the protocol ambiguity (cross terms up to 0.0411; red-team PHY-012 finding). REVERT CONDITION: if a maintainer's reading of the Park 2017 text (OI-38) says P-add, this row reverts to asserting P-add and the 4 P-add misses are real discrepancies (type:physics-discrepancy)."
 verified_by = "WP14 builder agent, 2026-10-15: read in the published PDF (iopscience.iop.org/article/10.3847/1538-3881/aa5be2/pdf, sha256 24fb2153f6b78109daa80171cd37006157b73564f8d0ac383532b5c92433380b, the copy WP5 read; re-downloaded 2026-10-15, same sha256), pdftotext -layout of page 6, Table 3."
-blocked_by = "OI-38"
+provisional = "OI-38"
 
 [[vector]]
 id = "PARK17-T3-NEPTUNE"
@@ -107,9 +110,9 @@ source = "Park17 Table 3, row 'Neptune': 0.0424 +/- <0.0001 arcsec/Julian centur
 citation = 'Park, R. S., Folkner, W. M., Konopliv, A. S., et al. 2017, AJ 153, 121, doi:10.3847/1538-3881/aa5be2, Table 3'
 retrieved = "2026-10-15"
 tolerance = { abs = 0.005 }
-tolerance_rationale = "PHY-012 acceptance (each value within +/- 0.005 arcsec/cy), copied; NUM-013(b) uses the same bound. FerroAstro computes the row with the maintainer protocol P-add = rate(Sun + Mercury + X) - rate(Sun + Mercury), identical ICs, one estimator (WP14 pre-registration). Non-gating while OI-38 (Park's own protocol) is open; red-team PHY-012 finding: the bound is tighter than the protocol ambiguity (cross terms up to 0.0411)."
+tolerance_rationale = "PHY-012 acceptance (each value within +/- 0.005 arcsec/cy), copied; NUM-013(b) uses the same bound; value and tolerance unchanged since WP14. ASSERTED under P-remove = rate(full) - rate(full - X), identical ICs, one estimator, per ADR-0014 (maintainer decision C of 2026-10-20, requirements PR #19). PROVISIONAL (provisional = OI-38): P-remove was chosen AFTER the results were known. P-add = rate(Sun + Mercury + X) - rate(Sun + Mercury) was pre-registered (WP14) and missed 4 of 7 rows (IMPLEMENTATION-NOTES WP14: Venus -0.022706, Earth/Moon -0.018997, Jupiter +0.038832, Saturn +0.043049 arcsec/cy; WP17: P-add Venus -0.029820 on the forward window, the same for FerroAstro, REBOUND, Mercury6 and Swiftest to 2e-8). This row in WP14: P-remove 0.042378 (-0.000022), P-add 0.042068 (-0.000332, within); P-add is now reported, not asserted. A pass therefore means consistent with Park 2017 under P-remove, not protocol-independent agreement; the bound is tighter than the protocol ambiguity (cross terms up to 0.0411; red-team PHY-012 finding). REVERT CONDITION: if a maintainer's reading of the Park 2017 text (OI-38) says P-add, this row reverts to asserting P-add and the 4 P-add misses are real discrepancies (type:physics-discrepancy)."
 verified_by = "WP14 builder agent, 2026-10-15: read in the published PDF (iopscience.iop.org/article/10.3847/1538-3881/aa5be2/pdf, sha256 24fb2153f6b78109daa80171cd37006157b73564f8d0ac383532b5c92433380b, the copy WP5 read; re-downloaded 2026-10-15, same sha256), pdftotext -layout of page 6, Table 3."
-blocked_by = "OI-38"
+provisional = "OI-38"
 
 [[vector]]
 id = "PARK17-T3-X-VENUS-EARTH-MOON"
@@ -212,6 +215,5 @@ source = "Park17 Table 3, row 'Asteroids': 0.0012 +/- <0.0001 arcsec/Julian cent
 citation = 'Park, R. S., Folkner, W. M., Konopliv, A. S., et al. 2017, AJ 153, 121, doi:10.3847/1538-3881/aa5be2, Table 3'
 retrieved = "2026-10-15"
 tolerance = { abs = 0.0003 }
-tolerance_rationale = "Agent-set from the red-team PHY-014 proposal (an N-AST differential at +/- 0.0003; no requirement holds it yet, PHY.md lists N-AST as a rung without a requirement) and the WP14/WP15 review correction. PROVISIONAL. Computed with the maintainer protocol P-add = rate(Sun + Mercury + asteroids) - rate(Sun + Mercury); non-gating while OI-38 (Park's own protocol) is open, as every Park17 row."
+tolerance_rationale = "Agent-set from the red-team PHY-014 proposal (an N-AST differential at +/- 0.0003) and the WP14/WP15 review correction; PHY-019 (rung N-AST) holds the same 0.0012 +/- 0.0003. Value and tolerance unchanged since WP15. ASSERTED under P-remove = rate(planets + asteroids) - rate(planets), as PHY-012 (ADR-0014, maintainer decision C of 2026-10-20, requirements PR #19); P-add = rate(Sun + Mercury + asteroids) - rate(Sun + Mercury) is reported. Gates independently of OI-38 (no blocked_by, not provisional): WP15 gave P-add 0.001242 and P-remove 0.001245 arcsec/cy, a protocol dependence of about 3e-6, 1% of the tolerance (progress review after WP15, F9)."
 verified_by = "WP15 builder agent, 2026-10-15: read in the published PDF (sha256 24fb2153f6b78109daa80171cd37006157b73564f8d0ac383532b5c92433380b), pdftotext -layout of page 6, Table 3."
-blocked_by = "OI-38"
