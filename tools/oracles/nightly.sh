@@ -3,10 +3,16 @@
 # SPDX-License-Identifier: Apache-2.0
 #
 # Nightly all-oracle job (CI-006, CI-009; WP17). Runs on the local machine (maintainer decision
-# 2026-10-14: nightly and long tiers run locally; GitHub runners do PR-fast work), e.g. from cron:
+# 2026-10-14: nightly and long tiers run locally; GitHub runners do PR-fast work), e.g. from cron,
+# as TWO separate jobs that exchange files only (LIC-005; PR #13 judge review LIC-3):
 #   17 2 * * *  cd /path/to/FerroAstro && tools/oracles/nightly.sh --open-issue >> target/nightly.log 2>&1
+#   17 6 * * *  cd /path/to/FerroAstro && tools/oracles/nightly_ferroastro.sh >> target/nightly-fa.log 2>&1
 #
-#   tools/oracles/nightly.sh [--open-issue] [--skip-rust]
+#   tools/oracles/nightly.sh [--open-issue]
+#
+# This script runs the GPL oracle containers and the drift check only. It never builds, installs
+# or runs FerroAstro (no cargo): the FerroAstro side is tools/oracles/nightly_ferroastro.sh, a
+# separate job that reads the plain files this one leaves in $FA_ORACLE_OUT_DIR.
 #
 # 1. Every N-body oracle (rebound, swiftest, mercury6, orekit) on every ci/scenarios/*.toml: a scenario a
 #    runner does not implement is refused (exit 3, REF-011) and recorded as such; plus the erfa
@@ -16,9 +22,8 @@
 # 2. Drift (tools/oracles/drift.py): every committed ci/golden/<tool>/<name>/ and the ERFA goldens
 #    must be reproduced bit for bit. Drift writes a report and opens a BLOCKING issue
 #    (labels golden-drift, blocking) when --open-issue is given; without it, a dry run.
-# 3. The FerroAstro side (separate process, no container): the nightly oracle differentials
-#    (one Park2017 estimator on every tool's series, CI-009) read the outputs of step 1.
-# 4. Speed-table stub: in the report (wall clock per tool and scenario, from the manifests).
+# 3. Speed-table stub: in the report (wall clock per tool and scenario, from the manifests).
+# 4. Marker $FA_ORACLE_OUT_DIR/oracle-job.done (UTC time and exit status) for the FerroAstro job.
 #
 # Exit status: 0 when every step passed and nothing drifted; 1 otherwise.
 set -uo pipefail
@@ -28,17 +33,17 @@ cd "$root"
 out="${FA_ORACLE_OUT_DIR:-$root/target/oracle-out}"
 export FA_ORACLE_OUT_DIR="$out"
 open_issue=""
-skip_rust=0
 for a in "$@"; do
   case "$a" in
     --open-issue) open_issue="--open-issue" ;;
-    --skip-rust) skip_rust=1 ;;
+    --skip-rust) echo "--skip-rust is the default now: the FerroAstro side is nightly_ferroastro.sh (LIC-005)" >&2 ;;
     *) echo "unknown argument $a" >&2; exit 2 ;;
   esac
 done
 mkdir -p "$out"
 status="$out/status.tsv"
 : > "$status"
+rm -f "$out/oracle-job.done"
 fail=0
 R=tools/oracles/run_oracles.sh
 
@@ -69,11 +74,7 @@ echo -e "jpl\tref001-pins\t$code\t" >> "$status"; [[ $code == 0 ]] || fail=1
 (cd tools && uv run python -m oracles.drift --candidate "$out" --status "$status" \
   --report "$out/report.md" $open_issue) || fail=1
 
-if [[ $skip_rust == 0 ]]; then
-  # The FerroAstro side runs here, on the host, after the containers have exited.
-  cargo nextest run -p ferroastro-oracle --cargo-profile release --profile nightly \
-    --run-ignored only --no-capture > "$out/ferroastro-nightly.log" 2>&1 || fail=1
-  grep -E 'P-add Venus|GR contribution|PASS|FAIL' "$out/ferroastro-nightly.log" | tail -n 40
-fi
+echo -e "$(date -u +%Y-%m-%dT%H:%M:%SZ)\t$fail" > "$out/oracle-job.done"
 echo "nightly oracle job: $([[ $fail == 0 ]] && echo PASS || echo FAIL); report $out/report.md"
+echo "the FerroAstro side is a separate job: tools/oracles/nightly_ferroastro.sh (LIC-005)"
 exit "$fail"

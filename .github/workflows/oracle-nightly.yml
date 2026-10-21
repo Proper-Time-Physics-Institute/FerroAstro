@@ -3,8 +3,9 @@
 #
 # Nightly all-oracle drift job (CI-006; WP17). The maintainer decision of 2026-10-14 runs the
 # nightly and long tiers on the local machine: tools/oracles/nightly.sh from cron is the primary
-# path (it also runs the FerroAstro-side oracle differentials). This workflow is the same job on a
-# GitHub runner, manual dispatch only: adding a `schedule:` trigger (runner class, cost, the
+# path; the FerroAstro-side oracle differentials are a separate job, nightly_ferroastro.sh, that
+# reads this job's files (LIC-005). This workflow is the oracle job on a GitHub runner, manual
+# dispatch only: adding a `schedule:` trigger (runner class, cost, the
 # CI-006 "paid larger runners" note) is a maintainer decision (NEEDS HUMAN REVIEW, WP17 notes).
 #
 # GPL isolation (LIC-001/002, red-team L3/L4): `oracles` builds every image from a staged context
@@ -38,7 +39,7 @@ jobs:
       - name: Fetch the pinned JPL products (header.440, DE440 binary)
         run: cd tools && uv run python fetch_jpl.py de440-header de440-linux-binary
       - name: Run every oracle; the drift report is produced in the next job
-        run: tools/oracles/nightly.sh --skip-rust || true
+        run: tools/oracles/nightly.sh || true
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: oracle-nightly

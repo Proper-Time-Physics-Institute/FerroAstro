@@ -451,3 +451,20 @@ def test_nightly_runs_every_tool_that_has_a_committed_golden() -> None:
     assert golden_tools | scenario_tools <= built
     for tool in single_shot:
         assert re.search(rf"^\$R {tool} ", script, flags=re.MULTILINE), tool
+
+
+# Verifies: LIC-005
+def test_nightly_oracle_and_ferroastro_jobs_are_separate() -> None:
+    """The GPL oracle job never runs FerroAstro; the FerroAstro job never runs a container."""
+    oracles = (ROOT / "tools" / "oracles" / "nightly.sh").read_text(encoding="utf-8")
+    ferroastro = (ROOT / "tools" / "oracles" / "nightly_ferroastro.sh").read_text(encoding="utf-8")
+
+    def code(script: str) -> str:
+        return "\n".join(line for line in script.splitlines() if not line.lstrip().startswith("#"))
+
+    assert "cargo" not in code(oracles)
+    assert "oracle-job.done" in code(oracles)
+    for forbidden in ("run_oracles", "docker", "podman", "$R "):
+        assert forbidden not in code(ferroastro), forbidden
+    assert "oracle-job.done" in code(ferroastro)
+    assert "cargo nextest run -p ferroastro-oracle" in code(ferroastro)
