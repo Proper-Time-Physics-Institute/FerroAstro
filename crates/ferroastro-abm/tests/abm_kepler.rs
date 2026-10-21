@@ -615,7 +615,11 @@ fn compensated_update_beats_the_plain_update_on_a_mars_like_orbit() {
     let mu = value(&vs, "DE440-GMS-KM3S2");
     let h = SECONDS_PER_DAY / STEPS_PER_DAY;
     let o = Orbit::<f64>::new(mu, T1_A_AU * au_km, T1_E);
-    let od = Orbit::<D>::new(D::from_f64(mu), D::from_f64(T1_A_AU * au_km), D::from_f64(T1_E));
+    let od = Orbit::<D>::new(
+        D::from_f64(mu),
+        D::from_f64(T1_A_AU * au_km),
+        D::from_f64(T1_E),
+    );
     let cfg = |c: bool| config(13, Corrector::Pecec, c);
     // One f64 initial state for all three runs: the double-double truth starts from the same
     // bits, so the comparison measures integration round-off, not the rounding of the ICs.
@@ -688,7 +692,7 @@ fn one_compensated_step_is_the_documented_sequence_bit_for_bit() {
     let y0: Vec<f64> = y.iter().zip(&c).map(|(s, c)| s - c).collect();
     // |c| <= ulp(y)/2 (it is the rounding error of the last update), so y - c rounds back to y
     // except at an exact tie: the base's compensation has no effect in binary64 (reported).
-    let moved = y0.iter().zip(&y).filter(|(a, b)| a != b).count();
+    let moved = y0.iter().zip(&y).filter(|(a, b)| a.to_bits() != b.to_bits()).count();
     println!("T1b: components where fl(y - c) != y: {moved} of 4");
     let fold = |range: Vec<usize>, coef: &[f64], shift: usize, i: usize| -> f64 {
         range
