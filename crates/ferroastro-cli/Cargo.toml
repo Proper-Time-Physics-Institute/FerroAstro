@@ -1,0 +1,24 @@
+# SPDX-FileCopyrightText: 2026 Proper-Time Physics Institute
+# SPDX-License-Identifier: Apache-2.0
+[package]
+name = "ferroastro-cli"
+description = "The ferroastro command-line tool (M2: `ferroastro ladder --rungs single-body`)"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+authors.workspace = true
+repository.workspace = true
+
+[[bin]]
+name = "ferroastro"
+path = "src/main.rs"
+
+[dependencies]
+ferroastro-constants.workspace = true
+ferroastro-core.workspace = true
+ferroastro-ladder.workspace = true
+ferroastro-vectors.workspace = true
+
+[lints]
+workspace = true

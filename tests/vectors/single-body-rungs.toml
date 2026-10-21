@@ -1,0 +1,397 @@
+# SPDX-FileCopyrightText: 2026 Proper-Time Physics Institute
+# SPDX-License-Identifier: Apache-2.0
+# Single-body relativistic rungs (WP4): PHY-005..011, NUM-015, and the Park et al. 2017 values they use.
+# Every oracle was fixed in IMPLEMENTATION-NOTES WP4 before any WP4 run. Schema: ADR-0004.
+schema_version = 1
+
+[[vector]]
+id = "PHY005-GR-NUM-RATE"
+requirement = ["PHY-005"]
+quantity = "numerical 1PN Schwarzschild (beta = gamma = 1, PPN isotropic/harmonic gauge) perihelion rate of a Mercury test particle (SW92 J2000 elements, DE440 GM_sun and c)"
+value = 42.98
+unit = "arcsec/cy"
+kind = "analytic"
+source = "PHY-005 acceptance: the fitted rate is 42.980 +/- 0.001 arcsec/cy"
+citation = "FerroAstro docs/requirements/PHY.md PHY-005; Will, C. M. 2014, Living Rev. Relativ. 17, 4, doi:10.12942/lrr-2014-4, Eq. 65"
+retrieved = "2026-10-15"
+tolerance = { abs = 1.0e-3 }
+tolerance_rationale = "The requirement's own tolerance (2.3e-5 relative). The analytic value with these inputs is 42.98048 (PHY004-GR-RATE), 4.8e-4 from 42.980; the numerical rate may differ from it by O(GM/c^2 p) ~ 3e-8 relative (second-order 1PN terms, anomalistic vs Keplerian period)."
+verified_by = "Red-team review 2026-10-14 (REPORT.md section 1) recomputed this value in Python from the cited DE440/SW92 constants; WP4 builder re-computed it with mpmath (30 digits) on 2026-10-15; it is the PHY-004 analytic value rounded to the 3 decimals PHY-005 prints."
+
+[[vector]]
+id = "PHY005-GR-NUM-MINUS-ANALYTIC"
+requirement = ["PHY-005"]
+quantity = "numerical GR-SCHW rate minus the PHY-004 analytic rate 6 pi GM/(c^2 a (1-e^2)) per Keplerian orbit"
+value = 0.0
+unit = "arcsec/cy"
+kind = "analytic"
+source = "PHY-005 acceptance: the fitted rate differs from the PHY-004 analytic value by at most 0.001 arcsec/cy"
+citation = "FerroAstro docs/requirements/PHY.md PHY-005, PHY-004"
+retrieved = "2026-10-15"
+tolerance = { abs = 1.0e-3 }
+tolerance_rationale = "The requirement's own bound on the difference."
+verified_by = "WP4 builder agent, 2026-10-15: bound copied from PHY-005."
+
+[[vector]]
+id = "PHY006-RATIO-REL-DEV"
+requirement = ["PHY-006"]
+quantity = "relative deviation of the differential ratio rate(beta, gamma)/rate(1, 1) from (2 + 2 gamma - beta)/3, identical initial conditions"
+value = 0.0
+unit = "1"
+kind = "analytic"
+source = "PHY-006 statement (scaling relative to the gamma = beta = 1 value) with the red-team section 1 correction: assert the ratio, not 42.98 x (2+2gamma-beta)/3, because 42.98 is itself 1.1e-5 from the true rate"
+citation = "FerroAstro docs/requirements/PHY.md PHY-006; Will, C. M. 2014, Living Rev. Relativ. 17, 4, Eq. 65; red-team REPORT.md section 1 (PHY-006 finding)"
+retrieved = "2026-10-15"
+tolerance = { abs = 1.0e-6 }
+tolerance_rationale = "PHY-006's 1e-6 relative tolerance applied to the ratio (red-team fix). The ratio's own first-order truth is exact; second-order 1PN terms change it by ~ (GM/c^2 p) |beta - 1| ~ 3e-11, far below 1e-6."
+verified_by = "WP4 builder agent, 2026-10-15: tolerance from PHY-006; form from the red-team report."
+
+[[vector]]
+id = "PHY006-BETA-SHIFT"
+requirement = ["PHY-006"]
+quantity = "shift of Mercury's GR-SCHW rate for gamma = 1, beta = 1 + 3.9e-5 (Park17 sigma_beta)"
+value = -0.00056
+unit = "arcsec/cy"
+kind = "analytic"
+source = "PHY-006 acceptance example: gamma = 1, beta = 1 + 3.9e-5 shifts the rate by -0.00056 arcsec/cy"
+citation = "FerroAstro docs/requirements/PHY.md PHY-006; sigma_beta = 3.9e-5 from Park, R. S., Folkner, W. M., Konopliv, A. S., et al. 2017, AJ 153, 121, doi:10.3847/1538-3881/aa5be2, abstract and Table 1"
+retrieved = "2026-10-15"
+tolerance = { abs = 5.0e-6 }
+tolerance_rationale = "Half a unit in the last printed digit of -0.00056. Red-team recomputation: -0.000559 (-42.9805 x 3.9e-5 / 3)."
+verified_by = "Red-team review 2026-10-14 (REPORT.md section 1) recomputed this value in Python from the cited DE440/SW92 constants; WP4 builder re-computed it with mpmath (30 digits) on 2026-10-15: -0.000558746."
+
+[[vector]]
+id = "PHY006-GAMMA-SHIFT"
+requirement = ["PHY-006"]
+quantity = "shift of Mercury's GR-SCHW rate for beta = 1, gamma = 1 + 2.3e-5 (the Cassini sigma_gamma quoted in PHY-006 notes)"
+value = 0.00066
+unit = "arcsec/cy"
+kind = "analytic"
+source = "PHY-006 notes: gamma +/-0.00066 arcsec/cy per Cassini sigma_gamma"
+citation = "FerroAstro docs/requirements/PHY.md PHY-006 notes; the input 2.3e-5 is used only as a test point (its Cassini attribution, Bertotti et al. 2003, was not re-read in WP4); the expected shift follows from Will 2014 Eq. 65"
+retrieved = "2026-10-15"
+tolerance = { abs = 5.0e-6 }
+tolerance_rationale = "Half a unit in the last printed digit of 0.00066. Red-team recomputation: +0.000659 (42.9805 x 2 x 2.3e-5 / 3)."
+verified_by = "Red-team review 2026-10-14 (REPORT.md section 1) recomputed this value in Python from the cited DE440/SW92 constants; WP4 builder re-computed it with mpmath (30 digits) on 2026-10-15: +0.000659034."
+
+[[vector]]
+id = "PARK17-BETA-SIGMA"
+requirement = ["PHY-006"]
+quantity = "1-sigma uncertainty of PPN (beta - 1) estimated from MESSENGER ranging with the Cassini gamma (Park17)"
+value = 3.9e-05
+unit = "1"
+kind = "measured"
+source = "Park17 abstract '(beta - 1) = (-2.7 +/- 3.9) x 10^-5' and Table 1 'Total' row '-2.6 +/- 3.9' (x 10^-5); the central values differ between abstract and table, the uncertainty does not"
+citation = "Park, R. S., Folkner, W. M., Konopliv, A. S., et al. 2017, AJ 153, 121, doi:10.3847/1538-3881/aa5be2, abstract and Table 1"
+retrieved = "2026-10-15"
+tolerance = { abs = 0.0 }
+tolerance_rationale = "A transcribed published value, used as a PHY-006 test point; exact."
+verified_by = "WP4 builder agent, 2026-10-15: read in the published PDF (iopscience.iop.org/article/10.3847/1538-3881/aa5be2/pdf, sha256 24fb2153f6b78109daa80171cd37006157b73564f8d0ac383532b5c92433380b), re-downloaded 2026-10-15 with the same SHA-256 as WP3."
+
+[[vector]]
+id = "PHY007-SRA-NUM-RATE"
+requirement = ["PHY-007"]
+quantity = "numerical rung SR-a rate (H = gamma m c^2 - mu m/r) of a Mercury test particle"
+value = 7.1634
+unit = "arcsec/cy"
+kind = "analytic"
+source = "PHY-007 acceptance: numerical varpi_dot = GR-SCHW/6 = 7.1634 +/- 0.001 arcsec/cy"
+citation = "FerroAstro docs/requirements/PHY.md PHY-007; Journal #4 R2; Lemmon & Mondragon, arXiv:1012.5438 v1"
+retrieved = "2026-10-15"
+tolerance = { abs = 1.0e-3 }
+tolerance_rationale = "The requirement's own tolerance. Exact-formula and leading-order values differ by ~2e-8 relative."
+verified_by = "Red-team review 2026-10-14 (REPORT.md section 1) recomputed this value in Python from the cited DE440/SW92 constants; WP4 builder re-computed it with mpmath (30 digits) on 2026-10-15: 7.16341."
+
+[[vector]]
+id = "PHY007-SRA-ANALYTIC-RATE"
+requirement = ["PHY-007"]
+quantity = "analytic rung SR-a rate pi GM/(c^2 p) per Keplerian orbit with PHY-004 inputs"
+value = 7.1634
+unit = "arcsec/cy"
+kind = "analytic"
+source = "PHY-007 acceptance: the analytic per-orbit advance pi GM/(c^2 p) evaluated with PHY-004 inputs agrees with the numerical value"
+citation = "FerroAstro docs/requirements/PHY.md PHY-007, PHY-004"
+retrieved = "2026-10-15"
+tolerance = { abs = 1.0e-3 }
+tolerance_rationale = "Same tolerance as the numerical rung, so that 'agrees' has a number; the analytic value is 7.16341 (5e-5 from 7.1634)."
+verified_by = "Red-team review 2026-10-14 (REPORT.md section 1) recomputed this value in Python from the cited DE440/SW92 constants; WP4 builder re-computed it with mpmath (30 digits) on 2026-10-15: 7.16341257."
+
+[[vector]]
+id = "PHY008-SRB-HARMONIC-RATE"
+requirement = ["PHY-008"]
+quantity = "numerical rung SR-b rate (velocity-dependent 1PN terms only), PPN isotropic/harmonic gauge: 7/6 of GR"
+value = 50.144
+unit = "arcsec/cy"
+kind = "analytic"
+source = "PHY-008 acceptance: isotropic/harmonic gauge 7/6 x GR = 50.144 +/- 0.002 arcsec/cy"
+citation = "FerroAstro docs/requirements/PHY.md PHY-008; journal 01 section 5 [C]"
+retrieved = "2026-10-15"
+tolerance = { abs = 2.0e-3 }
+tolerance_rationale = "The requirement's own tolerance. 7/6 x 42.98048 = 50.14389."
+verified_by = "Red-team review 2026-10-14 (REPORT.md section 1) recomputed this value in Python from the cited DE440/SW92 constants; WP4 builder re-computed it with mpmath (30 digits) on 2026-10-15: 50.14389."
+
+[[vector]]
+id = "PHY008-SRB-AREAL-RATE"
+requirement = ["PHY-008"]
+quantity = "numerical rung SR-b rate (velocity-dependent 1PN terms only), areal Schwarzschild gauge (pedagogical): 5/6 of GR"
+value = 35.817
+unit = "arcsec/cy"
+kind = "analytic"
+source = "PHY-008 acceptance: Schwarzschild areal gauge 5/6 x GR = 35.817 +/- 0.002 arcsec/cy"
+citation = "FerroAstro docs/requirements/PHY.md PHY-008; journal 01 section 5 [C]"
+retrieved = "2026-10-15"
+tolerance = { abs = 2.0e-3 }
+tolerance_rationale = "The requirement's own tolerance. 5/6 x 42.98048 = 35.81707."
+verified_by = "Red-team review 2026-10-14 (REPORT.md section 1) recomputed this value in Python from the cited DE440/SW92 constants; WP4 builder re-computed it with mpmath (30 digits) on 2026-10-15: 35.81707."
+
+[[vector]]
+id = "PHY009-UNITS-PER-A"
+requirement = ["PHY-009"]
+quantity = "per-orbit perihelion advance, in units of pi GM/(c^2 p), per unit of coefficient A (v^4) of the test-particle Lagrangian, A = 1 and the others 0"
+value = 8.0
+unit = "1"
+kind = "analytic"
+source = "PHY-009 acceptance (A, B, C, D give 1, 4, 2, 2 units, A with 8A = 1) as corrected by red-team section 1: per unit of A the advance is 8"
+citation = "FerroAstro docs/requirements/PHY.md PHY-009; red-team REPORT.md section 1 (Delaunay average: v^4 -> 8A, Uv^2 -> 4B, U^2 -> 2C, U(n.v)^2 -> 2D)"
+retrieved = "2026-10-15"
+tolerance = { rel = 1.0e-3 }
+tolerance_rationale = "PHY-009's 1e-3 relative tolerance. Second-order terms are O(GM/c^2 p) ~ 3e-8 relative."
+verified_by = "Red-team review 2026-10-14 re-derived the per-coefficient advances analytically; journal 01 reports a sympy + DOP853 check (1.000, 3.999, 2.000, 2.000 at e = 0.2)."
+
+[[vector]]
+id = "PHY009-UNITS-PER-B"
+requirement = ["PHY-009"]
+quantity = "per-orbit perihelion advance, in units of pi GM/(c^2 p), per unit of coefficient B (U v^2) of the test-particle Lagrangian, B = 1 and the others 0"
+value = 4.0
+unit = "1"
+kind = "analytic"
+source = "PHY-009 acceptance (A, B, C, D give 1, 4, 2, 2 units, A with 8A = 1) as corrected by red-team section 1: per unit of A the advance is 8"
+citation = "FerroAstro docs/requirements/PHY.md PHY-009; red-team REPORT.md section 1 (Delaunay average: v^4 -> 8A, Uv^2 -> 4B, U^2 -> 2C, U(n.v)^2 -> 2D)"
+retrieved = "2026-10-15"
+tolerance = { rel = 1.0e-3 }
+tolerance_rationale = "PHY-009's 1e-3 relative tolerance. Second-order terms are O(GM/c^2 p) ~ 3e-8 relative."
+verified_by = "Red-team review 2026-10-14 re-derived the per-coefficient advances analytically; journal 01 reports a sympy + DOP853 check (1.000, 3.999, 2.000, 2.000 at e = 0.2)."
+
+[[vector]]
+id = "PHY009-UNITS-PER-C"
+requirement = ["PHY-009"]
+quantity = "per-orbit perihelion advance, in units of pi GM/(c^2 p), per unit of coefficient C (U^2) of the test-particle Lagrangian, C = 1 and the others 0"
+value = 2.0
+unit = "1"
+kind = "analytic"
+source = "PHY-009 acceptance (A, B, C, D give 1, 4, 2, 2 units, A with 8A = 1) as corrected by red-team section 1: per unit of A the advance is 8"
+citation = "FerroAstro docs/requirements/PHY.md PHY-009; red-team REPORT.md section 1 (Delaunay average: v^4 -> 8A, Uv^2 -> 4B, U^2 -> 2C, U(n.v)^2 -> 2D)"
+retrieved = "2026-10-15"
+tolerance = { rel = 1.0e-3 }
+tolerance_rationale = "PHY-009's 1e-3 relative tolerance. Second-order terms are O(GM/c^2 p) ~ 3e-8 relative."
+verified_by = "Red-team review 2026-10-14 re-derived the per-coefficient advances analytically; journal 01 reports a sympy + DOP853 check (1.000, 3.999, 2.000, 2.000 at e = 0.2)."
+
+[[vector]]
+id = "PHY009-UNITS-PER-D"
+requirement = ["PHY-009"]
+quantity = "per-orbit perihelion advance, in units of pi GM/(c^2 p), per unit of coefficient D (U (n.v)^2) of the test-particle Lagrangian, D = 1 and the others 0"
+value = 2.0
+unit = "1"
+kind = "analytic"
+source = "PHY-009 acceptance (A, B, C, D give 1, 4, 2, 2 units, A with 8A = 1) as corrected by red-team section 1: per unit of A the advance is 8"
+citation = "FerroAstro docs/requirements/PHY.md PHY-009; red-team REPORT.md section 1 (Delaunay average: v^4 -> 8A, Uv^2 -> 4B, U^2 -> 2C, U(n.v)^2 -> 2D)"
+retrieved = "2026-10-15"
+tolerance = { rel = 1.0e-3 }
+tolerance_rationale = "PHY-009's 1e-3 relative tolerance. Second-order terms are O(GM/c^2 p) ~ 3e-8 relative."
+verified_by = "Red-team review 2026-10-14 re-derived the per-coefficient advances analytically; journal 01 reports a sympy + DOP853 check (1.000, 3.999, 2.000, 2.000 at e = 0.2)."
+
+[[vector]]
+id = "PHY009-UNITS-A-EIGHTH"
+requirement = ["PHY-009"]
+quantity = "per-orbit advance in units of pi GM/(c^2 p) for A = 1/8 alone (the SR-a v^4 term)"
+value = 1.0
+unit = "1"
+kind = "analytic"
+source = "PHY-009 acceptance: A gives 1 unit with 8A = 1"
+citation = "FerroAstro docs/requirements/PHY.md PHY-009"
+retrieved = "2026-10-15"
+tolerance = { rel = 1.0e-3 }
+tolerance_rationale = "PHY-009's tolerance."
+verified_by = "As PHY009-UNITS-PER-A (8 x 1/8 = 1)."
+
+[[vector]]
+id = "PARK17-J2SUN"
+requirement = ["PHY-010"]
+quantity = "solar quadrupole J2 estimated from MESSENGER ranging (Park17)"
+value = "2.25e-7"
+unit = "1"
+kind = "measured"
+source = "Park17 abstract 'J2 = (2.25 +/- 0.09) x 10^-7' and Table 1 'Total' row '2.25 +/- 0.09' (J2 x 10^7)"
+citation = "Park, R. S., Folkner, W. M., Konopliv, A. S., et al. 2017, AJ 153, 121, doi:10.3847/1538-3881/aa5be2, abstract and Table 1"
+retrieved = "2026-10-15"
+tolerance = { abs = 0.0 }
+tolerance_rationale = "A transcribed published value; exact. It is the J2 of PHY-010's 0.02860 and of Park17 Table 3's solar-oblateness row."
+verified_by = "WP4 builder agent, 2026-10-15: read in the published PDF (iopscience.iop.org/article/10.3847/1538-3881/aa5be2/pdf, sha256 24fb2153f6b78109daa80171cd37006157b73564f8d0ac383532b5c92433380b), re-downloaded 2026-10-15 with the same SHA-256 as WP3. Note OI-11: INPOP21a quotes Park17's J2 as 2.28 +/- 0.06; in Park17 that is the Sec. 3 hypothetical case with gamma = beta = 1 fixed and no a priori information on J2 and the solar moment of inertia (with S = (196 +/- 70) x 10^39 kg m^2/s), not the Table 1 total."
+
+[[vector]]
+id = "PARK17-SOLAR-EQUATOR-TILT"
+requirement = ["PHY-010"]
+quantity = "inclination of the solar equator to Mercury's mean orbit plane (Park17)"
+value = 3.4
+unit = "deg"
+kind = "measured"
+source = "Park17 Sec. 4: 'The solar equator plane is inclined by ~3.4 deg to the mean plane of Mercury's orbit'"
+citation = "Park, R. S., Folkner, W. M., Konopliv, A. S., et al. 2017, AJ 153, 121, doi:10.3847/1538-3881/aa5be2, Sec. 4"
+retrieved = "2026-10-15"
+tolerance = { abs = 0.0 }
+tolerance_rationale = "A transcribed published value (approximate in the source), used only as the geometry of the offline inclined-J2 check, whose oracle is Park17 Eq. 3 at the same inclination."
+verified_by = "WP4 builder agent, 2026-10-15: read in the published PDF (iopscience.iop.org/article/10.3847/1538-3881/aa5be2/pdf, sha256 24fb2153f6b78109daa80171cd37006157b73564f8d0ac383532b5c92433380b), re-downloaded 2026-10-15 with the same SHA-256 as WP3."
+
+[[vector]]
+id = "PHY010-J2-PARK-ANALYTIC-RATE"
+requirement = ["PHY-010"]
+quantity = "analytic J2 perihelion rate 3 pi J2 R^2/p^2 per Keplerian orbit, J2 = 2.25e-7, R = 696000 km, SW92 a, e, DE440 GM_sun"
+value = 0.0286
+unit = "arcsec/cy"
+kind = "analytic"
+source = "PHY-010 acceptance: analytic 0.02860 arcsec/cy at J2 = 2.25e-7"
+citation = "FerroAstro docs/requirements/PHY.md PHY-010; Journal #4 R1"
+retrieved = "2026-10-15"
+tolerance = { abs = 5.0e-6 }
+tolerance_rationale = "Half a unit in the 5th decimal printed by PHY-010."
+verified_by = "Red-team review 2026-10-14 (REPORT.md section 1) recomputed this value in Python from the cited DE440/SW92 constants; WP4 builder re-computed it with mpmath (30 digits) on 2026-10-15: 0.028601."
+
+[[vector]]
+id = "PHY010-J2-DE440-ANALYTIC-RATE"
+requirement = ["PHY-010"]
+quantity = "analytic J2 perihelion rate 3 pi J2 R^2/p^2 per Keplerian orbit, DE440 J2SUN, R = ASUN"
+value = 0.02792
+unit = "arcsec/cy"
+kind = "analytic"
+source = "PHY-010 acceptance: 0.02792 arcsec/cy at the DE440 J2 = 2.19613915165298248e-7"
+citation = "FerroAstro docs/requirements/PHY.md PHY-010"
+retrieved = "2026-10-15"
+tolerance = { abs = 5.0e-6 }
+tolerance_rationale = "Half a unit in the 5th decimal printed by PHY-010; the exact value 0.027917 sits 3e-6 from it."
+verified_by = "Red-team review 2026-10-14 (REPORT.md section 1) recomputed this value in Python from the cited DE440/SW92 constants; WP4 builder re-computed it with mpmath (30 digits) on 2026-10-15: 0.027917."
+
+[[vector]]
+id = "PHY010-J2-NUM-MINUS-ANALYTIC"
+requirement = ["PHY-010"]
+quantity = "numerical J2 rung rate minus the analytic J2 rate (equatorial orbit)"
+value = 0.0
+unit = "arcsec/cy"
+kind = "analytic"
+source = "PHY-010 acceptance: the numerical rung matches the analytic value within +/-0.0005 arcsec/cy"
+citation = "FerroAstro docs/requirements/PHY.md PHY-010"
+retrieved = "2026-10-15"
+tolerance = { abs = 5.0e-4 }
+tolerance_rationale = "The requirement's own bound. NUM-015 adds the much tighter per-orbit check."
+verified_by = "WP4 builder agent, 2026-10-15: bound copied from PHY-010."
+
+[[vector]]
+id = "PHY011-LT-NUM-RATE"
+requirement = ["PHY-011"]
+quantity = "numerical Lense-Thirring rung rate, DE440 solar spin (G S = GM_sun MOISUN ASUN^2 OMGSUN), equatorial orbit"
+value = -0.002
+unit = "arcsec/cy"
+kind = "analytic"
+source = "PHY-011 acceptance: the rung yields -0.0020 +/- 0.0002 arcsec/cy"
+citation = "FerroAstro docs/requirements/PHY.md PHY-011; Park17 Table 3 (Lense-Thirring -0.0020 +/- 0.0002)"
+retrieved = "2026-10-15"
+tolerance = { abs = 2.0e-4 }
+tolerance_rationale = "The requirement's own tolerance (10%). It catches a sign error and a -6 vs -4 omission (red-team INFO); NUM-015 is the tight check."
+verified_by = "Red-team review 2026-10-14 (REPORT.md section 1) recomputed this value in Python from the cited DE440/SW92 constants; WP4 builder re-computed it with mpmath (30 digits) on 2026-10-15: -0.0020183."
+
+[[vector]]
+id = "PHY011-LT-ANALYTIC-RATE"
+requirement = ["PHY-011"]
+quantity = "analytic Lense-Thirring rate -4 G S/(c^2 a^3 (1-e^2)^(3/2)) at I = 0, DE440 spin, SW92 a, e"
+value = -0.00202
+unit = "arcsec/cy"
+kind = "analytic"
+source = "PHY-011 acceptance: the analytic check at I ~ 0 gives -0.00202 arcsec/cy"
+citation = "FerroAstro docs/requirements/PHY.md PHY-011; Park, R. S., Folkner, W. M., Konopliv, A. S., et al. 2017, AJ 153, 121, doi:10.3847/1538-3881/aa5be2, Eq. 2 (with gamma = 1, i = 0)"
+retrieved = "2026-10-15"
+tolerance = { abs = 5.0e-6 }
+tolerance_rationale = "Half a unit in the 5th decimal printed by PHY-011; the exact value -0.0020183 sits 1.7e-6 from it."
+verified_by = "Red-team review 2026-10-14 (REPORT.md section 1) recomputed this value in Python from the cited DE440/SW92 constants; WP4 builder re-computed it with mpmath (30 digits) on 2026-10-15: -0.0020183; Park17 Eq. 2 read in the PDF by the WP4 builder."
+
+[[vector]]
+id = "NUM015-REL-TOL"
+requirement = ["NUM-015"]
+quantity = "relative deviation of a single-body numerical per-orbit advance (1000-orbit fit) from its analytic oracle"
+value = 0.0
+unit = "1"
+kind = "analytic"
+source = "NUM-015 acceptance: numerical per-orbit advance matches each analytic value to <= 1e-6 relative, averaged over 1e3 orbits"
+citation = "FerroAstro docs/requirements/NUM.md NUM-015"
+retrieved = "2026-10-15"
+tolerance = { abs = 1.0e-6 }
+tolerance_rationale = "NUM-015's own bound. A check passes if this OR NUM015-ABS-FLOOR passes (red-team section 1: an absolute floor for tiny effects)."
+verified_by = "WP4 builder agent, 2026-10-15: copied from NUM-015."
+
+[[vector]]
+id = "NUM015-ABS-FLOOR"
+requirement = ["NUM-015"]
+quantity = "absolute deviation of a single-body numerical per-orbit advance from its analytic oracle (floor for tiny effects)"
+value = 0.0
+unit = "rad"
+kind = "analytic"
+source = "Red-team review section 1 (NUM-015 finding): use max(1e-6 rel, 1e-7 arcsec/cy) because 1e-6 relative of the LT advance (2.4e-11 rad/orbit) is below the f64 round-off floor of the eccentricity-vector direction"
+citation = "red-team REPORT.md section 1; FerroAstro docs/requirements/NUM.md NUM-015"
+retrieved = "2026-10-15"
+tolerance = { abs = 1.17e-15 }
+tolerance_rationale = "1e-7 arcsec/cy at 415.2 orbits/cy = 2.41e-10 arcsec = 1.168e-15 rad per orbit, rounded up to 1.17e-15. It matters only for J2 (3.6e-6 relative of its advance) and LT (4.8e-5 relative). Pre-registered in IMPLEMENTATION-NOTES WP4 before any run. NEEDS HUMAN REVIEW: this floor is a red-team recommendation, not yet in NUM-015's text."
+verified_by = "WP4 builder agent, 2026-10-15: arithmetic above."
+
+[[vector]]
+id = "PARK17-J2-RATE"
+requirement = ["PHY-010"]
+quantity = "solar-oblateness contribution to Mercury's perihelion precession, Park17 Table 3 (J2 = 2.25e-7, Mercury mean-orbit frame)"
+value = 0.0286
+unit = "arcsec/cy"
+kind = "measured"
+source = "Park17 Table 3, row 'Solar Oblateness': 0.0286 +/- 0.0011"
+citation = "Park, R. S., Folkner, W. M., Konopliv, A. S., et al. 2017, AJ 153, 121, doi:10.3847/1538-3881/aa5be2, Table 3"
+retrieved = "2026-10-15"
+tolerance = { abs = 1.1e-3 }
+tolerance_rationale = "Park17's quoted 1-sigma, which is the J2 uncertainty (0.09/2.25 = 4%) propagated. Used by the data-tier J2 rung in the real IAU_SUN geometry, pre-registered in IMPLEMENTATION-NOTES WP4."
+verified_by = "WP4 builder agent, 2026-10-15: read in the published PDF (iopscience.iop.org/article/10.3847/1538-3881/aa5be2/pdf, sha256 24fb2153f6b78109daa80171cd37006157b73564f8d0ac383532b5c92433380b), re-downloaded 2026-10-15 with the same SHA-256 as WP3."
+
+[[vector]]
+id = "PARK17-LT-RATE"
+requirement = ["PHY-011"]
+quantity = "Lense-Thirring contribution to Mercury's perihelion precession, Park17 Table 3 (S = 190e39 kg m^2/s)"
+value = -0.002
+unit = "arcsec/cy"
+kind = "measured"
+source = "Park17 Table 3, row 'Lense-Thirring (Gravitomagnetic)': -0.0020 +/- 0.0002"
+citation = "Park, R. S., Folkner, W. M., Konopliv, A. S., et al. 2017, AJ 153, 121, doi:10.3847/1538-3881/aa5be2, Table 3 and Eq. 2"
+retrieved = "2026-10-15"
+tolerance = { abs = 2.0e-4 }
+tolerance_rationale = "Park17's quoted 1-sigma. Used by the data-tier LT rung (DE440 spin, real IAU_SUN geometry), pre-registered in IMPLEMENTATION-NOTES WP4."
+verified_by = "WP4 builder agent, 2026-10-15: read in the published PDF (iopscience.iop.org/article/10.3847/1538-3881/aa5be2/pdf, sha256 24fb2153f6b78109daa80171cd37006157b73564f8d0ac383532b5c92433380b), re-downloaded 2026-10-15 with the same SHA-256 as WP3."
+
+[[vector]]
+id = "NUM013-ISOLATION-DIFF"
+requirement = ["NUM-013"]
+quantity = "differential single-body rate (rung run minus Newtonian test-particle run from identical initial conditions) minus the analytic rate of the same term (GR-SCHW, J2 at Park17 J2 equatorial, LT equatorial)"
+value = 0.0
+unit = "arcsec/cy"
+kind = "analytic"
+source = "NUM-013 acceptance (a): isolated single-body terms (Sun + Mercury only: GR 42.98, J2 0.0286 at J2 = 2.25e-7, LT -0.0020 arcsec/cy) agree with the analytic formulas within 1e-4 arcsec/cy"
+citation = "FerroAstro docs/requirements/NUM.md NUM-013 (maintainer decision 2026-10-14, Journal #8)"
+retrieved = "2026-10-15"
+tolerance = { abs = 1.0e-4 }
+tolerance_rationale = "NUM-013(a)'s own bound, copied. Comparison basis (documented as NUM-013 requires): heliocentric test particle about a fixed Sun (the Sun + Mercury isolation), mu = GM_sun, the same initial state (asserted by IC hash) for the toggled and the Newtonian run, perihelion-passage estimator, analytic rate = analytic per-orbit advance / Keplerian period of the initial orbit. Pre-registered in WP6 before the test was written or run."
+verified_by = "WP6 builder agent, 2026-10-15: bound copied from NUM-013(a)."
+
+[[vector]]
+id = "NUM012-ESTIMATOR-SPREAD"
+requirement = ["NUM-012"]
+quantity = "spread (max - min) of the single-body rung rate over four estimators on the same dynamics and initial state: perihelion passages, LRL eccentricity-vector longitude, Park2017 linear and Park2017 quadratic on 2-day samples in the initial orbit plane"
+value = 0.0
+unit = "arcsec/cy"
+kind = "analytic"
+source = "For a single body the estimators measure the same secular advance; their definitions differ only by periodic terms (1PN periodic terms of the osculating LRL vector, sampling and interpolation of passages), which average out over 1000 orbits. NUM-012 acceptance asks the docs to report the spread."
+citation = "FerroAstro docs/requirements/NUM.md NUM-012 and NUM-013; Park et al. 2017, AJ 153, 121, Sec. 4 (estimator)"
+retrieved = "2026-10-15"
+tolerance = { abs = 1.0e-4 }
+tolerance_rationale = "Pre-registered in WP6 before the first run: the spread must stay below the NUM-013(a) isolation tolerance (1e-4 arcsec/cy), otherwise the NUM-013(a) comparison would depend on the choice of estimator. Known inputs: WP4 measured passages vs LRL at 4e-7 relative for GR (1.7e-5 arcsec/cy); WP5 measured a 2-day passage-direction error of ~3e-6 arcsec per passage."
+verified_by = "WP6 builder agent, 2026-10-15: bound derived from NUM-013(a); spread is reported per rung in IMPLEMENTATION-NOTES WP6."

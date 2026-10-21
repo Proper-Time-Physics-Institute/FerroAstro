@@ -1,0 +1,60 @@
+# SPDX-FileCopyrightText: 2026 Proper-Time Physics Institute
+# SPDX-License-Identifier: Apache-2.0
+# Rung GR-SCHW analytic (PHY-004) and the published cross-check (Park17 Table 3). Schema: ADR-0004.
+schema_version = 1
+
+[[vector]]
+id = "PHY004-GR-RATE"
+requirement = ["PHY-004"]
+quantity = "analytic Schwarzschild perihelion advance rate of Mercury, 6 pi GM/(c^2 a (1-e^2)) x orbits per Julian century, DE440 GM_sun/c/au and SW92 a, e"
+value = 42.9805
+unit = "arcsec/cy"
+kind = "analytic"
+source = "PHY-004 acceptance: 42.9805 +/- 0.0001 arcsec/cy; formula Will 2014 Eq. 65 (beta = gamma = 1)"
+citation = "Will, C. M. 2014, Living Rev. Relativ. 17, 4, doi:10.12942/lrr-2014-4, Eq. 65; FerroAstro docs/requirements/PHY.md PHY-004"
+retrieved = "2026-10-14"
+tolerance = { abs = 1.0e-4 }
+tolerance_rationale = "The requirement's own tolerance: half a unit in the 4th decimal of the quoted 42.9805. The exact f64 value (red-team recomputation 42.980479) sits 2.1e-5 from it. Changing GM_sun to GM_sun + GM_Mercury moves it by 7e-6, so the check is insensitive to caveat C7 but catches any wrong constant, unit or orbit count at the 2e-6 relative level."
+verified_by = "Red-team review 2026-10-14 (REPORT.md section 1) recomputed 42.980479 arcsec/cy, 5.018660e-7 rad/orbit, 415.200918 orbits/cy in Python from the same constants; WP3 builder agent re-derived the formula from Will 2014 Eq. 65."
+
+[[vector]]
+id = "PHY004-GR-PER-ORBIT"
+requirement = ["PHY-004"]
+quantity = "analytic Schwarzschild perihelion advance of Mercury per orbit"
+value = 5.01866e-7
+unit = "rad"
+kind = "analytic"
+source = "PHY-004 acceptance: 5.01866e-7 rad/orbit"
+citation = "FerroAstro docs/requirements/PHY.md PHY-004; Will, C. M. 2014, Living Rev. Relativ. 17, 4, Eq. 65"
+retrieved = "2026-10-14"
+tolerance = { abs = 5.0e-13 }
+tolerance_rationale = "Half a unit in the 6th significant digit printed by PHY-004 (5.01866e-7). The red-team value 5.018660e-7 is consistent."
+verified_by = "Red-team review 2026-10-14 (REPORT.md section 1): 5.018660e-7 rad/orbit."
+
+[[vector]]
+id = "PHY004-ORBITS-PER-CY"
+requirement = ["PHY-004"]
+quantity = "Keplerian orbits of Mercury per Julian century, period 2 pi sqrt(a^3/(GM_sun + GM_Mercury)) with SW92 a and DE440 GMs"
+value = 415.2009
+unit = "1/cy"
+kind = "analytic"
+source = "PHY-004 acceptance: 415.2009 orbits per Julian century (period from GM_sun + GM_Mercury)"
+citation = "FerroAstro docs/requirements/PHY.md PHY-004"
+retrieved = "2026-10-14"
+tolerance = { abs = 5.0e-5 }
+tolerance_rationale = "Half a unit in the 4th decimal printed by PHY-004. Red-team recomputation 415.200918 is consistent."
+verified_by = "Red-team review 2026-10-14 (REPORT.md section 1): 415.200918 orbits/cy."
+
+[[vector]]
+id = "PARK17-GE-RATE"
+requirement = ["PHY-004"]
+quantity = "gravitoelectric (Schwarzschild-like) contribution to Mercury's perihelion precession, Mercury mean-orbit frame (Park17 Table 3)"
+value = 42.9799
+unit = "arcsec/cy"
+kind = "measured"
+source = "Park17 Table 3, row 'Gravitoelectric (Schwarzschild-like)': 42.9799 +/- 0.0009 arcsec/Julian century"
+citation = "Park, R. S., Folkner, W. M., Konopliv, A. S., et al. 2017, AJ 153, 121, doi:10.3847/1538-3881/aa5be2, Table 3"
+retrieved = "2026-10-14"
+tolerance = { abs = 2.7e-3 }
+tolerance_rationale = "3 x Park17's quoted 1-sigma (0.0009), pre-registered in IMPLEMENTATION-NOTES WP3 before any run. Used only for the data-tier diagnostic that evaluates the analytic formula with single-epoch osculating (Horizons DE441) a and e; those carry short-period perturbations and Park17's value is a numerical-ephemeris estimate in the mean-orbit frame, so a 1-sigma test would not be meaningful. Not used by the PHY-004 acceptance test."
+verified_by = "WP3 builder agent, 2026-10-14: read in the published PDF (iopscience.iop.org/article/10.3847/1538-3881/aa5be2/pdf, sha256 24fb2153f6b78109daa80171cd37006157b73564f8d0ac383532b5c92433380b), Table 3."

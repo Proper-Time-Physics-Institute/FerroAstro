@@ -1,0 +1,90 @@
+# SPDX-FileCopyrightText: 2026 Proper-Time Physics Institute
+# SPDX-License-Identifier: Apache-2.0
+# Mercury J2000 mean Keplerian elements of Standish & Williams 1992 (SW92), Table 1 (valid 1800-2050 AD,
+# mean ecliptic and equinox of J2000). Used by PHY-004 (a, e) and as PHY-001 initial conditions.
+# The data test data_sw92_table1_mercury re-reads the JPL page and checks every digit. Schema: ADR-0004.
+schema_version = 1
+
+[[vector]]
+id = "SW92-MERCURY-A"
+requirement = ["PHY-004", "PHY-001"]
+quantity = "semi-major axis a of Mercury, J2000 mean element (SW92 Table 1)"
+value = "0.38709927"
+unit = "au"
+kind = "measured"
+source = "SW92 Table 1, row Mercury, column a: 0.38709927"
+citation = 'Standish, E. M. & Williams, J. G. 1992, "Orbital Ephemerides of the Sun, Moon, and Planets", in Explanatory Supplement to the Astronomical Almanac (ed. Seidelmann), ch. 5; Table 1 as hosted by JPL SSD at https://ssd.jpl.nasa.gov/planets/approx_pos.html (page sha256 9f7b30ca81cc548a879565bb3f70e6899a38ff5877cb1ff16bb04892f9c4d742 on 2026-10-14)'
+retrieved = "2026-10-14"
+tolerance = { abs = 0.0 }
+tolerance_rationale = "A transcribed table entry: the decimal string must equal the published digits exactly (both parse to the same f64)."
+verified_by = "WP3 builder agent, 2026-10-14: read in the downloaded page (sha256 above); re-checked on every run of data_sw92_table1_mercury. PHY-004 acceptance and journal 01 quote the same a and e."
+
+[[vector]]
+id = "SW92-MERCURY-E"
+requirement = ["PHY-004", "PHY-001"]
+quantity = "eccentricity e of Mercury, J2000 mean element (SW92 Table 1)"
+value = "0.20563593"
+unit = "1"
+kind = "measured"
+source = "SW92 Table 1, row Mercury, column e: 0.20563593"
+citation = 'Standish, E. M. & Williams, J. G. 1992, "Orbital Ephemerides of the Sun, Moon, and Planets", in Explanatory Supplement to the Astronomical Almanac (ed. Seidelmann), ch. 5; Table 1 as hosted by JPL SSD at https://ssd.jpl.nasa.gov/planets/approx_pos.html (page sha256 9f7b30ca81cc548a879565bb3f70e6899a38ff5877cb1ff16bb04892f9c4d742 on 2026-10-14)'
+retrieved = "2026-10-14"
+tolerance = { abs = 0.0 }
+tolerance_rationale = "A transcribed table entry: the decimal string must equal the published digits exactly (both parse to the same f64)."
+verified_by = "WP3 builder agent, 2026-10-14: read in the downloaded page (sha256 above); re-checked on every run of data_sw92_table1_mercury. PHY-004 acceptance and journal 01 quote the same a and e."
+
+[[vector]]
+id = "SW92-MERCURY-I"
+requirement = ["PHY-001"]
+quantity = "inclination I of Mercury to the J2000 ecliptic (SW92 Table 1)"
+value = "7.00497902"
+unit = "deg"
+kind = "measured"
+source = "SW92 Table 1, row Mercury, column I: 7.00497902"
+citation = 'Standish, E. M. & Williams, J. G. 1992, "Orbital Ephemerides of the Sun, Moon, and Planets", in Explanatory Supplement to the Astronomical Almanac (ed. Seidelmann), ch. 5; Table 1 as hosted by JPL SSD at https://ssd.jpl.nasa.gov/planets/approx_pos.html (page sha256 9f7b30ca81cc548a879565bb3f70e6899a38ff5877cb1ff16bb04892f9c4d742 on 2026-10-14)'
+retrieved = "2026-10-14"
+tolerance = { abs = 0.0 }
+tolerance_rationale = "A transcribed table entry: the decimal string must equal the published digits exactly (both parse to the same f64)."
+verified_by = "WP3 builder agent, 2026-10-14: read in the downloaded page (sha256 above); re-checked on every run of data_sw92_table1_mercury. PHY-004 acceptance and journal 01 quote the same a and e."
+
+[[vector]]
+id = "SW92-MERCURY-L"
+requirement = ["PHY-001"]
+quantity = "mean longitude L of Mercury at J2000 (SW92 Table 1)"
+value = "252.25032350"
+unit = "deg"
+kind = "measured"
+source = "SW92 Table 1, row Mercury, column L: 252.25032350"
+citation = 'Standish, E. M. & Williams, J. G. 1992, "Orbital Ephemerides of the Sun, Moon, and Planets", in Explanatory Supplement to the Astronomical Almanac (ed. Seidelmann), ch. 5; Table 1 as hosted by JPL SSD at https://ssd.jpl.nasa.gov/planets/approx_pos.html (page sha256 9f7b30ca81cc548a879565bb3f70e6899a38ff5877cb1ff16bb04892f9c4d742 on 2026-10-14)'
+retrieved = "2026-10-14"
+tolerance = { abs = 0.0 }
+tolerance_rationale = "A transcribed table entry: the decimal string must equal the published digits exactly (both parse to the same f64)."
+verified_by = "WP3 builder agent, 2026-10-14: read in the downloaded page (sha256 above); re-checked on every run of data_sw92_table1_mercury. PHY-004 acceptance and journal 01 quote the same a and e."
+
+[[vector]]
+id = "SW92-MERCURY-VARPI"
+requirement = ["PHY-001"]
+quantity = "longitude of perihelion of Mercury at J2000 (SW92 Table 1)"
+value = "77.45779628"
+unit = "deg"
+kind = "measured"
+source = "SW92 Table 1, row Mercury, column long.peri.: 77.45779628"
+citation = 'Standish, E. M. & Williams, J. G. 1992, "Orbital Ephemerides of the Sun, Moon, and Planets", in Explanatory Supplement to the Astronomical Almanac (ed. Seidelmann), ch. 5; Table 1 as hosted by JPL SSD at https://ssd.jpl.nasa.gov/planets/approx_pos.html (page sha256 9f7b30ca81cc548a879565bb3f70e6899a38ff5877cb1ff16bb04892f9c4d742 on 2026-10-14)'
+retrieved = "2026-10-14"
+tolerance = { abs = 0.0 }
+tolerance_rationale = "A transcribed table entry: the decimal string must equal the published digits exactly (both parse to the same f64)."
+verified_by = "WP3 builder agent, 2026-10-14: read in the downloaded page (sha256 above); re-checked on every run of data_sw92_table1_mercury. PHY-004 acceptance and journal 01 quote the same a and e."
+
+[[vector]]
+id = "SW92-MERCURY-NODE"
+requirement = ["PHY-001"]
+quantity = "longitude of the ascending node of Mercury at J2000 (SW92 Table 1)"
+value = "48.33076593"
+unit = "deg"
+kind = "measured"
+source = "SW92 Table 1, row Mercury, column long.node.: 48.33076593"
+citation = 'Standish, E. M. & Williams, J. G. 1992, "Orbital Ephemerides of the Sun, Moon, and Planets", in Explanatory Supplement to the Astronomical Almanac (ed. Seidelmann), ch. 5; Table 1 as hosted by JPL SSD at https://ssd.jpl.nasa.gov/planets/approx_pos.html (page sha256 9f7b30ca81cc548a879565bb3f70e6899a38ff5877cb1ff16bb04892f9c4d742 on 2026-10-14)'
+retrieved = "2026-10-14"
+tolerance = { abs = 0.0 }
+tolerance_rationale = "A transcribed table entry: the decimal string must equal the published digits exactly (both parse to the same f64)."
+verified_by = "WP3 builder agent, 2026-10-14: read in the downloaded page (sha256 above); re-checked on every run of data_sw92_table1_mercury. PHY-004 acceptance and journal 01 quote the same a and e."

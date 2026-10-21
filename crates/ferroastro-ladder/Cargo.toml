@@ -1,0 +1,35 @@
+# SPDX-FileCopyrightText: 2026 Proper-Time Physics Institute
+# SPDX-License-Identifier: Apache-2.0
+[package]
+name = "ferroastro-ladder"
+description = "The Mercury perihelion ladder: scenarios, rung catalogue and runs (M2 single-body rungs)"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+authors.workspace = true
+repository.workspace = true
+
+[dependencies]
+ferroastro-analytic.workspace = true
+ferroastro-constants.workspace = true
+ferroastro-core.workspace = true
+ferroastro-forces.workspace = true
+ferroastro-integrators.workspace = true
+ferroastro-precession.workspace = true
+serde.workspace = true
+thiserror.workspace = true
+toml.workspace = true
+
+[dev-dependencies]
+criterion.workspace = true
+ferroastro-testdata.workspace = true
+ferroastro-vectors.workspace = true
+serde_json.workspace = true
+
+[lints]
+workspace = true
+
+[[bench]]
+name = "two_body"
+harness = false

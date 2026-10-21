@@ -1,0 +1,76 @@
+# SPDX-FileCopyrightText: 2026 Proper-Time Physics Institute
+# SPDX-License-Identifier: Apache-2.0
+# FerroAstro Cargo workspace (M0, ADR-0006). Lints follow docs/standards/rust.md (STD-002/003/004, TST-001).
+
+[workspace]
+resolver = "3"
+members = ["crates/*"]
+
+[workspace.package]
+version = "0.0.0"
+edition = "2024"
+# MSRV (STD-005, ADR-0006): the highest minimum of the adopted dependencies, here bounded by edition 2024
+# (Rust 1.85). ADR-0006 caps it at the pinned toolchain (1.95.0) minus two minors, i.e. <= 1.93.
+rust-version = "1.85"
+license = "Apache-2.0"
+authors = ["Proper-Time Physics Institute"]
+repository = "https://github.com/Proper-Time-Physics-Institute/FerroAstro"
+
+[workspace.dependencies]
+ferroastro-core = { path = "crates/ferroastro-core", version = "0.0.0" }
+ferroastro-vectors = { path = "crates/ferroastro-vectors", version = "0.0.0" }
+ferroastro-testdata = { path = "crates/ferroastro-testdata", version = "0.0.0" }
+ferroastro-constants = { path = "crates/ferroastro-constants", version = "0.0.0" }
+ferroastro-analytic = { path = "crates/ferroastro-analytic", version = "0.0.0" }
+ferroastro-integrators = { path = "crates/ferroastro-integrators", version = "0.0.0" }
+ferroastro-forces = { path = "crates/ferroastro-forces", version = "0.0.0" }
+ferroastro-precession = { path = "crates/ferroastro-precession", version = "0.0.0" }
+ferroastro-ladder = { path = "crates/ferroastro-ladder", version = "0.0.0" }
+ferroastro-cli = { path = "crates/ferroastro-cli", version = "0.0.0" }
+serde = { version = "1.0.219", features = ["derive"] }
+criterion = { version = "0.5.1", default-features = false, features = ["cargo_bench_support"] }
+serde_json = "1.0.140"
+sha2 = "0.10.9"
+thiserror = "2.0.12"
+toml = "0.8.23"
+trybuild = "1.0.105"
+
+[workspace.lints.rust]
+unsafe_code = "forbid"
+missing_docs = "deny"
+missing_debug_implementations = "warn"
+unreachable_pub = "warn"
+rust_2018_idioms = { level = "warn", priority = -1 }
+
+[workspace.lints.rustdoc]
+broken_intra_doc_links = "deny"
+
+[workspace.lints.clippy]
+all = { level = "deny", priority = -1 }
+pedantic = { level = "warn", priority = -1 }
+# numerical correctness (NUM-001 / TST-001)
+float_cmp = "deny"
+float_cmp_const = "deny"
+cast_precision_loss = "deny"
+cast_possible_truncation = "deny"
+cast_sign_loss = "deny"
+lossy_float_literal = "deny"
+excessive_precision = "warn"
+suboptimal_flops = "warn"
+imprecise_flops = "warn"
+# robustness (API-002); tests may unwrap/expect via clippy.toml allow-*-in-tests
+unwrap_used = "deny"
+expect_used = "warn"
+panic = "warn"
+indexing_slicing = "warn"
+missing_errors_doc = "warn"
+missing_panics_doc = "warn"
+# domain notation
+many_single_char_names = "allow"
+similar_names = "allow"
+module_name_repetitions = "allow"
+unreadable_literal = "warn"
+
+[profile.test]
+# Long-running physics tests are compiled with optimisation (STD-008 nightly tier stays fast enough).
+opt-level = 1

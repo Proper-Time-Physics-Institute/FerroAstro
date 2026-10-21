@@ -1,0 +1,8 @@
+# SPDX-FileCopyrightText: 2026 Proper-Time Physics Institute
+# SPDX-License-Identifier: Apache-2.0
+# Library code may not unwrap/expect/panic (API-002); #[test] functions and #[cfg(test)] modules may.
+allow-unwrap-in-tests = true
+allow-expect-in-tests = true
+allow-panic-in-tests = true
+allow-indexing-slicing-in-tests = true
+doc-valid-idents = ["FerroAstro", "DE440", "DE441", "ERFA", "SOFA", "JPL", ".."]

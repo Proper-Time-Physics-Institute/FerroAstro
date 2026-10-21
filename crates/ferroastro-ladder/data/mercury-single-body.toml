@@ -1,0 +1,26 @@
+# SPDX-FileCopyrightText: 2026 Proper-Time Physics Institute
+# SPDX-License-Identifier: Apache-2.0
+# Scenario of the single-body relativistic rungs (M2 / WP4). Physical inputs, each cited; the DE440
+# constants (GM_sun, c, ASUN, J2SUN, MOISUN, OMGSUN, GAMMA) come from ferroastro-constants. The test
+# `scenario_inputs_match_vectors` checks every number here against tests/vectors/.
+schema_version = 1
+name = "mercury-single-body"
+description = "Mercury as a test particle about a fixed Sun (mu = GM_sun, DE440); J2000 mean elements"
+orbits = 1000
+
+[elements]
+source = "Standish & Williams 1992 (SW92), JPL 'Approximate Positions of the Planets', Table 1, Mercury, J2000 mean ecliptic and equinox"
+frame = "mean ecliptic and equinox of J2000"
+a_au = "0.38709927"
+e = "0.20563593"
+i_deg = "7.00497902"
+mean_longitude_deg = "252.25032350"
+long_perihelion_deg = "77.45779628"
+node_deg = "48.33076593"
+
+[park17]
+source = "Park, R. S., et al. 2017, AJ 153, 121, doi:10.3847/1538-3881/aa5be2"
+# Abstract and Table 1 ('Total'): J2 = (2.25 +/- 0.09) x 10^-7.
+j2 = "2.25e-7"
+# Section 4: 'The solar equator plane is inclined by ~3.4 deg to the mean plane of Mercury's orbit'.
+solar_equator_tilt_deg = "3.4"

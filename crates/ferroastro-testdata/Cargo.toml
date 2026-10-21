@@ -1,0 +1,27 @@
+# SPDX-FileCopyrightText: 2026 Proper-Time Physics Institute
+# SPDX-License-Identifier: Apache-2.0
+[package]
+name = "ferroastro-testdata"
+description = "Cached, checksummed downloads of external data products for FerroAstro `data` tests"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+authors.workspace = true
+repository.workspace = true
+# Test infrastructure only; never published or linked into release artifacts.
+publish = false
+
+[dependencies]
+ferroastro-core.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+sha2.workspace = true
+thiserror.workspace = true
+toml.workspace = true
+
+[dev-dependencies]
+ferroastro-vectors.workspace = true
+
+[lints]
+workspace = true
