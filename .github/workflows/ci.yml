@@ -1,7 +1,9 @@
 # SPDX-FileCopyrightText: 2026 Proper-Time Physics Institute
 # SPDX-License-Identifier: Apache-2.0
 #
-# PR gates: the AGENTS.md command list, verbatim, plus MSRV (STD-005) and DCO (ORG-008).
+# PR gates: the AGENTS.md command list, verbatim, plus MSRV (STD-005), DCO (ORG-008) and the
+# lint-config canary (STD-003, TST-001; tools/lint_canary.py). The PR-title lint (STD-011) is in
+# pr-title.yml.
 # Real-data tier: the `data` job runs the #[ignore]d network tests on a schedule / by hand only,
 # so PR CI never depends on JPL availability. The `long` job runs the #[ignore]d nightly_* tier
 # (testing.md) on the same schedule.
@@ -50,6 +52,12 @@ jobs:
         run: cargo fmt --all --check
       - name: cargo clippy
         run: cargo clippy --workspace --all-targets --all-features -- -D warnings
+      # clippy alone stays green if the lint keys are deleted (judge ruling on #26), so this
+      # checks the root [workspace.lints] keys and member inheritance, then proves the lints
+      # bite on compile-fail fixtures under tools/canary/ (STD-003, TST-001).
+      - uses: astral-sh/setup-uv@1c37ad07a6a961277cf70c0d37d6f313000f5884 # v10.3.0
+      - name: lint config canary
+        run: (cd tools && uv run --locked python lint_canary.py)
       - name: cargo nextest + doctests
         run: cargo nextest run --workspace && cargo test --doc --workspace
       - name: cargo deny check

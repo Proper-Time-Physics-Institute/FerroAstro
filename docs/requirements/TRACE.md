@@ -8,9 +8,9 @@
 > workflow run; run URLs are not written here so that the file stays deterministic.
 
 - Requirements: **121** (draft 121)
-- `verification: test` requirements cited by at least one test: **31 / 93**
-- Citing tests: **196**; vectors referencing a requirement: **104**
-- Gate evidence (ADR-0010): **12** requirements name a gate; **6** counted, **6** `gate (unpinned)`; `verification: test` requirements covered by a counted gate alone: **6**
+- `verification: test` requirements cited by at least one test: **33 / 93**
+- Citing tests: **211**; vectors referencing a requirement: **104**
+- Gate evidence (ADR-0010): **15** requirements name a gate; **8** counted, **7** `gate (unpinned)`; `verification: test` requirements covered by a counted gate alone: **7**
 
 ## Test evidence
 
@@ -28,7 +28,7 @@
 | [ORG-010](ORG.md) | draft | high | test | — | — |
 | [STD-001](STD.md) | draft | low | test | — | — |
 | [STD-002](STD.md) | draft | medium | test | — | — |
-| [STD-003](STD.md) | draft | medium | test | — | — |
+| [STD-003](STD.md) | draft | medium | test | `tools/tests/test_lint_canary.py::test_canary_verdicts`<br>`tools/tests/test_lint_canary.py::test_fixture_manifest_copies_root_lints`<br>`tools/tests/test_lint_canary.py::test_good_config_passes`<br>`tools/tests/test_lint_canary.py::test_member_without_inheritance_flagged`<br>`tools/tests/test_lint_canary.py::test_missing_unsafe_forbid_flagged`<br>`tools/tests/test_lint_canary.py::test_repo_config_passes`<br>`tools/tests/test_lint_canary.py::test_unsafe_downgraded_to_deny_flagged` | — |
 | [STD-004](STD.md) | draft | low | test | — | — |
 | [STD-005](STD.md) | draft | low | test | — | — |
 | [STD-006](STD.md) | draft | high | test | — | — |
@@ -82,7 +82,7 @@
 | [NUM-023](NUM.md) | draft | medium | test | `crates/ferroastro-integrators/src/diagnostics.rs::degenerate_inputs_are_errors`<br>`crates/ferroastro-integrators/src/diagnostics.rs::exact_line_and_power_law_are_recovered`<br>`crates/ferroastro-integrators/tests/ias15_analytic.rs::gyration_conserves_speed_and_is_reversible`<br>`crates/ferroastro-ladder/tests/num023_brouwer.rs::nightly_num023_brouwer_slopes_ias15_f64`<br>`crates/ferroastro-ladder/tests/num023_brouwer.rs::nightly_num023_forward_backward_reversibility` | `NUM023-ENERGY-SLOPE`<br>`NUM023-PHASE-SLOPE` |
 | [NUM-024](NUM.md) | draft | medium | demonstration | — | — |
 | [NUM-025](NUM.md) | draft | low | test | — | — |
-| [TST-001](TST.md) | draft | high | test | — | — |
+| [TST-001](TST.md) | draft | high | test | `tools/tests/test_lint_canary.py::test_canary_verdicts`<br>`tools/tests/test_lint_canary.py::test_fixture_manifest_copies_root_lints`<br>`tools/tests/test_lint_canary.py::test_fixture_manifest_drops_deleted_key`<br>`tools/tests/test_lint_canary.py::test_float_cmp_as_table_accepted`<br>`tools/tests/test_lint_canary.py::test_good_config_passes`<br>`tools/tests/test_lint_canary.py::test_member_without_inheritance_flagged`<br>`tools/tests/test_lint_canary.py::test_missing_float_cmp_flagged`<br>`tools/tests/test_lint_canary.py::test_repo_config_passes` | — |
 | [TST-002](TST.md) | draft | high | test | `crates/ferroastro-vectors/tests/schema.rs::bad_values_are_rejected`<br>`crates/ferroastro-vectors/tests/schema.rs::duplicate_ids_across_files_are_rejected`<br>`crates/ferroastro-vectors/tests/schema.rs::every_required_field_is_enforced`<br>`crates/ferroastro-vectors/tests/schema.rs::tolerance_is_the_wider_of_abs_and_rel`<br>`crates/ferroastro-vectors/tests/schema.rs::valid_fixture_loads_and_checks`<br>`crates/ferroastro-vectors/tests/schema.rs::workspace_vectors_all_validate`<br>`tools/tests/test_lints.py::test_allow_marker_needs_reason`<br>`tools/tests/test_lints.py::test_python_literals_flagged`<br>`tools/tests/test_lints.py::test_repository_is_clean`<br>`tools/tests/test_lints.py::test_rust_literals_flagged`<br>`tools/tests/test_lints.py::test_rust_structural_literals_allowed`<br>`tools/tests/test_trace.py::test_vector_schema_is_enforced` | — |
 | [TST-003](TST.md) | draft | high | test | `crates/ferroastro-vectors/tests/schema.rs::computed_reference_needs_generator_and_engine`<br>`crates/ferroastro-vectors/tests/schema.rs::workspace_vectors_all_validate`<br>`tools/tests/test_trace.py::test_vector_schema_is_enforced` | — |
 | [TST-004](TST.md) | draft | high | inspection | — | — |
@@ -150,12 +150,15 @@
 | [ORG-008](ORG.md) | draft | high | `ci/dco/Check sign-off trailers` | gate (unpinned) |
 | [STD-001](STD.md) | draft | low | `ci/rust/cargo fmt --all --check` | gate |
 | [STD-002](STD.md) | draft | medium | `ci/rust/cargo clippy` | gate |
+| [STD-003](STD.md) | draft | medium | `ci/rust/lint config canary` | gate |
 | [STD-004](STD.md) | draft | low | `ci/rust/cargo doc` | gate |
 | [STD-005](STD.md) | draft | low | `ci/msrv` | gate |
 | [STD-006](STD.md) | draft | high | `ci/rust/cargo deny check` | gate (unpinned) |
 | [STD-008](STD.md) | draft | medium | `ci/rust/cargo nextest + doctests` | gate |
 | [STD-009](STD.md) | draft | low | `ci/python` | gate |
 | [STD-010](STD.md) | draft | high | `ci/reuse/reuse lint` | gate (unpinned) |
+| [STD-011](STD.md) | draft | low | `pr-title/title/Conventional Commits PR title` | gate |
+| [TST-001](TST.md) | draft | high | `ci/rust/lint config canary` | gate (unpinned) |
 | [DEP-001](DEP.md) | draft | high | `ci/rust/cargo deny check` | gate (unpinned) |
 | [DEP-002](DEP.md) | draft | high | `ci/rust/cargo deny check` | gate (unpinned) |
 | [DEP-003](DEP.md) | draft | high | `ci/rust/cargo deny check` | gate (unpinned) |
