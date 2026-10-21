@@ -6,8 +6,8 @@
 //! a set of toggles (bodies or force switches) and signed combinations of the resulting rates.
 //!
 //! * [`Plan::bodies`] builds the PHY-012 plan: `base`, `base + X`, `base + X + Y`, `full` and
-//!   `full − X` configurations, with the combinations P-add (primary), P-remove (informational)
-//!   and cross terms ([`Protocol`]). [`Plan::switches`] builds NUM-013(a)'s force toggles.
+//!   `full − X` configurations, with the combinations P-add, P-remove and cross terms
+//!   ([`Protocol`]). The PHY-012 tests assert P-remove and report P-add (ADR-0014). [`Plan::switches`] builds NUM-013(a)'s force toggles.
 //! * [`run_plan`] first proves that every leg shares its initial conditions
 //!   ([`check_identical_ics`]: each body's record is bitwise identical wherever it appears, and
 //!   the IC hash over the base bodies is one value; `FA-E1401` otherwise), then runs the legs
@@ -16,8 +16,9 @@
 //!   evaluates the combinations into a table ([`PlanResult`]).
 //!
 //! The harness takes no position on which protocol is right: Park et al. 2017's
-//! switch-on/switch-off protocol is UNVERIFIED (OI-38), so a plan reports every protocol it was
-//! given, each row labelled.
+//! switch-on/switch-off protocol is not yet confirmed against its text (OI-38), so a plan reports
+//! every protocol it was given, each row labelled; which row a test asserts is the test's choice
+//! (ADR-0014: P-remove, PROVISIONAL until OI-38 is closed).
 
 mod error;
 mod estimator;

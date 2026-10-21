@@ -11,10 +11,11 @@
 //! * `planets` = the WP14 full system (Sun, planets with Earth and Moon resolved, Pluto);
 //! * `planets+asteroids`; `full` = + the 3 identified KBOs (Minor) + the 36-point ring.
 //!
-//! Rows: N-AST P-add (maintainer protocol, `base+asteroids − base`, vs Park17 0.0012 ± 0.0003,
-//! non-gating while OI-38 is open), N-AST P-remove (`planets+asteroids − planets`, reported),
-//! the KBO + ring increment (`full − planets+asteroids`, reported). PHY-013 asserts the `full`
-//! rate against 532.30 ± 0.01. Clemence 1947 is printed for information only (OI-01).
+//! Rows: N-AST P-remove (`planets+asteroids − planets`, ASSERTED against Park17 0.0012 ± 0.0003
+//! for PHY-019, ADR-0014), N-AST P-add (`base+asteroids − base`, information only), the KBO + ring
+//! increment (`full − planets+asteroids`, reported). PHY-019 gates independently of OI-38: the
+//! protocol dependence (≈ 3e-6 ″/cy in WP15) is about 1% of the tolerance. PHY-013 asserts the
+//! `full` rate against 532.30 ± 0.01. Clemence 1947 is printed for information only (OI-01).
 
 mod common;
 
@@ -196,29 +197,41 @@ fn nightly_phy013_n_sum_and_asteroid_differential() {
             .rate
     };
 
-    // N-AST rows.
+    // N-AST rows (PHY-019): P-remove ASSERTED (ADR-0014), P-add information only.
     let ast = vs.get("PARK17-T3-ASTEROIDS").unwrap();
-    let (expected, tol) = (ast.value().unwrap(), ast.tolerance.abs.unwrap());
-    let blocked = ast.blocking_open_item(&open_items);
+    assert!(
+        ast.blocking_open_item(&open_items).is_none() && ast.provisional.is_none(),
+        "PARK17-T3-ASTEROIDS gates independently of OI-38 (PHY-019, ADR-0014)"
+    );
+    let expected = ast.value().unwrap();
+    let tol = ast.tolerance.allowed(expected);
+    let mut remove = None;
     for w in r.rows.iter().filter(|w| w.combination.label == "Asteroids") {
         let d = w.value - expected;
+        let asserted = w.combination.protocol == Protocol::Remove;
         println!(
-            "N-AST {:<8} {:.6} (sigma_rss {:.6}) vs Park17 {expected}: {d:+.6} arcsec/cy, margin {:.2} ({}){}",
+            "N-AST {:<8} {:.6} (sigma_rss {:.6}) vs Park17 {expected}: {d:+.6} arcsec/cy, margin {:.2} ({}), {}",
             w.combination.protocol.label(),
             w.value,
             w.sigma_rss,
             d.abs() / tol,
             if d.abs() <= tol { "within" } else { "OUTSIDE" },
-            if w.combination.protocol == Protocol::Add {
-                blocked.map_or_else(String::new, |oi| format!(", non-gating: {oi} open"))
+            if asserted {
+                "ASSERTED (PHY-019, ADR-0014)"
             } else {
-                ", reported only".into()
+                "information only (ADR-0014)"
             }
         );
-        if w.combination.protocol == Protocol::Add && blocked.is_none() {
-            ast.check(w.value).unwrap();
+        if asserted {
+            remove = Some(w.value);
         }
     }
+    let ast_remove = remove.unwrap();
+    println!(
+        "PHY-019 N-AST: P-remove {ast_remove:.6} arcsec/cy vs {expected} +/- {tol}; frame Park17 mean orbit, epoch JDEPOC {jdepoc}, span J2000 +/- {HALF_SPAN_YEARS} Julian yr, fit quadratic + 14 Table-2 terms, estimator {}",
+        r.estimator
+    );
+    let ast_result = ast.check(ast_remove);
     println!(
         "KBOs + ring increment: {:+.6} arcsec/cy (reported; Park17 has no KBOs)",
         rate("full") - rate("planets+asteroids")
@@ -239,5 +252,7 @@ fn nightly_phy013_n_sum_and_asteroid_differential() {
         (full_rate - nsum.value().unwrap()).abs() / nsum.tolerance.abs.unwrap(),
         r.estimator
     );
-    nsum.check(full_rate).unwrap();
+    let nsum_result = nsum.check(full_rate);
+    ast_result.unwrap();
+    nsum_result.unwrap();
 }

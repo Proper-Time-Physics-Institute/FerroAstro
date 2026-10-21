@@ -293,3 +293,39 @@ fn provisional_gates_and_keeps_its_open_item_reference() {
     );
     assert!(schema_error(&both_other).contains("blocked_by"));
 }
+
+/// Every committed provisional vector names an item that the committed OPEN-ITEMS.md lists, and
+/// the PHY-012 rows asserted under P-remove (ADR-0014) stay provisional while OI-38 is open: the
+/// label can only be dropped together with closing OI-38.
+///
+/// Verifies: TST-002, PHY-012
+#[test]
+fn workspace_provisional_vectors_reference_recorded_open_items() {
+    let set = VectorSet::load_workspace().unwrap();
+    let open_items = std::fs::read_to_string(
+        VectorSet::canonical_dir().join("../../docs/requirements/OPEN-ITEMS.md"),
+    )
+    .unwrap();
+    for (path, v) in set.iter() {
+        let state = v.provisional_open_item(&open_items);
+        assert!(state.is_ok(), "{} in {}: {state:?}", v.id, path.display());
+    }
+    let oi38_open = open_items
+        .lines()
+        .any(|l| l.trim_start().starts_with("- [ ] **OI-38**"));
+    for row in [
+        "VENUS",
+        "EARTH-MOON",
+        "MARS",
+        "JUPITER",
+        "SATURN",
+        "URANUS",
+        "NEPTUNE",
+    ] {
+        let v = set.get(&format!("PARK17-T3-{row}")).unwrap();
+        if oi38_open {
+            assert_eq!(v.provisional.as_deref(), Some("OI-38"), "{}", v.id);
+            assert!(v.blocked_by.is_none(), "{}: PHY-012 rows gate", v.id);
+        }
+    }
+}
