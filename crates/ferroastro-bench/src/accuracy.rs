@@ -6,14 +6,18 @@
 //! * [`relative_energy_change`]: Newtonian point-mass energy of the sampled system at the first
 //!   and the last output time, in the system's centre-of-mass frame (so barycentric and
 //!   heliocentric outputs give the same number), with the GMs supplied by the caller.
-//! * [`mercury_max_dr`]: the largest heliocentric position difference of Mercury between two
-//!   series at their common output times.
+//! * [`mercury_max_dr`] / [`max_dr`]: the largest heliocentric (or barycentric) position
+//!   difference of a body between two series at their common output times (WP28: the round-off
+//!   column against a double-double twin).
 //! * [`mercury_track`]: Mercury relative to the Sun as a `ferroastro-diffrun` [`Track`], for the
 //!   Park2017 estimator (CI-009: one estimator for every tool).
 
 use crate::BenchError;
-use crate::series::{NAIF_MERCURY, Row, Series, sub3};
+use crate::series::{NAIF_MERCURY, NAIF_SUN, Row, Series, sub3};
+use ferroastro_core::frames::Barycentric;
+use ferroastro_core::time::{Epoch, Tdb};
 use ferroastro_diffrun::Track;
+use ferroastro_ephem::{Ephemeris, NaifId, Spk};
 use std::collections::BTreeMap;
 
 /// Two output times are the same sample when they differ by at most this (days; ~0.1 ms):
@@ -107,26 +111,70 @@ pub fn relative_energy_change(
     ))
 }
 
-/// The largest heliocentric position difference of Mercury between `a` and `b` (km), the time
-/// of that maximum (days) and the number of common output times.
+/// The origin a position difference is measured from.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Centre {
+    /// Relative to the Sun (heliocentric).
+    Sun,
+    /// The series' own solar-system-barycentric positions (both series must be barycentric).
+    Barycentre,
+}
+
+/// `body`'s samples `(t_days, r)` of `series` relative to `centre`.
 ///
 /// # Errors
-/// `FA-E1600` if a series has no Mercury, or the two series do not share every output time of
+/// As [`Series::heliocentric`]; `FA-E1600` for [`Centre::Barycentre`] on a series that is not
+/// barycentric.
+pub fn positions(
+    series: &Series,
+    body: i32,
+    centre: Centre,
+) -> Result<Vec<(f64, [f64; 3])>, BenchError> {
+    match centre {
+        Centre::Sun => Ok(series
+            .heliocentric(body)?
+            .into_iter()
+            .map(|(t, r, _)| (t, r))
+            .collect()),
+        Centre::Barycentre => {
+            if series.center_naif != 0 {
+                return Err(BenchError::input(
+                    &series.file,
+                    format!("centre {}: not barycentric", series.center_naif),
+                ));
+            }
+            Ok(series
+                .rows
+                .iter()
+                .filter(|r| r.naif == body)
+                .map(|r| (r.t_days, r.r))
+                .collect())
+        }
+    }
+}
+
+/// The largest position difference of `body` between `a` and `b` relative to `centre` (km), the
+/// time of that maximum (days) and the number of common output times.
+///
+/// # Errors
+/// `FA-E1600` if a series has no such body, or the two series do not share every output time of
 /// the shorter one.
-pub fn mercury_max_dr(a: &Series, b: &Series) -> Result<(f64, f64, usize), BenchError> {
-    let ha = a.heliocentric(NAIF_MERCURY)?;
-    let hb = b.heliocentric(NAIF_MERCURY)?;
+pub fn max_dr(
+    a: &Series,
+    b: &Series,
+    body: i32,
+    centre: Centre,
+) -> Result<(f64, f64, usize), BenchError> {
+    let ha = positions(a, body, centre)?;
+    let hb = positions(b, body, centre)?;
     let mut j = 0;
     let mut matched = 0;
     let mut worst: Option<(f64, f64)> = None;
-    for (ta, ra, _) in &ha {
-        while hb
-            .get(j)
-            .is_some_and(|(tb, _, _)| *tb < ta - TIME_MATCH_DAYS)
-        {
+    for (ta, ra) in &ha {
+        while hb.get(j).is_some_and(|(tb, _)| *tb < ta - TIME_MATCH_DAYS) {
             j += 1;
         }
-        if let Some((tb, rb, _)) = hb.get(j) {
+        if let Some((tb, rb)) = hb.get(j) {
             if (tb - ta).abs() <= TIME_MATCH_DAYS {
                 matched += 1;
                 let d = sub3(*ra, *rb);
@@ -142,9 +190,61 @@ pub fn mercury_max_dr(a: &Series, b: &Series) -> Result<(f64, f64, usize), Bench
         Some((dr, t)) if matched == need => Ok((dr, t, matched)),
         _ => Err(BenchError::input(
             format!("{} vs {}", a.file, b.file),
-            format!("{matched} common Mercury samples of {need}"),
+            format!("{matched} common samples of body {body} of {need}"),
         )),
     }
+}
+
+/// The largest heliocentric position difference of Mercury between `a` and `b` (km), the time
+/// of that maximum (days) and the number of common output times.
+///
+/// # Errors
+/// As [`max_dr`].
+pub fn mercury_max_dr(a: &Series, b: &Series) -> Result<(f64, f64, usize), BenchError> {
+    max_dr(a, b, NAIF_MERCURY, Centre::Sun)
+}
+
+/// `body`'s heliocentric position difference from an SPK ephemeris (WP28: de440.bsp) over the
+/// samples of `series` up to `t_at_days`: `(|Δr| at t_at_days, max |Δr|, time of the max)` (km,
+/// km, days). Both positions are relative to the Sun, so the result does not depend on how the
+/// run's barycentre was defined.
+///
+/// # Errors
+/// As [`Series::heliocentric`]; `FA-E1600` if the SPK cannot evaluate an epoch, or there is no
+/// sample at `t_at_days` (within [`TIME_MATCH_DAYS`]).
+pub fn body_vs_spk(
+    series: &Series,
+    spk: &Spk<'_>,
+    body: i32,
+    t_at_days: f64,
+) -> Result<(f64, f64, f64), BenchError> {
+    let bad = |p: String| BenchError::input(&series.file, p);
+    let pos = |id: i32, t: f64| -> Result<[f64; 3], BenchError> {
+        let e = Epoch::<Tdb>::from_jd_parts(series.epoch_jd_tdb, t)
+            .map_err(|e| bad(format!("epoch {t} d: {e}")))?;
+        let s = spk
+            .state::<Barycentric, f64>(NaifId(id), e)
+            .map_err(|e| bad(format!("SPK body {id} at {t} d: {e}")))?;
+        Ok(s.position()
+            .components()
+            .map(ferroastro_core::units::Length::km))
+    };
+    let (mut at, mut worst, mut t_worst) = (None, 0.0_f64, 0.0);
+    for (t, r, _) in series.heliocentric(body)? {
+        if t > t_at_days + TIME_MATCH_DAYS {
+            break;
+        }
+        let d = sub3(r, sub3(pos(body, t)?, pos(NAIF_SUN, t)?));
+        let dr = dot(d, d).sqrt();
+        if dr > worst {
+            (worst, t_worst) = (dr, t);
+        }
+        if (t - t_at_days).abs() <= TIME_MATCH_DAYS {
+            at = Some(dr);
+        }
+    }
+    at.map(|a| (a, worst, t_worst))
+        .ok_or_else(|| bad(format!("no sample of body {body} at t = {t_at_days} d")))
 }
 
 /// Mercury relative to the Sun as a [`Track`] (sample times in TDB seconds since the epoch).

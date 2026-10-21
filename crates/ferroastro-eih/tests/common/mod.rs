@@ -6,6 +6,7 @@
     dead_code,
     clippy::unwrap_used,
     clippy::panic,
+    clippy::indexing_slicing,
     reason = "test helpers: not every test binary uses every helper; failures are test failures"
 )]
 
@@ -21,6 +22,7 @@ use ferroastro_forces::{
     NBodyPropagator, NewtonianMutual, Pole, SolarJ2WithReaction,
 };
 use ferroastro_integrators::Ias15Config;
+use ferroastro_real::Real;
 use ferroastro_system::{Catalogue, DE440_MAJOR, InitialConditions, Tier};
 use ferroastro_vectors::VectorSet;
 
@@ -153,4 +155,98 @@ pub(crate) fn norm(a: [f64; 3]) -> f64 {
 
 pub(crate) fn sub(a: [f64; 3], b: [f64; 3]) -> [f64; 3] {
     [a[0] - b[0], a[1] - b[1], a[2] - b[2]]
+}
+
+/// A header.440 system for the WP26 SoA kernel checks, as flat component-major arrays
+/// (`x[c·n + i]`, km and km/s) with DE440 GMs (km³/s²).
+#[derive(Debug, Clone)]
+pub(crate) struct FlatSystem {
+    pub(crate) label: &'static str,
+    pub(crate) ids: Vec<NaifId>,
+    pub(crate) gm: Vec<f64>,
+    pub(crate) x: Vec<f64>,
+    pub(crate) v: Vec<f64>,
+    pub(crate) states: ferroastro_system::SystemState<Icrf, ferroastro_core::frames::Barycentric>,
+}
+
+/// The EPM2021 Major asteroids of Subbotin et al. 2023 §2 (asteroid numbers).
+pub(crate) const EPM2021_ASTEROIDS: [i32; 5] = [1, 2, 4, 7, 324];
+
+/// The three WP26 systems at JDEPOC: `stage-c` (Sun, 8 planets, Earth and Moon; N = 10),
+/// `de440-11` (+ Pluto; N = 11) and `epm16` (+ the EPM2021 five from REF-003; N = 16).
+pub(crate) fn flat_systems() -> Vec<FlatSystem> {
+    use ferroastro_core::frames::{Barycentric, State};
+    use ferroastro_core::units::{Length, Velocity};
+    use ferroastro_system::{ASTEROID_NAIF_BASE, SmallBodyStates, place_small_bodies};
+    let (h, prov) = header();
+    let cat = Catalogue::from_header(&h, &prov).unwrap();
+    let ic = InitialConditions::<f64>::from_header(&h, &prov).unwrap();
+    let path = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("../../tests/goldens/sb441-n373s-jdepoc-states.csv");
+    let file = SmallBodyStates::parse(&std::fs::read_to_string(path).unwrap()).unwrap();
+    let ast: Vec<NaifId> = EPM2021_ASTEROIDS
+        .iter()
+        .map(|&k| NaifId(ASTEROID_NAIF_BASE + k))
+        .collect();
+    let sun = ic.states().state(NaifId::SUN).unwrap();
+    let placed = place_small_bodies(&file, &ast, &sun).unwrap();
+    let state = |id: NaifId| -> State<Icrf, Barycentric> {
+        ic.states().state(id).or_else(|_| placed.state(id)).unwrap()
+    };
+    let flat = |label: &'static str, ids: Vec<NaifId>| -> FlatSystem {
+        let n = ids.len();
+        let (mut x, mut v) = (vec![0.0; 3 * n], vec![0.0; 3 * n]);
+        let mut states = ferroastro_system::SystemState::new();
+        for (i, &id) in ids.iter().enumerate() {
+            let s = state(id);
+            states.push(id, &s).unwrap();
+            let p = s.position().components().map(Length::km);
+            let w = s.velocity().map(Velocity::km_per_s);
+            for c in 0..3 {
+                x[c * n + i] = p[c];
+                v[c * n + i] = w[c];
+            }
+        }
+        let gm = ids
+            .iter()
+            .map(|&id| cat.gm(id).unwrap().km3_per_s2())
+            .collect();
+        FlatSystem {
+            label,
+            ids,
+            gm,
+            x,
+            v,
+            states,
+        }
+    };
+    let ten = ids();
+    let mut eleven = ten.clone();
+    eleven.push(NaifId::PLUTO_BARYCENTER);
+    let mut sixteen = eleven.clone();
+    sixteen.extend(ast.iter().copied());
+    vec![
+        flat("stage-c (N = 10)", ten),
+        flat("de440-11 (N = 11)", eleven),
+        flat("epm16 (N = 16)", sixteen),
+    ]
+}
+
+/// A model of `sys`'s bodies (all Major) with the given terms and Earth–Moon variables.
+pub(crate) fn flat_model<R: Real>(
+    sys: &FlatSystem,
+    moon: MoonVariables<R>,
+    terms: Vec<Box<dyn ForceTerm<Icrf, R>>>,
+) -> NBodyModel<Icrf, R> {
+    let bodies: Vec<NBody<R>> = sys
+        .ids
+        .iter()
+        .zip(&sys.gm)
+        .map(|(&id, &gm)| NBody {
+            id,
+            gm: R::from_f64(gm),
+            tier: Tier::Major,
+        })
+        .collect();
+    NBodyModel::new(&bodies, moon, terms).unwrap()
 }

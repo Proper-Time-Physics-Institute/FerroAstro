@@ -58,6 +58,7 @@ SWITCH_REASONS: dict[str, str] = {
     "asteroids": "the REF-003 small-body states are not an input of this runner",
     "kbos": "the REF-003 small-body states are not an input of this runner",
     "kbo_ring": "the DE440 KBO ring is not implemented in this runner",
+    "major_asteroids": "the REF-003 small-body states are not an input of this runner",
 }
 
 

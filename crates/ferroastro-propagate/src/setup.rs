@@ -10,7 +10,7 @@ use ferroastro_core::time::{Epoch, SECONDS_PER_DAY, Tdb};
 use ferroastro_core::units::{Length, SpinGm, Velocity};
 use ferroastro_ephem::{Ephemeris, NaifId, Spk};
 use ferroastro_real::Real;
-use ferroastro_scenario::{IcSource, Mode, ScenarioSpec};
+use ferroastro_scenario::{IcSource, Mode, ScenarioError, ScenarioSpec};
 use ferroastro_system::{EarthMoon, InitialConditions, SmallBodyStates, SystemState};
 
 /// Name of this runner in refusals (REF-011).
@@ -178,7 +178,7 @@ pub fn supports(item: &str, mode: Mode) -> Result<(), String> {
     // on every non-Sun body in n-body mode (WP20).
     let central_term = matches!(item, "gr_1pn_central" | "lense_thirring");
     let nbody_relativity = matches!(item, "gr_eih" | "gr_1pn_central" | "lense_thirring");
-    let small_bodies = matches!(item, "asteroids" | "kbos" | "kbo_ring");
+    let small_bodies = matches!(item, "asteroids" | "kbos" | "kbo_ring" | "major_asteroids");
     if mode == Mode::EphemerisField {
         const FIELD: [&str; 4] = [
             "newton",
@@ -197,6 +197,14 @@ pub fn supports(item: &str, mode: Mode) -> Result<(), String> {
         };
     }
     if ALWAYS.contains(&item)
+        || (matches!(
+            item,
+            "integrator.abm"
+                | "integrator.precision.mixed"
+                | "integrator.whfast"
+                | "integrator.irk16"
+                | "gr_potential"
+        ) && mode == Mode::NBody)
         || (central_term && mode == Mode::TestParticle)
         || (nbody_relativity && mode == Mode::NBody)
         || (small_bodies && mode == Mode::NBody)
@@ -211,9 +219,20 @@ pub fn supports(item: &str, mode: Mode) -> Result<(), String> {
                 .into()
         }
         _ if small_bodies => "small bodies (Minor/Ring tiers) need n-body mode".into(),
-        other if other.starts_with("integrator.") => {
-            "only IAS15 is implemented (ABM: WP24; WHFast/IRK16: WP29)".into()
+        "integrator.precision.mixed" => {
+            "the NUM-007 ephemeris precision mode (double-double state, f64 forces) is \
+             implemented for n-body runs (WP25)"
+                .into()
         }
+        "integrator.abm" => {
+            "ABM is implemented for n-body runs (WP24); test-particle runs use IAS15".into()
+        }
+        "integrator.whfast" | "integrator.irk16" => {
+            "WHFast and IRK16 are implemented for n-body runs (WP29); test-particle runs use IAS15"
+                .into()
+        }
+        "gr_potential" => "the GR effective potential is an n-body term (WP29)".into(),
+        other if other.starts_with("integrator.") => "not implemented".into(),
         _ => "not implemented".into(),
     })
 }
@@ -223,7 +242,74 @@ pub fn supports(item: &str, mode: Mode) -> Result<(), String> {
 /// # Errors
 /// `FA-E1201`.
 pub fn refuse_unsupported(spec: &ScenarioSpec) -> Result<(), PropagateError> {
-    Ok(spec.refuse_unsupported(RUNNER, supports)?)
+    spec.refuse_unsupported(RUNNER, supports)?;
+    refuse_integrator_combinations(spec)
+}
+
+/// Combinations of an integrator with a switch that this runner refuses (REF-011, WP29): the
+/// Wisdom–Holman kick must be velocity independent and act on barycentric Major bodies only
+/// (full EIH is not supported in WH, NUM-004), and neither `WHFast` nor IRK16 has the NUM-007 mixed
+/// mode.
+///
+/// # Errors
+/// `FA-E1201` naming the first refused combination.
+pub(crate) fn refuse_integrator_combinations(spec: &ScenarioSpec) -> Result<(), PropagateError> {
+    use ferroastro_scenario::{BodyName, IntegratorName, MajorAsteroids, Precision};
+    let name = spec.integrator.name;
+    let f = &spec.forces;
+    let refuse = |switch: &str, reason: &str| -> Result<(), PropagateError> {
+        Err(ScenarioError::Unsupported {
+            name: spec.name.clone(),
+            switch: format!("{switch} with integrator {}", name.label()),
+            runner: RUNNER.into(),
+            reason: reason.into(),
+        }
+        .into())
+    };
+    if matches!(name, IntegratorName::Whfast | IntegratorName::Irk16)
+        && spec.integrator.precision == Precision::Mixed
+    {
+        return refuse(
+            "integrator.precision.mixed",
+            "the NUM-007 mixed mode is implemented for ABM only (WP25)",
+        );
+    }
+    if name != IntegratorName::Whfast {
+        return Ok(());
+    }
+    let velocity = "Wisdom-Holman needs a velocity-independent kick; full EIH, 1PN and \
+                    Lense-Thirring are not supported in WH (NUM-004); use gr_potential";
+    let small = "Wisdom-Holman integrates Major point masses only (no Minor or Ring tiers)";
+    for (on, switch, why) in [
+        (f.gr_eih, "forces.gr_eih", velocity),
+        (f.gr_1pn_central, "forces.gr_1pn_central", velocity),
+        (f.lense_thirring, "forces.lense_thirring", velocity),
+        (f.asteroids > 0, "forces.asteroids", small),
+        (f.kbos, "forces.kbos", small),
+        (f.kbo_ring, "forces.kbo_ring", small),
+        (
+            f.major_asteroids != MajorAsteroids::None,
+            "forces.major_asteroids",
+            small,
+        ),
+    ] {
+        if on {
+            return refuse(switch, why);
+        }
+    }
+    if spec.bodies.contains(&BodyName::Earth) && spec.bodies.contains(&BodyName::Moon) {
+        return refuse(
+            "bodies Earth + Moon (geocentric Moon variables)",
+            "Wisdom-Holman needs barycentric slots; use EMB",
+        );
+    }
+    if spec.bodies.first() != Some(&BodyName::Sun) || spec.central_body != BodyName::Sun {
+        return refuse(
+            "bodies (Sun not first)",
+            "the Jacobi chain starts at the Sun: list it first and make it the central body",
+        );
+    }
+    Ok(())
 }
 
 /// The constants version that enters the IC hash: the DE440 table and the header it came from.

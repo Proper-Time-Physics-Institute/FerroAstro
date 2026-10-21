@@ -145,6 +145,68 @@ pub struct InitialConditionsSpec {
     /// absent or equal to the header's `JDEPOC`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub epoch_jd_tdb: Option<f64>,
+    /// Re-barycentre the assembled initial conditions (n-body mode; absent: use the source's
+    /// states as given). `relativistic` moves the origin to the relativistic SSB with the μᵢ* of
+    /// Park et al. 2021 Eqs. 1–2, computed in the run's backend (NUM-018, WP25).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub barycentre: Option<IcBarycentre>,
+}
+
+/// How the initial conditions are re-barycentred (`initial_conditions.barycentre`, WP25).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "kebab-case")]
+pub enum IcBarycentre {
+    /// Σ μᵢ* rᵢ = 0 and Σ (μ̇ᵢ* rᵢ + μᵢ* vᵢ) = 0 (Subbotin et al. 2023 Eq. 5), with
+    /// μᵢ* = μᵢ [1 + vᵢ²/(2c²) − Σⱼ μⱼ/(2c² rᵢⱼ)] (Park et al. 2021 Eq. 2) and μ̇ᵢ* from the
+    /// Newtonian accelerations. Every body is translated by the same position and velocity.
+    Relativistic,
+}
+
+impl IcBarycentre {
+    /// The spelling in scenario files.
+    #[must_use]
+    pub const fn label(self) -> &'static str {
+        match self {
+            IcBarycentre::Relativistic => "relativistic",
+        }
+    }
+}
+
+/// Which numbered asteroids are Major bodies (`forces.major_asteroids`, NUM-009, WP25). The
+/// others of `forces.asteroids` stay Minor.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "kebab-case")]
+pub enum MajorAsteroids {
+    /// None: every asteroid is Minor (Newtonian from the Majors only).
+    #[default]
+    None,
+    /// (1) Ceres, (2) Pallas, (4) Vesta, (7) Iris and (324) Bamberga, the five asteroids that
+    /// obey the EIH equations in the EPM2021 model of Subbotin et al. 2023 §2 (with the Sun, the
+    /// planets, the Moon and Pluto: their 16 Major bodies).
+    Epm2021,
+    /// Every asteroid of `forces.asteroids`: the all-mutual reference of the tiering check.
+    All,
+}
+
+impl MajorAsteroids {
+    /// The spelling in scenario files.
+    #[must_use]
+    pub const fn label(self) -> &'static str {
+        match self {
+            MajorAsteroids::None => "none",
+            MajorAsteroids::Epm2021 => "epm2021",
+            MajorAsteroids::All => "all",
+        }
+    }
+
+    /// True for [`MajorAsteroids::None`] (the serde skip test).
+    #[must_use]
+    pub fn is_none(&self) -> bool {
+        *self == MajorAsteroids::None
+    }
+
+    /// The asteroid numbers of [`MajorAsteroids::Epm2021`].
+    pub const EPM2021: [u32; 5] = [1, 2, 4, 7, 324];
 }
 
 /// The GM set (CI-002).
@@ -210,10 +272,20 @@ pub struct Forces {
     /// not a CI-002 switch name, WP15).
     #[serde(default, skip_serializing_if = "std::ops::Not::not")]
     pub kbo_ring: bool,
+    /// Which of the `asteroids` are Major bodies instead of Minor (NUM-009; not a CI-002 switch
+    /// name, WP25). Default `none`.
+    #[serde(default, skip_serializing_if = "MajorAsteroids::is_none")]
+    pub major_asteroids: MajorAsteroids,
+    /// The velocity-independent GR effective potential of the Sun, `−3(GM☉)²/(c²r²)` per unit
+    /// mass (Nobili & Roxburgh 1986), with the reaction on the Sun: the GR-potential rung of the
+    /// Wisdom–Holman integrator (n-body mode; not a CI-002 switch name, WP29). It gives the 1PN
+    /// perihelion advance, but the mean motion is off by O(GM/(ac²)).
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub gr_potential: bool,
 }
 
 /// The force switches of CI-002, as written under `[forces]`.
-pub const SWITCHES: [&str; 9] = [
+pub const SWITCHES: [&str; 11] = [
     "newton",
     "sun_j2",
     "gr_1pn_central",
@@ -223,6 +295,8 @@ pub const SWITCHES: [&str; 9] = [
     "asteroids",
     "kbos",
     "kbo_ring",
+    "major_asteroids",
+    "gr_potential",
 ];
 
 impl Forces {
@@ -239,6 +313,8 @@ impl Forces {
             self.asteroids > 0,
             self.kbos,
             self.kbo_ring,
+            self.major_asteroids != MajorAsteroids::None,
+            self.gr_potential,
         ];
         SWITCHES
             .iter()
@@ -283,6 +359,9 @@ pub enum Precision {
     F64,
     /// Double-double (`ferroastro-real`).
     Dd,
+    /// The NUM-007 ephemeris precision mode (Subbotin et al. 2023 "mixed"): state, integrator
+    /// sums and coefficients in double-double, forces in f64 (n-body mode, WP25).
+    Mixed,
 }
 
 impl Precision {
@@ -292,11 +371,35 @@ impl Precision {
         match self {
             Precision::F64 => "f64",
             Precision::Dd => "dd",
+            Precision::Mixed => "mixed",
         }
     }
 }
 
-/// `[integrator]`. Unset settings take the integrator's defaults.
+/// Predictor–corrector mode of the Adams–Bashforth–Moulton integrator (WP24, NUM-002).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "kebab-case")]
+pub enum AbmCorrector {
+    /// P, E, C, E.
+    Pece,
+    /// P(EC)²: P, E, C, E, C (Subbotin et al. 2023; the default).
+    Pecec,
+}
+
+impl AbmCorrector {
+    /// The spelling in scenario files.
+    #[must_use]
+    pub const fn label(self) -> &'static str {
+        match self {
+            AbmCorrector::Pece => "pece",
+            AbmCorrector::Pecec => "pecec",
+        }
+    }
+}
+
+/// `[integrator]`. Unset settings take the integrator's defaults. `epsilon`, `pc_tolerance` and
+/// `dt0_days` configure IAS15 only; `order`, `corrector`, `step_days` and `compensated` configure
+/// ABM only (a key of the other integrator is refused).
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub struct IntegratorSpec {
@@ -313,6 +416,51 @@ pub struct IntegratorSpec {
     /// First trial step in days (N-body default 0.1 d; the controller adapts it).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub dt0_days: Option<f64>,
+    /// ABM order, 8 … 14 (default 13).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[schemars(range(min = 8, max = 14))]
+    pub order: Option<u32>,
+    /// ABM predictor–corrector mode (default `pecec`).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub corrector: Option<AbmCorrector>,
+    /// Fixed step in days of ABM (default 1/16 d), `WHFast` and IRK16 (default 1 d); its sign
+    /// follows the span.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub step_days: Option<f64>,
+    /// Kahan-compensated state update of ABM and IRK16 (default true; false gives the plain
+    /// sums).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub compensated: Option<bool>,
+    /// `WHFast` symplectic-corrector order: 0 (none), 3, 5, 7 or 11 (default 11; WP29).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub wh_corrector: Option<u32>,
+    /// The N-body pair kernels (NUM-021, WP26): `pairwise` (default) or `soa`. Not a force
+    /// switch: it selects FerroAstro's arithmetic, not the physics.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub force_kernel: Option<ForceKernel>,
+}
+
+/// The N-body pair kernels (`integrator.force_kernel`, NUM-021, WP26).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "kebab-case")]
+pub enum ForceKernel {
+    /// Each pair visited once (`i < j`), fused `r²`, `1/(r²√r²)` (the M3/M4 kernels).
+    #[default]
+    Pairwise,
+    /// Structure-of-arrays kernels (`ferroastro_forces::soa`): exact `1/r³`, no FMA, sources of
+    /// each target summed in storage order; scalar and SIMD lanes are bitwise identical.
+    Soa,
+}
+
+impl ForceKernel {
+    /// The spelling in scenario files.
+    #[must_use]
+    pub const fn label(self) -> &'static str {
+        match self {
+            ForceKernel::Pairwise => "pairwise",
+            ForceKernel::Soa => "soa",
+        }
+    }
 }
 
 /// `[span]`.
@@ -520,6 +668,22 @@ impl ScenarioSpec {
             }
             _ => {}
         }
+        if self.forces.major_asteroids != MajorAsteroids::None && self.forces.asteroids == 0 {
+            return err(
+                "forces.major_asteroids",
+                &self.forces.major_asteroids.label(),
+                "selects Major bodies among forces.asteroids, which is 0",
+            );
+        }
+        if self.mode != Mode::NBody {
+            if let Some(b) = self.initial_conditions.barycentre {
+                return err(
+                    "initial_conditions.barycentre",
+                    &b.label(),
+                    "re-barycentring applies to n-body initial conditions only",
+                );
+            }
+        }
         if let Some(p) = self.forces.ppn {
             if !(p.beta.is_finite() && p.gamma.is_finite()) {
                 return err(
@@ -563,10 +727,113 @@ impl ScenarioSpec {
                 "needs exactly one body in output.perihelion",
             );
         }
+        let ig = &self.integrator;
+        let owners: [(&'static str, bool, &[IntegratorName], &str); 8] = [
+            (
+                "integrator.epsilon",
+                ig.epsilon.is_some(),
+                &[IntegratorName::Ias15],
+                "IAS15",
+            ),
+            (
+                "integrator.pc_tolerance",
+                ig.pc_tolerance.is_some(),
+                &[IntegratorName::Ias15],
+                "IAS15",
+            ),
+            (
+                "integrator.dt0_days",
+                ig.dt0_days.is_some(),
+                &[IntegratorName::Ias15],
+                "IAS15",
+            ),
+            (
+                "integrator.order",
+                ig.order.is_some(),
+                &[IntegratorName::Abm],
+                "ABM",
+            ),
+            (
+                "integrator.corrector",
+                ig.corrector.is_some(),
+                &[IntegratorName::Abm],
+                "ABM",
+            ),
+            (
+                "integrator.step_days",
+                ig.step_days.is_some(),
+                &[
+                    IntegratorName::Abm,
+                    IntegratorName::Whfast,
+                    IntegratorName::Irk16,
+                ],
+                "the fixed-step integrators (ABM, whfast, irk16)",
+            ),
+            (
+                "integrator.compensated",
+                ig.compensated.is_some(),
+                &[IntegratorName::Abm, IntegratorName::Irk16],
+                "ABM and IRK16",
+            ),
+            (
+                "integrator.wh_corrector",
+                ig.wh_corrector.is_some(),
+                &[IntegratorName::Whfast],
+                "WHFast",
+            ),
+        ];
+        if let Some((field, _, _, owner)) = owners
+            .iter()
+            .find(|(_, set, who, _)| *set && !who.contains(&ig.name))
+        {
+            return err(
+                field,
+                &ig.name.label(),
+                &format!(
+                    "configures {owner} only, not integrator {}",
+                    ig.name.label()
+                ),
+            );
+        }
+        if let Some(c) = ig.wh_corrector {
+            if ![0, 3, 5, 7, 11].contains(&c) {
+                return err("integrator.wh_corrector", &c, "one of 0, 3, 5, 7, 11");
+            }
+        }
+        if self.forces.gr_potential && (self.forces.gr_eih || self.forces.gr_1pn_central) {
+            return err(
+                "forces.gr_potential",
+                &true,
+                "the GR effective potential replaces gr_eih / gr_1pn_central; do not combine them",
+            );
+        }
+        if ig.force_kernel == Some(ForceKernel::Soa) {
+            if self.mode != Mode::NBody {
+                return err(
+                    "integrator.force_kernel",
+                    &"soa",
+                    "the SoA kernels are N-body pair kernels (mode = \"n-body\" only)",
+                );
+            }
+            if ig.precision == Precision::Mixed {
+                return err(
+                    "integrator.force_kernel",
+                    &"soa",
+                    "not with precision = \"mixed\": the NUM-007 mixed mode compensates every pair \
+                     contribution (WP25), the SoA kernel sums each body's sources in one lane",
+                );
+            }
+        }
+        if let Some(o) = ig.order {
+            if !(8..=14).contains(&o) {
+                return err("integrator.order", &o, "8 <= order <= 14 (NUM-002)");
+            }
+        }
         for (field, v) in [
             ("integrator.epsilon", self.integrator.epsilon),
             ("integrator.pc_tolerance", self.integrator.pc_tolerance),
             ("integrator.dt0_days", self.integrator.dt0_days),
+            ("integrator.step_days", self.integrator.step_days),
         ] {
             if let Some(v) = v {
                 if !(v.is_finite() && v > 0.0) {

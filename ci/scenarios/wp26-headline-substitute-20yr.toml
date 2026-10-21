@@ -1,0 +1,45 @@
+# SPDX-FileCopyrightText: 2026 Proper-Time Physics Institute
+# SPDX-License-Identifier: Apache-2.0
+# WP26 check P7 (NUM-021, TST-005): a shortened substitute of the WP22 (PHY-014) headline model,
+# which is blocked on the NUM-020 / OI-33 signature. 16 Major bodies under EIH 1PN (the Sun, the 8
+# planets with the Moon geocentric, Pluto and the EPM2021 five asteroids), solar J2 and
+# Lense-Thirring with reaction, the other 338 numbered DE440 asteroids and the 30 identified KBOs
+# as Minor bodies and the 36-point KBO ring (REF-003; provisional, OI-24). DE440 GMs, header.440
+# ICs with the REF-003 small-body states, IAS15 in f64, 20 Julian years forward, Mercury's
+# perihelia and yearly samples. The pair kernels are the SoA kernels (integrator.force_kernel),
+# so tools/simd_identity.py can compare builds without and with the `simd` feature. Not a PHY-014
+# result. Schema: scenario.schema.json.
+schema_version = 1
+name = "wp26-headline-substitute-20yr"
+description = "WP26 P7: WP22-like full model (16 EIH Majors, J2, LT, 338 asteroids + 30 KBOs Minor, ring), header.440 + REF-003, IAS15 f64, 20 yr, SoA kernels"
+mode = "n-body"
+bodies = ["Sun", "Mercury", "Venus", "Earth", "Moon", "Mars", "Jupiter", "Saturn", "Uranus", "Neptune", "Pluto"]
+central_body = "Sun"
+
+[initial_conditions]
+source = "de440-header"
+
+[constants]
+gm_set = "de440"
+
+[forces]
+newton = true
+gr_eih = true
+sun_j2 = true
+lense_thirring = true
+asteroids = 343
+major_asteroids = "epm2021"
+kbos = true
+kbo_ring = true
+
+[integrator]
+name = "ias15"
+precision = "f64"
+force_kernel = "soa"
+
+[span]
+years = 20.0
+
+[output]
+cadence_days = 365.25
+perihelion = ["Mercury"]

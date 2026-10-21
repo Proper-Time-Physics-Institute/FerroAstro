@@ -113,6 +113,11 @@ impl<R: Real> Eih<R> {
         self.rhs
     }
 
+    /// `(c², β, γ)` for the SoA kernel ([`crate::EihSoa`]).
+    pub(crate) const fn c2_beta_gamma(&self) -> (R, R, R) {
+        (self.c2, self.beta, self.gamma)
+    }
+
     /// The c⁻² corrections of the Major bodies (km/s²), in `layout.indices(Tier::Major)` order.
     ///
     /// # Errors

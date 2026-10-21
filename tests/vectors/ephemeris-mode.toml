@@ -1,0 +1,191 @@
+# SPDX-FileCopyrightText: 2026 Proper-Time Physics Institute
+# SPDX-License-Identifier: Apache-2.0
+#
+# WP25 (NUM-007 ephemeris precision mode): pre-registered bounds of the mixed double-double checks,
+# fixed in the WP25 plan (docs/strategy/IMPLEMENTATION-NOTES.md, "WP25 ... Plan and pre-registered
+# checks", 2026-10-20 14:30 UTC) and committed before the tests that read them. Upper bounds:
+# value 0 with tolerance abs = bound. Subbotin et al. 2023 = Subbotin, Kodukov & Pavlov, CeMDA,
+# doi:10.1007/s10569-023-10139-2 (read as arXiv:2304.04458v1, sha256 e65d152a...fb2025b5).
+schema_version = 1
+
+[[vector]]
+id = "EPH-REBARY-DD-RESIDUAL-KM"
+requirement = ["NUM-018"]
+quantity = "|sum mu*_i r_i| / sum mu*_i after 3 fixed-point passes of the relativistic re-barycentring in double-double (header.440 majors + 343 REF-003 asteroids at JDEPOC)"
+value = 0.0
+unit = "km"
+kind = "analytic"
+source = "The re-barycentring is a translation; after convergence the residual is the double-double rounding of the weighted sum: N bodies x max |r| x u_DD = 354 x 7.4e9 km x 2^-104 ~ 1.3e-19 km."
+citation = "Park et al. 2021, AJ 161, 105, Eqs. 1-2; Subbotin et al. 2023, Eq. 5; WP25 plan check C3"
+retrieved = "2026-10-20"
+tolerance = { abs = 1.0e-19 }
+tolerance_rationale = "Rounding bound of the DD weighted sum (the Sun dominates, so the bound is rounded down). A missed pass or an f64 step in the DD path leaves >= 1e-11 km (the f64 residual)."
+verified_by = "WP25 builder agent, 2026-10-20: fixed in the WP25 plan from the DD unit round-off. The probe run before the plan printed the value (disclosed in IMPLEMENTATION-NOTES WP25)."
+
+[[vector]]
+id = "EPH-REBARY-DD-RESIDUAL-KMS"
+requirement = ["NUM-018"]
+quantity = "|sum (mu*_i' r_i + mu*_i v_i)| / sum mu*_i (Subbotin Eq. 5 velocity) after the same 3 passes in double-double"
+value = 0.0
+unit = "km/s"
+kind = "analytic"
+source = "As EPH-REBARY-DD-RESIDUAL-KM with velocities <= 60 km/s: 354 x 60 km/s x 2^-104 ~ 1e-27 km/s."
+citation = "Subbotin et al. 2023, Eq. 5; WP25 plan check C3"
+retrieved = "2026-10-20"
+tolerance = { abs = 1.0e-27 }
+tolerance_rationale = "Rounding bound of the DD weighted velocity sum; an f64 path leaves >= 1e-19 km/s."
+verified_by = "WP25 builder agent, 2026-10-20: fixed in the WP25 plan from the DD unit round-off (value printed by the pre-plan probe, disclosed)."
+
+[[vector]]
+id = "EPH-MUSTAR-RATE-REL"
+requirement = ["NUM-018"]
+quantity = "max_i |mu*_i'(analytic) - [mu*_i(t+d) - mu*_i(t-d)]/(2d)| / max_i |mu*_i'| along the Newtonian flow (second-order Taylor states), d = 3600 s, header.440 Sun + 8 planets + Moon, double-double"
+value = 0.0
+unit = "1"
+kind = "analytic"
+source = "Central difference error O(d^2 x d^3mu*/dt^3 / mu*'), ~ (d / P_Mercury)^2 ~ (1 h / 88 d)^2 ~ 2e-7; the Taylor states add O(d^3) position error, of the same order."
+citation = "Park et al. 2021, Eq. 2 (mu*), differentiated in WP25; WP25 plan check C3"
+retrieved = "2026-10-20"
+tolerance = { abs = 1.0e-6 }
+tolerance_rationale = "5x the estimated truncation of the difference quotient; a sign or factor error in either term of mu*' (v.a or the potential rate) is O(1)."
+verified_by = "WP25 builder agent, 2026-10-20: fixed in the WP25 plan before the first run."
+
+[[vector]]
+id = "EPH-MIXED-SHORT-RATIO"
+requirement = ["NUM-007"]
+quantity = "max over 2 yr of |r_f64plain - r_DD| / max over 2 yr of |r_mixed - r_DD| for Mercury, major-body ABM13 PECEC scenario (WP24 abm-sun-planets-moon-eih-40yr with span 2 yr)"
+value = 10.0
+unit = "1"
+kind = "analytic"
+source = "f64 ABM round-off grows ~t^1.5 (WP24 B3: 0.5-2.2 m at 40 yr, so ~1-3 cm at 2 yr); the mixed mode rounds only the f64 forces (~0.1 mm at 2 yr from Subbotin's 8.4 mm at 40 yr). A mode that silently kept f64 sums gives a ratio ~1."
+citation = "Subbotin et al. 2023, Table 1; IMPLEMENTATION-NOTES WP24 B3; WP25 plan check C4"
+retrieved = "2026-10-20"
+tolerance = { abs = 0.0 }
+tolerance_rationale = "A lower bound: the test asserts ratio >= value (10). Expected ~100; 10 separates a working mixed mode from f64 sums with margin."
+verified_by = "WP25 builder agent, 2026-10-20: fixed in the WP25 plan before the first run."
+
+[[vector]]
+id = "EPH-FORCES-DD-F64-REL"
+requirement = ["DEP-007"]
+quantity = "max over bodies of |a_DD - a_f64| / |a_DD|, NBodyModel with Newtonian mutual + geocentric Moon (12-term Taylor) + EIH (beta = gamma = 1, Newtonian RHS) + solar J2 with reaction + solar Lense-Thirring with reaction, header.440 Sun + 8 planets + Moon + Pluto at JDEPOC"
+value = 0.0
+unit = "1"
+kind = "analytic"
+source = "The same formulas in two backends differ by the f64 round-off of each acceleration: a <= 20-term sum with condition number of a few, ~1e-15 relative."
+citation = "FerroAstro DEP-007; WP25 plan check C5"
+retrieved = "2026-10-20"
+tolerance = { abs = 1.0e-12 }
+tolerance_rationale = "1000x the f64 round-off estimate; any backend-dependent formula (a c^-2 term or the LT/J2 term dropped or altered in one backend) differs at >= 1e-9 relative."
+verified_by = "WP25 builder agent, 2026-10-20: fixed in the WP25 plan before the first run."
+
+[[vector]]
+id = "EPH-MIXED-MERCURY-40YR-KM"
+requirement = ["NUM-007"]
+quantity = "max over 40 yr (20-d samples and final state) of |r_mixed - r_DD| for Mercury (SSB), scenario ephemeris-mixed-epm16-40yr vs its full double-double twin"
+value = 0.0
+unit = "km"
+kind = "analytic"
+source = "NUM-007 acceptance: Mercury round-off over 40 yr <= 1 cm relative to a full double-double run. Subbotin et al. 2023 Table 1: mixed 8.4 mm (two-way integration, EPM2021 model)."
+citation = "FerroAstro NUM-007 (docs/requirements/NUM.md); Subbotin et al. 2023, Table 1 and Sec. 4.3"
+retrieved = "2026-10-20"
+tolerance = { abs = 1.0e-5 }
+tolerance_rationale = "The requirement's own bound. The builder's estimate before the run is 0.7-2 cm (force rounding random-walking the mean motion), so this may fail; the bound is not moved after a run."
+verified_by = "WP25 builder agent, 2026-10-20: fixed in the WP25 plan before the first run."
+
+[[vector]]
+id = "EPH-F64-MERCURY-40YR-BAND-KM"
+requirement = ["NUM-007", "NUM-002"]
+quantity = "max over 40 yr of |r_f64plain - r_DD| for Mercury (SSB), scenario ephemeris-mixed-epm16-40yr with precision f64 and compensated = false vs its full double-double twin: the PROVISIONAL band 0.8-8 m encoded as centre 4.4e-3 km +/- 3.6e-3 km"
+value = 4.4e-3
+unit = "km"
+kind = "analytic"
+source = "Subbotin et al. 2023 Table 1: f64 2.47 m (Mercury, two-way, their hardware). WP25 task: PROVISIONAL band 0.8-8 m."
+citation = "Subbotin et al. 2023, Table 1; WP25 task text (crate plan)"
+retrieved = "2026-10-20"
+tolerance = { abs = 3.6e-3 }
+tolerance_rationale = "PROVISIONAL (task): different hardware, FMA policy, body set and round-off estimator (DD truth vs two-way) move a random-walk round-off by a factor of a few around 2.47 m; the band is a factor ~3 either side."
+verified_by = "WP25 builder agent, 2026-10-20: fixed in the WP25 plan before the first run (band from the task text)."
+
+[[vector]]
+id = "EPH-MIXED-MOON-40YR-KM"
+requirement = ["NUM-008"]
+quantity = "max over 40 yr of |(r_Moon - r_Earth)_mixed - (r_Moon - r_Earth)_DD|, scenario ephemeris-mixed-epm16-40yr vs its full double-double twin"
+value = 0.0
+unit = "km"
+kind = "analytic"
+source = "NUM-008 acceptance: lunar round-off <= 2 mm over 40 yr in NUM-007 mode. Subbotin et al. 2023 Table 1: mixed 1.2 mm."
+citation = "FerroAstro NUM-008; Subbotin et al. 2023, Table 1 and Sec. 4.4"
+retrieved = "2026-10-20"
+tolerance = { abs = 2.0e-6 }
+tolerance_rationale = "The requirement's own bound."
+verified_by = "WP25 builder agent, 2026-10-20: fixed in the WP25 plan before the first run."
+
+[[vector]]
+id = "EPH-SSB-DRIFT-40YR-KM"
+requirement = ["NUM-018"]
+quantity = "max over 40 yr of |b(t)|, b = sum mu*_i r_i / sum mu*_i over every body (mu* in double-double), scenario ephemeris-mixed-epm16-40yr re-barycentred with Subbotin Eq. 5, in the full double-double run and in the mixed run"
+value = 0.0
+unit = "km"
+kind = "analytic"
+source = "NUM-018 acceptance: SSB drift at the micrometre level in DD mode. Subbotin et al. 2023 Table 1: 3.14 um (DD), 2.6 um (mixed), 0.5 mm (f64); the DD value is set by the O(c^-4) non-conservation of the 1PN barycentre (Newtonian RHS accelerations) and truncation, not round-off."
+citation = "FerroAstro NUM-018; Subbotin et al. 2023, Sec. 3.3 (Eqs. 3-5, Fig. 12, Fig. 16) and Table 1"
+retrieved = "2026-10-20"
+tolerance = { abs = 1.0e-8 }
+tolerance_rationale = "10 um: 'micrometre level', a factor ~3 above Subbotin's DD and mixed values because the body set differs (DE440 343 asteroids, no TNO ring or annulus)."
+verified_by = "WP25 builder agent, 2026-10-20: fixed in the WP25 plan before the first run."
+
+[[vector]]
+id = "EPH-TIERING-PLANETS-40YR-KM"
+requirement = ["NUM-009"]
+quantity = "max over 40 yr and over Mercury ... Neptune and Pluto (SSB) of |r_tiered - r_allmutual|, scenario ephemeris-mixed-epm16-40yr (16 Majors + 338 Minor) vs major_asteroids = all (354 Majors), both mixed mode"
+value = 0.0
+unit = "km"
+kind = "analytic"
+source = "NUM-009 notes [V]: tiering costs < 1 cm (planets) over 40 yr; Subbotin et al. 2023 Sec. 2: 'sub-centimeter impact on the orbits of the planets ... on the timespan of 40 years'."
+citation = "FerroAstro NUM-009 notes; Subbotin et al. 2023, Sec. 2"
+retrieved = "2026-10-20"
+tolerance = { abs = 1.0e-5 }
+tolerance_rationale = "The cited bound. Resolvable only if sqrt(2) x the measured mixed round-off of the body (EPH-MIXED-MERCURY-40YR-KM run) <= bound/3; otherwise the test reports UNRESOLVED and fails by name (pre-registered)."
+verified_by = "WP25 builder agent, 2026-10-20: fixed in the WP25 plan before the first run."
+
+[[vector]]
+id = "EPH-TIERING-MOON-40YR-KM"
+requirement = ["NUM-009", "NUM-008"]
+quantity = "max over 40 yr of |(r_Moon - r_Earth)_tiered - (r_Moon - r_Earth)_allmutual|, same runs as EPH-TIERING-PLANETS-40YR-KM"
+value = 0.0
+unit = "km"
+kind = "analytic"
+source = "NUM-009 notes [V]: < 1 mm (Moon) over 40 yr; Subbotin et al. 2023 Sec. 2: 'sub-millimeter impact on the geocentric orbit of the Moon'."
+citation = "FerroAstro NUM-009 notes; Subbotin et al. 2023, Sec. 2"
+retrieved = "2026-10-20"
+tolerance = { abs = 1.0e-6 }
+tolerance_rationale = "The cited bound, with the same pre-registered resolvability condition (sqrt(2) x the measured mixed lunar round-off <= bound/3)."
+verified_by = "WP25 builder agent, 2026-10-20: fixed in the WP25 plan before the first run."
+
+[[vector]]
+id = "EPH-MUSTAR-RATE-CONVERGENCE"
+requirement = ["NUM-018"]
+quantity = "ratio of the C3b residual (max_i |mu*_i' - central difference| / max_i |mu*_i'|) at half-width d to that at d/2, for d = 450 s -> 225 s (header.440 Sun + 8 planets + Moon, double-double)"
+value = 4.0
+unit = "1"
+kind = "analytic"
+source = "A central difference of a smooth function has truncation C d^2 + O(d^4), so halving d divides the residual by 4 when the analytic derivative is right; a wrong derivative leaves an O(1) floor (ratio -> 1)."
+citation = "Standard numerical analysis (central-difference truncation, e.g. Hairer, Norsett & Wanner 1993, Sec. II.4 on error expansions); WP25 C3b"
+retrieved = "2026-10-20"
+tolerance = { abs = 0.1 }
+tolerance_rationale = "The O(d^4) correction at d = 450 s is ~(n d)^2 ~ 1e-5 relative for Mercury, and DD round-off is ~1e-22 of the residual; 0.1 separates 4 from the floor case (a mu*' error of even 1e-9 relative gives a ratio < 3.9 at these residuals). ADDED AFTER THE FIRST RUN of C3b (which printed ratios of 4.000) to kill the mutant 'mu*' drops the 1/2', which survived the PR tier; disclosed in IMPLEMENTATION-NOTES WP25."
+verified_by = "WP25 builder agent, 2026-10-20: added after the first C3b run (disclosed); the bound follows from the d^2 law, not from the run."
+
+[[vector]]
+id = "EPH-MIXED-DE440-HELIO-CONSISTENCY-KM"
+requirement = ["NUM-007", "REF-001"]
+quantity = "| max_t |h_mixed - h_de440| - max_t |h_DD - h_de440| | for Mercury, h = heliocentric position, scenario ephemeris-mixed-epm16-40yr with span 5 yr and 10-d samples, mixed mode and full double-double, against de440.bsp"
+value = 0.0
+unit = "km"
+kind = "analytic"
+source = "The two runs solve the same model from the same ICs and differ only by round-off; by the triangle inequality their maximum residuals against the real ephemeris differ by at most their mutual distance, which NUM-007 bounds at 1 cm over 40 yr (and is smaller over 5 yr)."
+citation = "JPL de440.bsp (Park et al. 2021, AJ 161, 105); FerroAstro NUM-007; WP25 plan addendum D1"
+retrieved = "2026-10-20"
+tolerance = { abs = 1.0e-5 }
+tolerance_rationale = "The NUM-007 40-yr bound applied to a 5-yr run (round-off grows with time, so it is conservative). Heliocentric residuals are used because the re-barycentred ICs sit ~123 km from DE440's own SSB (the body subset has no KBOs or ring)."
+verified_by = "WP25 builder agent, 2026-10-20: fixed in the WP25 plan addendum before the first run."

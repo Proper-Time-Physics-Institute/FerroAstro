@@ -226,7 +226,11 @@ impl<R: Real> LastStep<R> {
     }
 }
 
-fn check_len(what: &'static str, got: usize, expected: usize) -> Result<(), IntegratorError> {
+pub(crate) fn check_len(
+    what: &'static str,
+    got: usize,
+    expected: usize,
+) -> Result<(), IntegratorError> {
     if got == expected {
         Ok(())
     } else {
@@ -885,7 +889,7 @@ pub struct Ias15Snapshot {
     pub stats: Ias15Stats,
 }
 
-fn checkpoint_err(what: &'static str, problem: impl Into<String>) -> IntegratorError {
+pub(crate) fn checkpoint_err(what: &'static str, problem: impl Into<String>) -> IntegratorError {
     IntegratorError::Checkpoint {
         what,
         problem: problem.into(),
@@ -893,7 +897,7 @@ fn checkpoint_err(what: &'static str, problem: impl Into<String>) -> IntegratorE
 }
 
 /// Split a value into parts, refusing a backend whose parts do not reconstruct it exactly.
-fn to_parts_exact<R: Real>(what: &'static str, z: R) -> Result<Parts, IntegratorError> {
+pub(crate) fn to_parts_exact<R: Real>(what: &'static str, z: R) -> Result<Parts, IntegratorError> {
     let (hi, lo) = z.to_parts();
     let back = R::from_parts(hi, lo);
     if back.to_parts() == (hi, lo) && (back == z || (z.is_nan() && back.is_nan())) {
@@ -910,12 +914,15 @@ fn to_parts_exact<R: Real>(what: &'static str, z: R) -> Result<Parts, Integrator
     }
 }
 
-fn parts_vec<R: Real>(what: &'static str, zs: &[R]) -> Result<Vec<Parts>, IntegratorError> {
+pub(crate) fn parts_vec<R: Real>(
+    what: &'static str,
+    zs: &[R],
+) -> Result<Vec<Parts>, IntegratorError> {
     zs.iter().map(|&z| to_parts_exact(what, z)).collect()
 }
 
 /// Rebuild backend values from parts, checking the length and finiteness.
-fn from_parts_vec<R: Real>(
+pub(crate) fn from_parts_vec<R: Real>(
     what: &'static str,
     parts: &[Parts],
     n: usize,
@@ -929,7 +936,10 @@ fn from_parts_vec<R: Real>(
     parts.iter().map(|&p| from_parts_one(what, p)).collect()
 }
 
-fn from_parts_one<R: Real>(what: &'static str, [hi, lo]: Parts) -> Result<R, IntegratorError> {
+pub(crate) fn from_parts_one<R: Real>(
+    what: &'static str,
+    [hi, lo]: Parts,
+) -> Result<R, IntegratorError> {
     let z = R::from_parts(hi, lo);
     if !z.is_finite() {
         return Err(checkpoint_err(

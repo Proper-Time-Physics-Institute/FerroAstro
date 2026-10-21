@@ -450,6 +450,14 @@ impl<'a, R: Real> Accelerations<'a, R> {
 
     /// Fold the compensations and the Earth–Moon pair into the output. Ring bodies get 0.
     pub(crate) fn finish(self, layout: &Layout<R>) {
+        self.finish_into(layout, None);
+    }
+
+    /// As [`Accelerations::finish`], but with `split` the compensation of each component is
+    /// written there instead of being added to the output: the exact value is then
+    /// `out[i] + split[i]` to the accuracy of Neumaier's sum (WP25 mixed mode). The EMB slot gets
+    /// `f_E (Σ+c)_E + f_M (Σ+c)_M` split the same way term by term.
+    pub(crate) fn finish_into(self, layout: &Layout<R>, mut split: Option<&mut [R]>) {
         let Self {
             n,
             out,
@@ -460,28 +468,71 @@ impl<'a, R: Real> Accelerations<'a, R> {
             rel,
             ..
         } = self;
-        for (o, c) in out.iter_mut().zip(&comp) {
-            *o += *c;
+        let splitting = split.is_some();
+        match split.as_deref_mut() {
+            Some(lo) => {
+                lo.fill(R::ZERO);
+                for (l, c) in lo.iter_mut().zip(&comp) {
+                    *l = *c;
+                }
+            }
+            None => {
+                for (o, c) in out.iter_mut().zip(&comp) {
+                    *o += *c;
+                }
+            }
         }
-        let mut put = |i: usize, a: [R; 3]| {
-            for (k, ak) in a.into_iter().enumerate() {
-                if let Some(o) = out.get_mut(k * n + i) {
-                    *o = ak;
+        let mut put = |i: usize, hi: [R; 3], lo: [R; 3]| {
+            for k in 0..3 {
+                let (Some(&h), Some(&l)) = (hi.get(k), lo.get(k)) else {
+                    continue;
+                };
+                match split.as_deref_mut() {
+                    Some(sp) => {
+                        if let (Some(o), Some(c)) = (out.get_mut(k * n + i), sp.get_mut(k * n + i))
+                        {
+                            *o = h;
+                            *c = l;
+                        }
+                    }
+                    None => {
+                        if let Some(o) = out.get_mut(k * n + i) {
+                            *o = h + l;
+                        }
+                    }
                 }
             }
         };
         if let Some(p) = pair {
-            let [e0, e1, e2] = earth.map(Acc::total);
-            let [m0, m1, m2] = moon.map(Acc::total);
             let (fe, fm) = (p.earth_fraction, p.moon_fraction);
-            put(
-                p.earth,
-                [fe * e0 + fm * m0, fe * e1 + fm * m1, fe * e2 + fm * m2],
-            );
-            put(p.moon, rel.map(Acc::total));
+            let hi = [0, 1, 2].map(|k| match (earth.get(k), moon.get(k)) {
+                (Some(e), Some(m)) => fe * e.sum + fm * m.sum,
+                _ => R::ZERO,
+            });
+            let lo = [0, 1, 2].map(|k| match (earth.get(k), moon.get(k)) {
+                (Some(e), Some(m)) => fe * e.comp + fm * m.comp,
+                _ => R::ZERO,
+            });
+            if splitting {
+                put(p.earth, hi, lo);
+            } else {
+                // Bitwise as before WP25: the fraction-weighted totals.
+                let [e0, e1, e2] = earth.map(Acc::total);
+                let [m0, m1, m2] = moon.map(Acc::total);
+                put(
+                    p.earth,
+                    [fe * e0 + fm * m0, fe * e1 + fm * m1, fe * e2 + fm * m2],
+                    [R::ZERO; 3],
+                );
+            }
+            if splitting {
+                put(p.moon, rel.map(|a| a.sum), rel.map(|a| a.comp));
+            } else {
+                put(p.moon, rel.map(Acc::total), [R::ZERO; 3]);
+            }
         }
         for &i in layout.indices(Tier::Ring) {
-            put(i, [R::ZERO; 3]);
+            put(i, [R::ZERO; 3], [R::ZERO; 3]);
         }
     }
 }

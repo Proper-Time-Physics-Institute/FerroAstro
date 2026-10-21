@@ -142,7 +142,7 @@ fn interrupted_equals_uninterrupted(tag: &str, scenario: &Path, stop_years: &str
          resumed {resumed_words:?}, second run {twice_words:?}; counters equal: {} / {}",
         full.ic_hash,
         ck_bytes.len(),
-        decoded.integrator.stats.steps,
+        decoded.integrator.steps(),
         first.states.len(),
         first.passages.len(),
         full.states.len(),

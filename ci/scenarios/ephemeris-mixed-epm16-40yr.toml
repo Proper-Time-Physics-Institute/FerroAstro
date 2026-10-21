@@ -1,0 +1,44 @@
+# SPDX-FileCopyrightText: 2026 Proper-Time Physics Institute
+# SPDX-License-Identifier: Apache-2.0
+# WP25 (NUM-007, NUM-008, NUM-018, NUM-009): the Subbotin, Kodukov & Pavlov 2023 reference
+# configuration on DE440 data. 16 Major bodies under EIH 1PN (the Sun, the 8 planets with the
+# Moon geocentric, Pluto, and the asteroids (1) Ceres, (2) Pallas, (4) Vesta, (7) Iris and
+# (324) Bamberga, as in their §2) and the other 338 numbered DE440 asteroids as Minor bodies
+# (Newtonian from the Majors only). DE440 GMs and header.440 initial conditions with the
+# REF-003 asteroid states, re-barycentred to the relativistic SSB (their Eq. 5). ABM13 PECEC at
+# h = 1/16 d with the DP8 start-up at h/8, 40 Julian years forward, in the NUM-007 mixed mode
+# (double-double state and sums, f64 forces). Every body is sampled every 20 d. The f64 and
+# full double-double twins differ only in integrator.precision. Schema: scenario.schema.json.
+schema_version = 1
+name = "ephemeris-mixed-epm16-40yr"
+description = "WP25: 16 EIH Majors (EPM2021 set) + 338 Minor asteroids, header.440 + REF-003, relativistic SSB, ABM13 PECEC h = 1/16 d, 40 yr, mixed DD"
+mode = "n-body"
+bodies = ["Sun", "Mercury", "Venus", "Earth", "Moon", "Mars", "Jupiter", "Saturn", "Uranus", "Neptune", "Pluto"]
+central_body = "Sun"
+
+[initial_conditions]
+source = "de440-header"
+barycentre = "relativistic"
+
+[constants]
+gm_set = "de440"
+
+[forces]
+newton = true
+gr_eih = true
+asteroids = 343
+major_asteroids = "epm2021"
+
+[integrator]
+name = "abm"
+precision = "mixed"
+order = 13
+corrector = "pecec"
+step_days = 0.0625
+compensated = true
+
+[span]
+years = 40.0
+
+[output]
+cadence_days = 20.0

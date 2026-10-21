@@ -83,6 +83,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "72f5acc6cb2ba439de613abc23857ec3d78374d8ed5ac84e9d11336e87da8649"
 
 [[package]]
+name = "bytemuck"
+version = "1.25.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "95832e849adfb21180ccb6826a99da14e5d266ae5c2e668e1602cf234f153797"
+
+[[package]]
 name = "cast"
 version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -280,6 +286,20 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "00d174d5400e5e8fd687ad1049e2f578285fa914201b1af7e8b112a4546bd826"
 
 [[package]]
+name = "ferroastro-abm"
+version = "0.0.0"
+dependencies = [
+ "ferroastro-analytic",
+ "ferroastro-core",
+ "ferroastro-integrators",
+ "ferroastro-real",
+ "ferroastro-vectors",
+ "postcard",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
 name = "ferroastro-analytic"
 version = "0.0.0"
 dependencies = [
@@ -298,7 +318,9 @@ dependencies = [
  "ferroastro-constants",
  "ferroastro-core",
  "ferroastro-diffrun",
+ "ferroastro-eih",
  "ferroastro-ephem",
+ "ferroastro-forces",
  "ferroastro-precession",
  "ferroastro-propagate",
  "ferroastro-scenario",
@@ -320,6 +342,7 @@ dependencies = [
  "ferroastro-ladder",
  "ferroastro-propagate",
  "ferroastro-scenario",
+ "ferroastro-system",
  "ferroastro-testdata",
  "ferroastro-vectors",
  "sha2",
@@ -410,6 +433,7 @@ dependencies = [
 name = "ferroastro-forces"
 version = "0.0.0"
 dependencies = [
+ "astro-float",
  "criterion",
  "ferroastro-constants",
  "ferroastro-core",
@@ -421,6 +445,7 @@ dependencies = [
  "ferroastro-testdata",
  "ferroastro-vectors",
  "thiserror",
+ "wide",
 ]
 
 [[package]]
@@ -509,6 +534,7 @@ dependencies = [
 name = "ferroastro-propagate"
 version = "0.0.0"
 dependencies = [
+ "ferroastro-abm",
  "ferroastro-analytic",
  "ferroastro-constants",
  "ferroastro-core",
@@ -520,6 +546,7 @@ dependencies = [
  "ferroastro-precession",
  "ferroastro-real",
  "ferroastro-scenario",
+ "ferroastro-symplectic",
  "ferroastro-system",
  "ferroastro-testdata",
  "ferroastro-vectors",
@@ -550,6 +577,22 @@ dependencies = [
  "sha2",
  "thiserror",
  "toml 0.8.23",
+]
+
+[[package]]
+name = "ferroastro-symplectic"
+version = "0.0.0"
+dependencies = [
+ "ferroastro-analytic",
+ "ferroastro-core",
+ "ferroastro-ephem",
+ "ferroastro-forces",
+ "ferroastro-integrators",
+ "ferroastro-real",
+ "ferroastro-system",
+ "ferroastro-vectors",
+ "postcard",
+ "serde",
 ]
 
 [[package]]
@@ -1009,6 +1052,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "cf54715a573b99ac80df0bc206da022bcd442c974952c7b9720069370852e21f"
 
 [[package]]
+name = "safe_arch"
+version = "0.7.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "96b02de82ddbe1b636e6170c21be622223aea188ef2e139be0a5b219ec215323"
+dependencies = [
+ "bytemuck",
+]
+
+[[package]]
 name = "same-file"
 version = "1.0.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1421,6 +1473,16 @@ checksum = "88261b9deccee56594c11a3460c462c41f58d148598fe70ad77070126a68aba4"
 dependencies = [
  "js-sys",
  "wasm-bindgen",
+]
+
+[[package]]
+name = "wide"
+version = "0.7.33"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0ce5da8ecb62bcd8ec8b7ea19f69a51275e91299be594ea5cc6ef7819e16cd03"
+dependencies = [
+ "bytemuck",
+ "safe_arch",
 ]
 
 [[package]]

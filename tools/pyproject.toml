@@ -89,3 +89,8 @@ ignore_missing_imports = true
 # L4/L12): never a dependency of tools/, so mypy cannot see it.
 module = ["swiftest", "swiftest.*"]
 ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+# mpmath (BSD-3, a sympy dependency) ships no type information; used by abm_dp8.py (WP24).
+module = ["mpmath", "mpmath.*"]
+ignore_missing_imports = true

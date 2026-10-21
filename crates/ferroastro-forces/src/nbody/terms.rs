@@ -82,7 +82,12 @@ fn r2_of<R: Real>(d: [R; 3]) -> R {
     d0.mul_add(d0, d1.mul_add(d1, d2 * d2))
 }
 
-/// `1/r³` from `r²` (one square root, one product, one division: ≤ 2 ulp in f64).
+/// `1/r³` from `r²` (one square root, one product, one division). Error bound: three correctly
+/// rounded operations of ≤ ½ ulp each give ≤ 3 ulp of `r⁻³` in binary64 (each relative ½u, summed,
+/// then doubled by the ulp normalisation at the worst binade position). Observed sample maxima:
+/// 2.22 ulp over 100 120 inputs (WP26 check P1) and 2.343 ulp over 100 000 other inputs (WP26
+/// progress review); both are samples, not bounds. The SoA kernels use the exact
+/// `ferroastro_forces::soa::inv_r3_exact` (≤ 1 ulp).
 #[inline]
 fn inv_r3<R: Real>(r2: R) -> R {
     R::ONE / (r2 * r2.sqrt())
@@ -636,6 +641,125 @@ impl<F: Frame, R: Real> ForceTerm<F, R> for SolarJ2WithReaction<F, R> {
         for &i in &self.bodies {
             let r = sub(view.position(i), ps);
             u += view.layout().gm(i) * j2_potential(self.sun_gm, self.j2, self.radius, k_hat, r);
+        }
+        Some(u)
+    }
+}
+
+/// The velocity-independent GR effective potential of the Sun (Nobili & Roxburgh 1986), per unit
+/// mass `Φ = −3 (GM☉)² / (c² r²)` for every Major body other than the Sun, with the reaction on
+/// the Sun (a pair potential, so momentum and energy are conserved):
+/// `aᵢ = −6 (GM☉)² rᵢ / (c² rᵢ⁴)`, `a☉ = −Σ (GMᵢ/GM☉) aᵢ`, `rᵢ` from the Sun to body i.
+///
+/// For a perturbing potential `−k/r²` the orbit equation `u″ + u(1 − 2k/L²) = GM/L²` gives an
+/// advance `2πk/L²` per orbit; with `k = 3(GM)²/c²` and `L² = GM a(1−e²)` this is the 1PN
+/// advance `6πGM/(c²a(1−e²))` (PHY-004). The mean motion differs from 1PN by O(GM/(ac²))
+/// (Saha & Tremaine 1994). Being velocity independent, it can be integrated by the
+/// Wisdom–Holman map as part of the interaction kick (NUM-004, WP29).
+#[derive(Debug, Clone, Copy)]
+pub struct GrPotential<R: Real = f64> {
+    c: R,
+    sun: usize,
+    sun_gm: R,
+    /// `3 (GM☉)² / c²` (km⁴/s²), set by `bind`.
+    k: R,
+}
+
+impl<R: Real> GrPotential<R> {
+    /// The potential for speed of light `c`.
+    ///
+    /// # Errors
+    /// `FA-E0500` if `c` is not finite and positive.
+    pub fn new(c: Velocity<R>) -> Result<Self, ForceError> {
+        let c = c.km_per_s();
+        if !(c.is_finite() && c > R::ZERO) {
+            return Err(ForceError::Invalid {
+                name: "speed of light (km/s)",
+                value: c.to_f64(),
+                valid: "finite and > 0",
+            });
+        }
+        Ok(Self {
+            c,
+            sun: 0,
+            sun_gm: R::ZERO,
+            k: R::ZERO,
+        })
+    }
+}
+
+impl<F: Frame, R: Real> ForceTerm<F, R> for GrPotential<R> {
+    fn name(&self) -> &'static str {
+        "gr-potential-sun"
+    }
+    fn gauge(&self) -> Gauge {
+        Gauge::GrEffectivePotential
+    }
+    fn parameters(&self) -> Vec<TermParameter> {
+        vec![TermParameter {
+            name: "c",
+            value: self.c.to_f64(),
+            unit: "km/s",
+        }]
+    }
+    fn tiers(&self) -> &'static [Tier] {
+        &[Tier::Major]
+    }
+    fn bind(&mut self, layout: &Layout<R>) -> Result<(), ForceError> {
+        let sun = layout
+            .index_of(NaifId::SUN)
+            .filter(|&i| layout.tiers().get(i) == Some(&Tier::Major))
+            .ok_or(ForceError::Invalid {
+                name: "the GR potential needs the Sun (NAIF 10) as a Major body",
+                value: f64::from(NaifId::SUN.0),
+                valid: "a Major Sun",
+            })?;
+        let gm = layout.gm(sun);
+        if gm <= R::ZERO {
+            return Err(ForceError::Invalid {
+                name: "solar GM (km^3/s^2)",
+                value: gm.to_f64(),
+                valid: "> 0",
+            });
+        }
+        self.sun = sun;
+        self.sun_gm = gm;
+        self.k = R::from_i32(3) * gm * gm / (self.c * self.c);
+        Ok(())
+    }
+    fn accumulate(
+        &self,
+        t: R,
+        view: &View<'_, R>,
+        acc: &mut Accelerations<'_, R>,
+    ) -> Result<(), ForceError> {
+        let layout = view.layout();
+        let ps = view.position(self.sun);
+        for &i in layout.indices(Tier::Major) {
+            if i == self.sun {
+                continue;
+            }
+            let r = sub(view.position(i), ps);
+            let r2 = r2_of(r);
+            if r2 == R::ZERO {
+                return Err(singular(self.sun, i, t));
+            }
+            let s = -(self.k + self.k) / (r2 * r2);
+            let a = r.map(|x| s * x);
+            let ratio = layout.gm(i) / self.sun_gm;
+            acc.add(i, a);
+            acc.add(self.sun, a.map(|x| -(ratio * x)));
+        }
+        Ok(())
+    }
+    fn potential_over_g(&self, view: &View<'_, R>) -> Option<R> {
+        let layout = view.layout();
+        let ps = view.position(self.sun);
+        let mut u = R::ZERO;
+        for &i in layout.indices(Tier::Major) {
+            if i != self.sun {
+                u -= layout.gm(i) * self.k / r2_of(sub(view.position(i), ps));
+            }
         }
         Some(u)
     }

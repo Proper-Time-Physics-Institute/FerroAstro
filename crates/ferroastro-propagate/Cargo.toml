@@ -18,10 +18,12 @@ ferroastro-eih.workspace = true
 ferroastro-ephem.workspace = true
 ferroastro-forces.workspace = true
 ferroastro-frames.workspace = true
+ferroastro-abm = { workspace = true, features = ["serde"] }
 ferroastro-integrators = { workspace = true, features = ["serde"] }
 ferroastro-precession.workspace = true
 ferroastro-real.workspace = true
 ferroastro-scenario.workspace = true
+ferroastro-symplectic = { workspace = true, features = ["serde"] }
 ferroastro-system.workspace = true
 postcard.workspace = true
 rayon = { workspace = true, optional = true }
@@ -32,6 +34,9 @@ thiserror.workspace = true
 default = []
 # Run-level parallelism for batches (NUM-022). Off on wasm32.
 parallel = ["dep:rayon"]
+# SIMD lanes of the SoA kernels (`integrator.force_kernel = "soa"`, NUM-021, WP26); results are
+# bitwise identical with and without it.
+simd = ["ferroastro-forces/simd", "ferroastro-eih/simd"]
 
 [dev-dependencies]
 ferroastro-testdata.workspace = true

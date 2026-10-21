@@ -311,6 +311,37 @@ impl<F: Frame, R: Real> NBodyModel<F, R> {
     }
 }
 
+impl<F: Frame, R: Real> NBodyModel<F, R> {
+    /// The accelerations as unevaluated sums `hi + lo`: every term is evaluated as usual, the
+    /// contributions are accumulated with Neumaier's compensated sum whatever
+    /// [`NBodyModel::with_compensation`] says, and the compensation is returned in `lo` instead of
+    /// being rounded into `hi`. This is the "time derivative stored in double-double" of
+    /// Subbotin et al. 2023 §4.3 with the force terms in `R` (WP25, [`crate::MixedForces`]).
+    ///
+    /// # Errors
+    /// As [`SecondOrderSystem::acceleration`]; `FA-E0500` if `lo` has the wrong length.
+    pub fn acceleration_split(
+        &self,
+        t: R,
+        x: &[R],
+        v: &[R],
+        hi: &mut [R],
+        lo: &mut [R],
+    ) -> Result<(), IntegratorError> {
+        self.layout.check_len(x.len())?;
+        self.layout.check_len(v.len())?;
+        self.layout.check_len(hi.len())?;
+        self.layout.check_len(lo.len())?;
+        let view = View::new(&self.layout, x, v);
+        let mut acc = Accelerations::new(&self.layout, true, hi);
+        for term in &self.terms {
+            term.accumulate(t, &view, &mut acc)?;
+        }
+        acc.finish_into(&self.layout, Some(lo));
+        Ok(())
+    }
+}
+
 impl<F: Frame, R: Real> SecondOrderSystem<R> for NBodyModel<F, R> {
     fn dimension(&self) -> usize {
         3 * self.layout.len()

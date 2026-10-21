@@ -75,6 +75,21 @@
     "span"
   ],
   "$defs": {
+    "AbmCorrector": {
+      "description": "Predictor–corrector mode of the Adams–Bashforth–Moulton integrator (WP24, NUM-002).",
+      "oneOf": [
+        {
+          "description": "P, E, C, E.",
+          "type": "string",
+          "const": "pece"
+        },
+        {
+          "description": "P(EC)²: P, E, C, E, C (Subbotin et al. 2023; the default).",
+          "type": "string",
+          "const": "pecec"
+        }
+      ]
+    },
     "BodyName": {
       "description": "A body a scenario may name. Planets beyond Venus are their system barycentres, as in DE440\n(`GM4…GM9` are system GMs); `EMB` is the Earth–Moon barycentre as one body.",
       "oneOf": [
@@ -154,6 +169,21 @@
         "gm_set"
       ]
     },
+    "ForceKernel": {
+      "description": "The N-body pair kernels (`integrator.force_kernel`, NUM-021, WP26).",
+      "oneOf": [
+        {
+          "description": "Each pair visited once (`i < j`), fused `r²`, `1/(r²√r²)` (the M3/M4 kernels).",
+          "type": "string",
+          "const": "pairwise"
+        },
+        {
+          "description": "Structure-of-arrays kernels (`ferroastro_forces::soa`): exact `1/r³`, no FMA, sources of\neach target summed in storage order; scalar and SIMD lanes are bitwise identical.",
+          "type": "string",
+          "const": "soa"
+        }
+      ]
+    },
     "Forces": {
       "description": "`[forces]`: exactly the CI-002 switches. Every switch but `newton` defaults to off.",
       "type": "object",
@@ -175,6 +205,10 @@
           "type": "boolean",
           "default": false
         },
+        "gr_potential": {
+          "description": "The velocity-independent GR effective potential of the Sun, `−3(GM☉)²/(c²r²)` per unit\nmass (Nobili & Roxburgh 1986), with the reaction on the Sun: the GR-potential rung of the\nWisdom–Holman integrator (n-body mode; not a CI-002 switch name, WP29). It gives the 1PN\nperihelion advance, but the mean motion is off by O(GM/(ac²)).",
+          "type": "boolean"
+        },
         "kbo_ring": {
           "description": "The DE440 KBO ring: 36 fixed Ring masses at 44 au in the ecliptic (provisional, OI-24;\nnot a CI-002 switch name, WP15).",
           "type": "boolean"
@@ -187,6 +221,10 @@
           "description": "Lense–Thirring field of the spinning central body (DE440 solar spin).",
           "type": "boolean",
           "default": false
+        },
+        "major_asteroids": {
+          "description": "Which of the `asteroids` are Major bodies instead of Minor (NUM-009; not a CI-002 switch\nname, WP25). Default `none`.",
+          "$ref": "#/$defs/MajorAsteroids"
         },
         "newton": {
           "description": "Newtonian point-mass gravity.",
@@ -224,6 +262,16 @@
         }
       ]
     },
+    "IcBarycentre": {
+      "description": "How the initial conditions are re-barycentred (`initial_conditions.barycentre`, WP25).",
+      "oneOf": [
+        {
+          "description": "Σ μᵢ* rᵢ = 0 and Σ (μ̇ᵢ* rᵢ + μᵢ* vᵢ) = 0 (Subbotin et al. 2023 Eq. 5), with\nμᵢ* = μᵢ [1 + vᵢ²/(2c²) − Σⱼ μⱼ/(2c² rᵢⱼ)] (Park et al. 2021 Eq. 2) and μ̇ᵢ* from the\nNewtonian accelerations. Every body is translated by the same position and velocity.",
+          "type": "string",
+          "const": "relativistic"
+        }
+      ]
+    },
     "IcSource": {
       "description": "Where the initial conditions come from (CI-002: `de440-header | de440-bsp@JD | horizons@JD`).",
       "oneOf": [
@@ -248,6 +296,17 @@
       "description": "`[initial_conditions]`.",
       "type": "object",
       "properties": {
+        "barycentre": {
+          "description": "Re-barycentre the assembled initial conditions (n-body mode; absent: use the source's\nstates as given). `relativistic` moves the origin to the relativistic SSB with the μᵢ* of\nPark et al. 2021 Eqs. 1–2, computed in the run's backend (NUM-018, WP25).",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/IcBarycentre"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
         "epoch_jd_tdb": {
           "description": "Epoch (TDB Julian date): required for `de440-bsp` and `horizons`; for `de440-header`,\nabsent or equal to the header's `JDEPOC`.",
           "type": [
@@ -292,9 +351,27 @@
       ]
     },
     "IntegratorSpec": {
-      "description": "`[integrator]`. Unset settings take the integrator's defaults.",
+      "description": "`[integrator]`. Unset settings take the integrator's defaults. `epsilon`, `pc_tolerance` and\n`dt0_days` configure IAS15 only; `order`, `corrector`, `step_days` and `compensated` configure\nABM only (a key of the other integrator is refused).",
       "type": "object",
       "properties": {
+        "compensated": {
+          "description": "Kahan-compensated state update of ABM and IRK16 (default true; false gives the plain\nsums).",
+          "type": [
+            "boolean",
+            "null"
+          ]
+        },
+        "corrector": {
+          "description": "ABM predictor–corrector mode (default `pecec`).",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/AbmCorrector"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
         "dt0_days": {
           "description": "First trial step in days (N-body default 0.1 d; the controller adapts it).",
           "type": [
@@ -311,9 +388,30 @@
           ],
           "format": "double"
         },
+        "force_kernel": {
+          "description": "The N-body pair kernels (NUM-021, WP26): `pairwise` (default) or `soa`. Not a force\nswitch: it selects FerroAstro's arithmetic, not the physics.",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ForceKernel"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
         "name": {
           "description": "The integrator.",
           "$ref": "#/$defs/IntegratorName"
+        },
+        "order": {
+          "description": "ABM order, 8 … 14 (default 13).",
+          "type": [
+            "integer",
+            "null"
+          ],
+          "format": "uint32",
+          "maximum": 14,
+          "minimum": 8
         },
         "pc_tolerance": {
           "description": "IAS15 predictor–corrector convergence threshold (default 1e-16).",
@@ -326,12 +424,49 @@
         "precision": {
           "description": "The arithmetic.",
           "$ref": "#/$defs/Precision"
+        },
+        "step_days": {
+          "description": "Fixed step in days of ABM (default 1/16 d), `WHFast` and IRK16 (default 1 d); its sign\nfollows the span.",
+          "type": [
+            "number",
+            "null"
+          ],
+          "format": "double"
+        },
+        "wh_corrector": {
+          "description": "`WHFast` symplectic-corrector order: 0 (none), 3, 5, 7 or 11 (default 11; WP29).",
+          "type": [
+            "integer",
+            "null"
+          ],
+          "format": "uint32",
+          "minimum": 0
         }
       },
       "additionalProperties": false,
       "required": [
         "name",
         "precision"
+      ]
+    },
+    "MajorAsteroids": {
+      "description": "Which numbered asteroids are Major bodies (`forces.major_asteroids`, NUM-009, WP25). The\nothers of `forces.asteroids` stay Minor.",
+      "oneOf": [
+        {
+          "description": "None: every asteroid is Minor (Newtonian from the Majors only).",
+          "type": "string",
+          "const": "none"
+        },
+        {
+          "description": "(1) Ceres, (2) Pallas, (4) Vesta, (7) Iris and (324) Bamberga, the five asteroids that\nobey the EIH equations in the EPM2021 model of Subbotin et al. 2023 §2 (with the Sun, the\nplanets, the Moon and Pluto: their 16 Major bodies).",
+          "type": "string",
+          "const": "epm2021"
+        },
+        {
+          "description": "Every asteroid of `forces.asteroids`: the all-mutual reference of the tiering check.",
+          "type": "string",
+          "const": "all"
+        }
       ]
     },
     "Mode": {
@@ -419,6 +554,11 @@
           "description": "Double-double (`ferroastro-real`).",
           "type": "string",
           "const": "dd"
+        },
+        {
+          "description": "The NUM-007 ephemeris precision mode (Subbotin et al. 2023 \"mixed\"): state, integrator\nsums and coefficients in double-double, forces in f64 (n-body mode, WP25).",
+          "type": "string",
+          "const": "mixed"
         }
       ]
     },

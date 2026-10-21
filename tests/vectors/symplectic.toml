@@ -1,0 +1,204 @@
+# SPDX-FileCopyrightText: 2026 Proper-Time Physics Institute
+# SPDX-License-Identifier: Apache-2.0
+# WP29 pre-registered checks: universal-variable Kepler drift, the Gauss-Legendre IRK16 reference
+# integrator (NUM-003) and the Wisdom-Holman / WHFast integrator with symplectic correctors
+# (NUM-004). Every bound below was written in IMPLEMENTATION-NOTES WP29 before the code or any run.
+# Schema: ADR-0004.
+schema_version = 1
+
+[[vector]]
+id = "KEPLER-DRIFT-VS-ELEMENTS-REL"
+requirement = ["NUM-004"]
+quantity = "max over 12 drifts (-3 to +7 periods) of |r_drift - r_elements| / a for a Mercury-like orbit (e = 0.2056): universal-variable Kepler drift vs Elements::to_state at the propagated mean anomaly"
+value = 1.0e-12
+unit = "1"
+kind = "analytic"
+source = "Both paths solve the same two-body problem exactly (Danby 1988 universal variables vs Kepler's equation); they differ only by round-off, ~ u n dt <~ 1e-14 relative for |n dt| <= 44 rad."
+citation = "Danby, J. M. A. 1988, Fundamentals of Celestial Mechanics, 2nd ed., Willmann-Bell, Sec. 6.9; Murray & Dermott 1999, Solar System Dynamics, Sec. 2.8"
+retrieved = "2026-10-21"
+tolerance = { abs = 0.0 }
+tolerance_rationale = "An upper bound: the test asserts the relative difference <= value. 100x the round-off estimate; a wrong Stumpff function or f/g formula gives O(1e-3) or larger."
+verified_by = "WP29 builder agent, 2026-10-21: fixed in the WP29 plan (check K1) before the code existed."
+
+[[vector]]
+id = "KEPLER-DRIFT-REVERSIBILITY-REL"
+requirement = ["NUM-004"]
+quantity = "|r(dt then -dt) - r0| / |r0| and the same for v, for elliptic (e = 0.2056, dt = 1.3 periods) and hyperbolic (e = 1.5) test orbits"
+value = 1.0e-13
+unit = "1"
+kind = "analytic"
+source = "The exact Kepler flow is reversible; a drift and its inverse each add a few ulp."
+citation = "Danby 1988, Fundamentals of Celestial Mechanics, 2nd ed., Sec. 6.9"
+retrieved = "2026-10-21"
+tolerance = { abs = 0.0 }
+tolerance_rationale = "An upper bound (asserted <=). About 500 u; a non-converged universal anomaly leaves errors of the solver tolerance instead."
+verified_by = "WP29 builder agent, 2026-10-21: fixed in the WP29 plan (check K2) before the code existed."
+
+[[vector]]
+id = "IRK16-ORDER-CONDITIONS-DD"
+requirement = ["NUM-003"]
+quantity = "max residual of the simplifying assumptions B(16) (sum_i b_i c_i^(k-1) = 1/k, k = 1..16) and C(8) (sum_j a_ij c_j^(k-1) = c_i^k / k, k = 1..8) of the s = 8 Gauss-Legendre coefficients computed in double-double"
+value = 1.0e-29
+unit = "1"
+kind = "analytic"
+source = "Gauss-Legendre collocation with s stages satisfies B(2s), C(s) and D(s) exactly (order 2s)."
+citation = "Hairer, Lubich & Wanner 2006, Geometric Numerical Integration, 2nd ed., Springer, Sec. II.1.3 and Thm. II.1.5; Butcher 1964, Math. Comp. 18, 50"
+retrieved = "2026-10-21"
+tolerance = { abs = 0.0 }
+tolerance_rationale = "An upper bound (asserted <=). Double-double has u ~ 1.2e-32; sums of 8-16 terms of magnitude <= 1 leave <~ 1e-30."
+verified_by = "WP29 builder agent, 2026-10-21: fixed in the WP29 plan (check I1) before the code existed."
+
+[[vector]]
+id = "IRK16-GL8-AS-TABLE-25-4"
+requirement = ["NUM-003"]
+quantity = "8-point Gauss-Legendre abscissae and weights on [-1, 1] (positive half), as printed to 15 decimals: x = 0.183434642495650, 0.525532409916329, 0.796666477413627, 0.960289856497536; w = 0.362683783378362, 0.313706645877887, 0.222381034453374, 0.101228536290376"
+value = 0.0
+unit = "1"
+kind = "measured"
+source = "Abramowitz & Stegun, Table 25.4 (abscissas and weight factors for Gaussian integration), n = 8. The test asserts max |computed - printed| <= tolerance for the eight numbers, which are in the test file's reference table read from this vector's quantity text."
+citation = "Abramowitz, M. & Stegun, I. A. 1964, Handbook of Mathematical Functions, NBS AMS 55, Table 25.4, p. 916"
+retrieved = "2026-10-21"
+tolerance = { abs = 1.0e-15 }
+tolerance_rationale = "The table prints 15 decimals, so a correct value differs by <= 5e-16 after rounding; 1e-15 allows that plus the f64 conversion."
+verified_by = "WP29 builder agent, 2026-10-21: values transcribed from the table as recalled; the agent had no scan of the table in this session, so agreement with the independently computed nodes is the check of both."
+
+[[vector]]
+id = "IRK16-OBSERVED-ORDER"
+requirement = ["NUM-003"]
+quantity = "log2(err_16 / err_32): observed convergence order of IRK16 at step points, position error after 10 orbits of a Mercury-like Kepler orbit with 16 and 32 steps per orbit"
+value = 16.25
+unit = "1"
+kind = "analytic"
+source = "s-stage Gauss collocation has classical order 2s = 16 at the step points."
+citation = "Hairer, Lubich & Wanner 2006, Geometric Numerical Integration, Thm. II.1.5"
+retrieved = "2026-10-21"
+tolerance = { abs = 2.25 }
+tolerance_rationale = "The interval [14, 18.5] around 16 allows pre-asymptotic behaviour at 16 steps per orbit (e = 0.2) and the error constant's step dependence; a method of order <= 12 (e.g. a wrong coefficient breaking B(16)) falls outside."
+verified_by = "WP29 builder agent, 2026-10-21: fixed in the WP29 plan (check I2) before the code existed."
+notes = "Superseded within WP29 by IRK16-OBSERVED-ORDER-DD: in f64 both errors were at round-off (1.671e-13, 1.039e-13; observed 0.685), so this design cannot measure the order. IMPLEMENTATION-NOTES WP29 plan addendum 1; NEEDS HUMAN REVIEW."
+
+[[vector]]
+id = "IRK16-OBSERVED-ORDER-DD"
+requirement = ["NUM-003"]
+quantity = "ln(err_12 / err_16) / ln(16/12): observed convergence order of IRK16 in double-double at step points, position error after 10 orbits of a Mercury-like Kepler orbit (e = 0.2056, GM = a = 1) with 12 and 16 steps per orbit"
+value = 16.25
+unit = "1"
+kind = "analytic"
+source = "s-stage Gauss collocation has classical order 2s = 16 at the step points. Double-double moves the round-off floor (~1e-30) below the truncation error (crudely 1e-26 to 1e-22 per step)."
+citation = "Hairer, Lubich & Wanner 2006, Geometric Numerical Integration, Thm. II.1.5; IMPLEMENTATION-NOTES WP29 plan addendum 1"
+retrieved = "2026-10-21"
+tolerance = { abs = 2.25 }
+tolerance_rationale = "The interval [14, 18.5] of IRK16-OBSERVED-ORDER, unchanged; it allows pre-asymptotic behaviour at 12 steps per orbit."
+verified_by = "WP29 builder agent, 2026-10-21: fixed in plan addendum 1 after the f64 design was found to measure round-off and before this design ran."
+
+[[vector]]
+id = "IRK16-KEPLER-FWD-BACK-REL"
+requirement = ["NUM-003"]
+quantity = "|r_back - r0| / a after 100 orbits forward then 100 back (32 steps per orbit) on a Mercury-like Kepler orbit, IRK16 f64"
+value = 1.0e-10
+unit = "1"
+kind = "analytic"
+source = "Gauss methods are symmetric, so the return error is round-off only: a random walk of the semi-major axis ~ u sqrt(N_steps) gives a phase error ~ 1.5 (delta a / a) 2 pi N_orbits ~ 1.5e-11 for 6400 steps and 200 orbits."
+citation = "Brouwer 1937, AJ 46, 149; Hairer, McLachlan & Razakarivony 2008, BIT 48, 231, doi:10.1007/s10543-008-0170-3"
+retrieved = "2026-10-21"
+tolerance = { abs = 0.0 }
+tolerance_rationale = "An upper bound (asserted <=), about 7x the estimate; a non-symmetric or unconverged iteration leaves truncation-sized errors (>= 1e-8)."
+verified_by = "WP29 builder agent, 2026-10-21: fixed in the WP29 plan (check I3) before the code existed."
+
+[[vector]]
+id = "IRK16-FWD-BACK-1000YR-DR"
+requirement = ["NUM-003"]
+quantity = "Mercury |r_back - r0| (km), Sun + 8 planets from header.440, Newtonian, IRK16 f64 h = 2 d, 1000 Julian yr forward then 1000 yr back"
+value = 3.0
+unit = "km"
+kind = "analytic"
+source = "NUM-003 acceptance (returns the ICs to round-off). Round-off estimate: a random walk of Mercury's semi-major axis ~ u sqrt(365 250 steps) ~ 7e-14 gives a phase error ~ 1.5 x 7e-14 x 2 pi x 8300 orbits ~ 5e-9 rad, i.e. ~ 0.3 km at 5.8e7 km."
+citation = "FerroAstro docs/requirements/NUM.md NUM-003; Brouwer 1937, AJ 46, 149; Hairer, McLachlan & Razakarivony 2008, BIT 48, 231"
+retrieved = "2026-10-21"
+tolerance = { abs = 0.0 }
+tolerance_rationale = "An upper bound (asserted <=), 10x the estimate. Truncation at h = 2 d is ~ (n h)^17 ~ 4e-15 per step, below round-off."
+verified_by = "WP29 builder agent, 2026-10-21: fixed in the WP29 plan (check I4) before the code existed."
+
+[[vector]]
+id = "IRK16-VS-IAS15-1000YR-DR"
+requirement = ["NUM-003", "NUM-001"]
+quantity = "Mercury |r_IRK16 - r_IAS15| (km) at 1000 Julian yr, Sun + 8 planets from header.440, Newtonian, IRK16 f64 h = 2 d vs IAS15 f64 epsilon = 1e-9"
+value = 1.0
+unit = "km"
+kind = "analytic"
+source = "NUM-003 acceptance (agrees with NUM-001). Both runs are round-off-limited (IAS15 vs REBOUND agreed to 67 m at 1000 yr for EIH, WP18 bench (e)); expected ~0.1 km."
+citation = "FerroAstro docs/requirements/NUM.md NUM-003, NUM-001; IMPLEMENTATION-NOTES WP18"
+retrieved = "2026-10-21"
+tolerance = { abs = 0.0 }
+tolerance_rationale = "An upper bound (asserted <=), ~10x the expectation."
+verified_by = "WP29 builder agent, 2026-10-21: fixed in the WP29 plan (check I5) before the code existed."
+
+[[vector]]
+id = "WH-TWO-BODY-EXACT-REL"
+requirement = ["NUM-004"]
+quantity = "max over 1000 steps of |r_WH - r_Kepler| / |r| for a two-body Sun + Mercury system (header.440), WH h = 4 d, against one Kepler drift of the relative orbit"
+value = 1.0e-12
+unit = "1"
+kind = "analytic"
+source = "With the Wisdom-Holman Jacobi splitting the interaction Hamiltonian of two bodies is identically zero, so the map is the exact Kepler flow; the kick cancels to round-off."
+citation = "Wisdom & Holman 1991, AJ 102, 1528; Rein & Tamayo 2015, arXiv:1506.01084, Sec. 2.2"
+retrieved = "2026-10-21"
+tolerance = { abs = 0.0 }
+tolerance_rationale = "An upper bound (asserted <=); round-off of 1000 drifts and cancelling kicks ~ 1e-13."
+verified_by = "WP29 builder agent, 2026-10-21: fixed in the WP29 plan (check W1) before the code existed."
+
+[[vector]]
+id = "WH-ENERGY-ORDER-RATIO"
+requirement = ["NUM-004"]
+quantity = "max |dE/E| (no corrector) at h = 4 d divided by the same at h = 2 d, Sun + 8 planets from header.440, Newtonian, 100 Julian yr"
+value = 4.0
+unit = "1"
+kind = "analytic"
+source = "The second-order Wisdom-Holman map has an energy error O(epsilon h^2)."
+citation = "Wisdom & Holman 1991, AJ 102, 1528; Rein & Tamayo 2015, arXiv:1506.01084, Sec. 2.4"
+retrieved = "2026-10-21"
+tolerance = { abs = 1.0 }
+tolerance_rationale = "The interval [3, 5] allows higher-order terms at h/P_Mercury = 0.045; a first-order splitting gives ~2, a broken kick no scaling."
+verified_by = "WP29 builder agent, 2026-10-21: fixed in the WP29 plan (check W2) before the code existed."
+
+[[vector]]
+id = "WH-CORRECTOR-GAIN-MIN"
+requirement = ["NUM-004"]
+quantity = "max |dE/E| without corrector divided by max |dE/E| with the order-11 symplectic corrector applied at output, Sun + 8 planets from header.440, Newtonian, WH h = 4 d, 100 Julian yr"
+value = 10.0
+unit = "1"
+kind = "analytic"
+source = "Correctors remove the O(epsilon h^2) term, leaving O(epsilon^2 h^2) + O(epsilon h^11); with epsilon ~ 1e-3 a gain of 1e2-1e3 is expected."
+citation = "Wisdom, Holman & Touma 1996, Fields Inst. Commun. 10, 217; Rein & Tamayo 2015, arXiv:1506.01084, Sec. 2.4"
+retrieved = "2026-10-21"
+tolerance = { abs = 0.0 }
+tolerance_rationale = "A lower bound (asserted >=); a corrector applied in the wrong direction doubles the error (gain ~0.5)."
+verified_by = "WP29 builder agent, 2026-10-21: fixed in the WP29 plan (check W3) before the code existed."
+
+[[vector]]
+id = "WH-ENERGY-1E6YR-MAX"
+requirement = ["NUM-004"]
+quantity = "max |dE/E| (no corrector) over 1e6 Julian yr, energy every 100 yr, Sun + 8 planets from header.440, Newtonian, WH h = 365.25/90 d, f64"
+value = 1.0e-8
+unit = "1"
+kind = "analytic"
+source = "NUM-004 acceptance (energy bounded over 1e6 yr). Estimate of the truncation error: (n h)^2 / 24 times the interaction energy fraction, ~1e-10."
+citation = "FerroAstro docs/requirements/NUM.md NUM-004; Wisdom & Holman 1991, AJ 102, 1528"
+retrieved = "2026-10-21"
+tolerance = { abs = 0.0 }
+tolerance_rationale = "An upper bound (asserted <=), ~100x the estimate: it tests boundedness, not accuracy; secular growth from a non-symplectic step would exceed it."
+verified_by = "WP29 builder agent, 2026-10-21: fixed in the WP29 plan (check W4a) before the code existed."
+
+[[vector]]
+id = "WH-ENERGY-1E6YR-DRIFT-FRACTION"
+requirement = ["NUM-004"]
+quantity = "|b| T / (max - min) of the uncorrected relative energy error over the 1e6-yr run, b the least-squares slope, T the span"
+value = 0.1
+unit = "1"
+kind = "analytic"
+source = "NUM-004: no secular drift. A secular drift gives |b| T ~ (max - min); a bounded quasi-periodic error over many periods gives |b| T << (max - min)."
+citation = "FerroAstro docs/requirements/NUM.md NUM-004; WP29 task text (fitted slope consistent with zero)"
+retrieved = "2026-10-21"
+tolerance = { abs = 0.0 }
+tolerance_rationale = "An upper bound (asserted <=). The formal slope sigma is printed but not used: the error is correlated in time, so a white-noise sigma would be too small."
+verified_by = "WP29 builder agent, 2026-10-21: fixed in the WP29 plan (check W4b) before the code existed."

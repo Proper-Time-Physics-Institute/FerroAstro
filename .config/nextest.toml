@@ -54,3 +54,17 @@ slow-timeout = { period = "600s", terminate-after = 12 }
 filter = "test(nightly_nbody_brouwer_energy_slope_with_solar_j2)"
 threads-required = "num-test-threads"
 slow-timeout = { period = "600s", terminate-after = 9 }
+
+# WP25: five 40-yr runs with 354 bodies in parallel threads, the all-mutual one (~50 min measured
+# by extrapolation) in checkpointed segments. Scheduling only.
+[[profile.nightly.overrides]]
+filter = "test(nightly_wp25_subbotin_table1_mixed_mode)"
+threads-required = 5
+slow-timeout = { period = "600s", terminate-after = 12 }
+
+# WP25 N4 follow-up: two 40-yr double-double runs with 354 bodies, one all-mutual (~5 h estimated
+# from the f64 and DD wall times), in checkpointed segments. Scheduling only.
+[[profile.nightly.overrides]]
+filter = "test(nightly_wp25_tiering_double_double)"
+threads-required = 2
+slow-timeout = { period = "1800s", terminate-after = 20 }

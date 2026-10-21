@@ -1,0 +1,38 @@
+# SPDX-FileCopyrightText: 2026 Proper-Time Physics Institute
+# SPDX-License-Identifier: Apache-2.0
+# WP24 (NUM-002): the Subbotin, Kodukov & Pavlov 2023 integrator configuration on the major-body
+# system: Sun, the 8 planets with Earth and Moon resolved (geocentric Moon), EIH 1PN, DE440 GMs,
+# from the DE440 initial conditions in header.440, 40 Julian years forward, ABM13 PECEC at
+# h = 1/16 d with the DP8 start-up at h/8, f64, compensated state update. Every body is sampled
+# every Julian year. Checks B2 (vs IAS15), B3 (round-off vs double-double) and B4
+# (checkpoint/resume). Schema: scenario.schema.json (CI-002).
+schema_version = 1
+name = "abm-sun-planets-moon-eih-40yr"
+description = "WP24: Sun + 8 planets + Moon, EIH 1PN, header.440 ICs, 40 yr, ABM13 PECEC h = 1/16 d, f64"
+mode = "n-body"
+bodies = ["Sun", "Mercury", "Venus", "Earth", "Moon", "Mars", "Jupiter", "Saturn", "Uranus", "Neptune"]
+central_body = "Sun"
+
+[initial_conditions]
+source = "de440-header"
+
+[constants]
+gm_set = "de440"
+
+[forces]
+newton = true
+gr_eih = true
+
+[integrator]
+name = "abm"
+precision = "f64"
+order = 13
+corrector = "pecec"
+step_days = 0.0625
+compensated = true
+
+[span]
+years = 40.0
+
+[output]
+cadence_days = 365.25

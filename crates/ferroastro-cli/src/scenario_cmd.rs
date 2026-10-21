@@ -4,13 +4,15 @@
 //!
 //! ```text
 //! ferroastro scenario validate FILE...
-//! ferroastro scenario run FILE [--header PATH] [--spk PATH] --output OUT
+//! ferroastro scenario run FILE [--header PATH] [--spk PATH] [--small-bodies CSV] --output OUT
 //!                             [--stop-years Y --checkpoint CK]
-//! ferroastro scenario resume FILE [--header PATH] [--spk PATH] --checkpoint CK --output OUT
+//! ferroastro scenario resume FILE [--header PATH] [--spk PATH] [--small-bodies CSV] --checkpoint CK
+//!                             --output OUT
 //! ```
 //!
 //! Data products are passed as paths (the CLI does no network I/O); each is reported with its
-//! SHA-256. Outputs and checkpoints are postcard files (`ferroastro_propagate::RunOutput`,
+//! SHA-256 (`--small-bodies` is the REF-003 sampled-state CSV of `forces.asteroids`/`kbos`, WP26),
+//! and so is the output file. Outputs and checkpoints are postcard files (`ferroastro_propagate::RunOutput`,
 //! `ferroastro_propagate::Checkpoint`). A scenario that requests something FerroAstro does not
 //! implement exits with status 2 and an `FA-E1201` message naming it (REF-011).
 
@@ -20,6 +22,7 @@ use ferroastro_core::ErrorCode;
 use ferroastro_ephem::Spk;
 use ferroastro_propagate::{Checkpoint, DataSources, PropagateError, RunOutput};
 use ferroastro_scenario::ScenarioSpec;
+use ferroastro_system::SmallBodyStates;
 use sha2::{Digest, Sha256};
 use std::fmt::Write as _;
 use std::io::Write;
@@ -27,8 +30,8 @@ use std::path::PathBuf;
 
 /// Usage text of the `scenario` command.
 pub const SCENARIO_USAGE: &str = "usage: ferroastro scenario validate FILE...\n       \
-     ferroastro scenario run FILE [--header PATH] [--spk PATH] --output OUT [--stop-years Y --checkpoint CK]\n       \
-     ferroastro scenario resume FILE [--header PATH] [--spk PATH] --checkpoint CK --output OUT";
+     ferroastro scenario run FILE [--header PATH] [--spk PATH] [--small-bodies CSV] --output OUT [--stop-years Y --checkpoint CK]\n       \
+     ferroastro scenario resume FILE [--header PATH] [--spk PATH] [--small-bodies CSV] --checkpoint CK --output OUT";
 
 impl From<PropagateError> for CliError {
     fn from(e: PropagateError) -> Self {
@@ -59,6 +62,7 @@ struct Args {
     file: Option<PathBuf>,
     header: Option<PathBuf>,
     spk: Option<PathBuf>,
+    small_bodies: Option<PathBuf>,
     output: Option<PathBuf>,
     checkpoint: Option<PathBuf>,
     stop_years: Option<f64>,
@@ -76,6 +80,7 @@ fn parse(args: &[String]) -> Result<Args, CliError> {
         match s.as_str() {
             "--header" => a.header = Some(val("--header")?.into()),
             "--spk" => a.spk = Some(val("--spk")?.into()),
+            "--small-bodies" => a.small_bodies = Some(val("--small-bodies")?.into()),
             "--output" => a.output = Some(val("--output")?.into()),
             "--checkpoint" => a.checkpoint = Some(val("--checkpoint")?.into()),
             "--stop-years" => {
@@ -105,6 +110,38 @@ fn load_spec(path: &PathBuf) -> Result<ScenarioSpec, CliError> {
     let text = String::from_utf8(read(path, "scenario")?)
         .map_err(|_| usage(&format!("{} is not UTF-8", path.display())))?;
     ScenarioSpec::parse(&text).map_err(|e| CliError(e.to_string(), e.code()))
+}
+
+/// The REF-003 sampled small-body states of `--small-bodies`, with a provenance line.
+fn load_small_bodies(
+    path: Option<&PathBuf>,
+) -> Result<Option<(SmallBodyStates, String)>, CliError> {
+    path.map(|p| {
+        let b = read(p, "small-body states")?;
+        let parsed = SmallBodyStates::parse(&String::from_utf8_lossy(&b))
+            .map_err(|e| CliError(e.to_string(), e.code()))?;
+        Ok((parsed, format!("{} sha256 {}", p.display(), sha256_hex(&b))))
+    })
+    .transpose()
+}
+
+/// Write the encoded run output and report it (summary and the file's SHA-256).
+fn write_output<W: Write>(
+    out: &mut W,
+    output: &PathBuf,
+    result: &RunOutput,
+) -> Result<(), CliError> {
+    let encoded = result.encode()?;
+    std::fs::write(output, &encoded)
+        .map_err(|e| io(&format!("cannot write {}", output.display()), &e))?;
+    summary(out, result)?;
+    writeln!(
+        out,
+        "  output   : {} sha256 {}",
+        output.display(),
+        sha256_hex(&encoded)
+    )
+    .map_err(|e| io("stdout", &e))
 }
 
 fn summary<W: Write>(out: &mut W, o: &RunOutput) -> Result<(), CliError> {
@@ -190,7 +227,12 @@ pub fn run_scenario_command<W: Write>(args: &[String], out: &mut W) -> Result<bo
         (Some(p), Some(b)) => format!("SPK {} sha256 {}", p.display(), sha256_hex(b)),
         _ => String::new(),
     };
+    let small = load_small_bodies(a.small_bodies.as_ref())?;
     let mut data = DataSources::none();
+    if let Some((sb, prov)) = &small {
+        writeln!(out, "small bodies: {prov}").map_err(|e| io("stdout", &e))?;
+        data = data.with_small_bodies(sb);
+    }
     if let Some(h) = &header {
         data = data.with_header(h, &header_prov);
     }
@@ -222,8 +264,6 @@ pub fn run_scenario_command<W: Write>(args: &[String], out: &mut W) -> Result<bo
         }
         other => return Err(usage(&format!("unknown scenario subcommand {other:?}"))),
     };
-    std::fs::write(&output, result.encode()?)
-        .map_err(|e| io(&format!("cannot write {}", output.display()), &e))?;
-    summary(out, &result)?;
+    write_output(out, &output, &result)?;
     Ok(true)
 }

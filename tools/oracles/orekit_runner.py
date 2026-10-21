@@ -70,6 +70,7 @@ SWITCH_REASONS: dict[str, str] = {
     "asteroids": "the field holds the DE440 Major bodies only",
     "kbos": "the field holds the DE440 Major bodies only",
     "kbo_ring": "the field holds the DE440 Major bodies only",
+    "major_asteroids": "the field holds the DE440 Major bodies only",
 }
 
 

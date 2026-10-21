@@ -9,6 +9,7 @@ pyerfa or jplephem installed. The real container runs are recorded in IMPLEMENTA
 from __future__ import annotations
 
 import json
+import math
 import re
 import shutil
 import tomllib
@@ -527,3 +528,33 @@ def test_drift_ignores_download_metadata_but_not_the_product_hash(tmp_path: Path
         paths[name].write_text(json.dumps(doc), encoding="utf-8")
     assert drift.stable_json(paths["golden"]) == drift.stable_json(paths["warm"])
     assert drift.stable_json(paths["golden"]) != drift.stable_json(paths["changed"])
+
+
+def _defined(vector_id: str) -> float:
+    """A defined constant (value of a ``tests/vectors/defined-constants.toml`` vector)."""
+    data = tomllib.loads((ROOT / "tests" / "vectors" / "defined-constants.toml").read_text())
+    return float(next(v["value"] for v in data["vector"] if v["id"] == vector_id))
+
+
+# Verifies: REF-005, CI-003
+def test_rebound_runner_speed_of_light_is_pinned() -> None:
+    """V4 (progress review after WP21): the runner's c in au/day is CLIGHT * 86400 / AU of the
+    header.440 constants (within 1 ulp) and equals every committed stage C manifest's
+    ``c_au_per_day``, so a scaled c fails here, not only after a golden regeneration."""
+    clight, au = _defined("CONST-CLIGHT-SI"), _defined("CONST-AU-IAU2012")
+    header = Header440(
+        ("BETA", "GAMMA", "CLIGHT", "AU"), {"BETA": 1.0, "GAMMA": 1.0, "CLIGHT": clight, "AU": au}
+    )
+    c = rebound_runner.speed_of_light_au_per_day(header)
+    want = clight * 86400.0 / au  # lint: allow-literal(seconds per day, SI definition)
+    assert abs(c - want) <= math.ulp(want)
+    manifests = sorted((ROOT / "ci" / "golden" / "rebound").glob("stage-c-*/MANIFEST.json"))
+    assert manifests
+    pinned = 0
+    for m in manifests:
+        for entry in json.loads(m.read_text())["entries"]:
+            recorded = entry["extra"]["c_au_per_day"]
+            if recorded != "n/a":
+                assert float(recorded) == c, m
+                pinned += 1
+    assert pinned >= 1
