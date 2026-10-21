@@ -60,10 +60,19 @@
           }
         },
         "notes": { "type": "string" },
-        "blocked_by": { "type": "string", "pattern": "^OI-[0-9]+$" }
+        "blocked_by": { "type": "string", "pattern": "^OI-[0-9]+$" },
+        "provisional": {
+          "description": "Open item under which this gating assertion is PROVISIONAL (ADR-0014); must exist in docs/requirements/OPEN-ITEMS.md (checked by ferroastro-vectors).",
+          "type": "string", "pattern": "^OI-[0-9]+$"
+        }
       },
-      "if": { "properties": { "kind": { "const": "computed-reference" } } },
-      "then": { "required": ["generated_by", "engine"] }
+      "allOf": [
+        {
+          "if": { "properties": { "kind": { "const": "computed-reference" } } },
+          "then": { "required": ["generated_by", "engine"] }
+        },
+        { "not": { "required": ["provisional", "blocked_by"] } }
+      ]
     }
   }
 }
