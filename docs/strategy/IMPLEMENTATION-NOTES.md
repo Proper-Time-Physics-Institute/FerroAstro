@@ -6148,3 +6148,11 @@ Provenance: header.440 `0f4636b6…6ac3359` and de440.bsp `a4ce9bf9…fff7c4b5`.
 - The cause of the Swiftest stage A discrepancy (item 4).
 - A maintainer check of the corrector coefficients (item 3).
 - WP27, WP22, WP23 and V2, as before.
+
+### WP29 gate results (local, 2026-10-21, toolchain 1.95.0 and MSRV 1.85.0)
+- **`tools/pre_push.sh`, first run:** every step passed up to `reuse lint`, which failed. The steps were fmt, clippy `-D warnings`, nextest (**324 passed, 59 skipped**), SIMD 12/12, doctests, `cargo deny`, `cargo doc -D warnings`, ruff, ruff format, mypy strict and pytest (89 passed).
+  - The `reuse lint` failure was the generated SPDX lines inside `tools/symplectic_correctors.py`. I fixed it with REUSE-Ignore markers, as `abm_dp8.py` already does.
+  - The remaining steps then passed when run individually: `reuse lint` compliant, trace (121 requirements, 763 citing tests, 0 errors), MSRV 1.85 `check` and MSRV nextest (**321 passed**).
+- **Data tier** (`--profile data --run-ignored only`): **35/35 pass** (143 s), including D1. Horizons answered with `signature.version` 1.2 / DE441.
+- **WP29 nightly** (`--profile nightly`, binary `nightly_wh_irk16`, code tip `a25500d`): **3/3 pass**. The run took 356 s; W4 was the slow test.
+- **Layer check:** 24 crates, 0 errors. **`lint_literals`:** 0 findings.
