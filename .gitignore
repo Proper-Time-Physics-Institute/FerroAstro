@@ -32,3 +32,7 @@ __pycache__/
 # Downloaded external data products (JPL DE/Horizons); never committed (licence terms are an open item)
 fa-data/
 .fa-data/
+# JPL binary/ASCII products cached outside fa-data by mistake (WP29: an empty FA_DATA_DIR once
+# cached them in a crate directory); the small derived vectors live in tests/vectors instead.
+*.bsp
+*.bsp.provenance.toml
