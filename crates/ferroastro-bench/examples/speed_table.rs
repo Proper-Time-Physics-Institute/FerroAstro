@@ -423,10 +423,17 @@ fn timer_scope(tool: &str) -> &'static str {
 fn settings_of(info: &RunInfo) -> String {
     let e = &info.extra;
     if info.tool == "ferroastro" {
-        return e
-            .get("model")
-            .and_then(|m| m.split("; IAS15 ").nth(1))
-            .map_or_else(|| "IAS15".to_owned(), |s| format!("IAS15 {s}"));
+        // The integrator part of the model string: "...; IAS15 ..." or "...; ABM13 PECEC ...".
+        let model = e.get("model").map_or("", String::as_str);
+        return ["; IAS15 ", "; ABM"]
+            .iter()
+            .find_map(|k| {
+                model
+                    .find(k)
+                    .and_then(|i| model.get(i + 2..))
+                    .map(str::to_owned)
+            })
+            .unwrap_or_else(|| "see the model string".to_owned());
     }
     if info.tool == "rebound" {
         return format!(
@@ -750,7 +757,7 @@ fn cmd_assemble(args: &[String]) -> ExitCode {
         // scenarios: they are left out of the table, with a note, rather than listed as failed.
         if TOOLS.iter().all(|t| !run_dir.join(t).join(p.name).exists()) {
             notes.push(format!(
-                "{}: not run in this invocation (harness --only)",
+                "{}: not run in this invocation (harness --suite or --only)",
                 p.label
             ));
             continue;

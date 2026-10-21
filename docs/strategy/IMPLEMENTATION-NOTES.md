@@ -5884,3 +5884,85 @@ Nothing above is tuned after a run. If a bound fails, the value, the failure and
 | # | check | tier | bound (vector) | expectation and rationale |
 |---|---|---|---|---|
 | D1 | The de440.bsp column's library function (`accuracy::body_vs_spk`, moved out of the driver) on the NUM-024 mixed scenario over 5 yr with 10-d samples (the WP25 D1 run), header.440 and de440.bsp fetched or re-verified with provenance printed. Check: its Mercury heliocentric max residual equals an independent in-test computation from the `RunOutput` records (the WP25 D1 method) | data | ≤ 1e-6 km (`BENCH-DE440-COLUMN-CONSISTENCY-KM`) | The two paths differ only in how the epoch is split and in the CSV-free f64 sum of each (hi, lo) pair: ≤ 1e-8 s of time × 48 km/s ≈ 5e-7 km. Reported, not asserted: the value against WP25 D1's printed 0.784621 km (mixed). |
+
+### What was built (WP28)
+- **Review corrections:**
+  - W1: `ferroastro-abm/tests/abm_kepler.rs` T1 (`compensated_update_beats_the_plain_update_on_a_mars_like_orbit`, vector `ABM-COMPENSATION-GAIN-MIN`) and T1b (`one_compensated_step_is_the_documented_sequence_bit_for_bit`, added after the review's mutant survived T1; see below).
+  - W2: `mixed_forces_is_the_compensated_model_widened` now checks every slot word for word and the Moon slot's low words (T2).
+  - W3: `ci/nightly-known-failures.toml`, `tools/nightly_summary.py` (+ pytest), wired into `tools/run_long_local.sh` after the nightly tier.
+  - W4: the `inv_r3` comment in `nbody/terms.rs` gives the ≤ 3 ulp bound and both sample maxima.
+- **`ferroastro-bench` (schema 2 of the speed table):** each entry carries its IC hash and step count (ms/step), and the round-off and de440.bsp columns; the host block carries the CPU pin and the single-core reference score; `published` rows list Subbotin et al. 2023's wall times (vectors `SUBBOTIN23-T1-WALL-*`, `blocked_by = "OI-44"`) with FerroAstro's medians and the cost ratios. Schema-1 tables (run1–run3) still read and validate. New library functions `accuracy::max_dr` (any body, heliocentric or barycentric) and `accuracy::body_vs_spk` (the de440.bsp column; new normal dependency `ferroastro-ephem`, L4 < L11). `Series::from_run` appends the final state when it lies after the last sample.
+- **Scenarios:** `bench-f-…-eih-100yr` (+ `-dd`), `bench-g-…-eih-100yr-abm` (+ `-dd`), `bench-h-num024-epm16-f64-40yr`, `bench-h-num024-epm16-dd-40yr`, `bench-j-de440class-mixed-40yr` (+ `bench-j-de440class-dd-40yr`); (i) is the WP25 file `ephemeris-mixed-epm16-40yr` itself.
+- **Harness:** `tools/bench/speed_table.sh --suite wp28 [--pin CPU]`; `tools/run_long_local.sh --weekly-bench` runs it and then the N1 check. Criterion bench `benches/num024.rs`.
+- **Tests:** PR `schema_two_published_rows_and_ic_hash` (S1); data `data_num024_de440_column_matches_the_direct_residual` (D1); nightly `nightly_num024_speed_table_is_complete` (N1).
+
+### WP28 results (local, i9-13900, toolchain 1.95.0)
+Provenance: header.440 `0f4636b6…6ac3359` and de440.bsp `a4ce9bf9…fff7c4b5` (pinned cache, SHA-256 re-verified, retrieved 2026-10-15); REF-003 states `tests/goldens/sb441-n373s-jdepoc-states.csv`. Logs in the session scratchpad `wp28/`.
+
+**PR tier (first runs, UTC 2026-10-21 ≈ 00:00–00:10):**
+| # | measured | bound | result |
+|---|---|---|---|
+| T1 | Mars-like orbit, 10 orbits, 1677 samples: max \|r − r_DD\| compensated **2.097e-5 km**, plain **2.173e-4 km**, ratio **10.36**. (The first run, with the DD truth's ICs computed in DD rather than widened from the f64 ICs, gave 10.48; the design was corrected so all three runs start from identical bits; the bound was not touched.) | ≥ 10 | **pass, margin 1.04** (thin; expectation was 30–100) |
+| T1b | one compensated ABM13 PECEC step after 212 steps, 4/4 compensation words non-zero: state and compensation equal the documented sequence **bit for bit**; fl(y − c) = y in 4/4 components | exact | pass |
+| T2 | every slot: DD words = `from_parts(split)` and `to_f64()` = compensated f64 model bitwise; Moon-slot low words 9.77e-23, −5.56e-23, −1.05e-22 km/s² | exact | pass |
+| T3 | pytest 8/8. On the reviewer's WP26 nightly log: 4 failing tests, 7 listed checks **all "known (value unchanged)"**, 0 NEW; on the WP25 DD follow-up log: N4 Mars (DD) known, unchanged | exact | pass |
+| S1 | synthetic v2 table with the three published rows (vector values 81, 246, 1920 s), per-step costs and the mixed/f64 ratio; missing IC hash and missing vector id refused; run1–run3 (schema 1) validate | exact | pass |
+
+**Data tier (D1):** 5-yr NUM-024 mixed run (29 220 steps, IC hash `4e2523b6…7e7a87`): Mercury heliocentric max residual against de440.bsp **0.786160078 km** from the library and from the direct computation, **|diff| = 0** (bound 1e-6 km): pass. WP25 D1 printed 0.784621 km for the same run; the difference is that WP28 includes the final state at t = 1826.25 d (where the maximum occurs), while WP25 D1 used the samples only (last at 1820 d). Not a discrepancy.
+
+**Speed table `run4-wp28-20261021T0009Z`** (published as `docs/validation/speed-tables/run4-wp28-20261021T0009Z.{json,md}`; FerroAstro commit `d9c0e14`, release, timed runs pinned `taskset -c 6`; started 00:08 UTC, finished 01:10 UTC). **Load disclosure:** the 1-min load average was 4.5–6 during the truth runs and rows (f)–(h), then rose to 12–68 during rows (i) and (j) (another session's `nightly_phy013` at ~560 % CPU and other users' jobs). The single-core 7-Zip score on CPU 6 fell from **6757 MIPS at the start to 3563 MIPS at the end**, so (i) and (j) were measured on a contended core and are upper bounds; their ranges (64 s, 75 s) show it. A rerun on a quiet machine (`tools/run_long_local.sh --weekly-bench`) is needed before these two medians are quoted as the machine's speed.
+
+| row | median (s) | range (s) | steps | ms/step | round-off vs DD (km) | Mercury vs de440.bsp at 40 yr (km) |
+|---|---|---|---|---|---|---|
+| (f) IAS15 f64, EIH Sun + 8 planets, 100 yr | 2.453 | 0.057 | 31 765 | 0.0772 | 2.234e-4 (IAS15: includes step-sequence difference) | 5.814 |
+| (f) REBOUNDx gr_full (container, unpinned, load 38–41) | 8.425 | 5.070 | – | – | – | 5.814 |
+| (g) ABM13 PECEC f64, same model, 100 yr | 4.338 | 0.132 | 584 400 | 0.0074 | 1.393e-2 | 5.816 |
+| (h) NUM-024 f64 (plain sums), 40 yr | **57.603** | 5.352 | 233 760 | **0.2464** | **3.246e-3** | 6.131 |
+| (i) NUM-024 mixed DD, 40 yr | **203.913** | 64.017 | 233 760 | **0.8723** | **2.038e-5** | 6.128 |
+| (j) DE440-class mixed DD, 40 yr | 233.850 | 75.392 | 233 760 | 1.0004 | 1.226e-5 | **0.1418** |
+| truth runs (untimed, parallel, other P-cores) | f-dd 25.5, g-dd 38.0, h-dd 452.6, j-dd 992.5 | | | | | |
+
+NUM-024 against Subbotin et al. 2023 (different machine, OI-44 UNVERIFIED; reported, not gated):
+| | Subbotin wall (s) | ms/step | FerroAstro median (s) | ms/step | FerroAstro / Subbotin |
+|---|---|---|---|---|---|
+| f64 | 81 | 0.3465 | 57.603 | 0.2464 | **0.711** |
+| mixed DD | 246 | 1.0524 | 203.913 (contended) | 0.8723 | **0.829** |
+| full DD | 1920 (32 min) | 8.2136 | 452.6 (one untimed truth run, not CI-008) | 1.936 | (0.236, informational) |
+
+- **Mixed / f64 cost ratio: 3.540** in this invocation, against Subbotin's 3.037. With the two least-loaded mixed runs (168.9 s and 174.8 s) it would be ≈ 3.0, and WP25's shared-machine runs gave ≈ 2.5; the median is the number of record and it is inflated by the load (above).
+- NUM-024's "within 1×" target: met for both rows on this machine (0.71×, 0.83×), but the comparison crosses hardware (OI-44), so it is context only.
+- Criterion (`taskset -c 6 cargo bench --bench num024`, 0.25 yr = 1461 steps, load 48): f64 768.8 ms, mixed 1.874 s, DE440-class 3.118 s per run. These include IC assembly and the relativistic re-barycentring (a fixed set-up cost that is large at 0.25 yr), so their per-step figures (0.53 / 1.28 / 2.13 ms) are not comparable with the 40-yr ones.
+
+**Pre-registered expectations vs outcome**
+| # | expectation | outcome |
+|---|---|---|
+| T1 | ratio 30–100, bound ≥ 10 | **10.36: passes, below the expectation** (see NEEDS HUMAN REVIEW 1) |
+| R1 | (h) 50–80 s; (i) 120–170 s; mixed/f64 ≈ 2.5; (h) 0.21–0.34 ms/step | (h) 57.6 s, 0.246 ms/step: met. **(i) 203.9 s and ratio 3.54: outside**, measured under load 12–46 on a contended core (score fell 47 %) |
+| R2 | round-off of (h) and (i) equals WP25 Table 1 to the printed digits | **met**: 3.246088e-3 km (WP25 3.2461 m) and 2.038162e-5 km (WP25 2.0382 cm); bitwise-deterministic reproduction |
+| R3 | de440 at 40 yr km-level for (f)–(i), (j) smaller | **met**: 5.81–6.13 km for (f)–(i); **(j) 0.142 km** (J2, LT, KBOs and ring) |
+| R4 | (f) REBOUNDx vs FerroAstro ≤ 1 m over 100 yr | **met**: 0.582 m (5.824e-4 km) |
+| N1 | nightly completeness of the committed table | **pass** (all rows, hashes, three published rows equal to the vectors, ratio, score) |
+
+### Mutation probes (WP28)
+Restores with `cp` + `touch`; the tree was clean afterwards.
+| mutant | result |
+|---|---|
+| review W1: `y0 = s + c` in `regular_step` | **survives T1 and T1b: an equivalent mutant in binary64.** `c` is the rounding error of the last Kahan update, so \|c\| ≤ ½ ulp(y) and fl(y ± c) = y except at an exact tie; T1b prints fl(y − c) ≠ y in 0 of 4 components. The base's compensation has no effect on any evaluation point, so no test can kill this mutant; the same holds in double-double. The stored state's compensation (what B3 measures) is in `kahan_add`, which the next two mutants test. |
+| final update plain (`*ys += inc`) instead of `kahan_add` | killed (T1 and T1b) |
+| `y0 = s` (compensation dropped from the base) | survives (equivalent, as above) |
+| review W2: Moon slot low words zeroed in `layout.rs` | killed (T2: "the Moon slot's compensation words are zero") |
+
+### Interpretations, deviations and NEEDS HUMAN REVIEW (WP28)
+1. **NEEDS HUMAN REVIEW — T1 passes with margin 1.04.** The pre-registered expectation (30–100) was wrong by about 3×: the compensated error floor at 10 orbits is higher than the per-step estimate suggested. The vector's source text also says "~340 for its velocity"; that is an arithmetic slip (h·|a| is 0.014 km/s, not 1.4e-3 km/s, so the velocity estimate is ≈ 34 like the position one). The bound and its text are unchanged; a maintainer may want a longer run or a different k.
+2. **NEEDS HUMAN REVIEW — review W1's mutant is equivalent** (above). The correction asked for a test that kills it; that is impossible in binary64, and T1/T1b kill the non-equivalent compensation mutants instead.
+3. **NEEDS HUMAN REVIEW — rows (i) and (j) were timed on a contended core** (load 12–68, 7-Zip score 6757 → 3563 MIPS). The table is valid under CI-008 and is published as measured; the mixed/f64 ratio (3.54) and the mixed median should be re-measured on a quiet machine before they are cited.
+4. **"Criterion suite" (deviation):** the 40-yr medians come from the harness (median of 5, CI-008); criterion measures a 0.25-yr span (criterion needs ≥ 10 samples, i.e. ≥ 40 min per 40-yr variant).
+5. **NUM-024 wording (PR #2):** "16 Major + 343 Minor" — FerroAstro runs 16 Majors + 338 Minor (343 asteroids, 5 of them Major, as in WP25). Subbotin's own model differs (277 asteroids, 30 TNOs, annulus, ring).
+6. **Weekly workflow:** the suite runs from `tools/run_long_local.sh --weekly-bench` on this machine (maintainer decision: long runs local). No cron line is installed and no GitHub workflow was added (CI and scheduling are for humans).
+7. **Pinning:** the timed FerroAstro runs are pinned to one P-core thread; the oracle container (REBOUNDx on (f)) is not pinned, and it ran under load 38–41, so the (f) REBOUND vs FerroAstro timing is not a like-for-like comparison.
+8. **The DE440-class row (j)** is the WP26 P7 model in the mixed ABM mode. Its Mercury residual against de440.bsp at 40 yr, 0.142 km, is a model-accuracy figure only; WP27 (stage D) owns the full residual analysis.
+9. **R7** (label request) and **V2** stay open; WP22 is blocked (OI-33), WP23 not started, WP27 not started.
+
+### Remaining after WP28
+- A quiet-machine rerun of the wp28 suite (`--weekly-bench`) to replace the contended (i)/(j) medians.
+- WP27 (stage D, M5 exit), WP22 (blocked, OI-33), WP23, V2.
