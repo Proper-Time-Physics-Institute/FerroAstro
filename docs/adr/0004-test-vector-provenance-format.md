@@ -22,7 +22,7 @@ Recorded from the build branch `m3-newtonian-nbody` (WP14, `docs/strategy/IMPLEM
 * In use on the build branch: Park 2017 Table 3 rows and N-AST (`OI-38`), the full-set SSB offset (`OI-24`), the NUM-009 cost ratio (`OI-42`).
 
 
-## Revision 2026-10-21 (proposed): the `provisional` field
+## Revision 2026-10-21: the `provisional` field
 Requested by the merge judge as a precondition for #13. The schema change is on the build branch `m3-newtonian-nbody` (#13), in a separate NEEDS-HUMAN-REVIEW commit to `tests/vectors/schema.json`. The wording below is the contract that schema and parser must match.
 
 * **Meaning.** A vector MAY carry `provisional = "OI-NN"`. The row **asserts** under a protocol or decision that is provisional until that open item closes. Its first use is the PHY-012 / NUM-013(b) Park 2017 Table 3 rows under ADR-0014 (P-remove), pending OI-38. This differs from `blocked_by`, which is **non-gating**.

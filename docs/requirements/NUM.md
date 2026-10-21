@@ -255,25 +255,48 @@ notes: >-
 
 ```yaml
 id: NUM-009
-title: "Body tiering: Major (EIH, mutual), Minor (Newtonian from Majors), Ring (fixed masses)"
+title: "Body tiering: EIH 1PN for all bodies; Newtonian Minor from Majors only; Ring fixed masses"
 status: draft
 criticality: medium
 verification: test
 statement: >-
-  Body tiering SHALL be a first-class model setting: Major bodies interact
-  mutually under EIH; Minor bodies feel Newtonian forces from the Majors only
-  and do not interact with each other; Ring bodies are fixed point masses.
+  Body tiering SHALL be a first-class model setting for the Newtonian
+  interactions: Major bodies interact mutually; Minor bodies feel Newtonian
+  forces from the Majors only and do not interact with each other; Ring
+  bodies are fixed point masses. When EIH is on, the 1PN EIH acceleration
+  (DE440 Eq. 27 minus its Newtonian part) SHALL be evaluated for every
+  moving body, Major and Minor (the Sun, planets, the Moon, asteroids and
+  KBOs), each with its own 1PN terms, with the sums over all bodies;
+  tiering does not restrict the 1PN terms.
 acceptance: >-
   With the DE440 asteroid set (343 Minor bodies), the run costs < 2× the
-  16-Major-body run. The bound applies when the Major bodies interact under
-  EIH, as the statement requires; with Newtonian Majors the cost ratio is
-  measured and reported only.
+  16-Major-body run. The bound applies when EIH is on, as the statement
+  requires; with Newtonian Majors the cost ratio is measured and reported
+  only.
 source: >-
   docs/strategy/journal/04-numerical-methods.md §5 and NUM-009; Subbotin et al.
   2023; Folkner et al. 2014, IPN PR 42-196.
 parent: null
 related: [NUM-024, PHY-014]
 notes: >-
+  EIH SCOPE (maintainer sign-off 2026-10-21, Journal #12,
+  https://github.com/Proper-Time-Physics-Institute/FerroAstro/issues/1#issuecomment-6306718280;
+  ruling on #13, https://github.com/Proper-Time-Physics-Institute/FerroAstro/pull/13#issuecomment-6306750993).
+  DE430 p. 12 states "The summation is over all bodies: Sun, Moon, planets
+  and asteroids" and DE440 p. 5 "the summations are over all bodies"; the
+  maintainer chose "Match DE440: all bodies". This supersedes the earlier
+  "Major = EIH, Minor = Newtonian from Majors only" reading of this
+  requirement (and the Majors-only EIH on m4-eih): the 1PN EIH acceleration
+  is evaluated for every moving body with the sums over all bodies, and the
+  asteroids and KBOs receive their own 1PN terms. Tiering continues to
+  govern the Newtonian part only (no Minor–Minor Newtonian interaction). Not
+  decided by the sign-off, to be recorded in WP22: (a) whether the 1PN sums
+  for a Minor receiver include other Minor sources, whose Newtonian pull the
+  tiered model omits ("all bodies" read literally includes them); (b)
+  whether the fixed Ring masses enter the 1PN sums as sources (they receive
+  no acceleration). The < 2× cost bound was set for Majors-only EIH; with
+  EIH evaluated for all bodies the ratio MUST be re-measured. The bound is
+  not changed here.
   Tiering costs < 1 cm (planets) / < 1 mm (Moon) over 40 yr [V]. Interaction
   count 16×343 + 120 ≈ 5.6×10³ versus ~6.4×10⁴ (derived here). EIH cost per pair
   ~3–5× Newtonian is UNVERIFIED.
@@ -664,33 +687,61 @@ verification: test
 statement: >-
   The EIH implementation SHALL use the Newtonian r̈ⱼ on the right-hand side by
   default, with an optional one-step fixed-point iteration to quantify the
-  O(c⁻⁴) difference. Initial-condition barycentring SHALL use the relativistic
-  SSB with μᵢ*.
+  O(c⁻⁴) difference. In ephemeris mode, initial-condition barycentring SHALL
+  use the relativistic SSB with μᵢ*: Σ μᵢ* rᵢ = 0 and the velocity condition
+  Σ (μ̇ᵢ* rᵢ + μᵢ* vᵢ) = 0, which includes the time derivative of μᵢ*. This
+  is REQUIRED for DE440 reproduction (ephemeris mode) and optional in other
+  modes (for example differential runs that use the header.440 initial
+  conditions unchanged).
 acceptance: >-
   The iterated-minus-default difference is within the expected O(c⁻⁴)
-  magnitude. SSB drift is at the μm level in DD mode (Subbotin reports
-  2.6 μm / 40 yr).
+  magnitude. In ephemeris mode with the relativistic SSB (including dμ*/dt),
+  SSB drift is at the μm level in DD mode (Subbotin reports 2.6 μm / 40 yr).
 source: >-
   docs/strategy/journal/04-numerical-methods.md §4 R5 and NUM-018; Park et al.
-  2021 Eqs. 1–2.
+  2021 Eqs. 1–2; Folkner et al. 2014 (DE430, IPN PR 42-196) p. 12
+  (Newtonian r̈ⱼ), Eqs. 2–4 and pp. 5–6; Subbotin et al. 2023 Eq. 5.
 parent: NUM-017
 related: [NUM-007, PHY-014]
 notes: >-
   μ* TRANSCRIPTION (sync 2026-10-20; WP11, WP15 on m3-newtonian-nbody): the
   relativistic barycentre is implemented in ferroastro-system as
-  μᵢ* = μᵢ [1 + vᵢ²/(2c²) − (1/(2c²)) Σⱼ≠ᵢ μⱼ/rᵢⱼ], with Σ μᵢ* rᵢ = 0 and
-  Σ μᵢ* vᵢ = 0 (the time derivative of μ* neglected in the velocity
-  condition). WP11 wrote it from memory; the WP15 builder agent then compared
-  it with the printed Eq. 2 of Park et al. 2021 (PDF sha256 96c3945d…e8f0ee0)
-  and found it equal. That is one agent reading; a human second reading
-  against Park 2021 Eq. 2 is still needed before sign-off (OI-75), and the
-  equation numbers in this requirement's source ("Eqs. 1–2") should be
-  confirmed in the same reading. Tests pin the implementation to the
-  transcription, not the transcription to the paper:
+  μᵢ* = μᵢ [1 + vᵢ²/(2c²) − (1/(2c²)) Σⱼ≠ᵢ μⱼ/rᵢⱼ], with Σ μᵢ* rᵢ = 0. WP11
+  wrote it from memory; the WP15 builder agent compared it with the printed
+  Eq. 2 of Park et al. 2021 and found it equal. Tests pin the implementation
+  to the transcription:
   crates/ferroastro-system/tests/ref002_header_initial_conditions.rs
   (μᵢ*/μᵢ − 1 = (vᵢ² − Uᵢ)/(2c²) to 8 ulp per body; Σμ*r 7.5e-12 km after two
-  rebarycentring passes). The SSB-drift and iteration acceptances need EIH
-  (WP19) and DD ephemeris mode (NUM-007), which are not built yet.
+  rebarycentring passes).
+  SIGN-OFF 2026-10-21 (OI-75 closed; maintainer, Journal #12,
+  https://github.com/Proper-Time-Physics-Institute/FerroAstro/issues/1#issuecomment-6306718280:
+  "Include dμ*/dt; scope to ephemeris mode"). μᵢ* is confirmed against
+  DE440 Eq. 2 (Park et al. 2021 p. 2, sha256 96c3945d…e8f0ee0; vᵢ is the
+  barycentric speed, the sum is over all bodies with finite mass) and DE430
+  Eq. 2 (Folkner et al. 2014 p. 4, sha256 76df7694…3ed196f). The source's
+  "Park et al. 2021 Eqs. 1–2" is correct (Eq. 1 r_ssbc, Eq. 2 μ*); DE430
+  numbers the same content Eqs. 2–4. DE440 states no velocity condition.
+  The velocity condition is DE430 Eq. 3, P = d/dt[Σ μ* r] (p. 5), with
+  V = P/𝓜 set to zero, equivalently Subbotin et al. 2023 Eq. 5,
+  Σ (μ̇ᵢ* rᵢ + μᵢ* ṙᵢ) = 0 (arXiv:2304.04458v1 p. 5, sha256 e65d152a…).
+  Neglecting dμ*/dt is not acceptable: DE430 pp. 5–6 state that DE405
+  neglected the rate of change of μ* when computing the Sun's initial
+  velocity and that its barycentre consequently moved by about
+  0.5 m/century, about 10⁵ times this requirement's μm acceptance. The
+  earlier text of these notes, which described Σ μᵢ* vᵢ = 0 with dμ*/dt
+  neglected, is withdrawn; ferroastro-system's rebarycentre (μ* only in the
+  velocity condition) does not comply in ephemeris mode.
+  Scope: required in ephemeris mode, where DE440 is reproduced (NUM-007);
+  optional elsewhere. Differential runs deliberately keep the header.440
+  initial conditions unchanged, so that the two runs of a pair start
+  identically (header.440 is already DE440-barycentric).
+  BUILD EVIDENCE (m5-performance a8795f85, WP25 N3, IMPLEMENTATION-NOTES):
+  ferroastro-eih relativistic_barycentre_with_rate implements the Eq. 5
+  condition (mu_star_rate) and is selected by the scenario key
+  initial_conditions.barycentre = "relativistic" (opt-in; default none). SSB
+  drift over 40 yr: 2.92 µm in double-double (2.9173 µm; mixed 2.9243 µm;
+  f64 0.405 mm), against Subbotin's 2.6 µm. This evidence is on a build
+  branch and is cited here, not yet merged.
 ```
 
 ### NUM-019 — Solar J₂ reaction and Lense–Thirring for all bodies
@@ -704,20 +755,35 @@ verification: test
 statement: >-
   Solar J₂ SHALL include the reaction on the Sun (DE440 Eq. 29) and a
   configurable solar pole. The Lense–Thirring acceleration from the solar
-  angular momentum SHALL be applied to every non-Sun body, with its
-  γ-dependence.
+  angular momentum (DE440 Eqs. 37–39, equivalently INPOP21a Eq. 1) SHALL be
+  applied to every non-Sun body, Major and Minor, with its γ-dependence, and
+  its reaction SHALL be applied to the Sun by default (configurable).
 acceptance: >-
   Total linear momentum is conserved with J₂ on. J₂ and LT contributions match
   Park17 Table 3 (0.0286 ± 0.0011 and −0.0020 ± 0.0002 ″/cy).
 source: >-
   docs/strategy/journal/04-numerical-methods.md §4 R1/R3b and NUM-019; Park et
-  al. 2021 Eq. 29.
+  al. 2021 Eq. 29 and §3.4 Eqs. 37–39; INPOP21a (Fienga et al. 2021, Notes
+  Sci. Tech. IMCCE S110) Eq. 1.
 parent: null
 related: [PHY-010, PHY-011, NUM-013]
 notes: >-
-  The LT form used here (IERS-style, Journal #4 R3b) and PHY-011's INPOP21a
-  Eq. 1 form SHALL be shown to agree; R3b typography versus DE440 is
-  UNVERIFIED. A J₂ fitted without LT is biased LOW: the LT precession is
+  LT FORM (OI-35 closed 2026-10-21; maintainer, Journal #12,
+  https://github.com/Proper-Time-Physics-Institute/FerroAstro/issues/1#issuecomment-6306718280:
+  "Confirm; Sun reaction on; LT all bodies"). The Journal #4 R3b form,
+  a_LT = (1+γ)GS/(c²r³)[3(r·ŝ)(r×v)/r² + v×ŝ] with S the total solar
+  angular momentum and r, v heliocentric, equals DE440 §3.4 Eqs. 37–39
+  (Park et al. 2021 p. 7, sha256 96c3945d…e8f0ee0) and INPOP21a Eq. 1 (p. 5,
+  sha256 5fc3b729…a8d67fffb89a5), read from the typeset pages. DE440 does not
+  define v; INPOP21a's heliocentric definition is used. Park et al. 2017
+  Eq. 2 is the orbit-averaged in-plane rate of this acceleration, the
+  analytic rate check of PHY-011, not a check of the form. Decisions: the
+  Sun receives the reaction −Σ (GMᵢ/GM☉) a_LT,i (on, the default; Off is the
+  literal DE440 reading, which states no reaction), consistent with this
+  requirement's momentum acceptance; LT applies to all non-Sun bodies, Minor
+  bodies included (DE440: "each body other than the Sun"). The build
+  branch's SolarLenseThirring (m4-eih / m5-performance) applies LT to Major
+  bodies only, so the Minor-body part is not yet met. A J₂ fitted without LT is biased LOW: the LT precession is
   negative, so the fit absorbs it by lowering J₂. INPOP (2.01→2.218×10⁻⁷ once
   LT is modelled) and DE430 2.11 < DE440 2.196×10⁻⁷ are consistent in sign
   only: the INPOP shift (9.4%) exceeds the ~7% LT share and the releases also
@@ -766,7 +832,54 @@ source: >-
   al. 2014, IPN PR 42-196; Park et al. 2021 §3.1.
 parent: null
 related: [PHY-014, PHY-018, NUM-017]
-notes: null
+notes: >-
+  SIGN-OFF 2026-10-21 (EIH equation; maintainer, Journal #12,
+  https://github.com/Proper-Time-Physics-Institute/FerroAstro/issues/1#issuecomment-6306718280).
+  The maintainer answered "Signed off" ("I reviewed it; Eq. 27 transcription
+  in journal R5 and eih.rs matches DE430/DE440. Unblock WP22/23 (with D1: all
+  bodies).") after reviewing the agent-prepared checklist, rows 0–17
+  (typeset term, Journal #4 R5 line, code line). Pinned code: m4-eih
+  78d5a4c7fd7141515d3d9aa6bdfa7218624bad81; crates/ferroastro-eih/src/eih.rs
+  blob 9f8a3fb82763f8f3438c3164d8ada28c1be4c247, barycentre.rs blob
+  9b43722da143629853327f8b12ae292e709414ff, lib.rs blob
+  adc3085c59615ef399106aa0296ffff81ba64531,
+  crates/ferroastro-forces/src/nbody/terms.rs blob
+  5c4dea6370911c298eb76f28807bdc97d7e2fbca; journal
+  docs/strategy/journal/04-numerical-methods.md blob 37a85701…, lines
+  269–285. Sources, read from 200 dpi page images, not the text layer:
+  DE430 (Folkner et al. 2014, IPN PR 42-196, sha256
+  76df76941ccc2602df03daa5bd1a3a0d5a54ba20e313c78f42f572fac3ed196f) p. 12
+  (§III.A, Eq. 27 and the paragraph after it), p. 4 (Eqs. 1–2), p. 5
+  (Eqs. 3–4); DE440 (Park et al. 2021, sha256
+  96c3945deb12e0f0843c2bf0703d3542d950cf85ff903b1fe11a501634f68ee0) p. 5
+  (§3.1, Eq. 27), p. 2 (Eqs. 1–2). No sign, coefficient or index difference
+  was found between the two PDFs, Journal #4 R5 and eih.rs. If eih.rs,
+  barycentre.rs or terms.rs changes blob after this pin, the affected rows
+  must be re-checked against the diff. OI-33 is closed by this sign-off.
+  The second clause of the statement (a linked issue per Journal #4
+  UNVERIFIED item) is not covered by this sign-off.
+  Decisions recorded with the sign-off. D1 (body scope): DE430 p. 12 states
+  "The summation is over all bodies: Sun, Moon, planets and asteroids", and
+  DE440 p. 5 "the summations are over all bodies". The maintainer chose
+  "Match DE440: all bodies": the 1PN EIH acceleration is evaluated for every
+  body (Sun, planets, the Moon, asteroids and KBOs), each with its own 1PN
+  terms, with the sums over all bodies. This supersedes the Majors-only
+  interpretation at the pin (eih.rs Tier::Major); see PHY-014 and NUM-009.
+  The maintainer's ruling on #13 (2026-10-21,
+  https://github.com/Proper-Time-Physics-Institute/FerroAstro/pull/13#issuecomment-6306750993)
+  repeats it: the Moon and the asteroids are required, and #17 does not
+  merge with a Majors-only EIH. D2 (provenance of the Newtonian
+  r̈ⱼ substitution): DE430 p. 12 states both the summation scope and that
+  using the Newtonian acceleration in the two aⱼ terms is accurate to
+  O(c⁻²); DE440 Eq. 27 and its text say neither. The citation for NUM-018's
+  default is therefore DE430 p. 12 (crates/ferroastro-eih/TRANSCRIPTION.md
+  T12/T13 should be corrected on the build branch). D3 (geocentric Moon):
+  Eih accumulates the Earth and Moon corrections barycentrically, and the
+  Moon − Earth variable receives their difference, while NewtonianMutual
+  skips the Earth–Moon pair, which GeocentricMoon supplies. This was judged
+  consistent (the 1PN correction of the relative acceleration is the
+  difference of the two barycentric corrections); it is noted for code
+  review of the WP22/WP23 wiring, not as a transcription issue.
 ```
 
 ### NUM-021 — SIMD force kernels with bitwise reproducibility
@@ -847,7 +960,17 @@ source: >-
   AJ 46, 149.
 parent: null
 related: [NUM-001, NUM-003]
-notes: null
+notes: >-
+  MAINTAINER RULING 2026-10-21 (on #13,
+  https://github.com/Proper-Time-Physics-Institute/FerroAstro/pull/13#issuecomment-6306750993):
+  NUM-023 BLOCKS M3 and #13. #13 does not merge until NUM-023 passes with an
+  asserting test at the long-ensemble length (≥ 5e7 steps), where the build
+  branch measured an energy slope of 0.629 against ½ ± 0.1. A known-failure
+  guard (nightly_num023_long_ensemble_known_failure) no longer satisfies
+  this requirement. If the fix is the pc_b_from_g predictor, it must become
+  the asserted default path, not a report-only knob. The ±0.1 tolerance is
+  not widened. Evidence history: docs/strategy/IMPLEMENTATION-NOTES.md
+  (WP3 NUM-023 section; the NUM-023 investigation).
 ```
 
 ### NUM-024 — Benchmark suite against Subbotin 2023
