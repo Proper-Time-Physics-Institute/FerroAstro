@@ -371,36 +371,43 @@ criticality: high
 verification: test
 statement: >-
   Rung LT SHALL use S☉ = 1.90×10⁴¹ kg m² s⁻¹ (DE440 MOISUN × M☉R☉² × OMGSUN)
-  and the INPOP21a Eq. 1 acceleration.
+  and the INPOP21a Eq. 1 acceleration (equivalently DE440 §3.4 Eqs. 37–39).
 acceptance: >-
   The rung yields −0.0020 ± 0.0002 ″/cy. The analytic check
   ϖ̇ = −4GS/(c²a³(1−e²)^(3/2)) at I ≈ 0 gives −0.00202 ″/cy.
 source: >-
   docs/strategy/journal/01-physics-truth-data.md §2 rung LT and PHY-011; Park
   et al. 2017; Park et al. 2021; INPOP21a (Fienga et al. 2021, Notes Sci. Tech.
-  IMCCE S110) Eq. 1.
+  IMCCE S110) Eq. 1; Park et al. 2021 §3.4 Eqs. 37–39.
 parent: ORG-002
 related: [REF-010, NUM-013, NUM-015, NUM-019]
 notes: >-
-  Journal #4 R3b gives an IERS-style LT acceleration whose typography relative
-  to the DE440 equation is UNVERIFIED. The INPOP21a Eq. 1 form named here and the
-  NUM-019 implementation SHALL be shown to agree. LT is ~7% of the oblateness
-  precession (Park21); INPOP21a says ~10% of the oblateness acceleration.
-  OI-35 EVIDENCE (sync 2026-10-20; WP4 on m3-newtonian-nbody; evidence
-  available, pending human sign-off, not a closure): INPOP21a (IMCCE note
-  S110) could not be retrieved (the IMCCE URL returned 404 and arXiv has no
-  INPOP21a paper), so equivalence with INPOP21a Eq. 1 is NOT demonstrated.
-  What is shown: the implemented R3b acceleration (LenseThirring in
-  ferroastro-forces) reproduces Park et al. 2017 Eq. 2 (read in the PDF,
-  sha256 24fb2153…2433380b), including its sign, (1+γ) factor and cos i
-  dependence, to 1.25e-6 relative in equatorial geometry (passing NUM-015
-  only through its 1e-7 ″/cy absolute floor) and 7.7e-8 relative in the real
-  solar-equator geometry (data tier). The rung gives −0.0020184 ″/cy
+  LT is ~7% of the oblateness precession (Park21); INPOP21a says ~10% of the
+  oblateness acceleration.
+  OI-35 CLOSED 2026-10-21 (maintainer sign-off, Journal #12,
+  https://github.com/Proper-Time-Physics-Institute/FerroAstro/issues/1#issuecomment-6306718280:
+  "Confirm; Sun reaction on; LT all bodies"). Read from the typeset pages:
+  DE440 §3.4 Eqs. 37–39 (Park et al. 2021 p. 7, sha256 96c3945d…e8f0ee0)
+  and INPOP21a Eq. 1 (Fienga et al. 2021, IMCCE note S110, p. 5, sha256
+  5fc3b7295a9664dadb25867cdc5893ce91cff0205bd03c972a2a8d67fffb89a5). Both
+  equal Journal #4 R3b: a_LT = (1+γ)GS/(c²r³)[3(r·ŝ)(r×v)/r² + v×ŝ], with S
+  the total solar angular momentum and r, v heliocentric (DE440's
+  (1+γ)G/(2c²r³) inside Ω is cancelled by the factor 2 of Eq. 37; DE440 does
+  not define v, INPOP21a defines it relative to the Sun). The statement's
+  "INPOP21a Eq. 1" therefore stands. Park et al. 2017 Eq. 2 (p. 2, sha256
+  24fb2153…2433380b), ϖ̇_LT = −2(1+γ)GS cos i/(c²a³(1−e²)^(3/2)), is the
+  orbit-averaged in-plane rate of this acceleration: it is the analytic rate
+  check used in the acceptance, not a check of the acceleration's form.
+  Decisions for the N-body use (NUM-019): the Sun receives the LT reaction
+  (on, the default), and LT applies to all non-Sun bodies.
+  NUMERICAL EVIDENCE (WP4 on m3-newtonian-nbody): the implemented R3b
+  acceleration (LenseThirring in ferroastro-forces) reproduces Park et al.
+  2017 Eq. 2 to 1.25e-6 relative in equatorial geometry (passing NUM-015
+  only through its 1e-7 ″/cy absolute floor) and 7.7e-8 relative in the
+  real solar-equator geometry (data tier). The rung gives −0.0020184 ″/cy
   (equatorial) and −0.0020148 ″/cy (real geometry), within −0.0020 ± 0.0002.
   G·S = 1.2680765843106158e16 km⁵/s³ from header.440 tokens (S = 1.8999e41
   kg m² s⁻¹), recomputed independently by data_solar_spin_from_fresh_header_440.
-  Whether the Park17 Eq. 2 evidence suffices to close OI-35, or the statement's
-  "INPOP21a Eq. 1" should be re-pointed, is a human decision.
 ```
 
 ### PHY-012 — Rungs N-VEN … N-NEP: single-planet contributions
@@ -518,7 +525,10 @@ verification: test
 statement: >-
   DE440-equivalent physics (EIH N-body with γ = β = 1, solar J2, Lense–Thirring,
   343 asteroids, 30 KBOs and the 36-point KBO ring) SHALL reproduce Park17's
-  total secular perihelion rate in the Park17 mean-orbit frame.
+  total secular perihelion rate in the Park17 mean-orbit frame. The 1PN EIH
+  acceleration SHALL be evaluated for every moving body (the Sun, planets,
+  the Moon, asteroids and KBOs), each with its own 1PN terms, with the sums
+  over all bodies (DE440 p. 5; DE430 p. 12).
 acceptance: >-
   Run with the DE440 constants (J2 = 2.19614×10⁻⁷), the rate is
   575.3093 ± 0.005 ″/cy. Derivation (maintainer decision 2026-10-15): Park17's
@@ -545,6 +555,18 @@ notes: >-
   asteroids by PHY-019, not by PHY-014 (red-team review 2026-10-14, Journal #9).
   The Park17 "Mercury" self row (0.0050) equals the whole tolerance and its
   meaning is UNVERIFIED (OI-09).
+  EIH SCOPE AND TRANSCRIPTION (sign-off 2026-10-21; maintainer, Journal #12,
+  https://github.com/Proper-Time-Physics-Institute/FerroAstro/issues/1#issuecomment-6306718280).
+  NUM-020 is signed off for the EIH equation (OI-33 closed; pinned m4-eih
+  78d5a4c7fd7141515d3d9aa6bdfa7218624bad81). D1: DE430 p. 12 says "The
+  summation is over all bodies: Sun, Moon, planets and asteroids"; DE440
+  p. 5 says "the summations are over all bodies". The maintainer chose
+  "Match DE440: all bodies", so the 1PN EIH terms apply to every body,
+  the Moon, asteroids and KBOs included. This supersedes the Majors-only EIH
+  of m4-eih (eih.rs Tier::Major, marked NEEDS HUMAN REVIEW). The ruling on
+  #13 (2026-10-21, https://github.com/Proper-Time-Physics-Institute/FerroAstro/pull/13#issuecomment-6306750993)
+  repeats it: the Moon and asteroids are required, and #17 does not merge
+  with a Majors-only EIH. WP22 and WP23 are unblocked on this basis.
 ```
 
 ### PHY-015 — Mandatory metadata on every reported rate

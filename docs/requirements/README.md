@@ -171,3 +171,19 @@ Applied 2026-10-20 from the build branches `m0-foundation` and `m3-newtonian-nbo
 | TST-002, ORG-004 | Notes: the `blocked_by` vector field and its auto-gating rule; a proposal that `trace.py` accept CI-gate evidence (ADR-0010, pending judge review). | WP14, WP6 |
 
 ADRs: new ADR-0014 (per-body contribution protocol); ADR-0004 revision (`blocked_by`, proposed); ADR-0010 proposal (CI-gate evidence). Strategy: ARCHITECTURE.md now lists the 21 crates that exist on the build branches and their layers; ROADMAP.md's M0 exit depends only on OI-04, and the M3 exit names the provisional protocol.
+
+## Sign-offs 2026-10-21
+
+Applied 2026-10-21 from the maintainer sign-offs in [Journal #12](https://github.com/Proper-Time-Physics-Institute/FerroAstro/issues/1#issuecomment-6306718280) and the [maintainer rulings on #13](https://github.com/Proper-Time-Physics-Institute/FerroAstro/pull/13#issuecomment-6306750993). The sign-offs are the maintainer's; the evidence checklists were prepared by an agent. Statuses stay `draft`. No tolerance was changed.
+
+| ID | Change | Evidence |
+|---|---|---|
+| NUM-020 | Notes: maintainer sign-off of the EIH transcription (pinned `m4-eih` `78d5a4c7`, checklist rows 0–17, DE430 p. 12 / DE440 p. 5 with PDF sha256s); decisions D1–D3. OI-33 closed. The issue-per-UNVERIFIED-item clause is not covered. | Journal #12 |
+| PHY-014, NUM-009 | **Statement changed** (D1): the 1PN EIH acceleration is evaluated for every moving body, the Moon, asteroids and KBOs included, with sums over all bodies (DE430 p. 12, DE440 p. 5). Supersedes the Majors-only EIH. NUM-009's tiering now governs the Newtonian interactions only; its < 2× cost bound must be re-measured (number unchanged). | Journal #12; #13 ruling |
+| PHY-011, NUM-019 | OI-35 closed: R3b = DE440 §3.4 Eqs. 37–39 = INPOP21a Eq. 1; Park 2017 Eq. 2 is the rate check. Stale "INPOP21a could not be retrieved" / "UNVERIFIED" text removed. NUM-019 **statement**: LT on every non-Sun body, Major and Minor, with the Sun's reaction on by default. | Journal #12 |
+| NUM-018 | **Statement and acceptance changed** (OI-75 closed): ephemeris-mode barycentring uses Σ μ* r = 0 and Σ(μ̇* r + μ* v) = 0 (DE430 Eq. 3; Subbotin 2023 Eq. 5), required in ephemeris mode, optional elsewhere. The note endorsing the neglect of dμ*/dt is withdrawn (DE430 pp. 5–6: DE405 drifted ~0.5 m/century). µm acceptance kept (build evidence 2.92 µm / 40 yr DD, `m5-performance`). | Journal #12 |
+| NUM-023 | Notes: blocks M3 and #13; must pass with an asserting test at ≥ 5e7 steps, not a known-failure guard. Added to the ROADMAP M3 exit criterion. | #13 ruling |
+| REF-007 | Notes: the Stage A Swiftest tolerance widening (1 km → 60 km) is rejected; 1 km restored. | #13 ruling |
+| OI-38 | Not ticked here: P-remove confirmed by the maintainer; the item closes in #13 together with the `provisional`-field removal (ADR-0004). | Journal #12 |
+
+ADRs: ADR-0004's 2026-10-21 revision (`provisional` field) is no longer marked proposed; it was accepted when #28 merged.
