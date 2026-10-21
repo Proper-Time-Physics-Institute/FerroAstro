@@ -11,6 +11,9 @@
 #   1. the `nightly` nextest profile (nightly_* tests) in release mode;
 #   2. the `data` nextest profile (data_* tests: real JPL products, network);
 #
+# After the nightly tier, `tools/nightly_summary.py` labels each failing test against
+# `ci/nightly-known-failures.toml` (known unchanged / known changed / NEW; WP28, review W3).
+#
 # and writes one log per invocation to target/long-local/<UTC timestamp>-<short sha>.log with the
 # commit, a dirty-tree flag, the UTC date, the toolchain (rustc -Vv, cargo -V, nextest -V), the
 # data-cache directory and the full test output (the data tests print URL, retrieval date, SHA-256
@@ -77,6 +80,10 @@ if [[ "$run_nightly" == 1 ]]; then
   if ! cargo nextest run --workspace --cargo-profile release --profile nightly --run-ignored only 2>&1 | tee -a "$log"; then
     status=1
   fi
+  # WP28 (review W3): label each nightly failure against ci/nightly-known-failures.toml as known
+  # (value unchanged), known (value changed) or NEW. Reporting only: no bound or status changes.
+  echo "## nightly summary (ci/nightly-known-failures.toml)" | tee -a "$log"
+  (cd tools && uv run python nightly_summary.py "$root/$log") 2>&1 | tee -a "$log" || true
 fi
 if [[ "$run_data" == 1 ]]; then
   echo "## data tier (network; provenance printed by each test)" | tee -a "$log"
