@@ -59,6 +59,20 @@ notes: >-
   PHY-001 (should be PHY-003) and MERC-GR-1PN-ANALYTIC cites PHY-012 (should be
   PHY-004/PHY-005). Use the PHY.md numbering. Values marked [S] or UNVERIFIED
   cannot enter a vector until PHY-018 clears them.
+  blocked_by FIELD (sync 2026-10-20; WP14 on m3-newtonian-nbody; ADR-0004
+  revision pending maintainer confirmation): a vector may carry an optional
+  blocked_by = "OI-NN" (added to tests/vectors/schema.json and the
+  ferroastro-vectors parser, Vector::blocking_open_item). A blocked vector is
+  still loaded, printed and compared, but its test reports instead of
+  failing while the item is unticked in OPEN-ITEMS.md (or missing from it);
+  it becomes gating automatically once a maintainer ticks the item. In use:
+  every Park17 Table 3 row and N-AST (OI-38), the full-set SSB offset
+  (OI-24) and the NUM-009 cost ratio (OI-42). Consequence: ticking an open
+  item can turn a nightly red without any code change (the WP15 review's
+  F13: ticking OI-38 alone would arm the P-add rows, 4 of which fail), so a
+  tick and the matching protocol or vector change belong in the same PR.
+  A blocked test cannot fail, so it is not evidence for its requirement
+  until unblocked (progress review after WP15).
 ```
 
 ### TST-003 — Computed-reference vectors record their generator
