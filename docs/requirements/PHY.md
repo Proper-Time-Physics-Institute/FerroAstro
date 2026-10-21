@@ -80,9 +80,9 @@ notes: >-
   obtained (parsed from header.440, never hand-transcribed). PHY-002 is
   authoritative for WHICH constants are used and the asserted values. The
   versioned table SHALL be generated from header.440. UNVERIFIED: the units of
-  GMSDOT (−9.0×10⁻¹⁴, presumably au³/d² per year; OI-04, now the only open item
-  blocking this requirement, and only for its GMSDOT entry, which the committed
-  table carries with open_item and unit "unverified" and never asserts);
+  GMSDOT (−9.0×10⁻¹⁴; adopted inference 2026-10-20: a fractional rate in yr⁻¹,
+  confirmed at M5 by a fit against de440.bsp, OI-04; it no longer blocks this
+  requirement, because the table carries it with open_item and never asserts it);
   whether the DE440 paper quotes a GM☉ uncertainty or a J2 rationale (OI-06,
   qualifies only). Closed 2026-10-20: the exact au (OI-05: IAU 2012
   Resolution B2 read, au = 149 597 870 700 m exactly) and the header state

@@ -95,7 +95,7 @@ notes: >-
   reproduces the 4.768e-7 km (WP16 check 3). The XC…ZDC block is all zero in
   DE440 and its meaning is still unexplained; it is not used (OI-73). The
   state-vector part of this requirement is therefore no longer blocked;
-  OI-04 (GMSDOT units) still blocks PHY-002's GMSDOT entry only.
+  OI-04 (GMSDOT units) no longer blocks REF-002 (Journal #11: fractional yr⁻¹ adopted as inference, confirmed at M5).
 ```
 
 ### REF-003 — Asteroid and KBO initial states from sb441-n373
