@@ -50,5 +50,9 @@ harness = false
 name = "run_scaling"
 harness = false
 
+[[bench]]
+name = "num024"
+harness = false
+
 [lints]
 workspace = true

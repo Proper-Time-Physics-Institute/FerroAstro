@@ -182,3 +182,135 @@ fn nightly_two_consecutive_speed_tables_are_stable_and_complete() {
         "medians moved by more than the recorded spread: {failed:?}"
     );
 }
+
+/// WP28 (NUM-024) rows of the speed table.
+const WP28_SCENARIOS: [&str; 5] = [
+    "bench-f-sun-8planets-eih-100yr",
+    "bench-g-sun-8planets-eih-100yr-abm",
+    "bench-h-num024-epm16-f64-40yr",
+    "ephemeris-mixed-epm16-40yr",
+    "bench-j-de440class-mixed-40yr",
+];
+/// The rows that carry the round-off and de440.bsp columns with values (FerroAstro).
+const WP28_ACCURACY: [&str; 3] = [
+    "bench-h-num024-epm16-f64-40yr",
+    "ephemeris-mixed-epm16-40yr",
+    "bench-j-de440class-mixed-40yr",
+];
+const SUBBOTIN_IDS: [&str; 3] = [
+    "SUBBOTIN23-T1-WALL-F64-S",
+    "SUBBOTIN23-T1-WALL-MIXED-S",
+    "SUBBOTIN23-T1-WALL-DD-S",
+];
+
+/// The NUM-024 table: `FA_BENCH_NUM024_TABLE`, or the most recent committed
+/// `docs/validation/speed-tables/*wp28*.json`.
+fn num024_table() -> SpeedTable {
+    if let Ok(p) = std::env::var("FA_BENCH_NUM024_TABLE") {
+        return read(&PathBuf::from(p));
+    }
+    let dir = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../docs/validation/speed-tables");
+    let mut found: Vec<PathBuf> = std::fs::read_dir(&dir)
+        .unwrap()
+        .filter_map(Result::ok)
+        .map(|d| d.path())
+        .filter(|p| {
+            p.extension().is_some_and(|e| e == "json")
+                && p.file_name()
+                    .is_some_and(|n| n.to_string_lossy().contains("wp28"))
+        })
+        .collect();
+    found.sort();
+    let p = found
+        .pop()
+        .expect("PRECONDITION FAILED: no committed *wp28*.json speed table");
+    println!("NUM-024 table: {}", p.display());
+    read(&p)
+}
+
+/// N1 (WP28 plan): the published NUM-024 table is complete: rows (f)-(j) timed for FerroAstro
+/// with >= 5 runs, a scenario SHA-256, IC hash and step count; both Subbotin et al. 2023 rows (and
+/// the DD row) equal to their vectors; the round-off and de440.bsp columns with values for
+/// (h)-(j); the mixed/f64 cost ratio; and the single-core reference score.
+///
+/// Verifies: NUM-024, CI-008
+#[test]
+#[ignore = "nightly: reads the WP28 speed table from tools/bench/speed_table.sh --suite wp28 (local, ~1.5 h)"]
+fn nightly_num024_speed_table_is_complete() {
+    let vs = ferroastro_vectors::VectorSet::load_canonical().unwrap();
+    let t = num024_table();
+    t.validate().unwrap();
+    assert!(t.schema_version >= 2, "schema 2 table expected");
+    let mut problems = Vec::new();
+    for sc in WP28_SCENARIOS {
+        let Some(info) = t.scenarios.iter().find(|s| s.name == sc) else {
+            problems.push(format!("{sc}: scenario not listed"));
+            continue;
+        };
+        if info.sha256.len() != 64 {
+            problems.push(format!("{sc}: scenario sha256 missing"));
+        }
+        match t.entry(sc, "ferroastro") {
+            Some(e)
+                if e.timing
+                    .as_ref()
+                    .is_some_and(ferroastro_bench::Timing::meets_minimum) =>
+            {
+                if e.ic_hash.as_deref().is_none_or(str::is_empty) || e.steps.is_none() {
+                    problems.push(format!("{sc}: IC hash or step count missing"));
+                }
+                let t = e.timing.as_ref().expect("checked");
+                println!(
+                    "{sc}: median {:.3} s, range {:.3} s, {} steps, {:.4} ms/step, IC hash {}",
+                    t.median_s,
+                    t.range_s(),
+                    e.steps.unwrap_or(0),
+                    e.ms_per_step().unwrap_or(f64::NAN),
+                    e.ic_hash.as_deref().unwrap_or("-")
+                );
+                if WP28_ACCURACY.contains(&sc) {
+                    for (col, m) in [
+                        ("round-off", e.accuracy.roundoff_vs_dd_km.as_ref()),
+                        ("de440", e.accuracy.mercury_de440_km.as_ref()),
+                    ] {
+                        match m.and_then(|m| m.value) {
+                            Some(v) => println!("  {col}: {v:.6e} km"),
+                            None => problems.push(format!("{sc}: no {col} value")),
+                        }
+                    }
+                }
+            }
+            _ => problems.push(format!("{sc}: FerroAstro not timed with >= 5 runs")),
+        }
+    }
+    for id in SUBBOTIN_IDS {
+        let want = vs.get(id).unwrap().value().unwrap();
+        match t.published.iter().find(|p| p.vector_id == id) {
+            Some(p) if p.wall_s.to_bits() == want.to_bits() => {
+                println!("{id}: {} s, {:.4} ms/step", p.wall_s, p.ms_per_step());
+            }
+            Some(p) => problems.push(format!("{id}: {} s != vector {want} s", p.wall_s)),
+            None => problems.push(format!("{id}: published row missing")),
+        }
+    }
+    let ratios = t.cost_ratios();
+    for r in &ratios {
+        println!("{r}");
+    }
+    if !ratios.iter().any(|r| {
+        r.contains("mixed DD / Subbotin 2023 f64: FerroAstro ") && !r.contains("FerroAstro –")
+    }) {
+        problems.push("the mixed/f64 cost ratio is missing".into());
+    }
+    match &t.host.reference_score {
+        Some(r) if !r.ratings.is_empty() => println!(
+            "single-core reference score: {:?} {} ({})",
+            r.ratings, r.unit, r.command
+        ),
+        _ => problems.push("single-core reference score missing".into()),
+    }
+    assert!(
+        problems.is_empty(),
+        "NUM-024 table incomplete: {problems:?}"
+    );
+}

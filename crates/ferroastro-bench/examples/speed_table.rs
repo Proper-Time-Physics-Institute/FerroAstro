@@ -28,10 +28,12 @@
     reason = "a command-line driver: a failure aborts the run with its message"
 )]
 
+use ferroastro_bench::accuracy::{Centre, max_dr};
 use ferroastro_bench::accuracy::{mercury_max_dr, mercury_track, relative_energy_change};
 use ferroastro_bench::series::{FERROASTRO_RECORD, RunInfo, Series};
 use ferroastro_bench::{
-    Accuracy, Entry, Host, Measure, ScenarioInfo, SpeedTable, Status, Timing, read_run, stability,
+    Accuracy, Entry, Host, Measure, Published, ReferenceScore, ScenarioInfo, SpeedTable, Status,
+    Timing, read_run, stability,
 };
 use ferroastro_constants::header440::Header;
 use ferroastro_core::frames::Icrf;
@@ -69,6 +71,10 @@ enum Kind {
     /// Sun + 8 planets under EIH 1PN (WP21): Mercury vs REBOUND(x `gr_full`); no conserved
     /// Newtonian energy.
     PlanetsEih,
+    /// WP28 (g): Sun + 8 planets under EIH with ABM13: no oracle runs ABM, so no Δr reference.
+    PlanetsEihAbm,
+    /// WP28 (h)–(j): the NUM-024 / DE440-class ephemeris runs (FerroAstro only).
+    Ephemeris,
 }
 
 struct Planned {
@@ -76,38 +82,98 @@ struct Planned {
     label: &'static str,
     daily: Option<&'static str>,
     kind: Kind,
+    /// WP28: the full double-double twin (untimed) behind the round-off column.
+    truth: Option<&'static str>,
+    /// WP28: whether the table carries Mercury vs de440.bsp at 40 yr.
+    de440: bool,
 }
 
-const PLAN: [Planned; 5] = [
+/// WP28 (NUM-024): the f64 and mixed scenarios that the published Subbotin rows are matched with.
+const NUM024_F64: &str = "bench-h-num024-epm16-f64-40yr";
+const NUM024_MIXED: &str = "ephemeris-mixed-epm16-40yr";
+/// The epoch offset of the de440.bsp column (days): 40 Julian years.
+const DE440_COLUMN_YEARS: f64 = 40.0;
+
+const PLAN: [Planned; 10] = [
     Planned {
         name: "bench-a-sun-8planets-newton-1000yr",
         label: "(a) Sun + 8 planets, Newtonian, 1000 yr",
         daily: Some("bench-a-sun-8planets-newton-1000yr-daily"),
         kind: Kind::PlanetsNewton,
+        truth: None,
+        de440: false,
     },
     Planned {
         name: "bench-b-sun-mercury-tp-gr1pn-1000yr",
         label: "(b) Sun + Mercury with GR (1PN test particle), 1000 yr",
         daily: Some("bench-b-sun-mercury-tp-gr1pn-1000yr-daily"),
         kind: Kind::MercuryGr,
+        truth: None,
+        de440: false,
     },
     Planned {
         name: "bench-c-full-newton-minor343-100yr",
         label: "(c) full Newtonian + 343 Minor asteroids + KBOs + ring, 100 yr",
         daily: None,
         kind: Kind::FullSmallBodies,
+        truth: None,
+        de440: false,
     },
     Planned {
         name: "oracle-stage-b-mercury-de440-field-100yr",
         label: "(d) Mercury in the DE440-driven field (stage B), 100 yr",
         daily: None,
         kind: Kind::EphemerisField,
+        truth: None,
+        de440: false,
     },
     Planned {
         name: "bench-e-sun-8planets-eih-1000yr",
         label: "(e) Sun + 8 planets, EIH 1PN (gr_eih; REBOUNDx gr_full), 1000 yr",
         daily: None,
         kind: Kind::PlanetsEih,
+        truth: None,
+        de440: false,
+    },
+    Planned {
+        name: "bench-f-sun-8planets-eih-100yr",
+        label: "(f) Sun + 8 planets, EIH 1PN, IAS15 f64 (REBOUNDx gr_full), 100 yr",
+        daily: None,
+        kind: Kind::PlanetsEih,
+        truth: Some("bench-f-sun-8planets-eih-100yr-dd"),
+        de440: true,
+    },
+    Planned {
+        name: "bench-g-sun-8planets-eih-100yr-abm",
+        label: "(g) Sun + 8 planets, EIH 1PN, ABM13 PECEC h = 1/16 d f64, 100 yr",
+        daily: None,
+        kind: Kind::PlanetsEihAbm,
+        truth: Some("bench-g-sun-8planets-eih-100yr-abm-dd"),
+        de440: true,
+    },
+    Planned {
+        name: NUM024_F64,
+        label: "(h) NUM-024 f64: 16 EIH Majors + 338 Minor, ABM13 h = 1/16 d, plain sums, 40 yr",
+        daily: None,
+        kind: Kind::Ephemeris,
+        truth: Some("bench-h-num024-epm16-dd-40yr"),
+        de440: true,
+    },
+    Planned {
+        name: NUM024_MIXED,
+        label: "(i) NUM-024 mixed DD: 16 EIH Majors + 338 Minor, ABM13 h = 1/16 d, 40 yr",
+        daily: None,
+        kind: Kind::Ephemeris,
+        truth: Some("bench-h-num024-epm16-dd-40yr"),
+        de440: true,
+    },
+    Planned {
+        name: "bench-j-de440class-mixed-40yr",
+        label: "(j) DE440-class model (EIH, J2, LT, 338 asteroids + 30 KBOs, ring), mixed DD, 40 yr",
+        daily: None,
+        kind: Kind::Ephemeris,
+        truth: Some("bench-j-de440class-dd-40yr"),
+        de440: true,
     },
 ];
 
@@ -193,19 +259,23 @@ fn cmd_ferroastro(args: &[String]) {
             .join(format!("run-{k}"));
         std::fs::create_dir_all(&dir).unwrap();
         let file = format!("{}.ferroastro.states.csv", spec.name);
+        // Only the first run's states are read by `assemble` (WP28: a 354-body 40-yr series is
+        // ~40 MB); the later runs are bitwise repeats and keep their timing record only.
         let series = Series::from_run(&file, &out);
-        std::fs::write(
-            dir.join(&file),
-            series.to_csv(&[
-                format!(
-                    "FerroAstro states of scenario {} (WP18 speed table)",
-                    spec.name
-                ),
-                format!("engine: ferroastro {commit}"),
-                format!("ic_hash: {}", out.ic_hash),
-            ]),
-        )
-        .unwrap();
+        if k == 1 {
+            std::fs::write(
+                dir.join(&file),
+                series.to_csv(&[
+                    format!(
+                        "FerroAstro states of scenario {} (WP18 speed table)",
+                        spec.name
+                    ),
+                    format!("engine: ferroastro {commit}"),
+                    format!("ic_hash: {}", out.ic_hash),
+                ]),
+            )
+            .unwrap();
+        }
         let mut extra = BTreeMap::new();
         extra.insert("model".to_owned(), out.model.clone());
         extra.insert("steps".to_owned(), out.stats.steps.to_string());
@@ -287,6 +357,27 @@ fn cpu_host(run: &serde_json::Value) -> Host {
             std::env::var("RUSTFLAGS").unwrap_or_default()
         ),
         git_commit: s("git_commit"),
+        pin: run
+            .get("pin")
+            .and_then(|v| v.as_str())
+            .filter(|p| !p.is_empty())
+            .map(str::to_owned),
+        reference_score: run.get("reference_score").and_then(|r| {
+            let ratings: Vec<f64> = r
+                .get("ratings")?
+                .as_array()?
+                .iter()
+                .filter_map(serde_json::Value::as_f64)
+                .collect();
+            let command = r.get("command")?.as_str()?.to_owned();
+            let version = r.get("version")?.as_str()?.to_owned();
+            (!ratings.is_empty()).then(|| ReferenceScore {
+                command,
+                version,
+                ratings,
+                unit: "MIPS (7-Zip LZMA total rating)".to_owned(),
+            })
+        }),
     }
 }
 
@@ -374,7 +465,11 @@ fn collect(run_dir: &Path, scenario: &str, tool: &str) -> Collected {
             mercury_dr_km: Measure::none("km", "no timed run"),
             rate_minus_ferroastro: Measure::none("arcsec/cy", "no timed run"),
             rate_minus_reference: Measure::none("arcsec/cy", "no timed run"),
+            roundoff_vs_dd_km: None,
+            mercury_de440_km: None,
         },
+        ic_hash: None,
+        steps: None,
     };
     for (file, status) in [
         ("refused.txt", Status::Refused),
@@ -400,6 +495,10 @@ fn collect(run_dir: &Path, scenario: &str, tool: &str) -> Collected {
     e.settings = settings_of(&first);
     e.timing = Timing::new(infos.iter().map(|i| i.wall_clock_s).collect());
     e.load_avg = infos.iter().filter_map(|i| i.load_avg).collect();
+    if tool == "ferroastro" {
+        e.ic_hash = first.extra.get("ic_hash").cloned();
+        e.steps = first.extra.get("steps").and_then(|x| x.parse().ok());
+    }
     Collected {
         entry: e,
         first: dirs.first().cloned().map(|d| (d, first)),
@@ -489,7 +588,11 @@ fn park_reference(vs: &VectorSet, kind: Kind) -> Option<(f64, String)> {
                 ),
             ))
         }
-        Kind::FullSmallBodies | Kind::EphemerisField | Kind::PlanetsEih => None,
+        Kind::FullSmallBodies
+        | Kind::EphemerisField
+        | Kind::PlanetsEih
+        | Kind::PlanetsEihAbm
+        | Kind::Ephemeris => None,
     }
 }
 
@@ -497,8 +600,156 @@ fn reference_tool(kind: Kind) -> Option<&'static str> {
     match kind {
         Kind::PlanetsNewton | Kind::PlanetsEih => Some("rebound"),
         Kind::MercuryGr | Kind::EphemerisField => Some("ferroastro"),
-        Kind::FullSmallBodies => None,
+        Kind::FullSmallBodies | Kind::PlanetsEihAbm | Kind::Ephemeris => None,
     }
+}
+
+/// Mercury's heliocentric |Δr| against de440.bsp at t = `DE440_COLUMN_YEARS`, and the max over
+/// the samples up to then: `(at 40 yr, max, time of the max)` (km, km, days).
+fn mercury_vs_de440(series: &Series, spk: &Spk<'_>) -> Result<(f64, f64, f64), String> {
+    use ferroastro_core::frames::Barycentric;
+    use ferroastro_core::time::{Epoch, Tdb};
+    use ferroastro_ephem::{Ephemeris, NaifId};
+    let t40 = DE440_COLUMN_YEARS * ferroastro_core::time::DAYS_PER_JULIAN_YEAR;
+    let helio = series
+        .heliocentric(ferroastro_bench::series::NAIF_MERCURY)
+        .map_err(|e| e.to_string())?;
+    let pos = |id: i32, t: f64| -> Result<[f64; 3], String> {
+        let e = Epoch::<Tdb>::from_jd_parts(series.epoch_jd_tdb, t).map_err(|e| e.to_string())?;
+        let s = spk
+            .state::<Barycentric, f64>(NaifId(id), e)
+            .map_err(|e| e.to_string())?;
+        Ok(s.position()
+            .components()
+            .map(ferroastro_core::units::Length::km))
+    };
+    let (mut at40, mut worst, mut t_worst) = (None, 0.0_f64, 0.0);
+    for (t, r, _) in &helio {
+        if *t > t40 + ferroastro_bench::accuracy::TIME_MATCH_DAYS {
+            break;
+        }
+        let (m, sun) = (pos(1, *t)?, pos(10, *t)?);
+        let d = ferroastro_bench::series::sub3(*r, ferroastro_bench::series::sub3(m, sun));
+        let dr = d[0].hypot(d[1]).hypot(d[2]);
+        if dr > worst {
+            (worst, t_worst) = (dr, *t);
+        }
+        if (t - t40).abs() <= ferroastro_bench::accuracy::TIME_MATCH_DAYS {
+            at40 = Some(dr);
+        }
+    }
+    at40.map(|a| (a, worst, t_worst))
+        .ok_or_else(|| format!("no Mercury sample at t = {t40} d"))
+}
+
+/// WP28: the round-off column (Mercury's barycentric `|r − r_DD|` against the scenario's
+/// double-double twin) and Mercury vs de440.bsp at 40 yr, for one tool's entry.
+fn wp28_columns(c: &mut Collected, p: &Planned, tool: &str, run_dir: &Path, spk: Option<&Spk<'_>>) {
+    let reason = match c.entry.status {
+        Status::Timed => None,
+        Status::Refused => Some("refused".to_owned()),
+        Status::Failed => Some("failed".to_owned()),
+    };
+    let series = if reason.is_none() {
+        series_of(c, p.name, tool)
+    } else {
+        None
+    };
+    if let Some(truth) = p.truth {
+        let m = match (&reason, &series) {
+            (Some(r), _) => Measure::none("km", r.clone()),
+            (None, _) if tool != "ferroastro" => Measure::none(
+                "km",
+                format!(
+                    "the double-double twin `{truth}` is a FerroAstro run; another tool's difference from it is not its round-off"
+                ),
+            ),
+            (None, None) => Measure::none("km", "no output series"),
+            (None, Some(s)) => match daily_series(run_dir, truth, "ferroastro") {
+                None => Measure::none("km", format!("the truth run `{truth}` is missing")),
+                Some(t) => match max_dr(
+                    s,
+                    &t,
+                    ferroastro_bench::series::NAIF_MERCURY,
+                    Centre::Barycentre,
+                ) {
+                    Ok((dr, at, n)) => Measure::of(
+                        dr,
+                        "km",
+                        format!(
+                            "Mercury barycentric max |r − r_DD| against the full double-double twin `{truth}` (same integrator and scenario, precision dd), max at t = {at} d over {n} samples incl. the final state{}",
+                            if p.kind == Kind::PlanetsEih {
+                                "; IAS15 adapts its steps to the DD state, so this includes the step-sequence difference"
+                            } else {
+                                "; fixed step: round-off only"
+                            }
+                        ),
+                    ),
+                    Err(e) => Measure::none("km", format!("not comparable: {e}")),
+                },
+            },
+        };
+        c.entry.accuracy.roundoff_vs_dd_km = Some(m);
+    }
+    if p.de440 {
+        let m = match (&reason, &series, spk) {
+            (Some(r), _, _) => Measure::none("km", r.clone()),
+            (None, None, _) => Measure::none("km", "no output series"),
+            (None, _, None) => Measure::none("km", "de440.bsp not loaded"),
+            (None, Some(s), Some(spk)) => match mercury_vs_de440(s, spk) {
+                Ok((at40, worst, t)) => Measure::of(
+                    at40,
+                    "km",
+                    format!(
+                        "Mercury heliocentric |Δr| against de440.bsp at t = {} d (40 Julian yr); max over 0–40 yr {worst:.4} km at t = {t} d. Model accuracy, not round-off: the model omits what de440 has beyond it (see the scenario)",
+                        DE440_COLUMN_YEARS * ferroastro_core::time::DAYS_PER_JULIAN_YEAR
+                    ),
+                ),
+                Err(e) => Measure::none("km", e),
+            },
+        };
+        c.entry.accuracy.mercury_de440_km = Some(m);
+    }
+}
+
+/// The Subbotin et al. 2023 Table 1 wall times (NUM-024), when the NUM-024 rows are in the table.
+fn published_rows(vs: &VectorSet, scenarios: &[ScenarioInfo]) -> Vec<Published> {
+    let has = |n: &str| scenarios.iter().any(|s| s.name == n);
+    if !has(NUM024_F64) && !has(NUM024_MIXED) {
+        return Vec::new();
+    }
+    let spec = ScenarioSpec::parse(&std::fs::read_to_string(scenario_path(NUM024_MIXED)).unwrap())
+        .unwrap();
+    let step_days = spec.integrator.step_days.unwrap();
+    #[expect(
+        clippy::cast_possible_truncation,
+        clippy::cast_sign_loss,
+        reason = "a positive step count far below 2^53, rounded"
+    )]
+    let steps =
+        (spec.span.years * ferroastro_core::time::DAYS_PER_JULIAN_YEAR / step_days).round() as u64;
+    let note = "Subbotin, Kodukov & Pavlov 2023 (CeMDA, doi:10.1007/s10569-023-10139-2; arXiv:2304.04458v1) Table 1: EPM2021 model (16 EIH Majors; 277 asteroids, 30 TNOs, annulus and ring), ABM13 PECEC h = 1/16 d, 40 yr, their CPU unspecified (OI-44: normalisation UNVERIFIED). FerroAstro's model has DE440's 343 asteroids (338 Minor), no TNOs or ring in (h)/(i).";
+    let row = |id: &str, label: &str, sc: Option<&str>| Published {
+        label: label.to_owned(),
+        vector_id: id.to_owned(),
+        wall_s: vs.get(id).unwrap().value().unwrap(),
+        steps,
+        ferroastro_scenario: sc.filter(|n| has(n)).map(str::to_owned),
+        note: note.to_owned(),
+    };
+    vec![
+        row(
+            "SUBBOTIN23-T1-WALL-F64-S",
+            "Subbotin 2023 f64",
+            Some(NUM024_F64),
+        ),
+        row(
+            "SUBBOTIN23-T1-WALL-MIXED-S",
+            "Subbotin 2023 mixed DD",
+            Some(NUM024_MIXED),
+        ),
+        row("SUBBOTIN23-T1-WALL-DD-S", "Subbotin 2023 full DD", None),
+    ]
 }
 
 /// `assemble`: the speed table of one run directory.
@@ -507,7 +758,14 @@ fn cmd_assemble(args: &[String]) -> ExitCode {
     let run: serde_json::Value =
         serde_json::from_str(&std::fs::read_to_string(run_dir.join("run.json")).unwrap()).unwrap();
     let vs = VectorSet::load_canonical().unwrap();
-    let data = load_data(false);
+    let wp28 = PLAN
+        .iter()
+        .any(|p| p.de440 && TOOLS.iter().any(|t| run_dir.join(t).join(p.name).exists()));
+    let data = load_data(wp28);
+    let spk = data
+        .spk_bytes
+        .as_ref()
+        .map(|(b, prov)| (Spk::parse(b).unwrap(), prov.clone()));
     let sources = DataSources::none()
         .with_header(&data.header, &data.header_prov)
         .with_small_bodies(&data.small);
@@ -637,7 +895,7 @@ fn cmd_assemble(args: &[String]) -> ExitCode {
                     Kind::EphemerisField => {
                         Measure::none("", "test particle in a time-dependent field: no conserved energy")
                     }
-                    Kind::PlanetsEih => Measure::none(
+                    Kind::PlanetsEih | Kind::PlanetsEihAbm | Kind::Ephemeris => Measure::none(
                         "",
                         "EIH 1PN: the Newtonian energy is not a conserved quantity of the model (the 1PN energy is checked in ferroastro-eih)",
                     ),
@@ -711,9 +969,43 @@ fn cmd_assemble(args: &[String]) -> ExitCode {
                 a.rate_minus_ferroastro = Measure::none("arcsec/cy", reason.clone());
                 a.rate_minus_reference = Measure::none("arcsec/cy", reason);
             }
+            if p.truth.is_some() || p.de440 {
+                wp28_columns(&mut c, p, tool, &run_dir, spk.as_ref().map(|x| &x.0));
+            }
             entries.push(c.entry);
         }
     }
+    if let Some((_, prov)) = &spk {
+        notes.push(format!("de440.bsp: {prov}"));
+    }
+    for p in PLAN
+        .iter()
+        .filter(|p| scenarios.iter().any(|s| s.name == p.name))
+    {
+        if let Some(truth) = p.truth {
+            let info = run_dirs(&run_dir.join("ferroastro").join(truth))
+                .first()
+                .and_then(|d| read_run(d).ok());
+            notes.push(info.map_or_else(
+                || format!("{}: truth run {truth} missing", p.label),
+                |i| {
+                    format!(
+                        "{}: round-off truth `{truth}` (scenario sha256 {}), one untimed run of {:.1} s (run in parallel with the other truth runs before the timed runs; not a CI-008 timing), IC hash {}, {}",
+                        p.label,
+                        ferroastro_testdata::sha256_hex(
+                            std::fs::read_to_string(scenario_path(truth))
+                                .unwrap_or_default()
+                                .as_bytes()
+                        ),
+                        i.wall_clock_s,
+                        i.extra.get("ic_hash").map_or("?", String::as_str),
+                        i.extra.get("model").map_or("", String::as_str)
+                    )
+                },
+            ));
+        }
+    }
+    let published = published_rows(&vs, &scenarios);
     let f = |k: &str| {
         run.get(k)
             .and_then(serde_json::Value::as_f64)
@@ -736,6 +1028,7 @@ fn cmd_assemble(args: &[String]) -> ExitCode {
         scenarios,
         entries,
         notes,
+        published,
     };
     let valid = table.validate();
     if let Err(e) = &valid {

@@ -1,0 +1,36 @@
+# SPDX-FileCopyrightText: 2026 Proper-Time Physics Institute
+# SPDX-License-Identifier: Apache-2.0
+# WP28 speed-table row (NUM-024 speed table; CI-008): the double-double twin of row (g) (untimed; the round-off column's reference).
+# Sun + 8 planets (EMB), EIH 1PN (gr_eih; REBOUNDx gr_full), header.440 ICs, DE440 GMs, 100 Julian
+# years, yearly samples. Run by tools/bench/speed_table.sh --suite wp28, never by the nightly
+# all-oracle loop. Schema: scenario.schema.json (CI-002).
+schema_version = 1
+name = "bench-g-sun-8planets-eih-100yr-abm-dd"
+description = "Bench (g) truth: as bench (g), ABM13 PECEC in double-double (untimed round-off reference)"
+mode = "n-body"
+bodies = ["Sun", "Mercury", "Venus", "EMB", "Mars", "Jupiter", "Saturn", "Uranus", "Neptune"]
+central_body = "Sun"
+
+[initial_conditions]
+source = "de440-header"
+
+[constants]
+gm_set = "de440"
+
+[forces]
+newton = true
+gr_eih = true
+
+[integrator]
+name = "abm"
+precision = "dd"
+order = 13
+corrector = "pecec"
+step_days = 0.0625
+compensated = true
+
+[span]
+years = 100.0
+
+[output]
+cadence_days = 365.25

@@ -1,0 +1,42 @@
+# SPDX-FileCopyrightText: 2026 Proper-Time Physics Institute
+# SPDX-License-Identifier: Apache-2.0
+# WP28 (NUM-024, CI-008): row (h), the NUM-024 f64 run: precision f64 with the plain (uncompensated) state update, i.e. the WP25 Table 1 f64 row.
+# The WP25 reference configuration (ephemeris-mixed-epm16-40yr): 16 Major bodies under EIH 1PN (the
+# Sun, the 8 planets with the Moon geocentric, Pluto, and the EPM2021 five asteroids) and the other
+# 338 numbered DE440 asteroids as Minor bodies; DE440 GMs, header.440 + REF-003 initial conditions,
+# re-barycentred to the relativistic SSB (Subbotin et al. 2023 Eq. 5); ABM13 PECEC at h = 1/16 d
+# with the DP8 start-up at h/8, 40 Julian years (233 760 steps); every body every 20 d. Run by
+# tools/bench/speed_table.sh --suite wp28. Schema: scenario.schema.json (CI-002).
+schema_version = 1
+name = "bench-h-num024-epm16-f64-40yr"
+description = "Bench (h), NUM-024 f64: the WP25 reference configuration in binary64 with the plain state update (Subbotin Table 1 f64 row)"
+mode = "n-body"
+bodies = ["Sun", "Mercury", "Venus", "Earth", "Moon", "Mars", "Jupiter", "Saturn", "Uranus", "Neptune", "Pluto"]
+central_body = "Sun"
+
+[initial_conditions]
+source = "de440-header"
+barycentre = "relativistic"
+
+[constants]
+gm_set = "de440"
+
+[forces]
+newton = true
+gr_eih = true
+asteroids = 343
+major_asteroids = "epm2021"
+
+[integrator]
+name = "abm"
+precision = "f64"
+order = 13
+corrector = "pecec"
+step_days = 0.0625
+compensated = false
+
+[span]
+years = 40.0
+
+[output]
+cadence_days = 20.0
