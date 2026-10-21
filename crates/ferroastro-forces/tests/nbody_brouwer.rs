@@ -199,10 +199,15 @@ fn run(de: &De440, ic: &InitialConditions, k: u32, checkpoints: &[f64]) -> (Vec<
 }
 
 /// Pre-registered WP12 1b. **Known failure** since its first run (2026-10-15, energy slope
-/// 0.050 ± 0.027 over 1.01e9 steps): the test passes while the failure reproduces and fails once
-/// the slope meets NUM-023, so a green nightly never implies NUM-023 holds here. It verifies
+/// 0.050 ± 0.027 over 1.01e9 steps): the test passes while the failure reproduces within that
+/// documented bound (`WP12-1B-KNOWN-FAILURE-ENERGY-SLOPE`) and fails once the slope meets NUM-023
+/// or leaves the bound, so a green nightly never implies NUM-023 holds here. It verifies
 /// nothing; see IMPLEMENTATION-NOTES WP12 (NEEDS HUMAN REVIEW).
 #[test]
+#[expect(
+    clippy::too_many_lines,
+    reason = "nightly evidence test; it reads top to bottom"
+)]
 #[ignore = "nightly tier: 32 x 100 000 yr N-body runs (~1e9 IAS15 steps, ~20 min on 32 threads)"]
 fn nightly_nbody_brouwer_energy_slope_with_solar_j2() {
     let report_only =
@@ -296,6 +301,19 @@ fn nightly_nbody_brouwer_energy_slope_with_solar_j2() {
         check.is_err(),
         "the pre-registered WP12 1b failure (energy slope 0.050 on 2026-10-15) no longer \
          reproduces (slope {:.3}): update IMPLEMENTATION-NOTES WP12 and assert here",
+        fe.slope
+    );
+    // F3 (PR #13 review): bounded, so a failure that worsens or changes is noticed.
+    let vs = vectors();
+    let known = vs.get("WP12-1B-KNOWN-FAILURE-ENERGY-SLOPE").unwrap();
+    let kc = known.check(fe.slope);
+    println!("  documented-failure bound check: {kc:?}");
+    assert!(
+        kc.is_ok(),
+        "the WP12 1b known failure moved from its documented energy slope {} +/- {} (now {:.3}): \
+         update IMPLEMENTATION-NOTES WP12",
+        known.value().unwrap(),
+        known.tolerance.allowed(known.value().unwrap()),
         fe.slope
     );
     println!(
