@@ -121,6 +121,8 @@ def test_horizons_cross_check() -> None: ...
 
 Criticality split: 74 high, 32 medium, 15 low.
 
+Counts re-checked on 2026-10-20 after the build-evidence sync: unchanged (no requirement added, retired or re-rated; every status is still `draft`). Open items: 78 in total (OI-01…OI-78), 2 closed (OI-05, OI-23), 76 open; OI-73…OI-78 are new.
+
 ## Journal #6 revisions applied
 
 | ID | Change |
@@ -144,3 +146,25 @@ Applied 2026-10-14. Open items raised by the review are in [OPEN-ITEMS.md](OPEN-
 | DEP-002, DEP-003, DEP-008, DEP-009, DEP-015, LIC-001, LIC-002, LIC-004 | Licensing fixes: MPL only by exception, anise deferred to M5, rug scope, session clean-room rule, per-file ERFA notices, hash-pinned clarify entries, private GPL oracle images. |
 | REF-003, PHY-016, PHY-017 | Criticality raised to high. |
 | STD-005, STD-007 | MSRV wording aligned with ADR-0006; semver gating from M6. |
+
+## Build-evidence sync 2026-10-20
+
+Applied 2026-10-20 from the build branches `m0-foundation` and `m3-newtonian-nbody`. Evidence for every row is in `docs/strategy/IMPLEMENTATION-NOTES.md` on `m3-newtonian-nbody` (work packages WP1–WP18) and the file or test named in each requirement's `notes`. Maintainer decisions of 2026-10-20 (A–D) are applied. Statuses stay `draft`. No tolerance was loosened. Where an acceptance changed, the requirement's `notes` give the reason and the evidence.
+
+| ID | Change | Evidence (WP) |
+|---|---|---|
+| REF-002, PHY-002 | OI-23 closed: header states are SSB-centred ICRF in au and au/day; the state part of REF-002 is no longer blocked. OI-05 closed (exact au). PHY-002/REF-002 now wait only on OI-04 (GMSDOT units). | WP11 check 1 (`ref002_header_initial_conditions_equal_de440_at_jdepoc`), WP16 check 3, WP1 review |
+| PHY-012 | **Acceptance changed**: "report both" protocol; P-remove asserted, P-add reported (ADR-0014). Chosen after the results were known; PROVISIONAL until OI-38 is confirmed against the Park 2017 text, with a revert condition. Tolerance and expected values unchanged. | WP14 (`nightly_phy012.rs`), WP17 (four-tool P-add agreement), progress reviews after WP15/WP18 |
+| NUM-013 | **Acceptance changed** for part (b), as PHY-012; cross-term sign convention must be labelled; no longer blocked on OI-38. | WP14, WP17, progress review after WP18 (R1) |
+| PHY-019 | **Acceptance changed**: protocol as PHY-012, and the rung gates independently of OI-38 (protocol dependence ≈ 3e-6 ″/cy, 1% of ±0.0003). Tolerance unchanged. | WP15 (`nightly_phy013.rs`), progress review after WP15 (F9) |
+| DEP-011 | **Acceptance changed**: until the M5 anise decision (OI-72), the ANISE comparison is replaced by DE440 ASCII coefficient identity, the geocentric-Moon check and a Horizons DE441 gross bound; the ANISE clause stays conditional on adoption. | WP10 |
+| NUM-008 | **Acceptance tightened**: in the q-formulation the default 12-term series must match a double-double difference to ≤ 4 ε (4 terms leave 6.4e6 ε). | WP12 (U3) |
+| NUM-014 | Acceptance names the reference plane (IAU 2006 J2000 ecliptic) and tolerances (1e-3 vs p_A, 1e-5 vs exact geometry); no longer blocked on OI-02 (p_A from the verified `p06e` port). | WP9 |
+| NUM-006, NUM-010, DEP-010, DEP-012, REF-009, REF-011, NUM-009 | Acceptance clarified (benchmark band ±2 % PROVISIONAL; 1e-6 s is the location error and round-off is backend-dependent; time-scale tolerances stated; u² = 2⁻¹⁰⁶ named; REF-009 split into three evidenced parts; FerroAstro's own FA-E1201/FA-E1202 refusals; the < 2× bound applies to EIH Majors). | WP7, WP7, WP8, WP7, WP8/9/16, WP13, WP15 |
+| REF-001, REF-003, REF-005, REF-006, REF-007, REF-008 | Notes: fetch tool, MANIFEST pins and testeph threshold; sb441-n373s (DE441) and the DE440-asteroid-IC gap; oracle packaging, goldens and post-measurement oracle changes (NEEDS HUMAN REVIEW). | WP10, WP15, WP16, WP17 |
+| CI-001, CI-002, CI-004, CI-005, CI-006, CI-010 | Notes: local unpushed images with digest in each manifest; scenario schema, new switches/mode and per-tool integrator mapping; golden locations and local generation; `.fa-data` cache; drift-issue mechanism and incomplete nightly; resume tested in a new process. | WP16, WP13/15/17, WP16, WP10, WP17/18, WP13 |
+| PHY-004, PHY-010, PHY-011, NUM-011, NUM-015, NUM-018, NUM-019, NUM-022 | Notes: μ convention (OI-77); default WGCCRE 2015 solar pole and J2 bodies (OI-76); OI-35 evidence pending sign-off; open NUM-011 decisions (OI-74); μ* re-read (OI-75); J2 reaction evidence; scaling not testable on a shared machine. | WP11/13, WP9/12, WP4, WP5, WP15, WP12, WP13 |
+| DEP-009, LIC-004 | Notes: ERFA 2.0.1 source, naming without ERFA's `era` or SOFA's `iau` prefix, and the list of ported routines. | WP8, WP9 |
+| TST-002, ORG-004 | Notes: the `blocked_by` vector field and its auto-gating rule; a proposal that `trace.py` accept CI-gate evidence (ADR-0010, pending judge review). | WP14, WP6 |
+
+ADRs: new ADR-0014 (per-body contribution protocol); ADR-0004 revision (`blocked_by`, proposed); ADR-0010 proposal (CI-gate evidence). Strategy: ARCHITECTURE.md now lists the 21 crates that exist on the build branches and their layers; ROADMAP.md's M0 exit depends only on OI-04, and the M3 exit names the provisional protocol.

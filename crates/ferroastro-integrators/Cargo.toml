@@ -1,0 +1,21 @@
+# SPDX-FileCopyrightText: 2026 Proper-Time Physics Institute
+# SPDX-License-Identifier: Apache-2.0
+[package]
+name = "ferroastro-integrators"
+description = "Clean-room IAS15-class adaptive 15th-order Gauss-Radau integrator with compensated summation, and round-off diagnostics"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+authors.workspace = true
+repository.workspace = true
+
+[dependencies]
+ferroastro-core.workspace = true
+thiserror.workspace = true
+
+[dev-dependencies]
+ferroastro-vectors.workspace = true
+
+[lints]
+workspace = true

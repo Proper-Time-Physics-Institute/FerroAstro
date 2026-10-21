@@ -1,0 +1,257 @@
+# SPDX-FileCopyrightText: 2026 Proper-Time Physics Institute
+# SPDX-License-Identifier: Apache-2.0
+# WP5: inputs and oracles of the Park2017 estimator (NUM-011) on real JPL Horizons DE441 data (PHY-016).
+# Schema: ADR-0004. Derivations of every tolerance: docs/strategy/IMPLEMENTATION-NOTES.md, WP5.
+schema_version = 1
+
+[[vector]]
+id = "PARK17-MEANORBIT-POLE-RA"
+requirement = ["NUM-011"]
+quantity = "right ascension of Mercury's mean-orbit pole, ICRF (Park17 section 4)"
+value = "280.9876"
+unit = "deg"
+kind = "measured"
+source = "Park17 section 4: 'The corresponding R.A. and decl. of the mean orbit pole vector yield alpha_M = 280.9876'"
+citation = 'Park, R. S., Folkner, W. M., Konopliv, A. S., et al. 2017, AJ 153, 121, doi:10.3847/1538-3881/aa5be2, section 4'
+retrieved = "2026-10-15"
+tolerance = { abs = 0.0 }
+tolerance_rationale = "A transcribed published value used as an estimator input; exact."
+verified_by = "WP5 builder agent, 2026-10-15: read in the published PDF (iopscience.iop.org/article/10.3847/1538-3881/aa5be2/pdf, sha256 24fb2153f6b78109daa80171cd37006157b73564f8d0ac383532b5c92433380b, the copy WP3/WP4 read), pdftotext of page 4 section 4 and Table 3."
+
+[[vector]]
+id = "PARK17-MEANORBIT-POLE-DEC"
+requirement = ["NUM-011"]
+quantity = "declination of Mercury's mean-orbit pole, ICRF (Park17 section 4)"
+value = "61.4481"
+unit = "deg"
+kind = "measured"
+source = "Park17 section 4: 'and delta_M = 61.4481'"
+citation = 'Park, R. S., Folkner, W. M., Konopliv, A. S., et al. 2017, AJ 153, 121, doi:10.3847/1538-3881/aa5be2, section 4'
+retrieved = "2026-10-15"
+tolerance = { abs = 0.0 }
+tolerance_rationale = "A transcribed published value used as an estimator input; exact."
+verified_by = "WP5 builder agent, 2026-10-15: read in the published PDF (iopscience.iop.org/article/10.3847/1538-3881/aa5be2/pdf, sha256 24fb2153f6b78109daa80171cd37006157b73564f8d0ac383532b5c92433380b, the copy WP3/WP4 read), pdftotext of page 4 section 4 and Table 3."
+
+[[vector]]
+id = "PARK17-TOTAL-RATE"
+requirement = ["NUM-011", "PHY-016"]
+quantity = "total precession rate of Mercury's perihelion in the Mercury mean-orbit frame (Park17 Table 3 and abstract)"
+value = "575.3100"
+unit = "arcsec/cy"
+kind = "measured"
+source = "Park17 Table 3, row 'Total': 575.3100 +/- 0.0015; abstract: 575.3100 +/- 0.0015 arcsec/century"
+citation = 'Park, R. S., Folkner, W. M., Konopliv, A. S., et al. 2017, AJ 153, 121, doi:10.3847/1538-3881/aa5be2, abstract and Table 3'
+retrieved = "2026-10-15"
+tolerance = { abs = 0.01 }
+tolerance_rationale = "NUM-011 acceptance: 'For a DE440-class model over 1000-3000 CE the estimator returns 575.31 +/- 0.01 arcsec/cy'. DE441 is a DE440-class model, and the WP5 data test uses J2000 +/- 1000 Julian yr. The tighter statistical check uses PARK17-TOTAL-RATE-SIGMA and the measured jack-knife sigma (IMPLEMENTATION-NOTES WP5). Model differences (J2 -0.00075, beta +0.00037 arcsec/cy) are reported, not subtracted."
+verified_by = "WP5 builder agent, 2026-10-15: read in the published PDF (iopscience.iop.org/article/10.3847/1538-3881/aa5be2/pdf, sha256 24fb2153f6b78109daa80171cd37006157b73564f8d0ac383532b5c92433380b, the copy WP3/WP4 read), pdftotext of page 4 section 4 and Table 3."
+
+[[vector]]
+id = "PARK17-TOTAL-RATE-SIGMA"
+requirement = ["NUM-011", "PHY-016"]
+quantity = "one-sigma uncertainty of Park17's total perihelion precession rate"
+value = "0.0015"
+unit = "arcsec/cy"
+kind = "measured"
+source = "Park17 Table 3, row 'Total': 575.3100 +/- 0.0015"
+citation = 'Park, R. S., Folkner, W. M., Konopliv, A. S., et al. 2017, AJ 153, 121, doi:10.3847/1538-3881/aa5be2, Table 3'
+retrieved = "2026-10-15"
+tolerance = { abs = 0.0 }
+tolerance_rationale = "A transcribed published uncertainty; exact. The consistency band is 3 * sqrt(sigma_Park^2 + sigma_jackknife^2), pre-registered in IMPLEMENTATION-NOTES WP5."
+verified_by = "WP5 builder agent, 2026-10-15: read in the published PDF (iopscience.iop.org/article/10.3847/1538-3881/aa5be2/pdf, sha256 24fb2153f6b78109daa80171cd37006157b73564f8d0ac383532b5c92433380b, the copy WP3/WP4 read), pdftotext of page 4 section 4 and Table 3."
+
+[[vector]]
+id = "PARK17-QUADRATIC-TERM"
+requirement = ["NUM-011"]
+quantity = "quadratic coefficient Q of Park17's fit B + varpi_dot t + Q t^2 + periodic terms"
+value = "-0.04478132"
+unit = "arcsec/cy^2"
+kind = "measured"
+source = "Park17 section 4: 'with the quadratic term of Q = -0.04478132 /century^2'"
+citation = 'Park, R. S., Folkner, W. M., Konopliv, A. S., et al. 2017, AJ 153, 121, doi:10.3847/1538-3881/aa5be2, section 4'
+retrieved = "2026-10-15"
+tolerance = { abs = 0.0 }
+tolerance_rationale = "A transcribed published value. It is reported next to the fitted Q, not asserted: Park17 gives no uncertainty for Q."
+verified_by = "WP5 builder agent, 2026-10-15: read in the published PDF (iopscience.iop.org/article/10.3847/1538-3881/aa5be2/pdf, sha256 24fb2153f6b78109daa80171cd37006157b73564f8d0ac383532b5c92433380b, the copy WP3/WP4 read), pdftotext of page 4 section 4 and Table 3."
+
+[[vector]]
+id = "SW92-MERCURY-VARPI-RATE"
+requirement = ["NUM-011", "PHY-015"]
+quantity = "rate of Mercury's longitude of perihelion, mean ecliptic and equinox of J2000, fit to DE200 over 1800-2050 (SW92 Table 1)"
+value = "0.16047689"
+unit = "deg/cy"
+kind = "measured"
+source = "SW92 Table 1, row Mercury rates, column long.peri.: 0.16047689"
+citation = 'Standish, E. M. & Williams, J. G. 1992, "Orbital Ephemerides of the Sun, Moon, and Planets", in Explanatory Supplement to the Astronomical Almanac (ed. Seidelmann), ch. 5; Tables 1 and 2a as hosted by JPL SSD at https://ssd.jpl.nasa.gov/planets/approx_pos.html (page sha256 9f7b30ca81cc548a879565bb3f70e6899a38ff5877cb1ff16bb04892f9c4d742 on 2026-10-15)'
+retrieved = "2026-10-15"
+tolerance = { abs = 0.0 }
+tolerance_rationale = "A transcribed table entry: the decimal string must equal the published digits exactly."
+verified_by = "WP5 builder agent, 2026-10-15: read in the downloaded page (sha256 above, unchanged since WP3); re-checked digit for digit on every run of data_sw92_table1_mercury."
+
+[[vector]]
+id = "SW92-MERCURY-VARPI-RATE-VS-DE441"
+requirement = ["NUM-011", "PHY-015", "PHY-016"]
+quantity = "SW92 Table 1 Mercury long.peri. rate in arcsec/cy, used as the oracle for the dog-leg rate fitted to Horizons DE441 in the J2000 ecliptic over 1800-2050"
+value = "577.716804"
+unit = "arcsec/cy"
+kind = "measured"
+source = "SW92 Table 1 Mercury long.peri. rate 0.16047689 deg/cy x 3600 = 577.716804"
+citation = 'Standish, E. M. & Williams, J. G. 1992, "Orbital Ephemerides of the Sun, Moon, and Planets", in Explanatory Supplement to the Astronomical Almanac (ed. Seidelmann), ch. 5; Tables 1 and 2a as hosted by JPL SSD at https://ssd.jpl.nasa.gov/planets/approx_pos.html (page sha256 9f7b30ca81cc548a879565bb3f70e6899a38ff5877cb1ff16bb04892f9c4d742 on 2026-10-15)'
+retrieved = "2026-10-15"
+tolerance = { abs = 20.0 }
+tolerance_rationale = "Derived from SW92's own fit quality, not from the result. SW92 quote nominal heliocentric-longitude errors of 15 arcsec for Mercury over 1800-2050 and say the elements are a best fit, not a mean. At fixed mean longitude, d(lambda)/d(varpi) = 1 - df/dM spans [-0.551, +0.327] for e = 0.2056. A rate error delta pivoting at the window centre (half-width 1.25 cy) gives up to 0.551 * 1.25 * delta of longitude error, so 15 arcsec allows |delta| <= 21.8 arcsec/cy, rounded down to 20. SW92's Table 1 and Table 2a fits of one ephemeris differ by 3.9 arcsec/cy, which is consistent with a bound of this size. The check tests frame and definition (ecliptic dog-leg vs mean-orbit projected), not precision."
+verified_by = "WP5 builder agent, 2026-10-15: read in the downloaded page (sha256 above, unchanged since WP3); re-checked digit for digit on every run of data_sw92_table1_mercury. Arithmetic: 0.16047689 * 3600 = 577.716804 exactly."
+
+[[vector]]
+id = "SW92-T2A-MERCURY-VARPI-RATE"
+requirement = ["NUM-011"]
+quantity = "rate of Mercury's longitude of perihelion, J2000 ecliptic, fit over 3000 BC - 3000 AD (SW92 Table 2a)"
+value = "0.15940013"
+unit = "deg/cy"
+kind = "measured"
+source = "SW92 Table 2a, row Mercury rates, column long.peri.: 0.15940013"
+citation = 'Standish, E. M. & Williams, J. G. 1992, "Orbital Ephemerides of the Sun, Moon, and Planets", in Explanatory Supplement to the Astronomical Almanac (ed. Seidelmann), ch. 5; Tables 1 and 2a as hosted by JPL SSD at https://ssd.jpl.nasa.gov/planets/approx_pos.html (page sha256 9f7b30ca81cc548a879565bb3f70e6899a38ff5877cb1ff16bb04892f9c4d742 on 2026-10-15)'
+retrieved = "2026-10-15"
+tolerance = { abs = 0.0 }
+tolerance_rationale = "A transcribed table entry, reported next to the fitted rate (not asserted)."
+verified_by = "WP5 builder agent, 2026-10-15: read in the downloaded page (sha256 above, unchanged since WP3); re-checked digit for digit on every run of data_sw92_table1_mercury."
+
+[[vector]]
+id = "SW92-T1-MERCURY-L-RATE"
+requirement = ["NUM-011"]
+quantity = "mean-longitude rate (mean motion) of Mercury, J2000 ecliptic, SW92 Table 1 (1800-2050)"
+value = "149472.67411175"
+unit = "deg/cy"
+kind = "measured"
+source = "SW92 Table 1, row Mercury rates, column L: 149472.67411175"
+citation = 'Standish, E. M. & Williams, J. G. 1992, "Orbital Ephemerides of the Sun, Moon, and Planets", in Explanatory Supplement to the Astronomical Almanac (ed. Seidelmann), ch. 5; Tables 1 and 2a as hosted by JPL SSD at https://ssd.jpl.nasa.gov/planets/approx_pos.html (page sha256 9f7b30ca81cc548a879565bb3f70e6899a38ff5877cb1ff16bb04892f9c4d742 on 2026-10-15)'
+retrieved = "2026-10-15"
+tolerance = { abs = 0.0 }
+tolerance_rationale = "A transcribed table entry used to build Park17 Table 2 frequencies; exact. Used only in the Table 1 vs Table 2a sensitivity run."
+verified_by = "WP5 builder agent, 2026-10-15: read in the downloaded page (sha256 above, unchanged since WP3); re-checked digit for digit on every run of data_sw92_table1_mercury."
+
+[[vector]]
+id = "SW92-T1-VENUS-L-RATE"
+requirement = ["NUM-011"]
+quantity = "mean-longitude rate (mean motion) of Venus, J2000 ecliptic, SW92 Table 1 (1800-2050)"
+value = "58517.81538729"
+unit = "deg/cy"
+kind = "measured"
+source = "SW92 Table 1, row Venus rates, column L: 58517.81538729"
+citation = 'Standish, E. M. & Williams, J. G. 1992, "Orbital Ephemerides of the Sun, Moon, and Planets", in Explanatory Supplement to the Astronomical Almanac (ed. Seidelmann), ch. 5; Tables 1 and 2a as hosted by JPL SSD at https://ssd.jpl.nasa.gov/planets/approx_pos.html (page sha256 9f7b30ca81cc548a879565bb3f70e6899a38ff5877cb1ff16bb04892f9c4d742 on 2026-10-15)'
+retrieved = "2026-10-15"
+tolerance = { abs = 0.0 }
+tolerance_rationale = "A transcribed table entry used to build Park17 Table 2 frequencies; exact. Used only in the Table 1 vs Table 2a sensitivity run."
+verified_by = "WP5 builder agent, 2026-10-15: read in the downloaded page (sha256 above, unchanged since WP3); re-checked digit for digit on every run of data_sw92_table1_mercury."
+
+[[vector]]
+id = "SW92-T1-EMB-L-RATE"
+requirement = ["NUM-011"]
+quantity = "mean-longitude rate (mean motion) of EM Bary, J2000 ecliptic, SW92 Table 1 (1800-2050)"
+value = "35999.37244981"
+unit = "deg/cy"
+kind = "measured"
+source = "SW92 Table 1, row EM Bary rates, column L: 35999.37244981"
+citation = 'Standish, E. M. & Williams, J. G. 1992, "Orbital Ephemerides of the Sun, Moon, and Planets", in Explanatory Supplement to the Astronomical Almanac (ed. Seidelmann), ch. 5; Tables 1 and 2a as hosted by JPL SSD at https://ssd.jpl.nasa.gov/planets/approx_pos.html (page sha256 9f7b30ca81cc548a879565bb3f70e6899a38ff5877cb1ff16bb04892f9c4d742 on 2026-10-15)'
+retrieved = "2026-10-15"
+tolerance = { abs = 0.0 }
+tolerance_rationale = "A transcribed table entry used to build Park17 Table 2 frequencies; exact. Used only in the Table 1 vs Table 2a sensitivity run."
+verified_by = "WP5 builder agent, 2026-10-15: read in the downloaded page (sha256 above, unchanged since WP3); re-checked digit for digit on every run of data_sw92_table1_mercury."
+
+[[vector]]
+id = "SW92-T1-JUPITER-L-RATE"
+requirement = ["NUM-011"]
+quantity = "mean-longitude rate (mean motion) of Jupiter, J2000 ecliptic, SW92 Table 1 (1800-2050)"
+value = "3034.74612775"
+unit = "deg/cy"
+kind = "measured"
+source = "SW92 Table 1, row Jupiter rates, column L: 3034.74612775"
+citation = 'Standish, E. M. & Williams, J. G. 1992, "Orbital Ephemerides of the Sun, Moon, and Planets", in Explanatory Supplement to the Astronomical Almanac (ed. Seidelmann), ch. 5; Tables 1 and 2a as hosted by JPL SSD at https://ssd.jpl.nasa.gov/planets/approx_pos.html (page sha256 9f7b30ca81cc548a879565bb3f70e6899a38ff5877cb1ff16bb04892f9c4d742 on 2026-10-15)'
+retrieved = "2026-10-15"
+tolerance = { abs = 0.0 }
+tolerance_rationale = "A transcribed table entry used to build Park17 Table 2 frequencies; exact. Used only in the Table 1 vs Table 2a sensitivity run."
+verified_by = "WP5 builder agent, 2026-10-15: read in the downloaded page (sha256 above, unchanged since WP3); re-checked digit for digit on every run of data_sw92_table1_mercury."
+
+[[vector]]
+id = "SW92-T1-SATURN-L-RATE"
+requirement = ["NUM-011"]
+quantity = "mean-longitude rate (mean motion) of Saturn, J2000 ecliptic, SW92 Table 1 (1800-2050)"
+value = "1222.49362201"
+unit = "deg/cy"
+kind = "measured"
+source = "SW92 Table 1, row Saturn rates, column L: 1222.49362201"
+citation = 'Standish, E. M. & Williams, J. G. 1992, "Orbital Ephemerides of the Sun, Moon, and Planets", in Explanatory Supplement to the Astronomical Almanac (ed. Seidelmann), ch. 5; Tables 1 and 2a as hosted by JPL SSD at https://ssd.jpl.nasa.gov/planets/approx_pos.html (page sha256 9f7b30ca81cc548a879565bb3f70e6899a38ff5877cb1ff16bb04892f9c4d742 on 2026-10-15)'
+retrieved = "2026-10-15"
+tolerance = { abs = 0.0 }
+tolerance_rationale = "A transcribed table entry used to build Park17 Table 2 frequencies; exact. Used only in the Table 1 vs Table 2a sensitivity run."
+verified_by = "WP5 builder agent, 2026-10-15: read in the downloaded page (sha256 above, unchanged since WP3); re-checked digit for digit on every run of data_sw92_table1_mercury."
+
+[[vector]]
+id = "SW92-T2A-MERCURY-L-RATE"
+requirement = ["NUM-011"]
+quantity = "mean-longitude rate (mean motion) of Mercury, J2000 ecliptic, SW92 Table 2a (3000 BC - 3000 AD)"
+value = "149472.67486623"
+unit = "deg/cy"
+kind = "measured"
+source = "SW92 Table 2a, row Mercury rates, column L: 149472.67486623"
+citation = 'Standish, E. M. & Williams, J. G. 1992, "Orbital Ephemerides of the Sun, Moon, and Planets", in Explanatory Supplement to the Astronomical Almanac (ed. Seidelmann), ch. 5; Tables 1 and 2a as hosted by JPL SSD at https://ssd.jpl.nasa.gov/planets/approx_pos.html (page sha256 9f7b30ca81cc548a879565bb3f70e6899a38ff5877cb1ff16bb04892f9c4d742 on 2026-10-15)'
+retrieved = "2026-10-15"
+tolerance = { abs = 0.0 }
+tolerance_rationale = "A transcribed table entry used to build Park17 Table 2 frequencies; exact. Table 2a is the default because it spans the fit interval; Table 1 is a sensitivity run."
+verified_by = "WP5 builder agent, 2026-10-15: read in the downloaded page (sha256 above, unchanged since WP3); re-checked digit for digit on every run of data_sw92_table1_mercury."
+
+[[vector]]
+id = "SW92-T2A-VENUS-L-RATE"
+requirement = ["NUM-011"]
+quantity = "mean-longitude rate (mean motion) of Venus, J2000 ecliptic, SW92 Table 2a (3000 BC - 3000 AD)"
+value = "58517.81560260"
+unit = "deg/cy"
+kind = "measured"
+source = "SW92 Table 2a, row Venus rates, column L: 58517.81560260"
+citation = 'Standish, E. M. & Williams, J. G. 1992, "Orbital Ephemerides of the Sun, Moon, and Planets", in Explanatory Supplement to the Astronomical Almanac (ed. Seidelmann), ch. 5; Tables 1 and 2a as hosted by JPL SSD at https://ssd.jpl.nasa.gov/planets/approx_pos.html (page sha256 9f7b30ca81cc548a879565bb3f70e6899a38ff5877cb1ff16bb04892f9c4d742 on 2026-10-15)'
+retrieved = "2026-10-15"
+tolerance = { abs = 0.0 }
+tolerance_rationale = "A transcribed table entry used to build Park17 Table 2 frequencies; exact. Table 2a is the default because it spans the fit interval; Table 1 is a sensitivity run."
+verified_by = "WP5 builder agent, 2026-10-15: read in the downloaded page (sha256 above, unchanged since WP3); re-checked digit for digit on every run of data_sw92_table1_mercury."
+
+[[vector]]
+id = "SW92-T2A-EMB-L-RATE"
+requirement = ["NUM-011"]
+quantity = "mean-longitude rate (mean motion) of EM Bary, J2000 ecliptic, SW92 Table 2a (3000 BC - 3000 AD)"
+value = "35999.37306329"
+unit = "deg/cy"
+kind = "measured"
+source = "SW92 Table 2a, row EM Bary rates, column L: 35999.37306329"
+citation = 'Standish, E. M. & Williams, J. G. 1992, "Orbital Ephemerides of the Sun, Moon, and Planets", in Explanatory Supplement to the Astronomical Almanac (ed. Seidelmann), ch. 5; Tables 1 and 2a as hosted by JPL SSD at https://ssd.jpl.nasa.gov/planets/approx_pos.html (page sha256 9f7b30ca81cc548a879565bb3f70e6899a38ff5877cb1ff16bb04892f9c4d742 on 2026-10-15)'
+retrieved = "2026-10-15"
+tolerance = { abs = 0.0 }
+tolerance_rationale = "A transcribed table entry used to build Park17 Table 2 frequencies; exact. Table 2a is the default because it spans the fit interval; Table 1 is a sensitivity run."
+verified_by = "WP5 builder agent, 2026-10-15: read in the downloaded page (sha256 above, unchanged since WP3); re-checked digit for digit on every run of data_sw92_table1_mercury."
+
+[[vector]]
+id = "SW92-T2A-JUPITER-L-RATE"
+requirement = ["NUM-011"]
+quantity = "mean-longitude rate (mean motion) of Jupiter, J2000 ecliptic, SW92 Table 2a (3000 BC - 3000 AD)"
+value = "3034.90371757"
+unit = "deg/cy"
+kind = "measured"
+source = "SW92 Table 2a, row Jupiter rates, column L: 3034.90371757"
+citation = 'Standish, E. M. & Williams, J. G. 1992, "Orbital Ephemerides of the Sun, Moon, and Planets", in Explanatory Supplement to the Astronomical Almanac (ed. Seidelmann), ch. 5; Tables 1 and 2a as hosted by JPL SSD at https://ssd.jpl.nasa.gov/planets/approx_pos.html (page sha256 9f7b30ca81cc548a879565bb3f70e6899a38ff5877cb1ff16bb04892f9c4d742 on 2026-10-15)'
+retrieved = "2026-10-15"
+tolerance = { abs = 0.0 }
+tolerance_rationale = "A transcribed table entry used to build Park17 Table 2 frequencies; exact. Table 2a is the default because it spans the fit interval; Table 1 is a sensitivity run."
+verified_by = "WP5 builder agent, 2026-10-15: read in the downloaded page (sha256 above, unchanged since WP3); re-checked digit for digit on every run of data_sw92_table1_mercury."
+
+[[vector]]
+id = "SW92-T2A-SATURN-L-RATE"
+requirement = ["NUM-011"]
+quantity = "mean-longitude rate (mean motion) of Saturn, J2000 ecliptic, SW92 Table 2a (3000 BC - 3000 AD)"
+value = "1222.11494724"
+unit = "deg/cy"
+kind = "measured"
+source = "SW92 Table 2a, row Saturn rates, column L: 1222.11494724"
+citation = 'Standish, E. M. & Williams, J. G. 1992, "Orbital Ephemerides of the Sun, Moon, and Planets", in Explanatory Supplement to the Astronomical Almanac (ed. Seidelmann), ch. 5; Tables 1 and 2a as hosted by JPL SSD at https://ssd.jpl.nasa.gov/planets/approx_pos.html (page sha256 9f7b30ca81cc548a879565bb3f70e6899a38ff5877cb1ff16bb04892f9c4d742 on 2026-10-15)'
+retrieved = "2026-10-15"
+tolerance = { abs = 0.0 }
+tolerance_rationale = "A transcribed table entry used to build Park17 Table 2 frequencies; exact. Table 2a is the default because it spans the fit interval; Table 1 is a sensitivity run."
+verified_by = "WP5 builder agent, 2026-10-15: read in the downloaded page (sha256 above, unchanged since WP3); re-checked digit for digit on every run of data_sw92_table1_mercury."

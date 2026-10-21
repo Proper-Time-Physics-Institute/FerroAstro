@@ -1,0 +1,7 @@
+error[E0308]: mismatched types
+ --> tests/ui/unit_mismatch.rs:6:28
+  |
+6 |     let _ = Length::ZERO + Velocity::ZERO;
+  |             ------------   ^^^^^^^^^^^^^^ expected `Length`, found `Velocity`
+  |             |
+  |             expected because this is `Length`

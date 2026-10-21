@@ -1,0 +1,332 @@
+# SPDX-FileCopyrightText: 2026 Proper-Time Physics Institute
+# SPDX-License-Identifier: Apache-2.0
+# DE440 constants asserted by PHY-002 and REF-002 (WP2). Schema: ADR-0004.
+# Oracles are the DE440 paper (Park21, independent of the header file) and, for values that only the
+# header states, the pinned header.440 itself; the latter are regression pins against loading a
+# different ephemeris, not independent checks. GMSDOT (OI-04) and CENTER (OI-23) are deliberately absent.
+# IAU 2015 B3 nominal values live in iau2015-nominal.toml (PHY-003).
+schema_version = 1
+
+[[vector]]
+id = "DE440-GMS-KM3S2"
+requirement = ["PHY-002"]
+quantity = "heliocentric gravitational constant GM of the Sun (DE440 GMS)"
+value = "132712440041.279419"
+unit = "km^3/s^2"
+kind = "measured"
+source = "Park21 Table 2: GMSun 132712440041.279419 km3 s-2 (estimated from DE440)"
+citation = "Park, R. S., Folkner, W. M., Williams, J. G. & Boggs, D. H. 2021, AJ 161, 105, doi:10.3847/1538-3881/abd414, Table 2"
+retrieved = "2026-10-14"
+tolerance = { rel = 1.0e-15 }
+tolerance_rationale = "The header prints GMS in au^3/d^2 (0.295912208284119561D-03); converting that 18-digit decimal exactly with AU = 149597870.7 km and 86400 s/d gives 132712440041.2794478 km^3/s^2, 2.2e-16 relative from Park21's 18-digit print. The f64 path adds a few roundings (each <= 1.1e-16). 1e-15 covers both with ~4x headroom and is still 3e5 times tighter than the 3e-10 GM-vs-IAU-nominal difference."
+verified_by = "WP2 builder agent, 2026-10-14: read in the published PDF (iopscience.iop.org/article/10.3847/1538-3881/abd414/pdf, sha256 96c3945deb12e0f0843c2bf0703d3542d950cf85ff903b1fe11a501634f68ee0); also equals PHY-002 acceptance."
+
+[[vector]]
+id = "DE440-GMS-AU3D2"
+requirement = ["PHY-002", "REF-002"]
+quantity = "GM of the Sun in ephemeris units (DE440 GMS)"
+value = "2.95912208284119561e-4"
+unit = "au^3/d^2"
+kind = "measured"
+source = "header.440 GROUP 1041 GMS = 0.295912208284119561D-03; PHY-002 acceptance quotes the same digits"
+citation = "JPL DE440 ASCII header header.440, GROUP 1041 (https://ssd.jpl.nasa.gov/ftp/eph/planets/ascii/de440/header.440, sha256 0f4636b663e6f00af9efa2b605ef23635489f56b23dd1a5e3821d3acc6ac3359)"
+retrieved = "2026-10-14"
+tolerance = { abs = 0.0 }
+tolerance_rationale = "Same 18 decimal digits as the header token, so both parse to the same f64; equality is required."
+verified_by = "WP2 builder agent, 2026-10-14: compared with the downloaded header.440 (sha256 above) and with PHY-002 acceptance text; independent check is DE440-GMS-KM3S2 (Park21)."
+
+[[vector]]
+id = "DE440-EMRAT"
+requirement = ["PHY-002", "REF-002"]
+quantity = "Earth/Moon mass ratio (DE440 EMRAT)"
+value = "81.3005682214972154"
+unit = "1"
+kind = "measured"
+source = "header.440 GROUP 1041 EMRAT = 0.813005682214972154D+02; PHY-002 acceptance quotes the same digits"
+citation = "JPL DE440 ASCII header header.440, GROUP 1041 (https://ssd.jpl.nasa.gov/ftp/eph/planets/ascii/de440/header.440, sha256 0f4636b663e6f00af9efa2b605ef23635489f56b23dd1a5e3821d3acc6ac3359)"
+retrieved = "2026-10-14"
+tolerance = { abs = 0.0 }
+tolerance_rationale = "Same decimal digits as the header token, so both parse to the same f64; equality is required."
+verified_by = "WP2 builder agent, 2026-10-14: compared with the downloaded header.440 and PHY-002. Park21 Table 2 GMEarth/GMMoon = 81.3005682291, consistent to the 1e-10 relative precision of those printed GMs."
+
+[[vector]]
+id = "DE440-ASUN"
+requirement = ["PHY-002", "REF-002"]
+quantity = "solar equatorial radius used as the J2 reference radius (DE440 ASUN)"
+value = 696000.0
+unit = "km"
+kind = "measured"
+source = "Park21 Sec. 3.4 (after Eq. 39): the Sun's equatorial radius (696,000 km); header ASUN = 0.696000000000000000D+06"
+citation = "Park, R. S., Folkner, W. M., Williams, J. G. & Boggs, D. H. 2021, AJ 161, 105, doi:10.3847/1538-3881/abd414, Sec. 3.4, p. 7"
+retrieved = "2026-10-14"
+tolerance = { abs = 0.0 }
+tolerance_rationale = "Exactly representable integer in both sources; equality is required."
+verified_by = "WP2 builder agent, 2026-10-14: read in the published PDF (iopscience.iop.org/article/10.3847/1538-3881/abd414/pdf, sha256 96c3945deb12e0f0843c2bf0703d3542d950cf85ff903b1fe11a501634f68ee0); header token agrees."
+
+[[vector]]
+id = "DE440-MOISUN"
+requirement = ["PHY-002"]
+quantity = "solar polar moment of inertia factor C/(M R^2) (DE440 MOISUN)"
+value = 0.06884
+unit = "1"
+kind = "measured"
+source = "Park21 Sec. 3.4 (after Eq. 39): C/(M R^2) = 0.06884; header MOISUN = 0.688399999999999984D-01"
+citation = "Park, R. S., Folkner, W. M., Williams, J. G. & Boggs, D. H. 2021, AJ 161, 105, doi:10.3847/1538-3881/abd414, Sec. 3.4, p. 7"
+retrieved = "2026-10-14"
+tolerance = { abs = 0.0 }
+tolerance_rationale = "The header token is the 18-digit rendering of the f64 nearest 0.06884 and parses back to it; equality is required."
+verified_by = "WP2 builder agent, 2026-10-14: read in the published PDF (iopscience.iop.org/article/10.3847/1538-3881/abd414/pdf, sha256 96c3945deb12e0f0843c2bf0703d3542d950cf85ff903b1fe11a501634f68ee0); header token agrees."
+
+[[vector]]
+id = "DE440-OMGSUN-RADD"
+requirement = ["PHY-002"]
+quantity = "solar rotation rate (DE440 OMGSUN)"
+value = 0.247564432907
+unit = "rad/d"
+kind = "measured"
+source = "PHY-002 acceptance: OMGSUN = 0.247564432907 rad/day, rounded from header.440 OMGSUN = 0.247564432906997117D+00"
+citation = "JPL DE440 ASCII header header.440, GROUP 1041 (https://ssd.jpl.nasa.gov/ftp/eph/planets/ascii/de440/header.440, sha256 0f4636b663e6f00af9efa2b605ef23635489f56b23dd1a5e3821d3acc6ac3359)"
+retrieved = "2026-10-14"
+tolerance = { abs = 5.0e-13 }
+tolerance_rationale = "The oracle is quoted to 12 decimals; half a unit in the 12th decimal is 5e-13 rad/d. The header value differs from it by 2.9e-15 rad/d. FerroAstro stores the rate in rad/s and the test multiplies back by 86400 s/d (a few 1e-17 rad/d of rounding)."
+verified_by = "WP2 builder agent, 2026-10-14: compared with the downloaded header.440 and PHY-002. The unit rad/d is corroborated by PARK21-OMGSUN-DEGD."
+
+[[vector]]
+id = "PARK21-OMGSUN-DEGD"
+requirement = ["PHY-002"]
+quantity = "solar rotation rate in degrees per day (Park21)"
+value = 14.1844
+unit = "deg/d"
+kind = "measured"
+source = "Park21 Sec. 3.4 (after Eq. 39): the Sun's rotation rate (14.1844 deg/day)"
+citation = "Park, R. S., Folkner, W. M., Williams, J. G. & Boggs, D. H. 2021, AJ 161, 105, doi:10.3847/1538-3881/abd414, Sec. 3.4, p. 7"
+retrieved = "2026-10-14"
+tolerance = { abs = 5.0e-5 }
+tolerance_rationale = "Park21 prints 4 decimals; half a unit in the 4th decimal is 5e-5 deg/d. The header value 0.247564432907 rad/d is 14.1843972 deg/d (diff 2.8e-6). A wrong unit (rad/s, deg/d, rev/d) would miss by orders of magnitude, which is what this vector guards."
+verified_by = "WP2 builder agent, 2026-10-14: read in the published PDF (iopscience.iop.org/article/10.3847/1538-3881/abd414/pdf, sha256 96c3945deb12e0f0843c2bf0703d3542d950cf85ff903b1fe11a501634f68ee0)."
+
+[[vector]]
+id = "DE440-J2SUN"
+requirement = ["PHY-002", "REF-002"]
+quantity = "dynamical form factor J2 of the Sun (DE440 J2SUN)"
+value = "2.1961391516529825e-7"
+unit = "1"
+kind = "measured"
+source = "REF-002 acceptance J2SUN = 2.1961391516529825e-7, the shortest round-trip rendering of header.440 J2SUN = 0.219613915165298248D-06"
+citation = "JPL DE440 ASCII header header.440, GROUP 1041 (https://ssd.jpl.nasa.gov/ftp/eph/planets/ascii/de440/header.440, sha256 0f4636b663e6f00af9efa2b605ef23635489f56b23dd1a5e3821d3acc6ac3359)"
+retrieved = "2026-10-14"
+tolerance = { abs = 0.0 }
+tolerance_rationale = "Both decimals parse to the same f64 (checked); equality is required."
+verified_by = "WP2 builder agent, 2026-10-14: compared with the downloaded header.440 and REF-002."
+
+[[vector]]
+id = "DE440-JDEPOC"
+requirement = ["REF-002"]
+quantity = "epoch of the DE440 initial conditions, Julian date (TDB)"
+value = 2440400.5
+unit = "d"
+kind = "measured"
+source = "REF-002 acceptance JDEPOC = 2440400.5; header.440 JDEPOC = 0.244040050000000000D+07"
+citation = "JPL DE440 ASCII header header.440, GROUP 1041 (https://ssd.jpl.nasa.gov/ftp/eph/planets/ascii/de440/header.440, sha256 0f4636b663e6f00af9efa2b605ef23635489f56b23dd1a5e3821d3acc6ac3359)"
+retrieved = "2026-10-14"
+tolerance = { abs = 0.0 }
+tolerance_rationale = "Exactly representable; equality is required."
+verified_by = "WP2 builder agent, 2026-10-14: compared with the downloaded header.440 and REF-002."
+
+[[vector]]
+id = "DE440-BETA"
+requirement = ["REF-002"]
+quantity = "PPN parameter beta adopted by DE440"
+value = 1.0
+unit = "1"
+kind = "defined"
+source = "REF-002 acceptance BETA = 1.0; header.440 BETA = 0.100000000000000000D+01 (DE440 is built in general relativity)"
+citation = "JPL DE440 ASCII header header.440, GROUP 1041 (https://ssd.jpl.nasa.gov/ftp/eph/planets/ascii/de440/header.440, sha256 0f4636b663e6f00af9efa2b605ef23635489f56b23dd1a5e3821d3acc6ac3359)"
+retrieved = "2026-10-14"
+tolerance = { abs = 0.0 }
+tolerance_rationale = "Exact; equality is required."
+verified_by = "WP2 builder agent, 2026-10-14: compared with the downloaded header.440 and REF-002."
+
+[[vector]]
+id = "DE440-GAMMA"
+requirement = ["REF-002"]
+quantity = "PPN parameter gamma adopted by DE440"
+value = 1.0
+unit = "1"
+kind = "defined"
+source = "REF-002 acceptance GAMMA = 1.0; header.440 GAMMA = 0.100000000000000000D+01 (DE440 is built in general relativity)"
+citation = "JPL DE440 ASCII header header.440, GROUP 1041 (https://ssd.jpl.nasa.gov/ftp/eph/planets/ascii/de440/header.440, sha256 0f4636b663e6f00af9efa2b605ef23635489f56b23dd1a5e3821d3acc6ac3359)"
+retrieved = "2026-10-14"
+tolerance = { abs = 0.0 }
+tolerance_rationale = "Exact; equality is required."
+verified_by = "WP2 builder agent, 2026-10-14: compared with the downloaded header.440 and REF-002."
+
+[[vector]]
+id = "DE440-CONSTANT-COUNT"
+requirement = ["REF-002"]
+quantity = "number of constants in header.440 GROUP 1040"
+value = 645
+unit = "1"
+kind = "measured"
+source = "REF-002 notes: 645 constants in the header; counted in the downloaded header.440"
+citation = "JPL DE440 ASCII header header.440, GROUP 1041 (https://ssd.jpl.nasa.gov/ftp/eph/planets/ascii/de440/header.440, sha256 0f4636b663e6f00af9efa2b605ef23635489f56b23dd1a5e3821d3acc6ac3359)"
+retrieved = "2026-10-14"
+tolerance = { abs = 0.0 }
+tolerance_rationale = "A count; equality is required."
+verified_by = "WP1 data test and WP2 builder agent, 2026-10-14: counted in the downloaded header.440."
+notes = "kind = measured because ADR-0004 has no 'data-product fact' kind; the count is read from the product."
+
+[[vector]]
+id = "DE440-MA-COUNT"
+requirement = ["REF-002"]
+quantity = "number of asteroid GM constants (names MA*) in header.440 GROUP 1040"
+value = 409
+unit = "1"
+kind = "measured"
+source = "REF-002 acceptance: 409 MA entries; counted in the downloaded header.440"
+citation = "JPL DE440 ASCII header header.440, GROUP 1041 (https://ssd.jpl.nasa.gov/ftp/eph/planets/ascii/de440/header.440, sha256 0f4636b663e6f00af9efa2b605ef23635489f56b23dd1a5e3821d3acc6ac3359)"
+retrieved = "2026-10-14"
+tolerance = { abs = 0.0 }
+tolerance_rationale = "A count; equality is required."
+verified_by = "WP2 builder agent, 2026-10-14: counted in the downloaded header.440."
+notes = "kind = measured because ADR-0004 has no 'data-product fact' kind; the count is read from the product."
+
+[[vector]]
+id = "DE440-GM-MERCURY-KM3S2"
+requirement = ["PHY-002"]
+quantity = "GMMercury used in DE440 (header GM1, converted to km^3/s^2)"
+value = "22031.868551"
+unit = "km^3/s^2"
+kind = "measured"
+source = "Park21 Table 2 (Planetary Masses Used in DE440 and DE441): GMMercury 22031.868551 km3 s-2"
+citation = "Park, R. S., Folkner, W. M., Williams, J. G. & Boggs, D. H. 2021, AJ 161, 105, doi:10.3847/1538-3881/abd414, Table 2"
+retrieved = "2026-10-14"
+tolerance = { abs = 5.0e-7 }
+tolerance_rationale = "Park21 Table 2 prints six decimals, so the printed value is within half a unit of the 6th decimal (5e-7 km^3/s^2) of the unrounded one. FerroAstro converts the header's au^3/d^2 value with AU^3/86400^2 in f64; that adds at most ~2e-8 km^3/s^2 (Jupiter), far below 5e-7."
+verified_by = "WP2 builder agent, 2026-10-14: read in the published PDF (iopscience.iop.org/article/10.3847/1538-3881/abd414/pdf, sha256 96c3945deb12e0f0843c2bf0703d3542d950cf85ff903b1fe11a501634f68ee0)."
+
+[[vector]]
+id = "DE440-GM-VENUS-KM3S2"
+requirement = ["PHY-002"]
+quantity = "GMVenus used in DE440 (header GM2, converted to km^3/s^2)"
+value = "324858.592000"
+unit = "km^3/s^2"
+kind = "measured"
+source = "Park21 Table 2 (Planetary Masses Used in DE440 and DE441): GMVenus 324858.592000 km3 s-2"
+citation = "Park, R. S., Folkner, W. M., Williams, J. G. & Boggs, D. H. 2021, AJ 161, 105, doi:10.3847/1538-3881/abd414, Table 2"
+retrieved = "2026-10-14"
+tolerance = { abs = 5.0e-7 }
+tolerance_rationale = "Park21 Table 2 prints six decimals, so the printed value is within half a unit of the 6th decimal (5e-7 km^3/s^2) of the unrounded one. FerroAstro converts the header's au^3/d^2 value with AU^3/86400^2 in f64; that adds at most ~2e-8 km^3/s^2 (Jupiter), far below 5e-7."
+verified_by = "WP2 builder agent, 2026-10-14: read in the published PDF (iopscience.iop.org/article/10.3847/1538-3881/abd414/pdf, sha256 96c3945deb12e0f0843c2bf0703d3542d950cf85ff903b1fe11a501634f68ee0)."
+
+[[vector]]
+id = "DE440-GM-EARTH-KM3S2"
+requirement = ["PHY-002"]
+quantity = "GMEarth used in DE440 (header GMB*EMRAT/(1+EMRAT), converted to km^3/s^2)"
+value = "398600.435507"
+unit = "km^3/s^2"
+kind = "measured"
+source = "Park21 Table 2 (Planetary Masses Used in DE440 and DE441): GMEarth 398600.435507 km3 s-2"
+citation = "Park, R. S., Folkner, W. M., Williams, J. G. & Boggs, D. H. 2021, AJ 161, 105, doi:10.3847/1538-3881/abd414, Table 2"
+retrieved = "2026-10-14"
+tolerance = { abs = 5.0e-7 }
+tolerance_rationale = "Park21 Table 2 prints six decimals, so the printed value is within half a unit of the 6th decimal (5e-7 km^3/s^2) of the unrounded one. FerroAstro converts the header's au^3/d^2 value with AU^3/86400^2 in f64; that adds at most ~2e-8 km^3/s^2 (Jupiter), far below 5e-7."
+verified_by = "WP2 builder agent, 2026-10-14: read in the published PDF (iopscience.iop.org/article/10.3847/1538-3881/abd414/pdf, sha256 96c3945deb12e0f0843c2bf0703d3542d950cf85ff903b1fe11a501634f68ee0)."
+
+[[vector]]
+id = "DE440-GM-MOON-KM3S2"
+requirement = ["PHY-002"]
+quantity = "GMMoon used in DE440 (header GMB/(1+EMRAT), converted to km^3/s^2)"
+value = "4902.800118"
+unit = "km^3/s^2"
+kind = "measured"
+source = "Park21 Table 2 (Planetary Masses Used in DE440 and DE441): GMMoon 4902.800118 km3 s-2"
+citation = "Park, R. S., Folkner, W. M., Williams, J. G. & Boggs, D. H. 2021, AJ 161, 105, doi:10.3847/1538-3881/abd414, Table 2"
+retrieved = "2026-10-14"
+tolerance = { abs = 5.0e-7 }
+tolerance_rationale = "Park21 Table 2 prints six decimals, so the printed value is within half a unit of the 6th decimal (5e-7 km^3/s^2) of the unrounded one. FerroAstro converts the header's au^3/d^2 value with AU^3/86400^2 in f64; that adds at most ~2e-8 km^3/s^2 (Jupiter), far below 5e-7."
+verified_by = "WP2 builder agent, 2026-10-14: read in the published PDF (iopscience.iop.org/article/10.3847/1538-3881/abd414/pdf, sha256 96c3945deb12e0f0843c2bf0703d3542d950cf85ff903b1fe11a501634f68ee0)."
+
+[[vector]]
+id = "DE440-GM-MARS-KM3S2"
+requirement = ["PHY-002"]
+quantity = "GMMars System used in DE440 (header GM4, converted to km^3/s^2)"
+value = "42828.375816"
+unit = "km^3/s^2"
+kind = "measured"
+source = "Park21 Table 2 (Planetary Masses Used in DE440 and DE441): GMMars System 42828.375816 km3 s-2"
+citation = "Park, R. S., Folkner, W. M., Williams, J. G. & Boggs, D. H. 2021, AJ 161, 105, doi:10.3847/1538-3881/abd414, Table 2"
+retrieved = "2026-10-14"
+tolerance = { abs = 5.0e-7 }
+tolerance_rationale = "Park21 Table 2 prints six decimals, so the printed value is within half a unit of the 6th decimal (5e-7 km^3/s^2) of the unrounded one. FerroAstro converts the header's au^3/d^2 value with AU^3/86400^2 in f64; that adds at most ~2e-8 km^3/s^2 (Jupiter), far below 5e-7."
+verified_by = "WP2 builder agent, 2026-10-14: read in the published PDF (iopscience.iop.org/article/10.3847/1538-3881/abd414/pdf, sha256 96c3945deb12e0f0843c2bf0703d3542d950cf85ff903b1fe11a501634f68ee0)."
+
+[[vector]]
+id = "DE440-GM-JUPITER-KM3S2"
+requirement = ["PHY-002"]
+quantity = "GMJupiter System used in DE440 (header GM5, converted to km^3/s^2)"
+value = "126712764.100000"
+unit = "km^3/s^2"
+kind = "measured"
+source = "Park21 Table 2 (Planetary Masses Used in DE440 and DE441): GMJupiter System 126712764.100000 km3 s-2"
+citation = "Park, R. S., Folkner, W. M., Williams, J. G. & Boggs, D. H. 2021, AJ 161, 105, doi:10.3847/1538-3881/abd414, Table 2"
+retrieved = "2026-10-14"
+tolerance = { abs = 5.0e-7 }
+tolerance_rationale = "Park21 Table 2 prints six decimals, so the printed value is within half a unit of the 6th decimal (5e-7 km^3/s^2) of the unrounded one. FerroAstro converts the header's au^3/d^2 value with AU^3/86400^2 in f64; that adds at most ~2e-8 km^3/s^2 (Jupiter), far below 5e-7."
+verified_by = "WP2 builder agent, 2026-10-14: read in the published PDF (iopscience.iop.org/article/10.3847/1538-3881/abd414/pdf, sha256 96c3945deb12e0f0843c2bf0703d3542d950cf85ff903b1fe11a501634f68ee0)."
+
+[[vector]]
+id = "DE440-GM-SATURN-KM3S2"
+requirement = ["PHY-002"]
+quantity = "GMSaturn System used in DE440 (header GM6, converted to km^3/s^2)"
+value = "37940584.841800"
+unit = "km^3/s^2"
+kind = "measured"
+source = "Park21 Table 2 (Planetary Masses Used in DE440 and DE441): GMSaturn System 37940584.841800 km3 s-2"
+citation = "Park, R. S., Folkner, W. M., Williams, J. G. & Boggs, D. H. 2021, AJ 161, 105, doi:10.3847/1538-3881/abd414, Table 2"
+retrieved = "2026-10-14"
+tolerance = { abs = 5.0e-7 }
+tolerance_rationale = "Park21 Table 2 prints six decimals, so the printed value is within half a unit of the 6th decimal (5e-7 km^3/s^2) of the unrounded one. FerroAstro converts the header's au^3/d^2 value with AU^3/86400^2 in f64; that adds at most ~2e-8 km^3/s^2 (Jupiter), far below 5e-7."
+verified_by = "WP2 builder agent, 2026-10-14: read in the published PDF (iopscience.iop.org/article/10.3847/1538-3881/abd414/pdf, sha256 96c3945deb12e0f0843c2bf0703d3542d950cf85ff903b1fe11a501634f68ee0)."
+
+[[vector]]
+id = "DE440-GM-URANUS-KM3S2"
+requirement = ["PHY-002"]
+quantity = "GMUranus System used in DE440 (header GM7, converted to km^3/s^2)"
+value = "5794556.400000"
+unit = "km^3/s^2"
+kind = "measured"
+source = "Park21 Table 2 (Planetary Masses Used in DE440 and DE441): GMUranus System 5794556.400000 km3 s-2"
+citation = "Park, R. S., Folkner, W. M., Williams, J. G. & Boggs, D. H. 2021, AJ 161, 105, doi:10.3847/1538-3881/abd414, Table 2"
+retrieved = "2026-10-14"
+tolerance = { abs = 5.0e-7 }
+tolerance_rationale = "Park21 Table 2 prints six decimals, so the printed value is within half a unit of the 6th decimal (5e-7 km^3/s^2) of the unrounded one. FerroAstro converts the header's au^3/d^2 value with AU^3/86400^2 in f64; that adds at most ~2e-8 km^3/s^2 (Jupiter), far below 5e-7."
+verified_by = "WP2 builder agent, 2026-10-14: read in the published PDF (iopscience.iop.org/article/10.3847/1538-3881/abd414/pdf, sha256 96c3945deb12e0f0843c2bf0703d3542d950cf85ff903b1fe11a501634f68ee0)."
+
+[[vector]]
+id = "DE440-GM-NEPTUNE-KM3S2"
+requirement = ["PHY-002"]
+quantity = "GMNeptune System used in DE440 (header GM8, converted to km^3/s^2)"
+value = "6836527.100580"
+unit = "km^3/s^2"
+kind = "measured"
+source = "Park21 Table 2 (Planetary Masses Used in DE440 and DE441): GMNeptune System 6836527.100580 km3 s-2"
+citation = "Park, R. S., Folkner, W. M., Williams, J. G. & Boggs, D. H. 2021, AJ 161, 105, doi:10.3847/1538-3881/abd414, Table 2"
+retrieved = "2026-10-14"
+tolerance = { abs = 5.0e-7 }
+tolerance_rationale = "Park21 Table 2 prints six decimals, so the printed value is within half a unit of the 6th decimal (5e-7 km^3/s^2) of the unrounded one. FerroAstro converts the header's au^3/d^2 value with AU^3/86400^2 in f64; that adds at most ~2e-8 km^3/s^2 (Jupiter), far below 5e-7."
+verified_by = "WP2 builder agent, 2026-10-14: read in the published PDF (iopscience.iop.org/article/10.3847/1538-3881/abd414/pdf, sha256 96c3945deb12e0f0843c2bf0703d3542d950cf85ff903b1fe11a501634f68ee0)."
+
+[[vector]]
+id = "DE440-GM-PLUTO-KM3S2"
+requirement = ["PHY-002"]
+quantity = "GMPluto System used in DE440 (header GM9, converted to km^3/s^2)"
+value = "975.500000"
+unit = "km^3/s^2"
+kind = "measured"
+source = "Park21 Table 2 (Planetary Masses Used in DE440 and DE441): GMPluto System 975.500000 km3 s-2"
+citation = "Park, R. S., Folkner, W. M., Williams, J. G. & Boggs, D. H. 2021, AJ 161, 105, doi:10.3847/1538-3881/abd414, Table 2"
+retrieved = "2026-10-14"
+tolerance = { abs = 5.0e-7 }
+tolerance_rationale = "Park21 Table 2 prints six decimals, so the printed value is within half a unit of the 6th decimal (5e-7 km^3/s^2) of the unrounded one. FerroAstro converts the header's au^3/d^2 value with AU^3/86400^2 in f64; that adds at most ~2e-8 km^3/s^2 (Jupiter), far below 5e-7."
+verified_by = "WP2 builder agent, 2026-10-14: read in the published PDF (iopscience.iop.org/article/10.3847/1538-3881/abd414/pdf, sha256 96c3945deb12e0f0843c2bf0703d3542d950cf85ff903b1fe11a501634f68ee0)."

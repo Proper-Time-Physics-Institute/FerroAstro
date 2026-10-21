@@ -22,4 +22,5 @@ Every ADR names its **Confirmation**, meaning the CI check or test that enforces
 | [0011](0011-precession-observable-and-frames.md) | Precession observable and frames | proposed |
 | [0012](0012-special-relativity-rungs.md) | Special-relativity rung definitions | accepted |
 | [0013](0013-benchmark-and-long-run-infrastructure.md) | Benchmark and long-run infrastructure | accepted |
+| [0014](0014-per-body-contribution-protocol.md) | Per-body contribution protocol (P-remove) | accepted (provisional until OI-38) |
 
