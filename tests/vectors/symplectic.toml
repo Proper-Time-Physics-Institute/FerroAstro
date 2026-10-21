@@ -80,7 +80,7 @@ notes = "Superseded within WP29 by IRK16-OBSERVED-ORDER-DD: in f64 both errors w
 [[vector]]
 id = "IRK16-OBSERVED-ORDER-DD"
 requirement = ["NUM-003"]
-quantity = "ln(err_12 / err_16) / ln(16/12): observed convergence order of IRK16 in double-double at step points, position error after 10 orbits of a Mercury-like Kepler orbit (e = 0.2056, GM = a = 1) with 12 and 16 steps per orbit"
+quantity = "observed convergence order of IRK16 in double-double at step points: minus the least-squares slope of ln(err) against ln(N) for N = 24, 32, 40, 48 steps per orbit, err the position error after 10 orbits of a Mercury-like Kepler orbit (e = 0.2056, GM = a = 1) (check I2c; the registered I2b design was the pair N = 12, 16)"
 value = 16.25
 unit = "1"
 kind = "analytic"
@@ -89,7 +89,7 @@ citation = "Hairer, Lubich & Wanner 2006, Geometric Numerical Integration, Thm. 
 retrieved = "2026-10-21"
 tolerance = { abs = 2.25 }
 tolerance_rationale = "The interval [14, 18.5] of IRK16-OBSERVED-ORDER, unchanged; it allows pre-asymptotic behaviour at 12 steps per orbit."
-verified_by = "WP29 builder agent, 2026-10-21: fixed in plan addendum 1 after the f64 design was found to measure round-off and before this design ran."
+verified_by = "WP29 builder agent, 2026-10-21: value and bound fixed in plan addendum 1 for the I2b design (12/16 steps), before it ran. I2b failed (11.79, pre-asymptotic dip); the asserting test is now I2c (least squares over 24-48 steps), chosen in plan addendum 2 AFTER a diagnostic sweep, so this bound is not a pre-registered confirmation of I2c (NEEDS HUMAN REVIEW). Quantity text corrected by the WP29 reviewer, 2026-10-21; value and tolerance unchanged."
 
 [[vector]]
 id = "IRK16-KEPLER-FWD-BACK-REL"
