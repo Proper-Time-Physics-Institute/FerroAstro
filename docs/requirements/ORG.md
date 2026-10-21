@@ -239,6 +239,7 @@ source: >-
   docs/strategy/journal/05-organization-standards.md ORG-008 (original).
 parent: null
 related: [ORG-010, ORG-009, STD-011]
+verified_by_gate: "ci/dco/Check sign-off trailers"
 notes: >-
   REVISED by Journal #6. The original Journal #5 text required a signed CLA
   checked by cla.yml; the CLA is deferred to ORG-010. Consequences for Journal

@@ -27,6 +27,7 @@ source: >-
   docs/strategy/journal/02-rust-ecosystem-licenses.md License risks and DEP-001.
 parent: null
 related: [DEP-002, DEP-003, STD-006, LIC-001]
+verified_by_gate: "ci/rust/cargo deny check"
 notes: >-
   DEP-001 to DEP-003 are AUTHORITATIVE for license policy content; STD-006 is
   the CI gate that enforces it. cargo-deny must check the actual license files,
@@ -57,6 +58,7 @@ source: >-
   docs/strategy/journal/02-rust-ecosystem-licenses.md DEP-002.
 parent: DEP-001
 related: [STD-006, DEP-004, DEP-009]
+verified_by_gate: "ci/rust/cargo deny check"
 notes: >-
   Journal #5 §3.4 shows a shorter illustrative allow-list ending in "..."; this
   list is authoritative. anise is not a dependency; decision deferred to M5
@@ -93,6 +95,7 @@ source: >-
   risks and DEP-003.
 parent: DEP-001
 related: [LIC-001, DEP-008, DEP-015]
+verified_by_gate: "ci/rust/cargo deny check"
 notes: >-
   nyx-space is AGPL-3.0 and would impose source-offer obligations on the
   network-served MCP server and web demo. Whether thor-rs-assist derives from

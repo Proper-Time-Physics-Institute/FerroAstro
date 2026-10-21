@@ -49,8 +49,11 @@ parent: ORG-002          # parent requirement ID, or null
 related: [PHY-005]       # cross-references (overlaps, dependencies)
 notes: >-                # UNVERIFIED caveats, authority notes, revisions
   …
+verified_by_gate: "ci/rust/cargo deny check"   # optional; see below
 ```
 ````
+
+**`verified_by_gate` (optional 12th key).** `verified_by_gate: <workflow>/<job>[/<step>]` names the CI gate that enforces the requirement: `workflow` is a file stem under `.github/workflows/`, `job` a job id, and the optional `step` a step `name` or `id`. The key is **human-owned**: only a maintainer adds, changes or removes it (ORG-011 meta surface, #12). Per the ADR-0010 ruling of 2026-10-20, `trace.py --check` fails when the key appears on any requirement other than STD-001…011, TST-001, DEP-001/002/003/006 and ORG-008 (never PHY, NUM, REF or API), or when the named workflow, job or step does not exist. A `crit:high` requirement's gate counts as evidence only once it is a required check pinned to the default branch (#12); until then TRACE.md shows it as `gate (unpinned)` and it does not count toward moving the requirement past `draft`. `crit:medium` and `crit:low` gates count. TRACE.md lists gate evidence in its own section, apart from test evidence.
 
 **Overlapping requirements.** Some streams state the same rule from different angles, for example PHY-012 and NUM-013, DEP-009 and LIC-004, REF-001 / LIC-003 / DEP-017, and DEP-007 and NUM-006. In each case both IDs are kept. They point at each other through `related:`, and the `notes:` field says which one is **AUTHORITATIVE** for which aspect. When two requirements disagree, the authoritative one wins until a maintainer reconciles them.
 
@@ -96,7 +99,7 @@ def test_horizons_cross_check() -> None: ...
 - Several IDs may be listed, comma-separated: `/// Verifies: PHY-010, NUM-015`.
 - Test-vector files (`tests/vectors/*.toml`) also carry a `requirement = [...]` list (TST-002), which `trace.py` joins in.
 - The form `// REQ: PHY-012` shown in Journal #5's TL;DR is **superseded** by `Verifies:`.
-- CI fails when an `approved` requirement with `verification: test` has no citing test, or when a test cites an unknown ID (ORG-004).
+- CI fails when an `approved` requirement with `verification: test` has no citing test (and no counted `verified_by_gate` evidence, see above), or when a test cites an unknown ID (ORG-004).
 
 ## Traceability tooling
 

@@ -24,6 +24,7 @@ source: >-
   docs/strategy/journal/05-organization-standards.md §3.1–3.2 and STD-001.
 parent: null
 related: [STD-005]
+verified_by_gate: "ci/rust/cargo fmt --all --check"
 notes: >-
   rustfmt.toml uses stable-only options (edition 2024, max_width 100). The
   pinned channel 1.95.0 is a placeholder (ADR-0006), bumped to the then-current
@@ -51,6 +52,7 @@ source: >-
   docs/strategy/journal/05-organization-standards.md §3.3 and STD-002.
 parent: null
 related: [TST-001, STD-003]
+verified_by_gate: "ci/rust/cargo clippy"
 notes: >-
   UNVERIFIED: #[expect] stabilised in Rust 1.81 (stable on 1.85+ either way);
   group membership of float_cmp_const, lossy_float_literal, suboptimal_flops,
@@ -77,6 +79,7 @@ source: >-
   docs/strategy/journal/05-organization-standards.md §3.3 and STD-003.
 parent: null
 related: [NUM-021, ORG-005]
+verified_by_gate: "ci/rust/cargo clippy"
 notes: >-
   A future SIMD crate (NUM-021) is the likely first exception.
 ```
@@ -99,6 +102,7 @@ source: >-
   docs/strategy/journal/05-organization-standards.md §3.4 and STD-004.
 parent: null
 related: [API-003]
+verified_by_gate: "ci/rust/cargo doc"
 notes: null
 ```
 
@@ -120,6 +124,7 @@ source: >-
   docs/strategy/journal/05-organization-standards.md §3.1 and STD-005.
 parent: null
 related: [STD-001, DEP-006]
+verified_by_gate: "ci/msrv"
 notes: >-
   Policy per ADR-0006 (AUTHORITATIVE): rust-version is set at M0 to the highest
   minimum required by the adopted dependencies (e.g. rmcp, hifitime) and is
@@ -145,6 +150,7 @@ source: >-
   docs/strategy/journal/05-organization-standards.md §3.4 and STD-006.
 parent: null
 related: [DEP-001, DEP-002, DEP-003, DEP-015, DEP-016]
+verified_by_gate: "ci/rust/cargo deny check"
 notes: >-
   This is the CI gate. The policy content (allow-list, bans) is AUTHORITATIVE
   in DEP-001..DEP-003.
@@ -191,6 +197,7 @@ source: >-
   STD-008.
 parent: null
 related: [DEP-014, CI-005, CI-006, CI-010]
+verified_by_gate: "ci/rust/cargo nextest + doctests"
 notes: >-
   That nextest does not run doctests is per its docs; whether that has changed
   is UNVERIFIED.
@@ -216,6 +223,7 @@ source: >-
   docs/strategy/journal/05-organization-standards.md §4 and STD-009.
 parent: null
 related: [ORG-004]
+verified_by_gate: "ci/python"
 notes: >-
   Pyright is an acceptable substitute for mypy, chosen by ADR (one, not both).
   The orekit-jpype packaging choice and the pre-commit hook IDs/revisions are
@@ -246,6 +254,7 @@ source: >-
   docs/strategy/journal/05-organization-standards.md §5 and STD-010.
 parent: null
 related: [DEP-005, DEP-009, LIC-004]
+verified_by_gate: "ci/reuse/reuse lint"
 notes: >-
   Header text: the standard two-line SPDX header (copyright "2026 Proper-Time
   Physics Institute", license identifier Apache-2.0); see docs/standards/.

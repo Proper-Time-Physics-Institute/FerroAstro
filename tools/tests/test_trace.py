@@ -105,3 +105,103 @@ def test_vector_schema_is_enforced(fa_trace: ModuleType, tmp_path: Path) -> None
 def test_render_is_deterministic(fa_trace: ModuleType) -> None:
     report = fa_trace.build_report(fa_trace.ROOT)
     assert fa_trace.render(report) == fa_trace.render(fa_trace.build_report(fa_trace.ROOT))
+
+
+WORKFLOW = """
+name: ci
+on: [pull_request]
+jobs:
+  rust:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: cargo deny check
+        run: cargo deny check
+      - id: fmt
+        run: cargo fmt --all --check
+"""
+
+
+def make_gate_repo(tmp: Path, rid: str, crit: str, gate: str, status: str = "draft") -> Path:
+    req_dir = tmp / "docs" / "requirements"
+    req_dir.mkdir(parents=True)
+    block = REQ.format(rid=rid, status=status).replace("criticality: high", f"criticality: {crit}")
+    block = block.replace("related: []\n", f'related: []\nverified_by_gate: "{gate}"\n')
+    (req_dir / f"{rid[:3]}.md").write_text(block, encoding="utf-8")
+    vec_dir = tmp / "tests" / "vectors"
+    vec_dir.mkdir(parents=True)
+    shutil.copy(Path(__file__).resolve().parents[2] / "tests/vectors/schema.json", vec_dir)
+    wf_dir = tmp / ".github" / "workflows"
+    wf_dir.mkdir(parents=True)
+    (wf_dir / "ci.yml").write_text(WORKFLOW, encoding="utf-8")
+    return tmp
+
+
+# Verifies: ORG-003, ORG-004
+def test_gate_outside_scope_is_rejected(fa_trace: ModuleType, tmp_path: Path) -> None:
+    for stem, rid in (("PHY", "PHY-001"), ("NUM", "NUM-001"), ("STD", "STD-012")):
+        repo = make_gate_repo(tmp_path / stem, rid, "medium", "ci/rust")
+        report = fa_trace.build_report(repo)
+        assert any(f"{rid} has verified_by_gate" in e for e in report.errors), rid
+        assert not report.requirements[rid].gate_counts
+    assert "PHY-001" not in fa_trace.GATE_SCOPE
+    assert {"STD-001", "STD-011", "TST-001", "DEP-006", "ORG-008"} <= fa_trace.GATE_SCOPE
+
+
+# Verifies: ORG-003, ORG-004
+def test_malformed_gate_is_rejected(fa_trace: ModuleType, tmp_path: Path) -> None:
+    repo = make_gate_repo(tmp_path, "STD-001", "low", "ci")
+    _, errors = fa_trace.parse_requirements(repo / "docs" / "requirements")
+    assert any("is not workflow/job[/step]" in e for e in errors)
+
+
+# Verifies: ORG-004
+def test_missing_workflow_job_or_step_is_rejected(fa_trace: ModuleType, tmp_path: Path) -> None:
+    cases = {
+        "nope/rust": "workflow .github/workflows/nope.yml does not exist",
+        "ci/python": "workflow ci has no job 'python'",
+        "ci/rust/cargo doc": "has no step named 'cargo doc'",
+    }
+    for n, (gate, message) in enumerate(cases.items()):
+        repo = make_gate_repo(tmp_path / str(n), "STD-001", "low", gate)
+        report = fa_trace.build_report(repo)
+        assert any(message in e for e in report.errors), gate
+    for n, gate in enumerate(("ci/rust", "ci/rust/cargo deny check", "ci/rust/fmt")):
+        repo = make_gate_repo(tmp_path / f"ok{n}", "STD-001", "low", gate)
+        assert fa_trace.build_report(repo).errors == [], gate
+
+
+# Verifies: ORG-004
+def test_high_criticality_gate_is_unpinned_and_not_counted(
+    fa_trace: ModuleType, tmp_path: Path
+) -> None:
+    assert not fa_trace.PINNED_GATES
+    gate = "ci/rust/cargo deny check"
+    repo = make_gate_repo(tmp_path, "DEP-001", "high", gate, status="approved")
+    report = fa_trace.build_report(repo)
+    req = report.requirements["DEP-001"]
+    assert not req.gate_counts
+    assert req.gate_state == "gate (unpinned)"
+    assert any("DEP-001 is approved" in e and "unpinned" in e for e in report.errors)
+    assert f"| `{gate}` | gate (unpinned) |" in fa_trace.render(report)
+
+
+# Verifies: ORG-004
+def test_medium_criticality_gate_counts(fa_trace: ModuleType, tmp_path: Path) -> None:
+    repo = make_gate_repo(tmp_path, "STD-002", "medium", "ci/rust", status="approved")
+    report = fa_trace.build_report(repo)
+    assert report.errors == []
+    req = report.requirements["STD-002"]
+    assert req.gate_counts
+    assert req.gate_state == "gate"
+    assert "covered by a counted gate alone: **1**" in fa_trace.render(report)
+
+
+# Verifies: ORG-004
+def test_gate_evidence_is_a_separate_section(fa_trace: ModuleType, tmp_path: Path) -> None:
+    repo = make_gate_repo(tmp_path, "STD-002", "medium", "ci/rust")
+    text = fa_trace.render(fa_trace.build_report(repo))
+    tests_part, gate_part = text.split("## Gate evidence")
+    assert "## Test evidence" in tests_part
+    assert "ci/rust" not in tests_part
+    assert "| [STD-002](STD.md) | draft | medium | test | — | — |" in tests_part
+    assert "| [STD-002](STD.md) | draft | medium | `ci/rust` | gate |" in gate_part
