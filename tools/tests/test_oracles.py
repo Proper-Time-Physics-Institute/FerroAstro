@@ -468,3 +468,28 @@ def test_nightly_oracle_and_ferroastro_jobs_are_separate() -> None:
         assert forbidden not in code(ferroastro), forbidden
     assert "oracle-job.done" in code(ferroastro)
     assert "cargo nextest run -p ferroastro-oracle" in code(ferroastro)
+
+
+# Verifies: API-002, REF-011
+def test_scenario_names_that_are_not_file_stems_are_refused(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """R13-CODE-6: the output file is named after the scenario, so the name must stay inside."""
+    for ok in ("stage-a-sun-8planets-newton-100yr", "a.b_c-1"):
+        assert common.output_file({"name": ok}, "rebound") == f"{ok}.rebound.states.csv"
+    bad_names: list[object] = ["../x", "a/b", "/abs", ".hidden", "x/../y", "a..b", "", "a b", None]
+    for bad in bad_names:
+        with pytest.raises(common.SetupError):
+            common.safe_stem(bad)
+    text = STAGE_A.read_text(encoding="utf-8")
+    name = tomllib.loads(text)["name"]
+    sc = tmp_path / "evil.toml"
+    sc.write_text(text.replace(f'name = "{name}"', 'name = "../../escaped"'), encoding="utf-8")
+    with pytest.raises(common.SetupError):
+        common.load_scenario(sc)
+    out = tmp_path / "deep" / "out"
+    argv = ["--scenario", str(sc), "--header", str(tmp_path / "none"), "--out-dir", str(out)]
+    assert rebound_runner.main(argv) == common.SETUP_EXIT
+    assert "not a plain file stem" in capsys.readouterr().err
+    assert not (tmp_path / "escaped.rebound.states.csv").exists()
+    assert not out.exists()

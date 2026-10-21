@@ -224,7 +224,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         print(f"SETUP ERROR: {e}", file=sys.stderr)
         return common.SETUP_EXIT
     args.out_dir.mkdir(parents=True, exist_ok=True)
-    name = f"{scenario['name']}.rebound.states.csv"
+    name = common.output_file(scenario, "rebound")
     path = args.out_dir / name
     # REUSE-IgnoreStart (licence lines written into the CSV, not this file's licence)
     lines = [

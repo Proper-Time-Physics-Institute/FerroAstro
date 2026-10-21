@@ -237,7 +237,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         print(f"SETUP ERROR: {e}", file=sys.stderr)
         return common.SETUP_EXIT
     args.out_dir.mkdir(parents=True, exist_ok=True)
-    name = f"{scenario['name']}.{TOOL}.states.csv"
+    name = common.output_file(scenario, TOOL)
     path = args.out_dir / name
     jpl = args.jpl_dir / JPL_FILE
     nbody_io.write_states_csv(

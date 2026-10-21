@@ -24,6 +24,7 @@ import hashlib
 import json
 import os
 import platform
+import re
 import tomllib
 from collections.abc import Collection, Iterable, Mapping, Sequence
 from dataclasses import asdict, dataclass, field
@@ -98,12 +99,37 @@ class SetupError(Exception):
 
 
 def load_scenario(path: Path) -> dict[str, Any]:
-    """Return the scenario TOML as a table (``schema_version`` must be 1)."""
+    """Return the scenario TOML as a table (``schema_version`` 1, ``name`` a plain file stem)."""
     data = tomllib.loads(path.read_text(encoding="utf-8"))
     if data.get("schema_version") != 1:
         msg = f"{path}: schema_version {data.get('schema_version')!r} is not 1"
         raise SetupError(msg)
+    safe_stem(data.get("name"))
     return data
+
+
+SAFE_NAME = re.compile(r"[A-Za-z0-9][A-Za-z0-9._-]*")
+
+
+def safe_stem(name: object) -> str:
+    """Return ``name`` if it is a plain file stem, else raise :class:`SetupError`.
+
+    Runners name their output files after the scenario. A name with a path separator, ``..``, a
+    leading dot or other characters could write outside ``--out-dir`` (PR #13 judge review
+    R13-CODE-6), so it is refused before anything runs.
+    """
+    if not isinstance(name, str) or not SAFE_NAME.fullmatch(name) or ".." in name:
+        msg = (
+            f"scenario name {name!r} is not a plain file stem ([A-Za-z0-9][A-Za-z0-9._-]*, "
+            "no '..'); it names the output file"
+        )
+        raise SetupError(msg)
+    return name
+
+
+def output_file(scenario: Mapping[str, Any], tool: str) -> str:
+    """Return ``<scenario name>.<tool>.states.csv`` for a name that :func:`safe_stem` accepts."""
+    return f"{safe_stem(scenario.get('name'))}.{tool}.states.csv"
 
 
 def requested_switches(forces: Mapping[str, Any]) -> list[str]:
