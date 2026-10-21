@@ -590,8 +590,8 @@ notes: >-
   motion that converts them to ″/cy is a separate choice, currently
   n = √((GM☉ + GM☿)/a³) in ferroastro-analytic and ferroastro-ladder
   (RATE_CONVENTION, WP13 F5) but GM☉ in the WP14 scenario harness check. The
-  WP11 proposal "n uses the μ of the Keplerian problem that produced the
-  elements" is recorded for decision (OI-77; details in PHY-004 notes). The
+  maintainer decided on 2026-10-21 (OI-77 closed) that n = √((GM☉ + GM☿)/a³)
+  is used for every ″/cy conversion (details in PHY-004 notes). The
   per-orbit comparison this acceptance makes does not depend on n. OI-35
   (R3b): evidence available, pending human sign-off (PHY-011 notes); R3b
   matches Park 2017 Eq. 2 to 1.25e-6 relative in equatorial geometry
