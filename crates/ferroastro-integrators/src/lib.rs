@@ -5,6 +5,9 @@
 //! * [`Ias15`]: IAS15-class adaptive 15th-order Gauss–Radau integrator with compensated summation,
 //!   clean-room from Everhart 1985 and Rein & Spiegel 2015 (DEP-008). It is the default for all
 //!   rungs (ADR-0008) and accepts velocity-dependent forces.
+//! * [`Irk16`]: the s = 8 Gauss–Legendre implicit Runge–Kutta method (order 16), fixed step,
+//!   iterated to round-off with compensated summation after Hairer, `McLachlan` & Razakarivony
+//!   2008: the NUM-003 reference integrator (WP29).
 //! * [`diagnostics`]: least-squares slope fits used for the Brouwer-law round-off diagnostics
 //!   (NUM-023) and by the precession estimators.
 //! * [`compensated`]: Kahan summation.
@@ -39,9 +42,14 @@ pub mod compensated;
 pub mod diagnostics;
 mod error;
 mod ias15;
+mod irk16;
 mod radau;
 
 pub use error::IntegratorError;
 pub use ias15::{
     Ias15, Ias15Config, Ias15Snapshot, Ias15Stats, Parts, SecondOrderSystem, StepReport,
+};
+pub use irk16::{
+    DEFAULT_MAX_ITERATIONS as IRK16_DEFAULT_MAX_ITERATIONS, GaussLegendre8, Irk16, Irk16Config,
+    Irk16Snapshot, Irk16Stats, Irk16StepReport, STAGES as IRK16_STAGES,
 };

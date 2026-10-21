@@ -75,6 +75,21 @@ retrieved = "2026-10-21"
 tolerance = { abs = 2.25 }
 tolerance_rationale = "The interval [14, 18.5] around 16 allows pre-asymptotic behaviour at 16 steps per orbit (e = 0.2) and the error constant's step dependence; a method of order <= 12 (e.g. a wrong coefficient breaking B(16)) falls outside."
 verified_by = "WP29 builder agent, 2026-10-21: fixed in the WP29 plan (check I2) before the code existed."
+notes = "Superseded within WP29 by IRK16-OBSERVED-ORDER-DD: in f64 both errors were at round-off (1.671e-13, 1.039e-13; observed 0.685), so this design cannot measure the order. IMPLEMENTATION-NOTES WP29 plan addendum 1; NEEDS HUMAN REVIEW."
+
+[[vector]]
+id = "IRK16-OBSERVED-ORDER-DD"
+requirement = ["NUM-003"]
+quantity = "ln(err_12 / err_16) / ln(16/12): observed convergence order of IRK16 in double-double at step points, position error after 10 orbits of a Mercury-like Kepler orbit (e = 0.2056, GM = a = 1) with 12 and 16 steps per orbit"
+value = 16.25
+unit = "1"
+kind = "analytic"
+source = "s-stage Gauss collocation has classical order 2s = 16 at the step points. Double-double moves the round-off floor (~1e-30) below the truncation error (crudely 1e-26 to 1e-22 per step)."
+citation = "Hairer, Lubich & Wanner 2006, Geometric Numerical Integration, Thm. II.1.5; IMPLEMENTATION-NOTES WP29 plan addendum 1"
+retrieved = "2026-10-21"
+tolerance = { abs = 2.25 }
+tolerance_rationale = "The interval [14, 18.5] of IRK16-OBSERVED-ORDER, unchanged; it allows pre-asymptotic behaviour at 12 steps per orbit."
+verified_by = "WP29 builder agent, 2026-10-21: fixed in plan addendum 1 after the f64 design was found to measure round-off and before this design ran."
 
 [[vector]]
 id = "IRK16-KEPLER-FWD-BACK-REL"

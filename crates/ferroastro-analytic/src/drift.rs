@@ -204,7 +204,7 @@ mod tests {
             let [h0, h1, h2, _] = stumpff(-z);
             let want_h = [x.cosh(), x.sinh() / x, (x.cosh() - 1.0) / z];
             // c2, c3 by the closed forms cancel catastrophically for small x; skip them there.
-            let n = if x < 0.1 { 2 } else { 4 };
+            let n = if x < 0.1 { 2 } else { 4 }; // lint: allow-literal(cancellation threshold of the closed forms)
             for (k, (got, w)) in [c0, c1, c2, c3].iter().zip(want).take(n).enumerate() {
                 assert!(
                     (got - w).abs() <= TOL * w.abs().max(1.0),
