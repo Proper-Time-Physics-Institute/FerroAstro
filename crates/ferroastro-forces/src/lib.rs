@@ -50,7 +50,7 @@ pub use error::ForceError;
 pub use ferroastro_integrators::SecondOrderSystem;
 pub use mixed::{F64Forces, MixedForces};
 pub use nbody::{
-    Accelerations, ForceTerm, GeocentricMoon, Layout, LtReaction, MOON_TAYLOR_Q_MAX,
+    Accelerations, ForceTerm, GeocentricMoon, GrPotential, Layout, LtReaction, MOON_TAYLOR_Q_MAX,
     MOON_TAYLOR_TERMS_DEFAULT, MOON_TAYLOR_TERMS_MIN, MinorFromMajors, MinorReaction, MoonPair,
     MoonVariables, NBody, NBodyModel, NBodyPropagator, NewtonianMutual, RingMasses,
     SolarJ2WithReaction, SolarLenseThirring, TermParameter, View,
@@ -82,6 +82,10 @@ pub enum Gauge {
     /// A generic 1PN test-particle Lagrangian with freely chosen coefficients (the PHY-009
     /// coefficient study). It is not derived from a metric, so it has no gauge.
     GenericPnLagrangian,
+    /// A velocity-independent effective potential that reproduces the 1PN perihelion advance
+    /// (Nobili & Roxburgh 1986, `−3(GM)²/(c²r²)`): no metric and no PN gauge; the mean motion is
+    /// off by O(GM/(ac²)). Used with the Wisdom–Holman map (NUM-004).
+    GrEffectivePotential,
 }
 
 impl Gauge {
@@ -98,6 +102,9 @@ impl Gauge {
                 "special relativity, inertial frame (no PN gauge; H = gamma m c^2 - mu m / r)"
             }
             Gauge::GenericPnLagrangian => "generic 1PN Lagrangian coefficients (no metric gauge)",
+            Gauge::GrEffectivePotential => {
+                "GR effective potential -3(GM)^2/(c^2 r^2) (Nobili & Roxburgh 1986; no PN gauge)"
+            }
         }
     }
 

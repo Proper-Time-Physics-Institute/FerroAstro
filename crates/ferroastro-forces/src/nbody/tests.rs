@@ -680,3 +680,62 @@ fn solar_lense_thirring_equals_the_r3b_form() {
         tol.check(worst).unwrap();
     }
 }
+
+/// The GR effective potential (WP29, NUM-004): its forces are minus the gradient of its
+/// potential (power balance in double-double, as for the other terms), its reaction conserves
+/// momentum, and its acceleration has the Nobili–Roxburgh magnitude 6(GM☉)²/(c²r³).
+///
+/// Verifies: NUM-004
+#[test]
+fn gr_potential_is_conservative_with_reaction() {
+    let (bodies, x, v) = fixture();
+    let n = bodies.len();
+    let c = 3.0e5; // lint: allow-literal(synthetic speed of light, km/s)
+    let bodies_dd: Vec<NBody<Dd>> = bodies.iter().map(|b| body(b.id, b.gm, b.tier)).collect();
+    let term_dd = GrPotential::new(Velocity::from_km_per_s(Dd::from_f64(c)).unwrap()).unwrap();
+    let m = Model::<Dd>::new(
+        &bodies_dd,
+        MoonVariables::Barycentric,
+        vec![Box::new(term_dd)],
+    )
+    .unwrap();
+    let tol = 1e-9; // lint: allow-literal(finite-difference budget, as for the other terms)
+    let mismatch = power_mismatch(&m, &x, &v);
+    let a = accel(&m, &dd(&x), &dd(&v));
+    let mut p = [Dd::ZERO; 3];
+    let mut scale = Dd::ZERO;
+    for i in 0..n {
+        for (k, pk) in p.iter_mut().enumerate() {
+            let t = m.layout().gm(i) * a[k * n + i];
+            *pk += t;
+            scale += t.abs();
+        }
+    }
+    let mom = p.iter().map(|z| z.abs().to_f64()).fold(0.0, f64::max) / scale.to_f64();
+    // Magnitude on Mercury (index 1) relative to the Sun (index 0).
+    let gm_sun = bodies[0].gm;
+    let r: Vec<f64> = (0..3).map(|k| x[k * n + 1] - x[k * n]).collect();
+    let rn = (r[0] * r[0] + r[1] * r[1] + r[2] * r[2]).sqrt();
+    let want = 6.0 * gm_sun * gm_sun / (c * c * rn * rn * rn);
+    let got = (0..3)
+        .map(|k| a[k * n + 1].to_f64().powi(2))
+        .sum::<f64>()
+        .sqrt();
+    println!(
+        "GR potential: power balance {mismatch:.3e}, momentum {mom:.3e}, |a_Mercury| {got:e} vs \
+         6(GM)^2/(c^2 r^3) = {want:e}"
+    );
+    assert!(mismatch < tol);
+    assert!(mom < 1e-28); // lint: allow-literal(double-double round-off budget)
+    assert!((got - want).abs() <= 1e-14 * want); // lint: allow-literal(f64 round-off budget)
+    let model64 = Model::new(
+        &bodies,
+        MoonVariables::Barycentric,
+        vec![
+            Box::new(NewtonianMutual),
+            Box::new(GrPotential::new(Velocity::from_km_per_s(c).unwrap()).unwrap()),
+        ],
+    )
+    .unwrap();
+    assert_eq!(model64.gauge(), Gauge::GrEffectivePotential);
+}
