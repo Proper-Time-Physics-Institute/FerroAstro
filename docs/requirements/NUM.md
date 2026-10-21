@@ -445,7 +445,7 @@ acceptance: >-
   (a) isolated single-body terms (Sun + Mercury only: GR 42.98 ″/cy, J₂
   0.0286 ″/cy at J₂ = 2.25×10⁻⁷, LT −0.0020 ″/cy) agree with the analytic
   formulas within 10⁻⁴ ″/cy; (b) N-body differential contributions follow
-  PHY-012's PROVISIONAL "report both" protocol (ADR-0014): the harness
+  PHY-012's "report both" protocol (ADR-0014, confirmed 2026-10-21): the harness
   computes P-remove (full system minus full system without X) and P-add
   (Sun + Mercury + X minus Sun + Mercury), Newtonian, from identical initial
   conditions; the P-remove values agree with the Park 2017 Table 3 values
@@ -465,18 +465,24 @@ notes: >-
   are ≲ 10⁻² ″/cy, so 10⁻⁴ is achievable only when the comparison isolates the
   single-body term (e.g. Sun + Mercury only). The split acceptance above is the
   provisional resolution; OI-70 stays open until a maintainer confirms it. The
-  comparison basis SHALL be documented. Park's switch-on/off protocol is not
-  yet confirmed against the Park 2017 text (OI-38 stays open); without a
-  fixed protocol part (b) is ill-posed, because cross terms (up to
+  comparison basis SHALL be documented. OI-38 CLOSED 2026-10-21: the
+  maintainer confirmed P-remove against the Park 2017 text (Journal #12,
+  https://github.com/Proper-Time-Physics-Institute/FerroAstro/issues/1#issuecomment-6306718280;
+  Park 2017 §4 p. 5; ADR-0014 Confirmation 2026-10-21). Part (b)'s P-remove
+  assertion is no longer provisional once the provisional field is removed
+  from the Park rows in the same PR (#13). Before the confirmation part (b)
+  was ill-posed without a fixed protocol, because cross terms (up to
   0.0411 ″/cy) exceed the tolerance (PHY-012 notes).
   PART (b) PROTOCOL, 2026-10-20 (maintainer decision; ADR-0014): part (b) is
   no longer blocked on OI-38. P-remove is asserted and P-add reported; this
   was chosen after the WP14/WP17 results were known (P-add, the
   pre-registered protocol, missed 4 of 7 rows by 0.019–0.043 ″/cy; P-remove
   passes all 7 within 0.0007 ″/cy; four tools agree on P-add Venus to
-  2e-8 ″/cy). The assertion is PROVISIONAL and reverts to P-add, with the 4
-  misses treated as physics discrepancies, if a maintainer reading of the
-  Park 2017 text says P-add. Full evidence and values are in the PHY-012
+  2e-8 ″/cy). The assertion was PROVISIONAL, with a revert to P-add if a
+  maintainer reading of the Park 2017 text said P-add; the reading of
+  2026-10-21 confirmed P-remove, so the revert is not triggered. The choice
+  remains post hoc in its order, and P-add misses stay reported as
+  information. Full evidence and values are in the PHY-012
   notes. Cross-term sign: the harness's cross term is the inclusion–exclusion
   second difference; Park17's pair rows are the joint removal minus the two
   single removals, i.e. its negative, and match P-remove's to ≤ 1.2e-4 ″/cy
