@@ -91,6 +91,7 @@ def residual(n: int, beta: list[Fraction]) -> Fraction:
 
 def render() -> str:
     """Render the Rust table."""
+    # REUSE-IgnoreStart
     lines = [
         "// SPDX-FileCopyrightText: 2026 Proper-Time Physics Institute",
         "// SPDX-License-Identifier: Apache-2.0",
@@ -99,6 +100,7 @@ def render() -> str:
         "//! `(numerator, denominator)`.",
         "",
     ]
+    # REUSE-IgnoreEnd
     for order, n in ORDERS.items():
         beta = solve(n)
         if residual(n, beta) != 0:

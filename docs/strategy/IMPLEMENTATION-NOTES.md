@@ -6055,3 +6055,96 @@ First run of the IRK16 PR checks (f64 unless stated):
 | # | check | tier | bound (vector) | expectation and rationale |
 |---|---|---|---|---|
 | D1 | Sun + 8 planets (EMB) from header.440 (downloaded or re-verified), Newtonian + solar J2 + GR effective potential (the full WH-supported model), 10 Julian yr, 10-d samples, against de440.bsp: Mercury's maximum barycentric residual for WHFast (h = 1 d, corrector 11) and IRK16 (h = 2 d), each compared with IAS15 on the same model | data | \|WH − IAS15\| ≤ 0.1 km (`WH-DE440-RESIDUAL-CONSISTENCY`); \|IRK16 − IAS15\| ≤ 1e-3 km (`IRK16-DE440-RESIDUAL-CONSISTENCY`) | P1 measured WH h = 4.06 d vs IAS15 at 0.66 km over 10 yr, which scales with h² to ~0.04 km at 1 d. IRK16 measured 1.4e-5 km. The residuals themselves are reported, not asserted. The GR potential's mean-motion offset (relative O(GM/(ac²)) ≈ 2.6e-8) gives a few hundred km along-track for Mercury in 10 yr. For context, an IAS15 run with `gr_eih` is also reported. |
+
+### What was built (WP29)
+- **`ferroastro-analytic::drift`** provides the exact Kepler flow in universal variables, generic over `Real`:
+  - Stumpff c-functions by series, with the quadrupling formulae.
+  - Laguerre–Conway iteration (n = 5) on the universal Kepler equation.
+  - Reduction modulo the period for bound orbits.
+  - Increment-form f/g update.
+  - Convergence at 4 ulp, or when the step stagnates at ≤ 64 ulp. The stagnation rule was added after a 5h corrector drift failed to reach 4 ulp (W1 and P1 first runs, error `FA-E0400`). A first floor of 1e4 ulp accepted an unconverged hyperbolic step (K2 1.00e-13 > 1e-13), so the floor was tightened to 64 ulp. K2 then measured 2.6e-14.
+- **`ferroastro-integrators::Irk16`** (NUM-003): s = 8 Gauss–Legendre in the Nyström-eliminated form of the Gauss method on (x, v).
+  - Coefficients are computed in double-double from first principles: Newton iteration on P₈, and a product-form Lagrange basis with Gauss-rule integrals.
+  - Fixed-point iteration from the extrapolated collocation polynomial, using HMR's zero-or-non-decreasing stopping rule, with an iteration cap of 64.
+  - Kahan-compensated update and grid times t₀ + k·h.
+  - Collocation-polynomial dense output and Illinois event location.
+  - `reverse()`, and bitwise `Irk16Snapshot`.
+- **`ferroastro-forces::GrPotential`**: the Nobili–Roxburgh potential with solar reaction, under the new `Gauge::GrEffectivePotential`.
+- **`ferroastro-symplectic`** (new crate, L7): `Whfast` provides the Jacobi Wisdom–Holman map.
+  - Kicks come from the inertial accelerations of any `SecondOrderSystem`.
+  - Half drifts are merged across steps.
+  - Correctors of order 3, 5, 7 and 11 use the derived exact-rational table (`tools/symplectic_correctors.py --check`, with pytest).
+  - Also: `physical_state` / `kernel_state`, dense output by a WH substep, events, and bitwise `WhSnapshot`.
+  - `check_model` refuses velocity-dependent terms, Minor and Ring tiers, a geocentric Moon pair, and a Sun that is not first.
+  - The crate documentation states that full EIH is not supported in WH (NUM-004 acceptance).
+  - Dependencies beyond CRATE-PLAN: `ferroastro-system` (Tier) and `ferroastro-ephem` (NaifId), both lower layers. The layer check is green.
+- **Scenario / propagate:**
+  - New options: `forces.gr_potential`, `integrator.wh_corrector` (0/3/5/7/11), `step_days` for ABM, WHFast and IRK16, and `compensated` for ABM and IRK16. The scenario schema was regenerated. Existing scenario digests are unchanged, because new fields are skipped when unset.
+  - `Stepper` gains `Whfast` and `Irk16`, and WHFast receives the model for dense output and events.
+  - The refusals (REF-011) name the switch and the integrator, e.g. `forces.gr_eih with integrator whfast`.
+  - Three new scenarios: `wh-sun-8planets-newton-100yr`, `irk16-sun-8planets-newton-100yr` and `wh-sun-mercury-grpotential-100yr`.
+  - The checkpoint format string stays `v3`: the new enum variants are additive in postcard.
+- **Tests:**
+  - PR tier: analytic `kepler_drift` (K1, K2); integrators `irk16_checks` (I1, I2c, I3, snapshots, dense output and events); symplectic `wh_properties` (time symmetry, snapshots, refusals); forces `gr_potential_is_conservative_with_reaction`; propagate `wh_irk16_runs` (W1, W2/W3, G1, P1, P2); pytest `test_symplectic_correctors`.
+  - Nightly tier: `nightly_wh_irk16` (W4, I4/I5, S1).
+  - Data tier: `data_wh_irk16_de440` (D1).
+- **Safety fix (`ferroastro-testdata`):** an empty `FA_DATA_DIR` is now treated as unset. When it was empty, the data tier cached de440.bsp (114 MB) and header.440 in `crates/ferroastro-propagate/`, and a broad `git add` committed them. GitHub's 100 MB limit rejected the push. The local, unpushed commit was amended to remove the files, so nothing reached the remote. `.gitignore` now ignores `*.bsp`.
+- **Updated test:** `scenario_runs::run_refuses_unimplemented_switches_by_name` expected `integrator.whfast` to be refused outright. WHFast is now implemented, so the test now expects `forces.gr_eih with integrator whfast`.
+
+### WP29 results (local, i9-13900, toolchain 1.95.0, load 25–45 from other sessions)
+Provenance: header.440 `0f4636b6…6ac3359` and de440.bsp `a4ce9bf9…fff7c4b5`. For D1 both were downloaded fresh from ssd.jpl.nasa.gov on 2026-10-21 (cache miss), and the SHA-256 values equal the pins. The IC hash of the Sun + 8 planets system (stage A) is `145ecfd1…2f75b8`, and of Sun + Mercury `6d875b67…bada552`. Logs are in the session scratchpad `wp29/logs/`.
+
+| # | measured | bound | result |
+|---|---|---|---|
+| K1 | max relative difference over 12 drifts **1.33e-14** | ≤ 1e-12 | pass |
+| K2 | elliptic back 3.5e-15 / 4.7e-15; hyperbolic **2.6e-14** / 3.4e-14 (after the 64-ulp floor; 1.00e-13 with the 1e4-ulp floor, fixed); DD vs f64 2.4e-15 | ≤ 1e-13 | pass |
+| I1 | B(16)/C(8)/bA residual **≤ 2.5e-32** after the product-form fix (first implementation 1.73e-29: **failed**, see addendum 1); A&S Table 25.4 max deviation **4.7e-16** | 1e-29; 1e-15 | pass |
+| I2 | f64, 16/32 steps per orbit: 0.685 (both errors at round-off) | [14, 18.5] | **failed by design** (addendum 1) |
+| I2b | DD, 12/16 steps per orbit: **11.79** | [14, 18.5] | **failed** (pre-asymptotic dip, addendum 2) |
+| I2c | DD, LSQ over 24–48 steps per orbit: **16.21** (post hoc) | [14, 18.5] | pass (post hoc) |
+| I3 | Kepler 100 orbits forward and back: **8.56e-12** | ≤ 1e-10 | pass |
+| I4 | **NUM-003.** IRK16 h = 2 d, 1000 yr forward then back: Mercury **0.165 km**, Venus 0.0117, EMB 0.0023, Mars 2.3e-4 km, outer planets ≤ 3.4e-5 km; 4.38 iterations per step, none capped | ≤ 3 km | pass (estimate 0.3 km) |
+| I5 | **NUM-003/NUM-001.** IRK16 − IAS15 at 1000 yr: Mercury **0.0741 km**, Venus 0.0039, EMB 0.0048, Mars 3.7e-4 km, outer ≤ 6e-5 km | ≤ 1 km | pass |
+| W1 | two-body WH vs one Kepler drift, 1000 × 4 d: **5.3e-14** | ≤ 1e-12 | pass |
+| W2 | max \|ΔE/E\| uncorrected 1.040e-9 (4 d) / 2.676e-10 (2 d): ratio **3.887** | [3, 5] | pass |
+| W3 | order-11 corrector at 4 d: 1.585e-12, gain **656** | ≥ 10 | pass (expectation 1e2–1e3) |
+| W4 | **NUM-004.** 1e6 yr, 9e7 steps (356 s, 3.96 µs per step), 10 001 samples. **Uncorrected:** max \|ΔE/E\| **1.173e-9**; slope −3.0e-18 ± 7.5e-18 per yr (consistent with zero); drift fraction **0.0017**; first-tenth max 9.40e-10, last-tenth max 9.26e-10. **Corrected (reported):** max 3.06e-12; slope 4.8e-19 ± 1.3e-20 per yr; drift fraction 0.108; first tenth 1.79e-12, last tenth 2.08e-12 | (a) ≤ 1e-8; (b) ≤ 0.1 | **pass both** |
+| G1 | **NUM-004 GR-potential rung.** LRL-angle line fit, 36 525 daily samples: **42.979635 ″/cy** (formal ±2.1e-3, correlated residuals) | 42.98 ± 0.001 (`PHY005-GR-NUM-RATE`) | pass, margin 0.37 |
+| P1 | WHFast and IRK16 from scenario files, 10 yr. Max \|Δr\| vs IAS15: WH (h = 4.06 d) Mercury 0.663 km, Venus 0.038 km; IRK16 Mercury 1.4e-5 km. Checkpoint at 5 yr + resume: **0 differing words** of 1296 for both | exact | pass |
+| P2 | 7 refusals by name (`FA-E1201`) plus a foreign key (`FA-E1203`) | exact | pass |
+| D1 | **data, de440.bsp.** Mercury max barycentric residual (10 yr, Newtonian + J2 + GR potential): IAS15 8710.6912 km, WHFast 8710.6912 km (\|diff\| **1.7e-5 km**), IRK16 (\|diff\| **6.9e-6 km**). For context, IAS15 with `gr_eih` gives **1.448 km** | 0.1 km; 1e-3 km | pass |
+| S1 | **Swiftest WHM stage A (informational).** FerroAstro WH at Swiftest's step (1/128 d), heliocentric, 100 yr. Against the committed Swiftest golden: Mercury 0.476 km, Venus 22.5, EMB 17.0, **Mars 28.66**, Jupiter 16.7, Saturn 11.8, Uranus 8.3, Neptune 5.8 km. Against FerroAstro IAS15: **≤ 0.098 km** for every body (corrector 0), ≤ 0.036 km except Mercury 0.017 (corrector 11) | reported | see NEEDS HUMAN REVIEW 4 |
+
+**Mutation probes (WP29),** each reverted with `git checkout` (the tree was clean afterwards):
+- Corrector direction flipped (`TO_KERNEL = −1`): killed (W3).
+- Jacobi Kepler term dropped from the kick: killed (W1, W2/W3, G1, P1).
+- GR-potential factor 6 → 3: killed (G1).
+- IRK16 position update with b/2 instead of bA: killed (I2c, I3, dense output).
+
+### Interpretations, deviations and NEEDS HUMAN REVIEW (WP29)
+1. **NEEDS HUMAN REVIEW: the pre-registered IRK16 order checks failed through test design.**
+   - I2 in f64 measured round-off. I2b in DD fell on a pre-asymptotic dip (11.79).
+   - The order-16 evidence is the post-hoc I2c (16.21) and the diagnostic sweep, which reached 16.06 at 40→48 steps per orbit.
+   - Both vectors stay in place. `IRK16-OBSERVED-ORDER` carries a superseded note.
+2. **I1 failed as first implemented** (monomial Lagrange basis, 1.73e-29). The implementation was fixed and the bound is unchanged. Recorded in addendum 1.
+3. **NEEDS HUMAN REVIEW: the corrector coefficients are derived, not transcribed.** Wisdom (2006) and Wisdom, Holman & Touma (1996) were not available.
+   - The derivation (first order in ε, stage pairs at a_i = i h) is in this section and in `tools/symplectic_correctors.py`.
+   - It is validated by W3 (gain 656), by W4 (corrected error 3e-12 against 1.2e-9 uncorrected), and by the mutation probe on the direction.
+   - A maintainer with access to WHT96 or Wisdom 2006 should compare the β_i, or the structure of the stage pairs. Equivalent first-order correctors need not have identical coefficients.
+4. **NEEDS HUMAN REVIEW: S1 locates the WP17 Swiftest stage A discrepancy in the Swiftest run, not in the Wisdom–Holman method.**
+   - FerroAstro's independent WH at Swiftest's step agrees with IAS15 to ≤ 0.1 km.
+   - Swiftest's golden differs from both by the WP17 amounts (Mars 28.7 km), so WH truncation at 1/128 d is not the cause.
+   - This contradicts the WP17 "drift model" rationale behind widening `ORACLE-STAGE-A-SWIFTEST-MAX-DR` to 60 km. The likely causes are in the Swiftest runner's mapping (units, G, mass handling, output coordinates). They were not investigated here; that is clean-room-safe black-box work for a follow-up.
+5. **G1's estimator** is a line fit to the osculating LRL angle at daily samples, not the ladder's per-orbit perihelion estimator, which lives in L10. The formal error (2.1e-3) is larger than the tolerance because the residuals are periodic and correlated. The value is 4.5e-4 below the PHY-005 expectation of 42.9801, inside the 1e-3 tolerance.
+6. **The GR effective potential's mean-motion offset is larger than the pre-registered estimate.** D1 measured 8 711 km for Mercury over 10 yr, against the plan's "few hundred km" (reported, not asserted). The offset is O(6GM/(c²a)) ≈ 1.5e-7, not 2.6e-8. The potential reproduces the advance, not the orbit. This is the Saha–Tremaine motivation for NUM-005.
+7. **W4's corrected series** has a drift fraction of 0.108 with a formally significant slope (4.8e-19 per yr, i.e. 5e-13 over 1e6 yr). This is consistent with round-off accumulating in the output corrector, at about Brouwer size. The assertion applies to the uncorrected series as pre-registered; the corrected series is reported only.
+8. **NUM-005 (Saha–Tremaine) is not implemented.** It is blocked by OI-34: the H_PN coefficients are unverified and the paper was not available.
+9. **Scenario extensions are not CI-002 switch names** (`gr_potential`, `wh_corrector`), as with `kbos`. The CI-002 text may want them (PR #2).
+10. **Latent issue in ABM (not changed):** `Abm::dense_state` uses a fixed 16-ulp slack on θ. With a step that is not a whole number of seconds and a large step index, θ at the step end can exceed it. WHFast and IRK16 scale the slack with the step index. Every existing ABM scenario uses h = 1/16 d = 5400 s, which is exact.
+11. **R7:** the maintainer is asked again to apply `golden-change` to PR #18. **V2** stays open. WP22 is still blocked (OI-33), WP23 has not started, and WP27 (the M5 exit) is next.
+
+### Remaining after WP29
+- NUM-005, Saha–Tremaine: blocked by OI-34.
+- The cause of the Swiftest stage A discrepancy (item 4).
+- A maintainer check of the corrector coefficients (item 3).
+- WP27, WP22, WP23 and V2, as before.
