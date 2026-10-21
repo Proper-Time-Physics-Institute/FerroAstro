@@ -175,7 +175,7 @@ Other Park 2017 results: $(\beta - 1) = (-2.7 \pm 3.9)\times10^{-5}$ and $J_{2\o
 **Implications.**
 - The headline number is **inertial (ICRF-fixed)**. It does **not** include general precession, which is ~5029″/cy in longitude (IAU 2006 $p_A$ = 5028.796195″/cy; UNVERIFIED in this review).
 - Classical "≈5600″/cy" figures are in the equinox-of-date frame.
-- The **interaction terms** (non-additivity at the 10⁻² ″/cy level) mean a per-body decomposition depends on how it is defined. Park's exact switch-on/switch-off protocol is UNVERIFIED. *(Superseded 2026-10-21, [Journal #12](12-maintainer-signoffs.md): the maintainer confirmed P-remove against Park 2017 §4 p. 5 (OI-38 closed); see ADR-0014 and PHY-012.)*
+- The **interaction terms** (non-additivity at the 10⁻² ″/cy level) mean a per-body decomposition depends on how it is defined. Park's exact switch-on/switch-off protocol is UNVERIFIED. *(Superseded 2026-10-21, [Journal #12](12-maintainer-signoffs.md): the maintainer confirmed P-remove against Park 2017 §4 p. 5 (OI-38 closes in #13); see ADR-0014 and PHY-012.)*
 - **Ambiguity is real.** Purely Newtonian "planetary" values in the literature range 526.7–532.4″/cy, depending on the perihelion definition and fitting span (Pogossian 2022, CeMDA, doi:10.1007/s10569-022-10085-5, arXiv:2112.07301 **[V]**). FerroAstro must document its definition.
 
 #### 3.2 Methods compared
