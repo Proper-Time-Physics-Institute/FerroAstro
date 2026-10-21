@@ -382,10 +382,15 @@ fn check_open_item_refs(
     blocked_by: Option<&str>,
     provisional: Option<&str>,
 ) -> Result<(), VectorError> {
-    for (field, v) in [("blocked_by", blocked_by), ("provisional", provisional)] {
+    // ADR-0004 revision 2026-10-21: `provisional` matches `^OI-\d{2,}$`; `blocked_by` keeps its
+    // original `^OI-\d+$`.
+    for (field, v, min_digits) in [
+        ("blocked_by", blocked_by, 1),
+        ("provisional", provisional, 2),
+    ] {
         let well_formed = |v: &str| {
             v.strip_prefix("OI-")
-                .is_some_and(|n| !n.is_empty() && n.chars().all(|c| c.is_ascii_digit()))
+                .is_some_and(|n| n.len() >= min_digits && n.chars().all(|c| c.is_ascii_digit()))
         };
         match v {
             Some(v) if !well_formed(v) => {

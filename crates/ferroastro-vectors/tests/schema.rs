@@ -266,6 +266,7 @@ fn provisional_gates_and_keeps_its_open_item_reference() {
         "\"38\"",
         "\"OI-38 \"",
         "\"oi-38\"",
+        "\"OI-7\"", // ADR-0004 revision 2026-10-21: `^OI-\d{2,}$`
     ] {
         assert!(
             schema_error(&with(bad)).contains("provisional"),
