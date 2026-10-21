@@ -62,9 +62,24 @@ impl SecondOrderSystem for Field<'_> {
         &self,
         t: f64,
         x: &[f64],
-        _v: &[f64],
+        v: &[f64],
         a: &mut [f64],
     ) -> Result<(), IntegratorError> {
+        // A public trait method: refuse wrong lengths instead of computing on NaN or writing a
+        // partial result (PR #13 review R13-CODE-2).
+        for (what, got) in [
+            ("ephemeris-field position", x.len()),
+            ("ephemeris-field velocity", v.len()),
+            ("ephemeris-field acceleration", a.len()),
+        ] {
+            if got != 3 {
+                return Err(IntegratorError::Dimension {
+                    what,
+                    got,
+                    expected: 3,
+                });
+            }
+        }
         let r = [
             x.first().copied().unwrap_or(f64::NAN),
             x.get(1).copied().unwrap_or(f64::NAN),

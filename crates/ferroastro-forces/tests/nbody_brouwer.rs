@@ -162,7 +162,7 @@ fn run(de: &De440, ic: &InitialConditions, k: u32, checkpoints: &[f64]) -> (Vec<
     let mut p =
         NBodyPropagator::new(m, &s0, None, ic.epoch(), dt0, Ias15Config::default()).unwrap();
     let e0 = p.energy_over_g().unwrap();
-    let (p0, pscale) = p.momentum_over_g();
+    let (p0, pscale) = p.momentum_over_g().unwrap();
     let l0 = angular_momentum(
         p.model(),
         p.integrator().positions(),
@@ -178,7 +178,7 @@ fn run(de: &De440, ic: &InitialConditions, k: u32, checkpoints: &[f64]) -> (Vec<
         let e = ic.epoch() + TimeSpan::from_seconds(t).unwrap();
         p.advance_to(e).unwrap();
         let de_rel = (p.energy_over_g().unwrap() - e0) / e0;
-        let (pt, _) = p.momentum_over_g();
+        let (pt, _) = p.momentum_over_g().unwrap();
         let dp = norm([pt[0] - p0[0], pt[1] - p0[1], pt[2] - p0[2]]) / pscale;
         let l = angular_momentum(
             p.model(),

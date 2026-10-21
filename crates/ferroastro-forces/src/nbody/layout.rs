@@ -295,31 +295,46 @@ impl<'a, R: Real> View<'a, R> {
     }
 
     /// Barycentric position (km) of body `i`.
-    #[must_use]
-    pub fn position(&self, i: usize) -> [R; 3] {
+    ///
+    /// # Errors
+    /// `FA-E0500` if `i` is not a body index of the layout (never a silent origin; PR #13 review
+    /// R13-CODE-3).
+    pub fn position(&self, i: usize) -> Result<[R; 3], ForceError> {
         if let Some(p) = &self.pair {
             if i == p.earth {
-                return p.earth_p;
+                return Ok(p.earth_p);
             }
             if i == p.moon {
-                return p.moon_p;
+                return Ok(p.moon_p);
             }
         }
-        slot(self.x, self.layout.len(), i)
+        self.body(self.x, i)
     }
 
     /// Barycentric velocity (km/s) of body `i`.
-    #[must_use]
-    pub fn velocity(&self, i: usize) -> [R; 3] {
+    ///
+    /// # Errors
+    /// `FA-E0500` if `i` is not a body index of the layout.
+    pub fn velocity(&self, i: usize) -> Result<[R; 3], ForceError> {
         if let Some(p) = &self.pair {
             if i == p.earth {
-                return p.earth_v;
+                return Ok(p.earth_v);
             }
             if i == p.moon {
-                return p.moon_v;
+                return Ok(p.moon_v);
             }
         }
-        slot(self.v, self.layout.len(), i)
+        self.body(self.v, i)
+    }
+
+    /// Body `i` of a flat vector whose length the constructor's caller checked (`3 n`).
+    fn body(&self, flat: &[R], i: usize) -> Result<[R; 3], ForceError> {
+        let n = self.layout.len();
+        if i < n && flat.len() == 3 * n {
+            Ok(slot(flat, n, i))
+        } else {
+            Err(invalid("body index", count(i), "< number of bodies"))
+        }
     }
 
     /// Moon − Earth position and velocity (the integration variable) when paired.

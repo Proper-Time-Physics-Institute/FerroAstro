@@ -415,6 +415,45 @@ fn invalid_models_are_coded_errors() {
     assert!(m.acceleration(0.0, &x[1..], &v, &mut a).is_err());
 }
 
+/// R13-CODE-2/3 (PR #13 review): a bad body index or a short state is a coded error or `None`,
+/// never the origin or a silent zero.
+///
+/// Verifies: API-002
+#[test]
+fn view_and_diagnostics_refuse_bad_indices_and_lengths() {
+    let (bodies, x, v) = fixture();
+    let m = Model::new(
+        &bodies,
+        MoonVariables::Barycentric,
+        vec![Box::new(NewtonianMutual)],
+    )
+    .unwrap();
+    let layout = Layout::new(&bodies, MoonVariables::Barycentric).unwrap();
+    let view = View::new(&layout, &x, &v);
+    let n = bodies.len();
+    assert_eq!(view.position(1).unwrap(), [x[1], x[n + 1], x[2 * n + 1]]);
+    for i in [n, n + 1, usize::MAX] {
+        assert_eq!(
+            view.position(i).unwrap_err().code(),
+            ErrorCode::ForceModelInvalid
+        );
+        assert_eq!(
+            view.velocity(i).unwrap_err().code(),
+            ErrorCode::ForceModelInvalid
+        );
+    }
+    // A view over a short slice refuses every body instead of reading zeros.
+    let short = View::new(&layout, &x[1..], &v);
+    assert!(short.position(0).is_err());
+    assert!(m.momentum_over_g(&x, &v).is_some());
+    assert!(m.momentum_over_g(&x[1..], &v).is_none());
+    assert!(m.momentum_over_g(&x, &v[..3]).is_none());
+    assert!(m.energy_over_g(&x[1..], &v).is_none());
+    let mut a = vec![0.0; x.len()];
+    assert!(m.acceleration(0.0, &x, &v[1..], &mut a).is_err());
+    assert!(m.acceleration(0.0, &x, &v, &mut a[1..]).is_err());
+}
+
 /// Pack/unpack round trips (API-001): exact for ordinary bodies and for the DE Earth–Moon pair.
 ///
 /// Verifies: API-001, NUM-008
