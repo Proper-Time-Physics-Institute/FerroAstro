@@ -4,6 +4,7 @@
 //! on-disk store, one estimator for every configuration, and the contribution table.
 
 use crate::DiffrunError;
+use crate::error::plan_error;
 use crate::estimator::{Estimate, Estimator, PassageSource};
 use crate::plan::{Combination, Plan, Protocol};
 use crate::track::Track;
@@ -28,6 +29,59 @@ pub struct RunOptions {
     pub store: Option<PathBuf>,
     /// Worker threads for the legs (scoped threads; sequential on wasm32).
     pub threads: usize,
+}
+
+/// Most checkpoint segments one N-body leg may be split into (`|span| / segment_years`, rounded
+/// up). A bound on work and store writes, far above any real plan (2000 yr in 50-yr segments is
+/// 40); it also keeps the segment counter far from `u32` overflow (PR #13 review R13-CODE-5).
+pub const MAX_SEGMENTS: u32 = 1_000_000;
+
+impl RunOptions {
+    /// Check the options on their own: `segment_years` finite and > 0.
+    ///
+    /// # Errors
+    /// `FA-E1400` otherwise (a zero, negative or NaN segment length never advances a leg).
+    pub fn validate(&self) -> Result<(), DiffrunError> {
+        if self.segment_years.is_finite() && self.segment_years > 0.0 {
+            Ok(())
+        } else {
+            Err(plan_error(
+                "run options",
+                format!(
+                    "segment_years {} is not a finite length > 0 (Julian years)",
+                    self.segment_years
+                ),
+                "use a finite segment length > 0, e.g. the default 50",
+            ))
+        }
+    }
+
+    /// Number of segments of an N-body leg of `spec`, checked against [`MAX_SEGMENTS`].
+    ///
+    /// # Errors
+    /// `FA-E1400` for invalid options or more than [`MAX_SEGMENTS`] segments.
+    pub fn segments(&self, spec: &ScenarioSpec) -> Result<u32, DiffrunError> {
+        self.validate()?;
+        let n = (spec.span.years.abs() / self.segment_years).ceil();
+        if n.is_finite() && n <= f64::from(MAX_SEGMENTS) {
+            // A whole number in [0, MAX_SEGMENTS]: exact.
+            #[expect(
+                clippy::cast_possible_truncation,
+                clippy::cast_sign_loss,
+                reason = "n is a whole number in [0, MAX_SEGMENTS], checked above"
+            )]
+            Ok(n as u32)
+        } else {
+            Err(plan_error(
+                &spec.name,
+                format!(
+                    "{} Julian years in segments of {:e} yr needs more than {MAX_SEGMENTS} segments",
+                    spec.span.years, self.segment_years
+                ),
+                "use a longer segment_years",
+            ))
+        }
+    }
 }
 
 impl Default for RunOptions {
@@ -139,8 +193,8 @@ fn test_particle_leg(
 /// test interruption; requires a store).
 ///
 /// # Errors
-/// `FA-E1402` for store I/O or a foreign store file; `FA-E1302` from the driver; the run's own
-/// errors.
+/// `FA-E1400` for invalid [`RunOptions`] (see [`RunOptions::segments`]); `FA-E1402` for store
+/// I/O or a foreign store file; `FA-E1302` from the driver; the run's own errors.
 pub fn run_leg(
     spec: &ScenarioSpec,
     data: &DataSources<'_>,
@@ -154,6 +208,7 @@ pub fn run_leg(
     if spec.mode == Mode::TestParticle {
         return test_particle_leg(spec, data, initial, epoch, (body, central)).map(Some);
     }
+    opts.segments(spec)?;
     let sign = if spec.span.years < 0.0 { -1.0 } else { 1.0 };
     let path = opts.store.as_deref().map(|d| store_path(d, spec));
     let stored = match &path {
@@ -490,7 +545,11 @@ pub fn run_plan(
     opts: &RunOptions,
 ) -> Result<PlanResult, DiffrunError> {
     plan.validate()?;
+    opts.validate()?;
     let specs: Vec<&ScenarioSpec> = plan.configs.iter().flat_map(|c| &c.legs).collect();
+    for s in specs.iter().filter(|s| s.mode != Mode::TestParticle) {
+        opts.segments(s)?;
+    }
     let initial = specs
         .iter()
         .map(|s| Ok((s.name.clone(), initial_conditions(s, data)?)))

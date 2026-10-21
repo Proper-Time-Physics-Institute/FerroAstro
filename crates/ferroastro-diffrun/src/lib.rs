@@ -30,7 +30,7 @@ pub use error::DiffrunError;
 pub use estimator::{Estimate, Estimator, PassageSource};
 pub use plan::{BodyToggle, Combination, Config, LegYears, Plan, Protocol, SwitchToggle};
 pub use run::{
-    ConfigResult, LegResult, PlanResult, Row, RunOptions, STORE_FORMAT, check_identical_ics,
-    evaluate, run_leg, run_plan,
+    ConfigResult, LegResult, MAX_SEGMENTS, PlanResult, Row, RunOptions, STORE_FORMAT,
+    check_identical_ics, evaluate, run_leg, run_plan,
 };
 pub use track::{Track, TrackPassage};
