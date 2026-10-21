@@ -5966,3 +5966,10 @@ Restores with `cp` + `touch`; the tree was clean afterwards.
 ### Remaining after WP28
 - A quiet-machine rerun of the wp28 suite (`--weekly-bench`) to replace the contended (i)/(j) medians.
 - WP27 (stage D, M5 exit), WP22 (blocked, OI-33), WP23, V2.
+
+### WP28 gate results (local, 2026-10-21, toolchain 1.95.0 + MSRV 1.85.0; code tip `a8795f8` + TRACE regeneration)
+- **`tools/pre_push.sh` (full): every step passes** on the second run: fmt, clippy (`--all-features`, `-D warnings`), nextest **307 passed, 55 skipped**, simd step 12/12, doctests, deny (advisories, bans, licenses, sources ok), `cargo doc -D warnings`, ruff, ruff format, mypy strict, pytest **86 passed**, reuse, trace (121 requirements, 730 citing tests, 0 errors), MSRV 1.85 check and nextest **304 passed**. The first run failed only on a stale TRACE.md (regenerated in its own commit).
+- An earlier pushed commit (`16a5fca`…`4f80d6b` range: T1b's `a != b`) failed clippy `float_cmp`; it was fixed in `a8ecd0c` before any CI-relevant gate run was quoted.
+- **Data tier** (`--profile data --run-ignored only`): **34/34 pass** (129.7 s), including D1. Products from the pinned cache (retrieved 2026-10-15, SHA-256 re-verified); Horizons `signature.version` 1.2 / DE441.
+- **Layer check:** 23 crates, 142 edges, 0 errors (new edge bench → ephem). **`lint_literals`:** 0 findings.
+- **Nightly:** only the new N1 test was run (pass, on the committed table). The WP26 nightly failures were not re-run; T3 labels the reviewer's log of them as known and unchanged.
