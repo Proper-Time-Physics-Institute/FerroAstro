@@ -137,7 +137,7 @@ pub fn kepler_drift<R: Real>(
     let mut converged = false;
     // Round-off floor of the iteration: F is a sum of terms of size ~|τ|, so near the root a
     // step can stay at a few ulp of s; stagnation below this floor also counts as converged.
-    let floor = R::EPSILON.scale(1e4);
+    let floor = R::EPSILON.scale(64.0);
     let mut ds_prev: Option<R> = None;
     for _ in 0..100 {
         let [g0, g1, g2, g3] = g_functions(beta, s);
