@@ -4260,3 +4260,55 @@ Margin = |Δ| / tolerance.
     - every earlier NEEDS HUMAN REVIEW item.
 
 Reviewer artefacts are in the local scratchpad (`rev18/`), not committed: `gate.log`, `data.log`, `nightly.log`, `nightly-padd.log`, `nightly-phy013.log`, `mutate.py`, `mutate.log`, `py/stagea.py`, `py/venus_padd_fwd.py`, `py/fit_fwd.py` and `py/recompute.py`.
+
+## PHY-012 provisional P-remove and PHY-019 gating (ADR-0014, PR #19)
+Maintainer decision C of 2026-10-20 (ADR-0014, requirements PR #19, merged to `main` as `8353efc`): "report both".
+PHY-012 and NUM-013(b) assert P-remove = ϖ̇(full) − ϖ̇(full − X) and report P-add = ϖ̇(Sun + Mercury + X) −
+ϖ̇(Sun + Mercury) as information only. The ADR text, the PHY-012/PHY-019/NUM-013 acceptance and the OI-38 update
+live on `main`. (Cherry-picked to `m3-newtonian-nbody` from `m4-eih` `92ca0bb` after `main` was merged in; the
+numbers below were measured on `m4-eih`. The `m3-newtonian-nbody` rerun is in "PR #13 judge fixes" below.)
+
+**This choice was made after the results were known.** P-add was pre-registered in WP14 and missed 4 of 7 rows
+(WP14: Venus −0.022706, Earth/Moon −0.018997, Jupiter +0.038832, Saturn +0.043049 ″/cy; WP17: P-add Venus −0.029820
+on the forward window, the same for all four tools to 2e-8). The P-remove assertion is therefore **PROVISIONAL**
+until a maintainer confirms OI-38 against the Park 2017 text. **Revert condition:** if that text says P-add, the
+gate asserts P-add again and the P-add misses are physics discrepancies (`type:physics-discrepancy`).
+
+What changed:
+- ADR-0004 schema: new optional vector field `provisional = "OI-NN"` (`tests/vectors/schema.json`,
+  `ferroastro-vectors`). A provisional vector gates like any other. Its id is checked like `blocked_by`, it must be
+  listed in OPEN-ITEMS.md (`Vector::provisional_open_item`, FA-E0102 otherwise), and it cannot be combined with
+  `blocked_by`. Failure messages and reports print PROVISIONAL and point to the revert condition. Schema tests cover
+  blank, truncated and non-string references and the `blocked_by` exclusion. A PR-tier test keeps the seven PHY-012
+  rows provisional while OI-38 is open.
+- `park2017-table3.toml` (golden-change, provenance only; no value or tolerance changed). The seven single-planet
+  rows change from `blocked_by` to `provisional = "OI-38"`. `PARK17-T3-ASTEROIDS` loses `blocked_by`, so PHY-019
+  gates independently of OI-38 (review item R8). The six pair rows keep `blocked_by`, because they are never asserted.
+- `nightly_phy012` asserts P-remove and prints P-add, both cross-term protocols, the P-add misses and the
+  PROVISIONAL/revert lines. `nightly_phy013` asserts N-AST P-remove for PHY-019 and prints P-add.
+  `nightly_oracle_padd_venus` reports P-add Venus vs Park17 and no longer checks it, so it drops its PHY-012 citation.
+  The speed-table note was corrected.
+
+Nightly results (release, local, 32 threads, shared with another build; log `target/m4fix/nightly-phy012-phy013.log`;
+shared IC hash `6d875b67…bada552`):
+
+| row | Park17 | P-remove (asserted) | − Park | margin | P-add (info) | − Park | margin |
+|---|---|---|---|---|---|---|---|
+| Venus | 277.4176 | 277.418142 | +0.000542 | 0.11 | 277.394894 | −0.022706 | **4.54 OUTSIDE** |
+| Earth/Moon | 90.8881 | 90.888795 | +0.000695 | 0.14 | 90.869103 | −0.018997 | **3.80 OUTSIDE** |
+| Mars | 2.4814 | 2.481426 | +0.000026 | 0.01 | 2.479384 | −0.002016 | 0.40 |
+| Jupiter | 153.9899 | 153.990192 | +0.000292 | 0.06 | 154.028732 | +0.038832 | **7.77 OUTSIDE** |
+| Saturn | 7.3227 | 7.322772 | +0.000072 | 0.01 | 7.365749 | +0.043049 | **8.61 OUTSIDE** |
+| Uranus | 0.1425 | 0.142531 | +0.000031 | 0.01 | 0.139602 | −0.002898 | 0.58 |
+| Neptune | 0.0424 | 0.042378 | −0.000022 | 0.00 | 0.042068 | −0.000332 | 0.07 |
+
+- PHY-012/NUM-013(b): **PASS** under P-remove, PROVISIONAL (OI-38), with all 7 rows within ±0.005 ″/cy. 120 s wall.
+  Every value is identical to WP14.
+- Cross terms in Park's convention (P-remove): V+E/M −0.020782, V+J −0.001116, E/M+Ma −0.001570,
+  Ma+J +0.000199, J+S +0.041038, S+U +0.000380. Park's values are −0.0209, −0.0012, −0.0016, +0.0002, +0.0411 and
+  +0.0004. These are information only.
+- PHY-019 N-AST: **PASS**. P-remove is 0.001245 ″/cy (+0.000045, margin 0.15 of ±0.0003). P-add is 0.001242
+  (information only). PHY-013 N-SUM is 532.304907, margin 0.49, PASS. The run took 4067 s wall.
+  - The printed σ_rss of the N-AST P-remove row is 0.0022 ″/cy, 7× the tolerance. It is the RSS of two independent
+    per-configuration jack-knife σ, which ignores that the runs share their ICs. It is not used by the gate.
+    NEEDS HUMAN REVIEW: confirm that this is acceptable for a ±0.0003 rung.
