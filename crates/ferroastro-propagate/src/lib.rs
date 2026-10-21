@@ -57,7 +57,7 @@ mod setup;
 mod stepper;
 
 pub use error::PropagateError;
-pub use nbody::{DEFAULT_ABM_STEP_DAYS, DEFAULT_DT0_DAYS};
+pub use nbody::{DEFAULT_ABM_STEP_DAYS, DEFAULT_DT0_DAYS, DEFAULT_FIXED_STEP_DAYS};
 pub use output::{PassageRecord, RunOutput, StateRecord};
 pub use setup::{
     DataSources, RUNNER, SolarOverrides, SuppliedState, constants_version, de440_solar_spin,
@@ -66,9 +66,10 @@ pub use setup::{
 pub use stepper::IntegratorSnapshot;
 
 use ferroastro_abm::{AbmConfig, Corrector};
-use ferroastro_integrators::Ias15Config;
+use ferroastro_integrators::{Ias15Config, Irk16Config};
 use ferroastro_real::DoubleDouble;
 use ferroastro_scenario::{AbmCorrector, IcRecord, Mode, Parts, Precision, ScenarioSpec};
+use ferroastro_symplectic::{CorrectorOrder, WhConfig};
 use nbody::{DriverState, NBodyRun};
 use serde::{Deserialize, Serialize};
 
@@ -100,6 +101,32 @@ pub fn abm_config(spec: &ScenarioSpec) -> AbmConfig {
             Some(AbmCorrector::Pecec) => Corrector::Pecec,
             None => d.corrector,
         },
+        compensated: spec.integrator.compensated.unwrap_or(d.compensated),
+        ..d
+    }
+}
+
+/// `WHFast` settings of a scenario (WP29): corrector order `integrator.wh_corrector` (default
+/// 11), output synchronised after every step (the driver reads the state after each step).
+#[must_use]
+pub fn wh_config(spec: &ScenarioSpec) -> WhConfig {
+    let d = WhConfig::default();
+    WhConfig {
+        corrector: spec
+            .integrator
+            .wh_corrector
+            .and_then(CorrectorOrder::from_order)
+            .unwrap_or(d.corrector),
+        output_every_step: true,
+    }
+}
+
+/// IRK16 settings of a scenario (WP29): the `ferroastro-integrators` defaults with the
+/// scenario's `compensated`.
+#[must_use]
+pub fn irk16_config(spec: &ScenarioSpec) -> Irk16Config {
+    let d = Irk16Config::default();
+    Irk16Config {
         compensated: spec.integrator.compensated.unwrap_or(d.compensated),
         ..d
     }

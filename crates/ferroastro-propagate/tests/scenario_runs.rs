@@ -180,13 +180,15 @@ fn run_refuses_unimplemented_switches_by_name() {
     ast.forces.asteroids = 343; // lint: allow-literal(the DE440 asteroid count, a switch value)
     // Solar Lense-Thirring is implemented in both modes since WP20, so it is not listed here.
     // ABM is implemented for n-body runs since WP24 (refusal outside n-body mode: abm_runs B1);
-    // WHFast is still refused.
+    // WHFast and IRK16 since WP29, but WHFast refuses velocity-dependent terms (NUM-004: full
+    // EIH is not supported in WH; more refusals in wh_irk16_runs P2).
     let mut whfast = base;
     whfast.integrator.name = ferroastro_scenario::IntegratorName::Whfast;
+    whfast.forces.gr_eih = true;
     for (s, needle) in [
         (eih, "forces.gr_eih"),
         (ast, "forces.asteroids"),
-        (whfast, "integrator.whfast"),
+        (whfast, "forces.gr_eih with integrator whfast"),
     ] {
         let e = run(&s, &DataSources::none()).unwrap_err();
         println!("{e}");

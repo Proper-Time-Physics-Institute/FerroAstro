@@ -276,10 +276,16 @@ pub struct Forces {
     /// name, WP25). Default `none`.
     #[serde(default, skip_serializing_if = "MajorAsteroids::is_none")]
     pub major_asteroids: MajorAsteroids,
+    /// The velocity-independent GR effective potential of the Sun, `−3(GM☉)²/(c²r²)` per unit
+    /// mass (Nobili & Roxburgh 1986), with the reaction on the Sun: the GR-potential rung of the
+    /// Wisdom–Holman integrator (n-body mode; not a CI-002 switch name, WP29). It gives the 1PN
+    /// perihelion advance, but the mean motion is off by O(GM/(ac²)).
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub gr_potential: bool,
 }
 
 /// The force switches of CI-002, as written under `[forces]`.
-pub const SWITCHES: [&str; 10] = [
+pub const SWITCHES: [&str; 11] = [
     "newton",
     "sun_j2",
     "gr_1pn_central",
@@ -290,6 +296,7 @@ pub const SWITCHES: [&str; 10] = [
     "kbos",
     "kbo_ring",
     "major_asteroids",
+    "gr_potential",
 ];
 
 impl Forces {
@@ -307,6 +314,7 @@ impl Forces {
             self.kbos,
             self.kbo_ring,
             self.major_asteroids != MajorAsteroids::None,
+            self.gr_potential,
         ];
         SWITCHES
             .iter()
@@ -415,12 +423,17 @@ pub struct IntegratorSpec {
     /// ABM predictor–corrector mode (default `pecec`).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub corrector: Option<AbmCorrector>,
-    /// ABM fixed step in days (default 1/16 d; its sign follows the span).
+    /// Fixed step in days of ABM (default 1/16 d), `WHFast` and IRK16 (default 1 d); its sign
+    /// follows the span.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub step_days: Option<f64>,
-    /// ABM Kahan-compensated state update (default true; false gives the plain sums).
+    /// Kahan-compensated state update of ABM and IRK16 (default true; false gives the plain
+    /// sums).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub compensated: Option<bool>,
+    /// `WHFast` symplectic-corrector order: 0 (none), 3, 5, 7 or 11 (default 11; WP29).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub wh_corrector: Option<u32>,
     /// The N-body pair kernels (NUM-021, WP26): `pairwise` (default) or `soa`. Not a force
     /// switch: it selects FerroAstro's arithmetic, not the physics.
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -715,22 +728,64 @@ impl ScenarioSpec {
             );
         }
         let ig = &self.integrator;
-        let ias15_keys = [
-            ("integrator.epsilon", ig.epsilon.is_some()),
-            ("integrator.pc_tolerance", ig.pc_tolerance.is_some()),
-            ("integrator.dt0_days", ig.dt0_days.is_some()),
+        let owners: [(&'static str, bool, &[IntegratorName], &str); 8] = [
+            (
+                "integrator.epsilon",
+                ig.epsilon.is_some(),
+                &[IntegratorName::Ias15],
+                "IAS15",
+            ),
+            (
+                "integrator.pc_tolerance",
+                ig.pc_tolerance.is_some(),
+                &[IntegratorName::Ias15],
+                "IAS15",
+            ),
+            (
+                "integrator.dt0_days",
+                ig.dt0_days.is_some(),
+                &[IntegratorName::Ias15],
+                "IAS15",
+            ),
+            (
+                "integrator.order",
+                ig.order.is_some(),
+                &[IntegratorName::Abm],
+                "ABM",
+            ),
+            (
+                "integrator.corrector",
+                ig.corrector.is_some(),
+                &[IntegratorName::Abm],
+                "ABM",
+            ),
+            (
+                "integrator.step_days",
+                ig.step_days.is_some(),
+                &[
+                    IntegratorName::Abm,
+                    IntegratorName::Whfast,
+                    IntegratorName::Irk16,
+                ],
+                "the fixed-step integrators (ABM, whfast, irk16)",
+            ),
+            (
+                "integrator.compensated",
+                ig.compensated.is_some(),
+                &[IntegratorName::Abm, IntegratorName::Irk16],
+                "ABM and IRK16",
+            ),
+            (
+                "integrator.wh_corrector",
+                ig.wh_corrector.is_some(),
+                &[IntegratorName::Whfast],
+                "WHFast",
+            ),
         ];
-        let abm_keys = [
-            ("integrator.order", ig.order.is_some()),
-            ("integrator.corrector", ig.corrector.is_some()),
-            ("integrator.step_days", ig.step_days.is_some()),
-            ("integrator.compensated", ig.compensated.is_some()),
-        ];
-        let (foreign, owner): (&[(&'static str, bool)], &str) = match ig.name {
-            IntegratorName::Abm => (&ias15_keys, "IAS15"),
-            _ => (&abm_keys, "ABM"),
-        };
-        if let Some((field, _)) = foreign.iter().find(|k| k.1) {
+        if let Some((field, _, _, owner)) = owners
+            .iter()
+            .find(|(_, set, who, _)| *set && !who.contains(&ig.name))
+        {
             return err(
                 field,
                 &ig.name.label(),
@@ -738,6 +793,18 @@ impl ScenarioSpec {
                     "configures {owner} only, not integrator {}",
                     ig.name.label()
                 ),
+            );
+        }
+        if let Some(c) = ig.wh_corrector {
+            if ![0, 3, 5, 7, 11].contains(&c) {
+                return err("integrator.wh_corrector", &c, "one of 0, 3, 5, 7, 11");
+            }
+        }
+        if self.forces.gr_potential && (self.forces.gr_eih || self.forces.gr_1pn_central) {
+            return err(
+                "forces.gr_potential",
+                &true,
+                "the GR effective potential replaces gr_eih / gr_1pn_central; do not combine them",
             );
         }
         if ig.force_kernel == Some(ForceKernel::Soa) {

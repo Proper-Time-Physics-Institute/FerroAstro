@@ -1,16 +1,21 @@
 // SPDX-FileCopyrightText: 2026 Proper-Time Physics Institute
 // SPDX-License-Identifier: Apache-2.0
-//! The integrator of an N-body run: IAS15 (default, ADR-0008) or fixed-step ABM (WP24), behind
-//! one interface for the driver (steps, dense output, events, counters, checkpoints).
+//! The integrator of an N-body run: IAS15 (default, ADR-0008), fixed-step ABM (WP24), or the
+//! WP29 integrators `WHFast` (Wisdom–Holman, `ferroastro-symplectic`) and IRK16 (Gauss–Legendre),
+//! behind one interface for the driver (steps, dense output, events, counters, checkpoints).
 //!
-//! IAS15 shortens its last step to land on the end of the span. ABM never shortens a step: its
-//! last step may end after the end of the span, and the driver then takes the final state,
-//! samples and events at or before the end from dense output.
+//! IAS15 shortens its last step to land on the end of the span. The fixed-step integrators never
+//! shorten a step: their last step may end after the end of the span, and the driver then takes
+//! the final state, samples and events at or before the end from dense output. `WHFast`'s dense
+//! output and events need the force model (a Wisdom–Holman substep), so those calls take it.
 
 use ferroastro_abm::{Abm, AbmSnapshot};
 use ferroastro_integrators::Ias15Stats as RunStats;
-use ferroastro_integrators::{Ias15, Ias15Snapshot, IntegratorError, SecondOrderSystem};
+use ferroastro_integrators::{
+    Ias15, Ias15Snapshot, IntegratorError, Irk16, Irk16Snapshot, SecondOrderSystem,
+};
 use ferroastro_real::Real;
+use ferroastro_symplectic::{WhSnapshot, Whfast};
 use serde::{Deserialize, Serialize};
 
 /// The integrator snapshot of a checkpoint (format v3).
@@ -20,6 +25,10 @@ pub enum IntegratorSnapshot {
     Ias15(Ias15Snapshot),
     /// Adams–Bashforth–Moulton.
     Abm(AbmSnapshot),
+    /// Wisdom–Holman (WP29).
+    Whfast(WhSnapshot),
+    /// Gauss–Legendre IRK16 (WP29).
+    Irk16(Irk16Snapshot),
 }
 
 impl IntegratorSnapshot {
@@ -29,15 +38,19 @@ impl IntegratorSnapshot {
         match self {
             IntegratorSnapshot::Ias15(s) => s.stats.steps,
             IntegratorSnapshot::Abm(s) => s.stats.steps,
+            IntegratorSnapshot::Whfast(s) => s.stats.steps,
+            IntegratorSnapshot::Irk16(s) => s.stats.steps,
         }
     }
 
-    /// `"ias15"` or `"abm"`.
+    /// `"ias15"`, `"abm"`, `"whfast"` or `"irk16"`.
     #[must_use]
     pub const fn integrator(&self) -> &'static str {
         match self {
             IntegratorSnapshot::Ias15(_) => "ias15",
             IntegratorSnapshot::Abm(_) => "abm",
+            IntegratorSnapshot::Whfast(_) => "whfast",
+            IntegratorSnapshot::Irk16(_) => "irk16",
         }
     }
 }
@@ -53,6 +66,26 @@ pub(crate) struct Stepped<R: Real> {
     pub(crate) reached_end: bool,
 }
 
+impl<R: Real> Stepped<R> {
+    /// No step was taken (the run had already reached `t`).
+    const fn stay(t: R) -> Self {
+        Self {
+            t,
+            moved: false,
+            reached_end: true,
+        }
+    }
+
+    /// A fixed step of `h` ended at `t`.
+    fn fixed(t: R, h: R, t_end: R) -> Self {
+        Self {
+            t,
+            moved: true,
+            reached_end: (t_end - t) * h <= R::ZERO,
+        }
+    }
+}
+
 /// The integrator of a run.
 #[derive(Debug, Clone)]
 #[expect(
@@ -62,6 +95,8 @@ pub(crate) struct Stepped<R: Real> {
 pub(crate) enum Stepper<R: Real> {
     Ias15(Ias15<R>),
     Abm(Abm<R>),
+    Whfast(Whfast<R>),
+    Irk16(Irk16<R>),
 }
 
 impl<R: Real> Stepper<R> {
@@ -69,10 +104,13 @@ impl<R: Real> Stepper<R> {
         Ok(match snap {
             IntegratorSnapshot::Ias15(s) => Stepper::Ias15(Ias15::restore(s)?),
             IntegratorSnapshot::Abm(s) => Stepper::Abm(Abm::restore(s)?),
+            IntegratorSnapshot::Whfast(s) => Stepper::Whfast(Whfast::restore(s)?),
+            IntegratorSnapshot::Irk16(s) => Stepper::Irk16(Irk16::restore(s)?),
         })
     }
 
-    /// Take one step towards `t_end` (IAS15 lands on it; ABM takes a full step).
+    /// Take one step towards `t_end` (IAS15 lands on it; the fixed-step integrators take a full
+    /// step).
     pub(crate) fn step<S: SecondOrderSystem<R> + ?Sized>(
         &mut self,
         sys: &S,
@@ -88,20 +126,25 @@ impl<R: Real> Stepper<R> {
                 })
             }
             Stepper::Abm(a) => {
-                let h = a.step_size();
-                if (t_end - a.time()) * h <= R::ZERO {
-                    return Ok(Stepped {
-                        t: a.time(),
-                        moved: false,
-                        reached_end: true,
-                    });
+                let (t, h) = (a.time(), a.step_size());
+                if (t_end - t) * h <= R::ZERO {
+                    return Ok(Stepped::stay(t));
                 }
-                let r = a.step(sys)?;
-                Ok(Stepped {
-                    t: r.t,
-                    moved: true,
-                    reached_end: (t_end - r.t) * h <= R::ZERO,
-                })
+                Ok(Stepped::fixed(a.step(sys)?.t, h, t_end))
+            }
+            Stepper::Whfast(w) => {
+                let (t, h) = (w.time(), w.step_size());
+                if (t_end - t) * h <= R::ZERO {
+                    return Ok(Stepped::stay(t));
+                }
+                Ok(Stepped::fixed(w.step(sys)?.t, h, t_end))
+            }
+            Stepper::Irk16(k) => {
+                let (t, h) = (k.time(), k.step_size());
+                if (t_end - t) * h <= R::ZERO {
+                    return Ok(Stepped::stay(t));
+                }
+                Ok(Stepped::fixed(k.step(sys)?.t, h, t_end))
             }
         }
     }
@@ -110,6 +153,8 @@ impl<R: Real> Stepper<R> {
         match self {
             Stepper::Ias15(i) => i.time(),
             Stepper::Abm(a) => a.time(),
+            Stepper::Whfast(w) => w.time(),
+            Stepper::Irk16(k) => k.time(),
         }
     }
 
@@ -117,6 +162,8 @@ impl<R: Real> Stepper<R> {
         match self {
             Stepper::Ias15(i) => i.positions(),
             Stepper::Abm(a) => a.positions(),
+            Stepper::Whfast(w) => w.positions(),
+            Stepper::Irk16(k) => k.positions(),
         }
     }
 
@@ -124,6 +171,8 @@ impl<R: Real> Stepper<R> {
         match self {
             Stepper::Ias15(i) => i.velocities(),
             Stepper::Abm(a) => a.velocities(),
+            Stepper::Whfast(w) => w.velocities(),
+            Stepper::Irk16(k) => k.velocities(),
         }
     }
 
@@ -131,11 +180,15 @@ impl<R: Real> Stepper<R> {
         match self {
             Stepper::Ias15(i) => i.last_step_span(),
             Stepper::Abm(a) => a.last_step_span(),
+            Stepper::Whfast(w) => w.last_step_span(),
+            Stepper::Irk16(k) => k.last_step_span(),
         }
     }
 
-    pub(crate) fn dense_state(
-        &self,
+    /// Dense output; `sys` is used by `WHFast` only (its interpolant is a Wisdom–Holman substep).
+    pub(crate) fn dense_state<S: SecondOrderSystem<R> + ?Sized>(
+        &mut self,
+        sys: &S,
         t: R,
         x: &mut [R],
         v: &mut [R],
@@ -143,16 +196,22 @@ impl<R: Real> Stepper<R> {
         match self {
             Stepper::Ias15(i) => i.dense_state(t, x, v),
             Stepper::Abm(a) => a.dense_state(t, x, v),
+            Stepper::Whfast(w) => w.dense_state(sys, t, x, v),
+            Stepper::Irk16(k) => k.dense_state(t, x, v),
         }
     }
 
-    pub(crate) fn locate_event<G>(&self, g: G) -> Result<Option<R>, IntegratorError>
+    /// Event location; `sys` is used by `WHFast` only.
+    pub(crate) fn locate_event<S, G>(&mut self, sys: &S, g: G) -> Result<Option<R>, IntegratorError>
     where
+        S: SecondOrderSystem<R> + ?Sized,
         G: Fn(R, &[R], &[R]) -> R,
     {
         match self {
             Stepper::Ias15(i) => i.locate_event(g),
             Stepper::Abm(a) => a.locate_event(g),
+            Stepper::Whfast(w) => w.locate_event(sys, g),
+            Stepper::Irk16(k) => k.locate_event(g),
         }
     }
 
@@ -168,6 +227,22 @@ impl<R: Real> Stepper<R> {
                     ..RunStats::default()
                 }
             }
+            Stepper::Whfast(w) => {
+                let s = w.stats();
+                RunStats {
+                    steps: s.steps,
+                    force_evaluations: s.force_evaluations,
+                    ..RunStats::default()
+                }
+            }
+            Stepper::Irk16(k) => {
+                let s = k.stats();
+                RunStats {
+                    steps: s.steps,
+                    force_evaluations: s.force_evaluations,
+                    ..RunStats::default()
+                }
+            }
         }
     }
 
@@ -176,6 +251,8 @@ impl<R: Real> Stepper<R> {
         match self {
             Stepper::Ias15(i) => i.stats().steps,
             Stepper::Abm(a) => a.stats().steps,
+            Stepper::Whfast(w) => w.stats().steps,
+            Stepper::Irk16(k) => k.stats().steps,
         }
     }
 
@@ -183,6 +260,8 @@ impl<R: Real> Stepper<R> {
         Ok(match self {
             Stepper::Ias15(i) => IntegratorSnapshot::Ias15(i.snapshot()?),
             Stepper::Abm(a) => IntegratorSnapshot::Abm(a.snapshot()?),
+            Stepper::Whfast(w) => IntegratorSnapshot::Whfast(w.snapshot()?),
+            Stepper::Irk16(k) => IntegratorSnapshot::Irk16(k.snapshot()?),
         })
     }
 }

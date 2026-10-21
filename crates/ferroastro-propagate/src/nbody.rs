@@ -28,16 +28,18 @@ use ferroastro_eih::{
 };
 use ferroastro_ephem::NaifId;
 use ferroastro_forces::{
-    ForceTerm, GeocentricMoon, LtReaction, MOON_TAYLOR_TERMS_DEFAULT, MinorFromMajors,
+    ForceTerm, GeocentricMoon, GrPotential, LtReaction, MOON_TAYLOR_TERMS_DEFAULT, MinorFromMajors,
     MinorReaction, MixedForces, MoonVariables, NBody, NBodyModel, NewtonianMutual,
     NewtonianMutualSoa, RingMasses, SoaBackend, SolarJ2WithReaction, SolarLenseThirring,
 };
 use ferroastro_integrators::Ias15;
+use ferroastro_integrators::Irk16;
 use ferroastro_real::Real;
 use ferroastro_scenario::{
     BodyName, ForceKernel, IcBarycentre, IcRecord, IntegratorName, MajorAsteroids, Precision,
     ScenarioError, ScenarioSpec, ic_hash,
 };
+use ferroastro_symplectic::Whfast;
 use ferroastro_system::{
     ASTEROID_NAIF_BASE, Catalogue, KBO_IDENTIFICATION, KBO_RING, SystemState, Tier,
     kbo_ring_states, place_small_bodies,
@@ -108,6 +110,15 @@ fn relativity<R: Real>(
             ));
         }
         terms.push(Box::new(HeliocentricSchwarzschild::new(c, beta, gamma)?));
+    }
+    if f.gr_potential {
+        if !has_sun {
+            return Err(value_err(
+                "forces.gr_potential",
+                "the GR effective potential of the Sun needs the Sun among the bodies",
+            ));
+        }
+        terms.push(Box::new(GrPotential::new(c)?));
     }
     Ok(terms)
 }
@@ -528,6 +539,9 @@ impl<R: Real> NBodyRun<R> {
         let abm = abm_config(spec);
         let dt0_days = spec.integrator.dt0_days.unwrap_or(DEFAULT_DT0_DAYS);
         let step_days = spec.integrator.step_days.unwrap_or(DEFAULT_ABM_STEP_DAYS);
+        let fixed_days = spec.integrator.step_days.unwrap_or(DEFAULT_FIXED_STEP_DAYS);
+        let wh = crate::wh_config(spec);
+        let irk = crate::irk16_config(spec);
         let dir = if spec.span.years < 0.0 { -1.0 } else { 1.0 };
         let ias = match restore {
             Some((snap, _, ic)) => {
@@ -558,8 +572,28 @@ impl<R: Real> NBodyRun<R> {
                     R::from_f64(dir * step_days * SECONDS_PER_DAY),
                     abm,
                 )?),
-                // `supports` refuses WHFast and IRK16 before we get here.
-                _ => Stepper::Ias15(Ias15::new(
+                IntegratorName::Whfast => {
+                    ferroastro_symplectic::check_model(&model)?;
+                    let gm: Vec<R> = (0..n).map(|i| model.layout().gm(i)).collect();
+                    Stepper::Whfast(Whfast::new(
+                        &model,
+                        &gm,
+                        R::ZERO,
+                        &x0,
+                        &v0,
+                        R::from_f64(dir * fixed_days * SECONDS_PER_DAY),
+                        wh,
+                    )?)
+                }
+                IntegratorName::Irk16 => Stepper::Irk16(Irk16::new(
+                    3 * n,
+                    R::ZERO,
+                    &x0,
+                    &v0,
+                    R::from_f64(dir * fixed_days * SECONDS_PER_DAY),
+                    irk,
+                )?),
+                IntegratorName::Ias15 => Stepper::Ias15(Ias15::new(
                     3 * n,
                     R::ZERO,
                     &x0,
@@ -571,7 +605,9 @@ impl<R: Real> NBodyRun<R> {
         };
         let integrator = match spec.integrator.name {
             IntegratorName::Abm => format!("{}, h = {step_days} d", abm.describe()),
-            _ => format!(
+            IntegratorName::Whfast => format!("{}, h = {fixed_days} d", wh.describe()),
+            IntegratorName::Irk16 => format!("{}, h = {fixed_days} d", irk.describe()),
+            IntegratorName::Ias15 => format!(
                 "IAS15 epsilon = {:e}, safety = {}, PC tolerance = {:e}, dense output",
                 cfg.epsilon, cfg.safety, cfg.pc_tolerance
             ),
@@ -750,7 +786,7 @@ impl<R: Real> NBodyRun<R> {
                 if !(after(tk, t0) && not_after(tk, t1) && not_after(tk, self.t_end)) {
                     break;
                 }
-                self.ias.dense_state(tk, &mut xs, &mut vs)?;
+                self.ias.dense_state(&self.model, tk, &mut xs, &mut vs)?;
                 out.states.push(self.record(tk, &xs, &vs)?);
                 self.driver.next_sample += 1;
             }
@@ -774,10 +810,10 @@ impl<R: Real> NBodyRun<R> {
                     // An event after the end of the span (ABM's last step only) is not recorded.
                     if let Some(te) = self
                         .ias
-                        .locate_event(|_, x, v| rdotv(x, v, n, e.body, e.central))?
+                        .locate_event(&self.model, |_, x, v| rdotv(x, v, n, e.body, e.central))?
                         .filter(|&te| not_after(te, self.t_end))
                     {
-                        self.ias.dense_state(te, &mut xs, &mut vs)?;
+                        self.ias.dense_state(&self.model, te, &mut xs, &mut vs)?;
                         let sub = |a: [R; 3], b: [R; 3]| [a[0] - b[0], a[1] - b[1], a[2] - b[2]];
                         out.passages.push(PassageRecord {
                             body: e.body_id,
@@ -815,7 +851,8 @@ impl<R: Real> NBodyRun<R> {
         }
         out.final_state = Some(if out.finished && after(self.ias.time(), self.t_end) {
             // ABM's last step ended after the span: the state at its end, from dense output.
-            self.ias.dense_state(self.t_end, &mut xs, &mut vs)?;
+            self.ias
+                .dense_state(&self.model, self.t_end, &mut xs, &mut vs)?;
             self.record(self.t_end, &xs, &vs)?
         } else {
             self.record(self.ias.time(), self.ias.positions(), self.ias.velocities())?
@@ -863,3 +900,6 @@ pub const DEFAULT_DT0_DAYS: f64 = 0.1;
 
 /// ABM fixed step when the scenario sets none: 1/16 d (Subbotin et al. 2023; WP24).
 pub const DEFAULT_ABM_STEP_DAYS: f64 = 0.0625;
+
+/// `WHFast` and IRK16 fixed step when the scenario sets none: 1 d (WP29).
+pub const DEFAULT_FIXED_STEP_DAYS: f64 = 1.0;

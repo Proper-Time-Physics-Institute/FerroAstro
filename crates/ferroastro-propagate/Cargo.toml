@@ -23,6 +23,7 @@ ferroastro-integrators = { workspace = true, features = ["serde"] }
 ferroastro-precession.workspace = true
 ferroastro-real.workspace = true
 ferroastro-scenario.workspace = true
+ferroastro-symplectic = { workspace = true, features = ["serde"] }
 ferroastro-system.workspace = true
 postcard.workspace = true
 rayon = { workspace = true, optional = true }

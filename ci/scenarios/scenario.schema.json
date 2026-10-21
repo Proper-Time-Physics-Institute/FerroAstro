@@ -205,6 +205,10 @@
           "type": "boolean",
           "default": false
         },
+        "gr_potential": {
+          "description": "The velocity-independent GR effective potential of the Sun, `−3(GM☉)²/(c²r²)` per unit\nmass (Nobili & Roxburgh 1986), with the reaction on the Sun: the GR-potential rung of the\nWisdom–Holman integrator (n-body mode; not a CI-002 switch name, WP29). It gives the 1PN\nperihelion advance, but the mean motion is off by O(GM/(ac²)).",
+          "type": "boolean"
+        },
         "kbo_ring": {
           "description": "The DE440 KBO ring: 36 fixed Ring masses at 44 au in the ecliptic (provisional, OI-24;\nnot a CI-002 switch name, WP15).",
           "type": "boolean"
@@ -351,7 +355,7 @@
       "type": "object",
       "properties": {
         "compensated": {
-          "description": "ABM Kahan-compensated state update (default true; false gives the plain sums).",
+          "description": "Kahan-compensated state update of ABM and IRK16 (default true; false gives the plain\nsums).",
           "type": [
             "boolean",
             "null"
@@ -422,12 +426,21 @@
           "$ref": "#/$defs/Precision"
         },
         "step_days": {
-          "description": "ABM fixed step in days (default 1/16 d; its sign follows the span).",
+          "description": "Fixed step in days of ABM (default 1/16 d), `WHFast` and IRK16 (default 1 d); its sign\nfollows the span.",
           "type": [
             "number",
             "null"
           ],
           "format": "double"
+        },
+        "wh_corrector": {
+          "description": "`WHFast` symplectic-corrector order: 0 (none), 3, 5, 7 or 11 (default 11; WP29).",
+          "type": [
+            "integer",
+            "null"
+          ],
+          "format": "uint32",
+          "minimum": 0
         }
       },
       "additionalProperties": false,
