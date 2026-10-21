@@ -18,6 +18,7 @@
 //! | `tolerance` | table with `abs` and/or `rel`, both finite and ≥ 0 |
 //! | `generated_by`, `engine` | required when `kind = "computed-reference"` (TST-003) |
 //! | `blocked_by` | optional `OI-NN`: the oracle is non-gating while that open item is open ([`Vector::blocking_open_item`]) |
+//! | `provisional` | optional `OI-NN`, never with `blocked_by`: the oracle gates, but its assertion is PROVISIONAL until that open item is closed; the item must exist in `OPEN-ITEMS.md` and results are labelled with it and its revert condition ([`Vector::provisional_open_item`], ADR-0014) |
 //!
 //! `source` and `citation` may not contain `UNVERIFIED` or `[S]`: such values cannot be oracles
 //! until closed in `docs/requirements/OPEN-ITEMS.md` (PHY-018).
@@ -37,7 +38,7 @@
 
 mod schema;
 
-pub use schema::{Engine, Kind, Tolerance, Vector, VectorValue};
+pub use schema::{Engine, Kind, Provisional, Tolerance, Vector, VectorValue};
 
 use ferroastro_core::ErrorCode;
 use std::collections::BTreeMap;
@@ -145,6 +146,8 @@ pub struct Deviation {
     pub allowed: f64,
     /// The vector's tolerance.
     pub tolerance: Tolerance,
+    /// The vector's `provisional` open item, if any: the failed assertion is itself provisional.
+    pub provisional: Option<String>,
 }
 
 impl std::fmt::Display for Deviation {
@@ -162,7 +165,15 @@ impl std::fmt::Display for Deviation {
             self.tolerance.abs,
             self.tolerance.rel,
             u = self.unit,
-        )
+        )?;
+        if let Some(oi) = &self.provisional {
+            write!(
+                f,
+                "; PROVISIONAL assertion ({oi}): it reverts if {oi} is closed against its protocol \
+                 (revert condition in OPEN-ITEMS.md {oi} and the vector's tolerance_rationale)"
+            )?;
+        }
+        Ok(())
     }
 }
 
