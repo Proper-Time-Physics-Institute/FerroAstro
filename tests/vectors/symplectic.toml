@@ -202,3 +202,31 @@ retrieved = "2026-10-21"
 tolerance = { abs = 0.0 }
 tolerance_rationale = "An upper bound (asserted <=). The formal slope sigma is printed but not used: the error is correlated in time, so a white-noise sigma would be too small."
 verified_by = "WP29 builder agent, 2026-10-21: fixed in the WP29 plan (check W4b) before the code existed."
+
+[[vector]]
+id = "WH-DE440-RESIDUAL-CONSISTENCY"
+requirement = ["NUM-004", "REF-001"]
+quantity = "|max barycentric residual of Mercury vs de440.bsp (WHFast h = 1 d, corrector 11) - the same for IAS15|, Sun + 8 planets (EMB) from header.440, Newtonian + solar J2 + GR effective potential, 10 Julian yr, 10-d samples"
+value = 0.1
+unit = "km"
+kind = "analytic"
+source = "Both integrate the same model from the same ICs; their difference is the WH truncation error, measured at 0.66 km over 10 yr for h = 4.06 d (WP29 P1), i.e. ~0.04 km at h = 1 d (error ~ h^2)."
+citation = "IMPLEMENTATION-NOTES WP29 plan addendum 3; Wisdom & Holman 1991, AJ 102, 1528"
+retrieved = "2026-10-21"
+tolerance = { abs = 0.0 }
+tolerance_rationale = "An upper bound (asserted <=), ~2.5x the h^2 extrapolation of the P1 measurement."
+verified_by = "WP29 builder agent, 2026-10-21: fixed in plan addendum 3 before the test existed."
+
+[[vector]]
+id = "IRK16-DE440-RESIDUAL-CONSISTENCY"
+requirement = ["NUM-003", "REF-001"]
+quantity = "|max barycentric residual of Mercury vs de440.bsp (IRK16 h = 2 d) - the same for IAS15|, Sun + 8 planets (EMB) from header.440, Newtonian + solar J2 + GR effective potential, 10 Julian yr, 10-d samples"
+value = 1.0e-3
+unit = "km"
+kind = "analytic"
+source = "Both are round-off-limited on the same model and ICs; WP29 P1 measured 1.4e-5 km (Mercury) between IRK16 and IAS15 over 10 yr."
+citation = "IMPLEMENTATION-NOTES WP29 plan addendum 3; FerroAstro docs/requirements/NUM.md NUM-003"
+retrieved = "2026-10-21"
+tolerance = { abs = 0.0 }
+tolerance_rationale = "An upper bound (asserted <=), ~70x the P1 measurement."
+verified_by = "WP29 builder agent, 2026-10-21: fixed in plan addendum 3 before the test existed."
