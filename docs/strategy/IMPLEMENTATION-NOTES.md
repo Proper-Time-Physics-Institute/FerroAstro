@@ -5973,3 +5973,23 @@ Restores with `cp` + `touch`; the tree was clean afterwards.
 - **Data tier** (`--profile data --run-ignored only`): **34/34 pass** (129.7 s), including D1. Products from the pinned cache (retrieved 2026-10-15, SHA-256 re-verified); Horizons `signature.version` 1.2 / DE441.
 - **Layer check:** 23 crates, 142 edges, 0 errors (new edge bench → ephem). **`lint_literals`:** 0 findings.
 - **Nightly:** only the new N1 test was run (pass, on the committed table). The WP26 nightly failures were not re-run; T3 labels the reviewer's log of them as known and unchanged.
+
+### WP28 adversarial review (2026-10-21, reviewer agent, tip `630e87e`)
+**Re-run by the reviewer:** every AGENTS.md command passes (fmt, clippy `-D warnings`, nextest **307 passed / 55 skipped**, doctests, `cargo deny` ok, `cargo doc -D warnings`, ruff + format + mypy strict, pytest 86, `reuse lint`, trace 121 requirements / 730 citing tests / 0 errors, layers 0 errors, `lint_literals` 0). Data tier **34/34** (225.7 s, load ≈ 45–57). D1 reproduces 0.786160078 km by both paths, |diff| 0, IC hash `4e2523b6…7e7a87`, the same as row (i). N1 passes on the committed table.
+
+**Source check:** arXiv:2304.04458v1 re-downloaded (sha256 `e65d152a…2025b5`, the same as WP25). Table 1's "Time of integration" row reads 81 s / 323 s / 246 s / 32 min, so the three `SUBBOTIN23-T1-WALL-*` vectors are transcribed correctly. The paper names no CPU (OI-44 stands). The text says these are one-way 40-yr runs, which matches the table's FerroAstro timings.
+
+**Mutation probes** (each reverted, and the tree was clean afterwards):
+- Anti-compensated `kahan_add` (`x + comp`): **killed by T1** (ratio 0.47). T1b still passes, because its reference calls the same `kahan_add`, so T1b does not test that function.
+- Inverted FerroAstro cost ratio in `cost_ratios`: killed by S1.
+- Sun position in the de440.bsp column evaluated 86 s early: killed by D1 (|diff| 0.95 km).
+- Final-state tail dropped from `Series::from_run`: killed by D1, as a missing-sample error.
+- Corrupted table (Subbotin f64 81 → 80 s, and the IC hash of (j) removed): N1 fails.
+
+**NEEDS HUMAN REVIEW (reviewer): the workload differs from Subbotin's.** Subbotin et al. 2023 §2 lists Pluto and 30 other TNOs, 277 asteroids, a 180-point annulus and a 160-point ring. Taking away the 16 Majors leaves about **642 Minor point masses** (30 + 272 + 180 + 160). Rows (h) and (i) have 338, and (j) has 404 (338 + 30 KBOs + the 36-point ring). In both codes each Minor body feels the 16 Majors only, so the Minor-body force work in Subbotin's run is about 1.9× that of (h)/(i).
+
+The rough estimate derived here assumes the 240 EIH pair terms cost about 5–10 Newtonian pair evaluations each. On that assumption, Subbotin's total force work is about 1.4–1.7× FerroAstro's per step. The "FerroAstro / Subbotin" ratios of 0.711 (f64) and 0.829 (mixed) are therefore **not like-for-like even before the hardware question (OI-44)**, and "within 1×: met" should not be quoted without this caveat. Two changes are needed:
+- The NUM-024 text ("16 Major + 343 Minor") mis-describes Subbotin's configuration and should be corrected in PR #2.
+- A like-for-like timing needs a scenario with about 642 Minor point masses (asteroids plus annulus plus ring).
+
+The table's own note does disclose "no TNOs or ring in (h)/(i)", so nothing in it is false, but it does not state the size of the gap.
