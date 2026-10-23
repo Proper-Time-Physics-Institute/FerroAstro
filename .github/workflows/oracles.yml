@@ -1,0 +1,108 @@
+# SPDX-FileCopyrightText: 2026 Proper-Time Physics Institute
+# SPDX-License-Identifier: Apache-2.0
+#
+# Oracle goldens (CI-001, CI-003, CI-004, REF-001, REF-005, REF-009; WP16). Manual dispatch only:
+# this and the (WP17) nightly-drift workflow are the only workflows that produce goldens, and they
+# never commit them. The candidate goldens are uploaded as a workflow artifact; a human copies them
+# into ci/golden/ through a reviewed PR (CI-004).
+#
+# GPL isolation (LIC-001/002, red-team L3/L4):
+# * `oracles` builds each image on the runner from a staged context (tools/oracles/run_oracles.sh)
+#   that holds only ci/oracles/<tool>/ and tools/oracles/*.py. Images are ephemeral: nothing
+#   pushes them to any registry, and no FerroAstro build exists in this job.
+# * `check` is a separate job on a separate runner: it receives only the plain output files and
+#   verifies their MANIFEST.json entries and their data rows against the committed goldens.
+#   FerroAstro itself is compared with the committed goldens by the PR-fast tests (CI-005).
+#
+# Security (STD-012): read-only token, no pull_request_target, actions pinned to commit SHAs.
+name: oracles
+
+on:
+  workflow_dispatch:
+    inputs:
+      oracle:
+        description: "Which oracle to run"
+        type: choice
+        options: [all, rebound, erfa, jpl]
+        default: all
+
+permissions:
+  contents: read
+
+jobs:
+  oracles:
+    name: run oracle containers (no FerroAstro build)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    env:
+      FA_DATA_DIR: ${{ github.workspace }}/.fa-data
+      ORACLE: ${{ inputs.oracle }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@1c37ad07a6a961277cf70c0d37d6f313000f5884 # v10.3.0
+      - name: Fetch header.440 (pinned SHA-256)
+        run: cd tools && uv run python fetch_jpl.py
+      - name: REBOUND stage A (REF-005) and the REF-011 canaries
+        if: env.ORACLE == 'all' || env.ORACLE == 'rebound'
+        run: |
+          tools/oracles/run_oracles.sh rebound ci/scenarios/stage-a-sun-8planets-newton-100yr.toml \
+            out/rebound/stage-a-sun-8planets-newton-100yr
+          for c in ci/oracles/canaries/*.toml; do
+            set +e; tools/oracles/run_oracles.sh rebound "$c" "out/canary" 2> canary.err; s=$?; set -e
+            cat canary.err
+            test "$s" -eq 3 || { echo "canary $c: exit $s, want 3 (REF-011)"; exit 1; }
+          done
+          rm -rf out/canary
+      - name: ERFA goldens (REF-009)
+        if: env.ORACLE == 'all' || env.ORACLE == 'erfa'
+        run: tools/oracles/run_oracles.sh erfa out/erfa/erfa-goldens
+      - name: JPL pins (REF-001)
+        if: env.ORACLE == 'all' || env.ORACLE == 'jpl'
+        run: tools/oracles/run_oracles.sh jpl out/jpl/ref001-pins
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: oracle-goldens
+          path: out/
+          if-no-files-found: error
+
+  check:
+    name: check goldens (separate job; files only)
+    needs: oracles
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: oracle-goldens
+          path: candidate/
+      - uses: astral-sh/setup-uv@1c37ad07a6a961277cf70c0d37d6f313000f5884 # v10.3.0
+      - name: MANIFEST.json complete and output SHA-256s match (CI-003)
+        run: |
+          cd tools
+          uv run python -c "
+          import sys; from pathlib import Path; from oracles import common
+          bad = 0
+          for d in sorted(p for p in Path('../candidate').glob('*/*') if p.is_dir()):
+              problems = common.validate_manifest(d)
+              print(d, 'OK' if not problems else problems)
+              bad += bool(problems)
+          sys.exit(1 if bad else 0)"
+      - name: Data rows equal the committed goldens (drift check)
+        run: |
+          cd tools
+          status=0
+          if [ -d ../candidate/erfa/erfa-goldens ]; then
+            uv run python -m oracles.compare_goldens ../candidate/erfa/erfa-goldens ../tests/goldens \
+              erfa-time-pyerfa.csv erfa-dat-pyerfa.csv erfa-frames-pyerfa.csv || status=1
+          fi
+          d=rebound/stage-a-sun-8planets-newton-100yr
+          if [ -d "../candidate/$d" ]; then
+            uv run python -m oracles.compare_goldens "../candidate/$d" "../ci/golden/$d" \
+              stage-a-sun-8planets-newton-100yr.rebound.states.csv || status=1
+          fi
+          exit "$status"

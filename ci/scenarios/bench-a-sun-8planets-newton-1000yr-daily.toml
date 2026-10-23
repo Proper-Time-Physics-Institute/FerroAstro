@@ -1,0 +1,36 @@
+# SPDX-FileCopyrightText: 2026 Proper-Time Physics Institute
+# SPDX-License-Identifier: Apache-2.0
+# WP18 speed table, scenario (a) (CI-008): stage A's physics and IAS15 settings (Sun + 8 planets with
+# the Earth-Moon barycentre as one body, Newtonian, header.440 ICs, epsilon 1e-9, dt0 0.1 d) over
+# 1000 Julian years, see the twin below.
+# Run by tools/bench/speed_table.sh for every tool, never by the nightly all-oracle loop.
+# This is the daily twin of bench-a-sun-8planets-newton-1000yr.toml: identical physics and integrator, Mercury and the Sun sampled daily for the Park2017 estimator; run once, untimed.
+# Schema: scenario.schema.json (CI-002).
+schema_version = 1
+name = "bench-a-sun-8planets-newton-1000yr-daily"
+description = "Bench (a): Sun + 8 planets (EMB), Newtonian, header.440 ICs, 1000 yr, IAS15 f64, daily Sun + Mercury samples (rate twin)"
+mode = "n-body"
+bodies = ["Sun", "Mercury", "Venus", "EMB", "Mars", "Jupiter", "Saturn", "Uranus", "Neptune"]
+central_body = "Sun"
+
+[initial_conditions]
+source = "de440-header"
+
+[constants]
+gm_set = "de440"
+
+[forces]
+newton = true
+
+[integrator]
+name = "ias15"
+precision = "f64"
+epsilon = 1e-9
+dt0_days = 0.1
+
+[span]
+years = 1000.0
+
+[output]
+cadence_days = 1.0
+sample_bodies = ["Sun", "Mercury"]

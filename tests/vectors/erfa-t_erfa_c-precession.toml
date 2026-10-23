@@ -1,0 +1,1829 @@
+# SPDX-FileCopyrightText: 2013-2023 NumFOCUS Foundation
+# SPDX-FileCopyrightText: 2026 Proper-Time Physics Institute
+# SPDX-License-Identifier: Apache-2.0 AND BSD-3-Clause
+# ERFA 2.0.1 reference values (t_erfa_c.c) for the IAU 2006 precession/ecliptic routines and the
+# vector/matrix helpers ported into ferroastro-erfa in WP9 (DEP-009, LIC-004). Checked by
+# crates/ferroastro-erfa/tests/dep009_t_erfa_c_precession.rs. Schema: ADR-0004.
+schema_version = 1
+
+[[vector]]
+id = "ERFA-T-IR-11"
+requirement = ["DEP-009", "LIC-004"]
+quantity = "eraIr output r[0][0] in t_erfa_c.c t_ir"
+value = 1.0
+unit = "1"
+kind = "computed-reference"
+source = "ERFA 2.0.1 regression test t_ir in src/t_erfa_c.c: vvd(r[0][0], expected, dval). Value and tolerance (dval) are copied verbatim from that call; the call arguments are repeated, line-marked, in the test."
+citation = "liberfa/erfa v2.0.1 (BSD-3-Clause, NumFOCUS Foundation), src/t_erfa_c.c, release tarball erfa-2.0.1.tar.xz sha256 45111f0addf6ef69345aaf093bd054705b41ac2db7541dd3f0e105362c8e20e4; t_erfa_c.c sha256 8a92d0099c48df31ca566bea881c19497dc295dba58dba7136cc2f8443c31f15"
+retrieved = "2026-10-15"
+generated_by = "liberfa/erfa:src/t_erfa_c.c@9915ba38c9365f8b0738269b8c2ac1fdd5f8dee3"
+engine = { name = "ERFA t_erfa_c reference values", version = "ERFA 2.0.1 (SOFA 20231011)", settings = "C double; arguments as in the cited call" }
+tolerance = { abs = 0.0 }
+tolerance_rationale = "ERFA's own acceptance tolerance (dval) for this output in t_erfa_c.c, unchanged (DEP-009: reproduce ERFA's reference values). abs = 0 means ERFA requires an exact result."
+verified_by = "WP9 builder agent, 2026-10-15: value and dval extracted mechanically from the ERFA 2.0.1 t_erfa_c.c listed in citation (regex over the vvd calls), before the first run of the port."
+
+[[vector]]
+id = "ERFA-T-IR-12"
+requirement = ["DEP-009", "LIC-004"]
+quantity = "eraIr output r[0][1] in t_erfa_c.c t_ir"
+value = 0.0
+unit = "1"
+kind = "computed-reference"
+source = "ERFA 2.0.1 regression test t_ir in src/t_erfa_c.c: vvd(r[0][1], expected, dval). Value and tolerance (dval) are copied verbatim from that call; the call arguments are repeated, line-marked, in the test."
+citation = "liberfa/erfa v2.0.1 (BSD-3-Clause, NumFOCUS Foundation), src/t_erfa_c.c, release tarball erfa-2.0.1.tar.xz sha256 45111f0addf6ef69345aaf093bd054705b41ac2db7541dd3f0e105362c8e20e4; t_erfa_c.c sha256 8a92d0099c48df31ca566bea881c19497dc295dba58dba7136cc2f8443c31f15"
+retrieved = "2026-10-15"
+generated_by = "liberfa/erfa:src/t_erfa_c.c@9915ba38c9365f8b0738269b8c2ac1fdd5f8dee3"
+engine = { name = "ERFA t_erfa_c reference values", version = "ERFA 2.0.1 (SOFA 20231011)", settings = "C double; arguments as in the cited call" }
+tolerance = { abs = 0.0 }
+tolerance_rationale = "ERFA's own acceptance tolerance (dval) for this output in t_erfa_c.c, unchanged (DEP-009: reproduce ERFA's reference values). abs = 0 means ERFA requires an exact result."
+verified_by = "WP9 builder agent, 2026-10-15: value and dval extracted mechanically from the ERFA 2.0.1 t_erfa_c.c listed in citation (regex over the vvd calls), before the first run of the port."
+
+[[vector]]
+id = "ERFA-T-IR-13"
+requirement = ["DEP-009", "LIC-004"]
+quantity = "eraIr output r[0][2] in t_erfa_c.c t_ir"
+value = 0.0
+unit = "1"
+kind = "computed-reference"
+source = "ERFA 2.0.1 regression test t_ir in src/t_erfa_c.c: vvd(r[0][2], expected, dval). Value and tolerance (dval) are copied verbatim from that call; the call arguments are repeated, line-marked, in the test."
+citation = "liberfa/erfa v2.0.1 (BSD-3-Clause, NumFOCUS Foundation), src/t_erfa_c.c, release tarball erfa-2.0.1.tar.xz sha256 45111f0addf6ef69345aaf093bd054705b41ac2db7541dd3f0e105362c8e20e4; t_erfa_c.c sha256 8a92d0099c48df31ca566bea881c19497dc295dba58dba7136cc2f8443c31f15"
+retrieved = "2026-10-15"
+generated_by = "liberfa/erfa:src/t_erfa_c.c@9915ba38c9365f8b0738269b8c2ac1fdd5f8dee3"
+engine = { name = "ERFA t_erfa_c reference values", version = "ERFA 2.0.1 (SOFA 20231011)", settings = "C double; arguments as in the cited call" }
+tolerance = { abs = 0.0 }
+tolerance_rationale = "ERFA's own acceptance tolerance (dval) for this output in t_erfa_c.c, unchanged (DEP-009: reproduce ERFA's reference values). abs = 0 means ERFA requires an exact result."
+verified_by = "WP9 builder agent, 2026-10-15: value and dval extracted mechanically from the ERFA 2.0.1 t_erfa_c.c listed in citation (regex over the vvd calls), before the first run of the port."
+
+[[vector]]
+id = "ERFA-T-IR-21"
+requirement = ["DEP-009", "LIC-004"]
+quantity = "eraIr output r[1][0] in t_erfa_c.c t_ir"
+value = 0.0
+unit = "1"
+kind = "computed-reference"
+source = "ERFA 2.0.1 regression test t_ir in src/t_erfa_c.c: vvd(r[1][0], expected, dval). Value and tolerance (dval) are copied verbatim from that call; the call arguments are repeated, line-marked, in the test."
+citation = "liberfa/erfa v2.0.1 (BSD-3-Clause, NumFOCUS Foundation), src/t_erfa_c.c, release tarball erfa-2.0.1.tar.xz sha256 45111f0addf6ef69345aaf093bd054705b41ac2db7541dd3f0e105362c8e20e4; t_erfa_c.c sha256 8a92d0099c48df31ca566bea881c19497dc295dba58dba7136cc2f8443c31f15"
+retrieved = "2026-10-15"
+generated_by = "liberfa/erfa:src/t_erfa_c.c@9915ba38c9365f8b0738269b8c2ac1fdd5f8dee3"
+engine = { name = "ERFA t_erfa_c reference values", version = "ERFA 2.0.1 (SOFA 20231011)", settings = "C double; arguments as in the cited call" }
+tolerance = { abs = 0.0 }
+tolerance_rationale = "ERFA's own acceptance tolerance (dval) for this output in t_erfa_c.c, unchanged (DEP-009: reproduce ERFA's reference values). abs = 0 means ERFA requires an exact result."
+verified_by = "WP9 builder agent, 2026-10-15: value and dval extracted mechanically from the ERFA 2.0.1 t_erfa_c.c listed in citation (regex over the vvd calls), before the first run of the port."
+
+[[vector]]
+id = "ERFA-T-IR-22"
+requirement = ["DEP-009", "LIC-004"]
+quantity = "eraIr output r[1][1] in t_erfa_c.c t_ir"
+value = 1.0
+unit = "1"
+kind = "computed-reference"
+source = "ERFA 2.0.1 regression test t_ir in src/t_erfa_c.c: vvd(r[1][1], expected, dval). Value and tolerance (dval) are copied verbatim from that call; the call arguments are repeated, line-marked, in the test."
+citation = "liberfa/erfa v2.0.1 (BSD-3-Clause, NumFOCUS Foundation), src/t_erfa_c.c, release tarball erfa-2.0.1.tar.xz sha256 45111f0addf6ef69345aaf093bd054705b41ac2db7541dd3f0e105362c8e20e4; t_erfa_c.c sha256 8a92d0099c48df31ca566bea881c19497dc295dba58dba7136cc2f8443c31f15"
+retrieved = "2026-10-15"
+generated_by = "liberfa/erfa:src/t_erfa_c.c@9915ba38c9365f8b0738269b8c2ac1fdd5f8dee3"
+engine = { name = "ERFA t_erfa_c reference values", version = "ERFA 2.0.1 (SOFA 20231011)", settings = "C double; arguments as in the cited call" }
+tolerance = { abs = 0.0 }
+tolerance_rationale = "ERFA's own acceptance tolerance (dval) for this output in t_erfa_c.c, unchanged (DEP-009: reproduce ERFA's reference values). abs = 0 means ERFA requires an exact result."
+verified_by = "WP9 builder agent, 2026-10-15: value and dval extracted mechanically from the ERFA 2.0.1 t_erfa_c.c listed in citation (regex over the vvd calls), before the first run of the port."
+
+[[vector]]
+id = "ERFA-T-IR-23"
+requirement = ["DEP-009", "LIC-004"]
+quantity = "eraIr output r[1][2] in t_erfa_c.c t_ir"
+value = 0.0
+unit = "1"
+kind = "computed-reference"
+source = "ERFA 2.0.1 regression test t_ir in src/t_erfa_c.c: vvd(r[1][2], expected, dval). Value and tolerance (dval) are copied verbatim from that call; the call arguments are repeated, line-marked, in the test."
+citation = "liberfa/erfa v2.0.1 (BSD-3-Clause, NumFOCUS Foundation), src/t_erfa_c.c, release tarball erfa-2.0.1.tar.xz sha256 45111f0addf6ef69345aaf093bd054705b41ac2db7541dd3f0e105362c8e20e4; t_erfa_c.c sha256 8a92d0099c48df31ca566bea881c19497dc295dba58dba7136cc2f8443c31f15"
+retrieved = "2026-10-15"
+generated_by = "liberfa/erfa:src/t_erfa_c.c@9915ba38c9365f8b0738269b8c2ac1fdd5f8dee3"
+engine = { name = "ERFA t_erfa_c reference values", version = "ERFA 2.0.1 (SOFA 20231011)", settings = "C double; arguments as in the cited call" }
+tolerance = { abs = 0.0 }
+tolerance_rationale = "ERFA's own acceptance tolerance (dval) for this output in t_erfa_c.c, unchanged (DEP-009: reproduce ERFA's reference values). abs = 0 means ERFA requires an exact result."
+verified_by = "WP9 builder agent, 2026-10-15: value and dval extracted mechanically from the ERFA 2.0.1 t_erfa_c.c listed in citation (regex over the vvd calls), before the first run of the port."
+
+[[vector]]
+id = "ERFA-T-IR-31"
+requirement = ["DEP-009", "LIC-004"]
+quantity = "eraIr output r[2][0] in t_erfa_c.c t_ir"
+value = 0.0
+unit = "1"
+kind = "computed-reference"
+source = "ERFA 2.0.1 regression test t_ir in src/t_erfa_c.c: vvd(r[2][0], expected, dval). Value and tolerance (dval) are copied verbatim from that call; the call arguments are repeated, line-marked, in the test."
+citation = "liberfa/erfa v2.0.1 (BSD-3-Clause, NumFOCUS Foundation), src/t_erfa_c.c, release tarball erfa-2.0.1.tar.xz sha256 45111f0addf6ef69345aaf093bd054705b41ac2db7541dd3f0e105362c8e20e4; t_erfa_c.c sha256 8a92d0099c48df31ca566bea881c19497dc295dba58dba7136cc2f8443c31f15"
+retrieved = "2026-10-15"
+generated_by = "liberfa/erfa:src/t_erfa_c.c@9915ba38c9365f8b0738269b8c2ac1fdd5f8dee3"
+engine = { name = "ERFA t_erfa_c reference values", version = "ERFA 2.0.1 (SOFA 20231011)", settings = "C double; arguments as in the cited call" }
+tolerance = { abs = 0.0 }
+tolerance_rationale = "ERFA's own acceptance tolerance (dval) for this output in t_erfa_c.c, unchanged (DEP-009: reproduce ERFA's reference values). abs = 0 means ERFA requires an exact result."
+verified_by = "WP9 builder agent, 2026-10-15: value and dval extracted mechanically from the ERFA 2.0.1 t_erfa_c.c listed in citation (regex over the vvd calls), before the first run of the port."
+
+[[vector]]
+id = "ERFA-T-IR-32"
+requirement = ["DEP-009", "LIC-004"]
+quantity = "eraIr output r[2][1] in t_erfa_c.c t_ir"
+value = 0.0
+unit = "1"
+kind = "computed-reference"
+source = "ERFA 2.0.1 regression test t_ir in src/t_erfa_c.c: vvd(r[2][1], expected, dval). Value and tolerance (dval) are copied verbatim from that call; the call arguments are repeated, line-marked, in the test."
+citation = "liberfa/erfa v2.0.1 (BSD-3-Clause, NumFOCUS Foundation), src/t_erfa_c.c, release tarball erfa-2.0.1.tar.xz sha256 45111f0addf6ef69345aaf093bd054705b41ac2db7541dd3f0e105362c8e20e4; t_erfa_c.c sha256 8a92d0099c48df31ca566bea881c19497dc295dba58dba7136cc2f8443c31f15"
+retrieved = "2026-10-15"
+generated_by = "liberfa/erfa:src/t_erfa_c.c@9915ba38c9365f8b0738269b8c2ac1fdd5f8dee3"
+engine = { name = "ERFA t_erfa_c reference values", version = "ERFA 2.0.1 (SOFA 20231011)", settings = "C double; arguments as in the cited call" }
+tolerance = { abs = 0.0 }
+tolerance_rationale = "ERFA's own acceptance tolerance (dval) for this output in t_erfa_c.c, unchanged (DEP-009: reproduce ERFA's reference values). abs = 0 means ERFA requires an exact result."
+verified_by = "WP9 builder agent, 2026-10-15: value and dval extracted mechanically from the ERFA 2.0.1 t_erfa_c.c listed in citation (regex over the vvd calls), before the first run of the port."
+
+[[vector]]
+id = "ERFA-T-IR-33"
+requirement = ["DEP-009", "LIC-004"]
+quantity = "eraIr output r[2][2] in t_erfa_c.c t_ir"
+value = 1.0
+unit = "1"
+kind = "computed-reference"
+source = "ERFA 2.0.1 regression test t_ir in src/t_erfa_c.c: vvd(r[2][2], expected, dval). Value and tolerance (dval) are copied verbatim from that call; the call arguments are repeated, line-marked, in the test."
+citation = "liberfa/erfa v2.0.1 (BSD-3-Clause, NumFOCUS Foundation), src/t_erfa_c.c, release tarball erfa-2.0.1.tar.xz sha256 45111f0addf6ef69345aaf093bd054705b41ac2db7541dd3f0e105362c8e20e4; t_erfa_c.c sha256 8a92d0099c48df31ca566bea881c19497dc295dba58dba7136cc2f8443c31f15"
+retrieved = "2026-10-15"
+generated_by = "liberfa/erfa:src/t_erfa_c.c@9915ba38c9365f8b0738269b8c2ac1fdd5f8dee3"
+engine = { name = "ERFA t_erfa_c reference values", version = "ERFA 2.0.1 (SOFA 20231011)", settings = "C double; arguments as in the cited call" }
+tolerance = { abs = 0.0 }
+tolerance_rationale = "ERFA's own acceptance tolerance (dval) for this output in t_erfa_c.c, unchanged (DEP-009: reproduce ERFA's reference values). abs = 0 means ERFA requires an exact result."
+verified_by = "WP9 builder agent, 2026-10-15: value and dval extracted mechanically from the ERFA 2.0.1 t_erfa_c.c listed in citation (regex over the vvd calls), before the first run of the port."
+
+[[vector]]
+id = "ERFA-T-RX-11"
+requirement = ["DEP-009", "LIC-004"]
+quantity = "eraRx output r[0][0] in t_erfa_c.c t_rx"
+value = 2.0
+unit = "1"
+kind = "computed-reference"
+source = "ERFA 2.0.1 regression test t_rx in src/t_erfa_c.c: vvd(r[0][0], expected, dval). Value and tolerance (dval) are copied verbatim from that call; the call arguments are repeated, line-marked, in the test."
+citation = "liberfa/erfa v2.0.1 (BSD-3-Clause, NumFOCUS Foundation), src/t_erfa_c.c, release tarball erfa-2.0.1.tar.xz sha256 45111f0addf6ef69345aaf093bd054705b41ac2db7541dd3f0e105362c8e20e4; t_erfa_c.c sha256 8a92d0099c48df31ca566bea881c19497dc295dba58dba7136cc2f8443c31f15"
+retrieved = "2026-10-15"
+generated_by = "liberfa/erfa:src/t_erfa_c.c@9915ba38c9365f8b0738269b8c2ac1fdd5f8dee3"
+engine = { name = "ERFA t_erfa_c reference values", version = "ERFA 2.0.1 (SOFA 20231011)", settings = "C double; arguments as in the cited call" }
+tolerance = { abs = 0.0 }
+tolerance_rationale = "ERFA's own acceptance tolerance (dval) for this output in t_erfa_c.c, unchanged (DEP-009: reproduce ERFA's reference values). abs = 0 means ERFA requires an exact result."
+verified_by = "WP9 builder agent, 2026-10-15: value and dval extracted mechanically from the ERFA 2.0.1 t_erfa_c.c listed in citation (regex over the vvd calls), before the first run of the port."
+
+[[vector]]
+id = "ERFA-T-RX-12"
+requirement = ["DEP-009", "LIC-004"]
+quantity = "eraRx output r[0][1] in t_erfa_c.c t_rx"
+value = 3.0
+unit = "1"
+kind = "computed-reference"
+source = "ERFA 2.0.1 regression test t_rx in src/t_erfa_c.c: vvd(r[0][1], expected, dval). Value and tolerance (dval) are copied verbatim from that call; the call arguments are repeated, line-marked, in the test."
+citation = "liberfa/erfa v2.0.1 (BSD-3-Clause, NumFOCUS Foundation), src/t_erfa_c.c, release tarball erfa-2.0.1.tar.xz sha256 45111f0addf6ef69345aaf093bd054705b41ac2db7541dd3f0e105362c8e20e4; t_erfa_c.c sha256 8a92d0099c48df31ca566bea881c19497dc295dba58dba7136cc2f8443c31f15"
+retrieved = "2026-10-15"
+generated_by = "liberfa/erfa:src/t_erfa_c.c@9915ba38c9365f8b0738269b8c2ac1fdd5f8dee3"
+engine = { name = "ERFA t_erfa_c reference values", version = "ERFA 2.0.1 (SOFA 20231011)", settings = "C double; arguments as in the cited call" }
+tolerance = { abs = 0.0 }
+tolerance_rationale = "ERFA's own acceptance tolerance (dval) for this output in t_erfa_c.c, unchanged (DEP-009: reproduce ERFA's reference values). abs = 0 means ERFA requires an exact result."
+verified_by = "WP9 builder agent, 2026-10-15: value and dval extracted mechanically from the ERFA 2.0.1 t_erfa_c.c listed in citation (regex over the vvd calls), before the first run of the port."
+
+[[vector]]
+id = "ERFA-T-RX-13"
+requirement = ["DEP-009", "LIC-004"]
+quantity = "eraRx output r[0][2] in t_erfa_c.c t_rx"
+value = 2.0
+unit = "1"
+kind = "computed-reference"
+source = "ERFA 2.0.1 regression test t_rx in src/t_erfa_c.c: vvd(r[0][2], expected, dval). Value and tolerance (dval) are copied verbatim from that call; the call arguments are repeated, line-marked, in the test."
+citation = "liberfa/erfa v2.0.1 (BSD-3-Clause, NumFOCUS Foundation), src/t_erfa_c.c, release tarball erfa-2.0.1.tar.xz sha256 45111f0addf6ef69345aaf093bd054705b41ac2db7541dd3f0e105362c8e20e4; t_erfa_c.c sha256 8a92d0099c48df31ca566bea881c19497dc295dba58dba7136cc2f8443c31f15"
+retrieved = "2026-10-15"
+generated_by = "liberfa/erfa:src/t_erfa_c.c@9915ba38c9365f8b0738269b8c2ac1fdd5f8dee3"
+engine = { name = "ERFA t_erfa_c reference values", version = "ERFA 2.0.1 (SOFA 20231011)", settings = "C double; arguments as in the cited call" }
+tolerance = { abs = 0.0 }
+tolerance_rationale = "ERFA's own acceptance tolerance (dval) for this output in t_erfa_c.c, unchanged (DEP-009: reproduce ERFA's reference values). abs = 0 means ERFA requires an exact result."
+verified_by = "WP9 builder agent, 2026-10-15: value and dval extracted mechanically from the ERFA 2.0.1 t_erfa_c.c listed in citation (regex over the vvd calls), before the first run of the port."
+
+[[vector]]
+id = "ERFA-T-RX-21"
+requirement = ["DEP-009", "LIC-004"]
+quantity = "eraRx output r[1][0] in t_erfa_c.c t_rx"
+value = "3.839043388235612460"
+unit = "1"
+kind = "computed-reference"
+source = "ERFA 2.0.1 regression test t_rx in src/t_erfa_c.c: vvd(r[1][0], expected, dval). Value and tolerance (dval) are copied verbatim from that call; the call arguments are repeated, line-marked, in the test."
+citation = "liberfa/erfa v2.0.1 (BSD-3-Clause, NumFOCUS Foundation), src/t_erfa_c.c, release tarball erfa-2.0.1.tar.xz sha256 45111f0addf6ef69345aaf093bd054705b41ac2db7541dd3f0e105362c8e20e4; t_erfa_c.c sha256 8a92d0099c48df31ca566bea881c19497dc295dba58dba7136cc2f8443c31f15"
+retrieved = "2026-10-15"
+generated_by = "liberfa/erfa:src/t_erfa_c.c@9915ba38c9365f8b0738269b8c2ac1fdd5f8dee3"
+engine = { name = "ERFA t_erfa_c reference values", version = "ERFA 2.0.1 (SOFA 20231011)", settings = "C double; arguments as in the cited call" }
+tolerance = { abs = 1e-12 }
+tolerance_rationale = "ERFA's own acceptance tolerance (dval) for this output in t_erfa_c.c, unchanged (DEP-009: reproduce ERFA's reference values). abs = 0 means ERFA requires an exact result."
+verified_by = "WP9 builder agent, 2026-10-15: value and dval extracted mechanically from the ERFA 2.0.1 t_erfa_c.c listed in citation (regex over the vvd calls), before the first run of the port."
+
+[[vector]]
+id = "ERFA-T-RX-22"
+requirement = ["DEP-009", "LIC-004"]
+quantity = "eraRx output r[1][1] in t_erfa_c.c t_rx"
+value = "3.237033249594111899"
+unit = "1"
+kind = "computed-reference"
+source = "ERFA 2.0.1 regression test t_rx in src/t_erfa_c.c: vvd(r[1][1], expected, dval). Value and tolerance (dval) are copied verbatim from that call; the call arguments are repeated, line-marked, in the test."
+citation = "liberfa/erfa v2.0.1 (BSD-3-Clause, NumFOCUS Foundation), src/t_erfa_c.c, release tarball erfa-2.0.1.tar.xz sha256 45111f0addf6ef69345aaf093bd054705b41ac2db7541dd3f0e105362c8e20e4; t_erfa_c.c sha256 8a92d0099c48df31ca566bea881c19497dc295dba58dba7136cc2f8443c31f15"
+retrieved = "2026-10-15"
+generated_by = "liberfa/erfa:src/t_erfa_c.c@9915ba38c9365f8b0738269b8c2ac1fdd5f8dee3"
+engine = { name = "ERFA t_erfa_c reference values", version = "ERFA 2.0.1 (SOFA 20231011)", settings = "C double; arguments as in the cited call" }
+tolerance = { abs = 1e-12 }
+tolerance_rationale = "ERFA's own acceptance tolerance (dval) for this output in t_erfa_c.c, unchanged (DEP-009: reproduce ERFA's reference values). abs = 0 means ERFA requires an exact result."
+verified_by = "WP9 builder agent, 2026-10-15: value and dval extracted mechanically from the ERFA 2.0.1 t_erfa_c.c listed in citation (regex over the vvd calls), before the first run of the port."
+
+[[vector]]
+id = "ERFA-T-RX-23"
+requirement = ["DEP-009", "LIC-004"]
+quantity = "eraRx output r[1][2] in t_erfa_c.c t_rx"
+value = "4.516714379005982719"
+unit = "1"
+kind = "computed-reference"
+source = "ERFA 2.0.1 regression test t_rx in src/t_erfa_c.c: vvd(r[1][2], expected, dval). Value and tolerance (dval) are copied verbatim from that call; the call arguments are repeated, line-marked, in the test."
+citation = "liberfa/erfa v2.0.1 (BSD-3-Clause, NumFOCUS Foundation), src/t_erfa_c.c, release tarball erfa-2.0.1.tar.xz sha256 45111f0addf6ef69345aaf093bd054705b41ac2db7541dd3f0e105362c8e20e4; t_erfa_c.c sha256 8a92d0099c48df31ca566bea881c19497dc295dba58dba7136cc2f8443c31f15"
+retrieved = "2026-10-15"
+generated_by = "liberfa/erfa:src/t_erfa_c.c@9915ba38c9365f8b0738269b8c2ac1fdd5f8dee3"
+engine = { name = "ERFA t_erfa_c reference values", version = "ERFA 2.0.1 (SOFA 20231011)", settings = "C double; arguments as in the cited call" }
+tolerance = { abs = 1e-12 }
+tolerance_rationale = "ERFA's own acceptance tolerance (dval) for this output in t_erfa_c.c, unchanged (DEP-009: reproduce ERFA's reference values). abs = 0 means ERFA requires an exact result."
+verified_by = "WP9 builder agent, 2026-10-15: value and dval extracted mechanically from the ERFA 2.0.1 t_erfa_c.c listed in citation (regex over the vvd calls), before the first run of the port."
+
+[[vector]]
+id = "ERFA-T-RX-31"
+requirement = ["DEP-009", "LIC-004"]
+quantity = "eraRx output r[2][0] in t_erfa_c.c t_rx"
+value = "1.806030415924501684"
+unit = "1"
+kind = "computed-reference"
+source = "ERFA 2.0.1 regression test t_rx in src/t_erfa_c.c: vvd(r[2][0], expected, dval). Value and tolerance (dval) are copied verbatim from that call; the call arguments are repeated, line-marked, in the test."
+citation = "liberfa/erfa v2.0.1 (BSD-3-Clause, NumFOCUS Foundation), src/t_erfa_c.c, release tarball erfa-2.0.1.tar.xz sha256 45111f0addf6ef69345aaf093bd054705b41ac2db7541dd3f0e105362c8e20e4; t_erfa_c.c sha256 8a92d0099c48df31ca566bea881c19497dc295dba58dba7136cc2f8443c31f15"
+retrieved = "2026-10-15"
+generated_by = "liberfa/erfa:src/t_erfa_c.c@9915ba38c9365f8b0738269b8c2ac1fdd5f8dee3"
+engine = { name = "ERFA t_erfa_c reference values", version = "ERFA 2.0.1 (SOFA 20231011)", settings = "C double; arguments as in the cited call" }
+tolerance = { abs = 1e-12 }
+tolerance_rationale = "ERFA's own acceptance tolerance (dval) for this output in t_erfa_c.c, unchanged (DEP-009: reproduce ERFA's reference values). abs = 0 means ERFA requires an exact result."
+verified_by = "WP9 builder agent, 2026-10-15: value and dval extracted mechanically from the ERFA 2.0.1 t_erfa_c.c listed in citation (regex over the vvd calls), before the first run of the port."
+
+[[vector]]
+id = "ERFA-T-RX-32"
+requirement = ["DEP-009", "LIC-004"]
+quantity = "eraRx output r[2][1] in t_erfa_c.c t_rx"
+value = "3.085711545336372503"
+unit = "1"
+kind = "computed-reference"
+source = "ERFA 2.0.1 regression test t_rx in src/t_erfa_c.c: vvd(r[2][1], expected, dval). Value and tolerance (dval) are copied verbatim from that call; the call arguments are repeated, line-marked, in the test."
+citation = "liberfa/erfa v2.0.1 (BSD-3-Clause, NumFOCUS Foundation), src/t_erfa_c.c, release tarball erfa-2.0.1.tar.xz sha256 45111f0addf6ef69345aaf093bd054705b41ac2db7541dd3f0e105362c8e20e4; t_erfa_c.c sha256 8a92d0099c48df31ca566bea881c19497dc295dba58dba7136cc2f8443c31f15"
+retrieved = "2026-10-15"
+generated_by = "liberfa/erfa:src/t_erfa_c.c@9915ba38c9365f8b0738269b8c2ac1fdd5f8dee3"
+engine = { name = "ERFA t_erfa_c reference values", version = "ERFA 2.0.1 (SOFA 20231011)", settings = "C double; arguments as in the cited call" }
+tolerance = { abs = 1e-12 }
+tolerance_rationale = "ERFA's own acceptance tolerance (dval) for this output in t_erfa_c.c, unchanged (DEP-009: reproduce ERFA's reference values). abs = 0 means ERFA requires an exact result."
+verified_by = "WP9 builder agent, 2026-10-15: value and dval extracted mechanically from the ERFA 2.0.1 t_erfa_c.c listed in citation (regex over the vvd calls), before the first run of the port."
+
+[[vector]]
+id = "ERFA-T-RX-33"
+requirement = ["DEP-009", "LIC-004"]
+quantity = "eraRx output r[2][2] in t_erfa_c.c t_rx"
+value = "3.687721683977873065"
+unit = "1"
+kind = "computed-reference"
+source = "ERFA 2.0.1 regression test t_rx in src/t_erfa_c.c: vvd(r[2][2], expected, dval). Value and tolerance (dval) are copied verbatim from that call; the call arguments are repeated, line-marked, in the test."
+citation = "liberfa/erfa v2.0.1 (BSD-3-Clause, NumFOCUS Foundation), src/t_erfa_c.c, release tarball erfa-2.0.1.tar.xz sha256 45111f0addf6ef69345aaf093bd054705b41ac2db7541dd3f0e105362c8e20e4; t_erfa_c.c sha256 8a92d0099c48df31ca566bea881c19497dc295dba58dba7136cc2f8443c31f15"
+retrieved = "2026-10-15"
+generated_by = "liberfa/erfa:src/t_erfa_c.c@9915ba38c9365f8b0738269b8c2ac1fdd5f8dee3"
+engine = { name = "ERFA t_erfa_c reference values", version = "ERFA 2.0.1 (SOFA 20231011)", settings = "C double; arguments as in the cited call" }
+tolerance = { abs = 1e-12 }
+tolerance_rationale = "ERFA's own acceptance tolerance (dval) for this output in t_erfa_c.c, unchanged (DEP-009: reproduce ERFA's reference values). abs = 0 means ERFA requires an exact result."
+verified_by = "WP9 builder agent, 2026-10-15: value and dval extracted mechanically from the ERFA 2.0.1 t_erfa_c.c listed in citation (regex over the vvd calls), before the first run of the port."
+
+[[vector]]
+id = "ERFA-T-RZ-11"
+requirement = ["DEP-009", "LIC-004"]
+quantity = "eraRz output r[0][0] in t_erfa_c.c t_rz"
+value = "2.898197754208926769"
+unit = "1"
+kind = "computed-reference"
+source = "ERFA 2.0.1 regression test t_rz in src/t_erfa_c.c: vvd(r[0][0], expected, dval). Value and tolerance (dval) are copied verbatim from that call; the call arguments are repeated, line-marked, in the test."
+citation = "liberfa/erfa v2.0.1 (BSD-3-Clause, NumFOCUS Foundation), src/t_erfa_c.c, release tarball erfa-2.0.1.tar.xz sha256 45111f0addf6ef69345aaf093bd054705b41ac2db7541dd3f0e105362c8e20e4; t_erfa_c.c sha256 8a92d0099c48df31ca566bea881c19497dc295dba58dba7136cc2f8443c31f15"
+retrieved = "2026-10-15"
+generated_by = "liberfa/erfa:src/t_erfa_c.c@9915ba38c9365f8b0738269b8c2ac1fdd5f8dee3"
+engine = { name = "ERFA t_erfa_c reference values", version = "ERFA 2.0.1 (SOFA 20231011)", settings = "C double; arguments as in the cited call" }
+tolerance = { abs = 1e-12 }
+tolerance_rationale = "ERFA's own acceptance tolerance (dval) for this output in t_erfa_c.c, unchanged (DEP-009: reproduce ERFA's reference values). abs = 0 means ERFA requires an exact result."
+verified_by = "WP9 builder agent, 2026-10-15: value and dval extracted mechanically from the ERFA 2.0.1 t_erfa_c.c listed in citation (regex over the vvd calls), before the first run of the port."
+
+[[vector]]
+id = "ERFA-T-RZ-12"
+requirement = ["DEP-009", "LIC-004"]
+quantity = "eraRz output r[0][1] in t_erfa_c.c t_rz"
+value = "3.500207892850427330"
+unit = "1"
+kind = "computed-reference"
+source = "ERFA 2.0.1 regression test t_rz in src/t_erfa_c.c: vvd(r[0][1], expected, dval). Value and tolerance (dval) are copied verbatim from that call; the call arguments are repeated, line-marked, in the test."
+citation = "liberfa/erfa v2.0.1 (BSD-3-Clause, NumFOCUS Foundation), src/t_erfa_c.c, release tarball erfa-2.0.1.tar.xz sha256 45111f0addf6ef69345aaf093bd054705b41ac2db7541dd3f0e105362c8e20e4; t_erfa_c.c sha256 8a92d0099c48df31ca566bea881c19497dc295dba58dba7136cc2f8443c31f15"
+retrieved = "2026-10-15"
+generated_by = "liberfa/erfa:src/t_erfa_c.c@9915ba38c9365f8b0738269b8c2ac1fdd5f8dee3"
+engine = { name = "ERFA t_erfa_c reference values", version = "ERFA 2.0.1 (SOFA 20231011)", settings = "C double; arguments as in the cited call" }
+tolerance = { abs = 1e-12 }
+tolerance_rationale = "ERFA's own acceptance tolerance (dval) for this output in t_erfa_c.c, unchanged (DEP-009: reproduce ERFA's reference values). abs = 0 means ERFA requires an exact result."
+verified_by = "WP9 builder agent, 2026-10-15: value and dval extracted mechanically from the ERFA 2.0.1 t_erfa_c.c listed in citation (regex over the vvd calls), before the first run of the port."
+
+[[vector]]
+id = "ERFA-T-RZ-13"
+requirement = ["DEP-009", "LIC-004"]
+quantity = "eraRz output r[0][2] in t_erfa_c.c t_rz"
+value = "2.898197754208926769"
+unit = "1"
+kind = "computed-reference"
+source = "ERFA 2.0.1 regression test t_rz in src/t_erfa_c.c: vvd(r[0][2], expected, dval). Value and tolerance (dval) are copied verbatim from that call; the call arguments are repeated, line-marked, in the test."
+citation = "liberfa/erfa v2.0.1 (BSD-3-Clause, NumFOCUS Foundation), src/t_erfa_c.c, release tarball erfa-2.0.1.tar.xz sha256 45111f0addf6ef69345aaf093bd054705b41ac2db7541dd3f0e105362c8e20e4; t_erfa_c.c sha256 8a92d0099c48df31ca566bea881c19497dc295dba58dba7136cc2f8443c31f15"
+retrieved = "2026-10-15"
+generated_by = "liberfa/erfa:src/t_erfa_c.c@9915ba38c9365f8b0738269b8c2ac1fdd5f8dee3"
+engine = { name = "ERFA t_erfa_c reference values", version = "ERFA 2.0.1 (SOFA 20231011)", settings = "C double; arguments as in the cited call" }
+tolerance = { abs = 1e-12 }
+tolerance_rationale = "ERFA's own acceptance tolerance (dval) for this output in t_erfa_c.c, unchanged (DEP-009: reproduce ERFA's reference values). abs = 0 means ERFA requires an exact result."
+verified_by = "WP9 builder agent, 2026-10-15: value and dval extracted mechanically from the ERFA 2.0.1 t_erfa_c.c listed in citation (regex over the vvd calls), before the first run of the port."
+
+[[vector]]
+id = "ERFA-T-RZ-21"
+requirement = ["DEP-009", "LIC-004"]
+quantity = "eraRz output r[1][0] in t_erfa_c.c t_rz"
+value = "2.144865911309686813"
+unit = "1"
+kind = "computed-reference"
+source = "ERFA 2.0.1 regression test t_rz in src/t_erfa_c.c: vvd(r[1][0], expected, dval). Value and tolerance (dval) are copied verbatim from that call; the call arguments are repeated, line-marked, in the test."
+citation = "liberfa/erfa v2.0.1 (BSD-3-Clause, NumFOCUS Foundation), src/t_erfa_c.c, release tarball erfa-2.0.1.tar.xz sha256 45111f0addf6ef69345aaf093bd054705b41ac2db7541dd3f0e105362c8e20e4; t_erfa_c.c sha256 8a92d0099c48df31ca566bea881c19497dc295dba58dba7136cc2f8443c31f15"
+retrieved = "2026-10-15"
+generated_by = "liberfa/erfa:src/t_erfa_c.c@9915ba38c9365f8b0738269b8c2ac1fdd5f8dee3"
+engine = { name = "ERFA t_erfa_c reference values", version = "ERFA 2.0.1 (SOFA 20231011)", settings = "C double; arguments as in the cited call" }
+tolerance = { abs = 1e-12 }
+tolerance_rationale = "ERFA's own acceptance tolerance (dval) for this output in t_erfa_c.c, unchanged (DEP-009: reproduce ERFA's reference values). abs = 0 means ERFA requires an exact result."
+verified_by = "WP9 builder agent, 2026-10-15: value and dval extracted mechanically from the ERFA 2.0.1 t_erfa_c.c listed in citation (regex over the vvd calls), before the first run of the port."
+
+[[vector]]
+id = "ERFA-T-RZ-22"
+requirement = ["DEP-009", "LIC-004"]
+quantity = "eraRz output r[1][1] in t_erfa_c.c t_rz"
+value = "0.865184781897815993"
+unit = "1"
+kind = "computed-reference"
+source = "ERFA 2.0.1 regression test t_rz in src/t_erfa_c.c: vvd(r[1][1], expected, dval). Value and tolerance (dval) are copied verbatim from that call; the call arguments are repeated, line-marked, in the test."
+citation = "liberfa/erfa v2.0.1 (BSD-3-Clause, NumFOCUS Foundation), src/t_erfa_c.c, release tarball erfa-2.0.1.tar.xz sha256 45111f0addf6ef69345aaf093bd054705b41ac2db7541dd3f0e105362c8e20e4; t_erfa_c.c sha256 8a92d0099c48df31ca566bea881c19497dc295dba58dba7136cc2f8443c31f15"
+retrieved = "2026-10-15"
+generated_by = "liberfa/erfa:src/t_erfa_c.c@9915ba38c9365f8b0738269b8c2ac1fdd5f8dee3"
+engine = { name = "ERFA t_erfa_c reference values", version = "ERFA 2.0.1 (SOFA 20231011)", settings = "C double; arguments as in the cited call" }
+tolerance = { abs = 1e-12 }
+tolerance_rationale = "ERFA's own acceptance tolerance (dval) for this output in t_erfa_c.c, unchanged (DEP-009: reproduce ERFA's reference values). abs = 0 means ERFA requires an exact result."
+verified_by = "WP9 builder agent, 2026-10-15: value and dval extracted mechanically from the ERFA 2.0.1 t_erfa_c.c listed in citation (regex over the vvd calls), before the first run of the port."
+
+[[vector]]
+id = "ERFA-T-RZ-23"
+requirement = ["DEP-009", "LIC-004"]
+quantity = "eraRz output r[1][2] in t_erfa_c.c t_rz"
+value = "2.144865911309686813"
+unit = "1"
+kind = "computed-reference"
+source = "ERFA 2.0.1 regression test t_rz in src/t_erfa_c.c: vvd(r[1][2], expected, dval). Value and tolerance (dval) are copied verbatim from that call; the call arguments are repeated, line-marked, in the test."
+citation = "liberfa/erfa v2.0.1 (BSD-3-Clause, NumFOCUS Foundation), src/t_erfa_c.c, release tarball erfa-2.0.1.tar.xz sha256 45111f0addf6ef69345aaf093bd054705b41ac2db7541dd3f0e105362c8e20e4; t_erfa_c.c sha256 8a92d0099c48df31ca566bea881c19497dc295dba58dba7136cc2f8443c31f15"
+retrieved = "2026-10-15"
+generated_by = "liberfa/erfa:src/t_erfa_c.c@9915ba38c9365f8b0738269b8c2ac1fdd5f8dee3"
+engine = { name = "ERFA t_erfa_c reference values", version = "ERFA 2.0.1 (SOFA 20231011)", settings = "C double; arguments as in the cited call" }
+tolerance = { abs = 1e-12 }
+tolerance_rationale = "ERFA's own acceptance tolerance (dval) for this output in t_erfa_c.c, unchanged (DEP-009: reproduce ERFA's reference values). abs = 0 means ERFA requires an exact result."
+verified_by = "WP9 builder agent, 2026-10-15: value and dval extracted mechanically from the ERFA 2.0.1 t_erfa_c.c listed in citation (regex over the vvd calls), before the first run of the port."
+
+[[vector]]
+id = "ERFA-T-RZ-31"
+requirement = ["DEP-009", "LIC-004"]
+quantity = "eraRz output r[2][0] in t_erfa_c.c t_rz"
+value = 3.0
+unit = "1"
+kind = "computed-reference"
+source = "ERFA 2.0.1 regression test t_rz in src/t_erfa_c.c: vvd(r[2][0], expected, dval). Value and tolerance (dval) are copied verbatim from that call; the call arguments are repeated, line-marked, in the test."
+citation = "liberfa/erfa v2.0.1 (BSD-3-Clause, NumFOCUS Foundation), src/t_erfa_c.c, release tarball erfa-2.0.1.tar.xz sha256 45111f0addf6ef69345aaf093bd054705b41ac2db7541dd3f0e105362c8e20e4; t_erfa_c.c sha256 8a92d0099c48df31ca566bea881c19497dc295dba58dba7136cc2f8443c31f15"
+retrieved = "2026-10-15"
+generated_by = "liberfa/erfa:src/t_erfa_c.c@9915ba38c9365f8b0738269b8c2ac1fdd5f8dee3"
+engine = { name = "ERFA t_erfa_c reference values", version = "ERFA 2.0.1 (SOFA 20231011)", settings = "C double; arguments as in the cited call" }
+tolerance = { abs = 1e-12 }
+tolerance_rationale = "ERFA's own acceptance tolerance (dval) for this output in t_erfa_c.c, unchanged (DEP-009: reproduce ERFA's reference values). abs = 0 means ERFA requires an exact result."
+verified_by = "WP9 builder agent, 2026-10-15: value and dval extracted mechanically from the ERFA 2.0.1 t_erfa_c.c listed in citation (regex over the vvd calls), before the first run of the port."
+
+[[vector]]
+id = "ERFA-T-RZ-32"
+requirement = ["DEP-009", "LIC-004"]
+quantity = "eraRz output r[2][1] in t_erfa_c.c t_rz"
+value = 4.0
+unit = "1"
+kind = "computed-reference"
+source = "ERFA 2.0.1 regression test t_rz in src/t_erfa_c.c: vvd(r[2][1], expected, dval). Value and tolerance (dval) are copied verbatim from that call; the call arguments are repeated, line-marked, in the test."
+citation = "liberfa/erfa v2.0.1 (BSD-3-Clause, NumFOCUS Foundation), src/t_erfa_c.c, release tarball erfa-2.0.1.tar.xz sha256 45111f0addf6ef69345aaf093bd054705b41ac2db7541dd3f0e105362c8e20e4; t_erfa_c.c sha256 8a92d0099c48df31ca566bea881c19497dc295dba58dba7136cc2f8443c31f15"
+retrieved = "2026-10-15"
+generated_by = "liberfa/erfa:src/t_erfa_c.c@9915ba38c9365f8b0738269b8c2ac1fdd5f8dee3"
+engine = { name = "ERFA t_erfa_c reference values", version = "ERFA 2.0.1 (SOFA 20231011)", settings = "C double; arguments as in the cited call" }
+tolerance = { abs = 1e-12 }
+tolerance_rationale = "ERFA's own acceptance tolerance (dval) for this output in t_erfa_c.c, unchanged (DEP-009: reproduce ERFA's reference values). abs = 0 means ERFA requires an exact result."
+verified_by = "WP9 builder agent, 2026-10-15: value and dval extracted mechanically from the ERFA 2.0.1 t_erfa_c.c listed in citation (regex over the vvd calls), before the first run of the port."
+
+[[vector]]
+id = "ERFA-T-RZ-33"
+requirement = ["DEP-009", "LIC-004"]
+quantity = "eraRz output r[2][2] in t_erfa_c.c t_rz"
+value = 5.0
+unit = "1"
+kind = "computed-reference"
+source = "ERFA 2.0.1 regression test t_rz in src/t_erfa_c.c: vvd(r[2][2], expected, dval). Value and tolerance (dval) are copied verbatim from that call; the call arguments are repeated, line-marked, in the test."
+citation = "liberfa/erfa v2.0.1 (BSD-3-Clause, NumFOCUS Foundation), src/t_erfa_c.c, release tarball erfa-2.0.1.tar.xz sha256 45111f0addf6ef69345aaf093bd054705b41ac2db7541dd3f0e105362c8e20e4; t_erfa_c.c sha256 8a92d0099c48df31ca566bea881c19497dc295dba58dba7136cc2f8443c31f15"
+retrieved = "2026-10-15"
+generated_by = "liberfa/erfa:src/t_erfa_c.c@9915ba38c9365f8b0738269b8c2ac1fdd5f8dee3"
+engine = { name = "ERFA t_erfa_c reference values", version = "ERFA 2.0.1 (SOFA 20231011)", settings = "C double; arguments as in the cited call" }
+tolerance = { abs = 1e-12 }
+tolerance_rationale = "ERFA's own acceptance tolerance (dval) for this output in t_erfa_c.c, unchanged (DEP-009: reproduce ERFA's reference values). abs = 0 means ERFA requires an exact result."
+verified_by = "WP9 builder agent, 2026-10-15: value and dval extracted mechanically from the ERFA 2.0.1 t_erfa_c.c listed in citation (regex over the vvd calls), before the first run of the port."
+
+[[vector]]
+id = "ERFA-T-RXR-11"
+requirement = ["DEP-009", "LIC-004"]
+quantity = "eraRxr output atb[0][0] in t_erfa_c.c t_rxr"
+value = 20.0
+unit = "1"
+kind = "computed-reference"
+source = "ERFA 2.0.1 regression test t_rxr in src/t_erfa_c.c: vvd(atb[0][0], expected, dval). Value and tolerance (dval) are copied verbatim from that call; the call arguments are repeated, line-marked, in the test."
+citation = "liberfa/erfa v2.0.1 (BSD-3-Clause, NumFOCUS Foundation), src/t_erfa_c.c, release tarball erfa-2.0.1.tar.xz sha256 45111f0addf6ef69345aaf093bd054705b41ac2db7541dd3f0e105362c8e20e4; t_erfa_c.c sha256 8a92d0099c48df31ca566bea881c19497dc295dba58dba7136cc2f8443c31f15"
+retrieved = "2026-10-15"
+generated_by = "liberfa/erfa:src/t_erfa_c.c@9915ba38c9365f8b0738269b8c2ac1fdd5f8dee3"
+engine = { name = "ERFA t_erfa_c reference values", version = "ERFA 2.0.1 (SOFA 20231011)", settings = "C double; arguments as in the cited call" }
+tolerance = { abs = 1e-12 }
+tolerance_rationale = "ERFA's own acceptance tolerance (dval) for this output in t_erfa_c.c, unchanged (DEP-009: reproduce ERFA's reference values). abs = 0 means ERFA requires an exact result."
+verified_by = "WP9 builder agent, 2026-10-15: value and dval extracted mechanically from the ERFA 2.0.1 t_erfa_c.c listed in citation (regex over the vvd calls), before the first run of the port."
+
+[[vector]]
+id = "ERFA-T-RXR-12"
+requirement = ["DEP-009", "LIC-004"]
+quantity = "eraRxr output atb[0][1] in t_erfa_c.c t_rxr"
+value = 7.0
+unit = "1"
+kind = "computed-reference"
+source = "ERFA 2.0.1 regression test t_rxr in src/t_erfa_c.c: vvd(atb[0][1], expected, dval). Value and tolerance (dval) are copied verbatim from that call; the call arguments are repeated, line-marked, in the test."
+citation = "liberfa/erfa v2.0.1 (BSD-3-Clause, NumFOCUS Foundation), src/t_erfa_c.c, release tarball erfa-2.0.1.tar.xz sha256 45111f0addf6ef69345aaf093bd054705b41ac2db7541dd3f0e105362c8e20e4; t_erfa_c.c sha256 8a92d0099c48df31ca566bea881c19497dc295dba58dba7136cc2f8443c31f15"
+retrieved = "2026-10-15"
+generated_by = "liberfa/erfa:src/t_erfa_c.c@9915ba38c9365f8b0738269b8c2ac1fdd5f8dee3"
+engine = { name = "ERFA t_erfa_c reference values", version = "ERFA 2.0.1 (SOFA 20231011)", settings = "C double; arguments as in the cited call" }
+tolerance = { abs = 1e-12 }
+tolerance_rationale = "ERFA's own acceptance tolerance (dval) for this output in t_erfa_c.c, unchanged (DEP-009: reproduce ERFA's reference values). abs = 0 means ERFA requires an exact result."
+verified_by = "WP9 builder agent, 2026-10-15: value and dval extracted mechanically from the ERFA 2.0.1 t_erfa_c.c listed in citation (regex over the vvd calls), before the first run of the port."
+
+[[vector]]
+id = "ERFA-T-RXR-13"
+requirement = ["DEP-009", "LIC-004"]
+quantity = "eraRxr output atb[0][2] in t_erfa_c.c t_rxr"
+value = 9.0
+unit = "1"
+kind = "computed-reference"
+source = "ERFA 2.0.1 regression test t_rxr in src/t_erfa_c.c: vvd(atb[0][2], expected, dval). Value and tolerance (dval) are copied verbatim from that call; the call arguments are repeated, line-marked, in the test."
+citation = "liberfa/erfa v2.0.1 (BSD-3-Clause, NumFOCUS Foundation), src/t_erfa_c.c, release tarball erfa-2.0.1.tar.xz sha256 45111f0addf6ef69345aaf093bd054705b41ac2db7541dd3f0e105362c8e20e4; t_erfa_c.c sha256 8a92d0099c48df31ca566bea881c19497dc295dba58dba7136cc2f8443c31f15"
+retrieved = "2026-10-15"
+generated_by = "liberfa/erfa:src/t_erfa_c.c@9915ba38c9365f8b0738269b8c2ac1fdd5f8dee3"
+engine = { name = "ERFA t_erfa_c reference values", version = "ERFA 2.0.1 (SOFA 20231011)", settings = "C double; arguments as in the cited call" }
+tolerance = { abs = 1e-12 }
+tolerance_rationale = "ERFA's own acceptance tolerance (dval) for this output in t_erfa_c.c, unchanged (DEP-009: reproduce ERFA's reference values). abs = 0 means ERFA requires an exact result."
+verified_by = "WP9 builder agent, 2026-10-15: value and dval extracted mechanically from the ERFA 2.0.1 t_erfa_c.c listed in citation (regex over the vvd calls), before the first run of the port."
+
+[[vector]]
+id = "ERFA-T-RXR-21"
+requirement = ["DEP-009", "LIC-004"]
+quantity = "eraRxr output atb[1][0] in t_erfa_c.c t_rxr"
+value = 20.0
+unit = "1"
+kind = "computed-reference"
+source = "ERFA 2.0.1 regression test t_rxr in src/t_erfa_c.c: vvd(atb[1][0], expected, dval). Value and tolerance (dval) are copied verbatim from that call; the call arguments are repeated, line-marked, in the test."
+citation = "liberfa/erfa v2.0.1 (BSD-3-Clause, NumFOCUS Foundation), src/t_erfa_c.c, release tarball erfa-2.0.1.tar.xz sha256 45111f0addf6ef69345aaf093bd054705b41ac2db7541dd3f0e105362c8e20e4; t_erfa_c.c sha256 8a92d0099c48df31ca566bea881c19497dc295dba58dba7136cc2f8443c31f15"
+retrieved = "2026-10-15"
+generated_by = "liberfa/erfa:src/t_erfa_c.c@9915ba38c9365f8b0738269b8c2ac1fdd5f8dee3"
+engine = { name = "ERFA t_erfa_c reference values", version = "ERFA 2.0.1 (SOFA 20231011)", settings = "C double; arguments as in the cited call" }
+tolerance = { abs = 1e-12 }
+tolerance_rationale = "ERFA's own acceptance tolerance (dval) for this output in t_erfa_c.c, unchanged (DEP-009: reproduce ERFA's reference values). abs = 0 means ERFA requires an exact result."
+verified_by = "WP9 builder agent, 2026-10-15: value and dval extracted mechanically from the ERFA 2.0.1 t_erfa_c.c listed in citation (regex over the vvd calls), before the first run of the port."
+
+[[vector]]
+id = "ERFA-T-RXR-22"
+requirement = ["DEP-009", "LIC-004"]
+quantity = "eraRxr output atb[1][1] in t_erfa_c.c t_rxr"
+value = 8.0
+unit = "1"
+kind = "computed-reference"
+source = "ERFA 2.0.1 regression test t_rxr in src/t_erfa_c.c: vvd(atb[1][1], expected, dval). Value and tolerance (dval) are copied verbatim from that call; the call arguments are repeated, line-marked, in the test."
+citation = "liberfa/erfa v2.0.1 (BSD-3-Clause, NumFOCUS Foundation), src/t_erfa_c.c, release tarball erfa-2.0.1.tar.xz sha256 45111f0addf6ef69345aaf093bd054705b41ac2db7541dd3f0e105362c8e20e4; t_erfa_c.c sha256 8a92d0099c48df31ca566bea881c19497dc295dba58dba7136cc2f8443c31f15"
+retrieved = "2026-10-15"
+generated_by = "liberfa/erfa:src/t_erfa_c.c@9915ba38c9365f8b0738269b8c2ac1fdd5f8dee3"
+engine = { name = "ERFA t_erfa_c reference values", version = "ERFA 2.0.1 (SOFA 20231011)", settings = "C double; arguments as in the cited call" }
+tolerance = { abs = 1e-12 }
+tolerance_rationale = "ERFA's own acceptance tolerance (dval) for this output in t_erfa_c.c, unchanged (DEP-009: reproduce ERFA's reference values). abs = 0 means ERFA requires an exact result."
+verified_by = "WP9 builder agent, 2026-10-15: value and dval extracted mechanically from the ERFA 2.0.1 t_erfa_c.c listed in citation (regex over the vvd calls), before the first run of the port."
+
+[[vector]]
+id = "ERFA-T-RXR-23"
+requirement = ["DEP-009", "LIC-004"]
+quantity = "eraRxr output atb[1][2] in t_erfa_c.c t_rxr"
+value = 11.0
+unit = "1"
+kind = "computed-reference"
+source = "ERFA 2.0.1 regression test t_rxr in src/t_erfa_c.c: vvd(atb[1][2], expected, dval). Value and tolerance (dval) are copied verbatim from that call; the call arguments are repeated, line-marked, in the test."
+citation = "liberfa/erfa v2.0.1 (BSD-3-Clause, NumFOCUS Foundation), src/t_erfa_c.c, release tarball erfa-2.0.1.tar.xz sha256 45111f0addf6ef69345aaf093bd054705b41ac2db7541dd3f0e105362c8e20e4; t_erfa_c.c sha256 8a92d0099c48df31ca566bea881c19497dc295dba58dba7136cc2f8443c31f15"
+retrieved = "2026-10-15"
+generated_by = "liberfa/erfa:src/t_erfa_c.c@9915ba38c9365f8b0738269b8c2ac1fdd5f8dee3"
+engine = { name = "ERFA t_erfa_c reference values", version = "ERFA 2.0.1 (SOFA 20231011)", settings = "C double; arguments as in the cited call" }
+tolerance = { abs = 1e-12 }
+tolerance_rationale = "ERFA's own acceptance tolerance (dval) for this output in t_erfa_c.c, unchanged (DEP-009: reproduce ERFA's reference values). abs = 0 means ERFA requires an exact result."
+verified_by = "WP9 builder agent, 2026-10-15: value and dval extracted mechanically from the ERFA 2.0.1 t_erfa_c.c listed in citation (regex over the vvd calls), before the first run of the port."
+
+[[vector]]
+id = "ERFA-T-RXR-31"
+requirement = ["DEP-009", "LIC-004"]
+quantity = "eraRxr output atb[2][0] in t_erfa_c.c t_rxr"
+value = 34.0
+unit = "1"
+kind = "computed-reference"
+source = "ERFA 2.0.1 regression test t_rxr in src/t_erfa_c.c: vvd(atb[2][0], expected, dval). Value and tolerance (dval) are copied verbatim from that call; the call arguments are repeated, line-marked, in the test."
+citation = "liberfa/erfa v2.0.1 (BSD-3-Clause, NumFOCUS Foundation), src/t_erfa_c.c, release tarball erfa-2.0.1.tar.xz sha256 45111f0addf6ef69345aaf093bd054705b41ac2db7541dd3f0e105362c8e20e4; t_erfa_c.c sha256 8a92d0099c48df31ca566bea881c19497dc295dba58dba7136cc2f8443c31f15"
+retrieved = "2026-10-15"
+generated_by = "liberfa/erfa:src/t_erfa_c.c@9915ba38c9365f8b0738269b8c2ac1fdd5f8dee3"
+engine = { name = "ERFA t_erfa_c reference values", version = "ERFA 2.0.1 (SOFA 20231011)", settings = "C double; arguments as in the cited call" }
+tolerance = { abs = 1e-12 }
+tolerance_rationale = "ERFA's own acceptance tolerance (dval) for this output in t_erfa_c.c, unchanged (DEP-009: reproduce ERFA's reference values). abs = 0 means ERFA requires an exact result."
+verified_by = "WP9 builder agent, 2026-10-15: value and dval extracted mechanically from the ERFA 2.0.1 t_erfa_c.c listed in citation (regex over the vvd calls), before the first run of the port."
+
+[[vector]]
+id = "ERFA-T-RXR-32"
+requirement = ["DEP-009", "LIC-004"]
+quantity = "eraRxr output atb[2][1] in t_erfa_c.c t_rxr"
+value = 10.0
+unit = "1"
+kind = "computed-reference"
+source = "ERFA 2.0.1 regression test t_rxr in src/t_erfa_c.c: vvd(atb[2][1], expected, dval). Value and tolerance (dval) are copied verbatim from that call; the call arguments are repeated, line-marked, in the test."
+citation = "liberfa/erfa v2.0.1 (BSD-3-Clause, NumFOCUS Foundation), src/t_erfa_c.c, release tarball erfa-2.0.1.tar.xz sha256 45111f0addf6ef69345aaf093bd054705b41ac2db7541dd3f0e105362c8e20e4; t_erfa_c.c sha256 8a92d0099c48df31ca566bea881c19497dc295dba58dba7136cc2f8443c31f15"
+retrieved = "2026-10-15"
+generated_by = "liberfa/erfa:src/t_erfa_c.c@9915ba38c9365f8b0738269b8c2ac1fdd5f8dee3"
+engine = { name = "ERFA t_erfa_c reference values", version = "ERFA 2.0.1 (SOFA 20231011)", settings = "C double; arguments as in the cited call" }
+tolerance = { abs = 1e-12 }
+tolerance_rationale = "ERFA's own acceptance tolerance (dval) for this output in t_erfa_c.c, unchanged (DEP-009: reproduce ERFA's reference values). abs = 0 means ERFA requires an exact result."
+verified_by = "WP9 builder agent, 2026-10-15: value and dval extracted mechanically from the ERFA 2.0.1 t_erfa_c.c listed in citation (regex over the vvd calls), before the first run of the port."
+
+[[vector]]
+id = "ERFA-T-RXR-33"
+requirement = ["DEP-009", "LIC-004"]
+quantity = "eraRxr output atb[2][2] in t_erfa_c.c t_rxr"
+value = 15.0
+unit = "1"
+kind = "computed-reference"
+source = "ERFA 2.0.1 regression test t_rxr in src/t_erfa_c.c: vvd(atb[2][2], expected, dval). Value and tolerance (dval) are copied verbatim from that call; the call arguments are repeated, line-marked, in the test."
+citation = "liberfa/erfa v2.0.1 (BSD-3-Clause, NumFOCUS Foundation), src/t_erfa_c.c, release tarball erfa-2.0.1.tar.xz sha256 45111f0addf6ef69345aaf093bd054705b41ac2db7541dd3f0e105362c8e20e4; t_erfa_c.c sha256 8a92d0099c48df31ca566bea881c19497dc295dba58dba7136cc2f8443c31f15"
+retrieved = "2026-10-15"
+generated_by = "liberfa/erfa:src/t_erfa_c.c@9915ba38c9365f8b0738269b8c2ac1fdd5f8dee3"
+engine = { name = "ERFA t_erfa_c reference values", version = "ERFA 2.0.1 (SOFA 20231011)", settings = "C double; arguments as in the cited call" }
+tolerance = { abs = 1e-12 }
+tolerance_rationale = "ERFA's own acceptance tolerance (dval) for this output in t_erfa_c.c, unchanged (DEP-009: reproduce ERFA's reference values). abs = 0 means ERFA requires an exact result."
+verified_by = "WP9 builder agent, 2026-10-15: value and dval extracted mechanically from the ERFA 2.0.1 t_erfa_c.c listed in citation (regex over the vvd calls), before the first run of the port."
+
+[[vector]]
+id = "ERFA-T-TR-11"
+requirement = ["DEP-009", "LIC-004"]
+quantity = "eraTr output rt[0][0] in t_erfa_c.c t_tr"
+value = 2.0
+unit = "1"
+kind = "computed-reference"
+source = "ERFA 2.0.1 regression test t_tr in src/t_erfa_c.c: vvd(rt[0][0], expected, dval). Value and tolerance (dval) are copied verbatim from that call; the call arguments are repeated, line-marked, in the test."
+citation = "liberfa/erfa v2.0.1 (BSD-3-Clause, NumFOCUS Foundation), src/t_erfa_c.c, release tarball erfa-2.0.1.tar.xz sha256 45111f0addf6ef69345aaf093bd054705b41ac2db7541dd3f0e105362c8e20e4; t_erfa_c.c sha256 8a92d0099c48df31ca566bea881c19497dc295dba58dba7136cc2f8443c31f15"
+retrieved = "2026-10-15"
+generated_by = "liberfa/erfa:src/t_erfa_c.c@9915ba38c9365f8b0738269b8c2ac1fdd5f8dee3"
+engine = { name = "ERFA t_erfa_c reference values", version = "ERFA 2.0.1 (SOFA 20231011)", settings = "C double; arguments as in the cited call" }
+tolerance = { abs = 0.0 }
+tolerance_rationale = "ERFA's own acceptance tolerance (dval) for this output in t_erfa_c.c, unchanged (DEP-009: reproduce ERFA's reference values). abs = 0 means ERFA requires an exact result."
+verified_by = "WP9 builder agent, 2026-10-15: value and dval extracted mechanically from the ERFA 2.0.1 t_erfa_c.c listed in citation (regex over the vvd calls), before the first run of the port."
+
+[[vector]]
+id = "ERFA-T-TR-12"
+requirement = ["DEP-009", "LIC-004"]
+quantity = "eraTr output rt[0][1] in t_erfa_c.c t_tr"
+value = 3.0
+unit = "1"
+kind = "computed-reference"
+source = "ERFA 2.0.1 regression test t_tr in src/t_erfa_c.c: vvd(rt[0][1], expected, dval). Value and tolerance (dval) are copied verbatim from that call; the call arguments are repeated, line-marked, in the test."
+citation = "liberfa/erfa v2.0.1 (BSD-3-Clause, NumFOCUS Foundation), src/t_erfa_c.c, release tarball erfa-2.0.1.tar.xz sha256 45111f0addf6ef69345aaf093bd054705b41ac2db7541dd3f0e105362c8e20e4; t_erfa_c.c sha256 8a92d0099c48df31ca566bea881c19497dc295dba58dba7136cc2f8443c31f15"
+retrieved = "2026-10-15"
+generated_by = "liberfa/erfa:src/t_erfa_c.c@9915ba38c9365f8b0738269b8c2ac1fdd5f8dee3"
+engine = { name = "ERFA t_erfa_c reference values", version = "ERFA 2.0.1 (SOFA 20231011)", settings = "C double; arguments as in the cited call" }
+tolerance = { abs = 0.0 }
+tolerance_rationale = "ERFA's own acceptance tolerance (dval) for this output in t_erfa_c.c, unchanged (DEP-009: reproduce ERFA's reference values). abs = 0 means ERFA requires an exact result."
+verified_by = "WP9 builder agent, 2026-10-15: value and dval extracted mechanically from the ERFA 2.0.1 t_erfa_c.c listed in citation (regex over the vvd calls), before the first run of the port."
+
+[[vector]]
+id = "ERFA-T-TR-13"
+requirement = ["DEP-009", "LIC-004"]
+quantity = "eraTr output rt[0][2] in t_erfa_c.c t_tr"
+value = 3.0
+unit = "1"
+kind = "computed-reference"
+source = "ERFA 2.0.1 regression test t_tr in src/t_erfa_c.c: vvd(rt[0][2], expected, dval). Value and tolerance (dval) are copied verbatim from that call; the call arguments are repeated, line-marked, in the test."
+citation = "liberfa/erfa v2.0.1 (BSD-3-Clause, NumFOCUS Foundation), src/t_erfa_c.c, release tarball erfa-2.0.1.tar.xz sha256 45111f0addf6ef69345aaf093bd054705b41ac2db7541dd3f0e105362c8e20e4; t_erfa_c.c sha256 8a92d0099c48df31ca566bea881c19497dc295dba58dba7136cc2f8443c31f15"
+retrieved = "2026-10-15"
+generated_by = "liberfa/erfa:src/t_erfa_c.c@9915ba38c9365f8b0738269b8c2ac1fdd5f8dee3"
+engine = { name = "ERFA t_erfa_c reference values", version = "ERFA 2.0.1 (SOFA 20231011)", settings = "C double; arguments as in the cited call" }
+tolerance = { abs = 0.0 }
+tolerance_rationale = "ERFA's own acceptance tolerance (dval) for this output in t_erfa_c.c, unchanged (DEP-009: reproduce ERFA's reference values). abs = 0 means ERFA requires an exact result."
+verified_by = "WP9 builder agent, 2026-10-15: value and dval extracted mechanically from the ERFA 2.0.1 t_erfa_c.c listed in citation (regex over the vvd calls), before the first run of the port."
+
+[[vector]]
+id = "ERFA-T-TR-21"
+requirement = ["DEP-009", "LIC-004"]
+quantity = "eraTr output rt[1][0] in t_erfa_c.c t_tr"
+value = 3.0
+unit = "1"
+kind = "computed-reference"
+source = "ERFA 2.0.1 regression test t_tr in src/t_erfa_c.c: vvd(rt[1][0], expected, dval). Value and tolerance (dval) are copied verbatim from that call; the call arguments are repeated, line-marked, in the test."
+citation = "liberfa/erfa v2.0.1 (BSD-3-Clause, NumFOCUS Foundation), src/t_erfa_c.c, release tarball erfa-2.0.1.tar.xz sha256 45111f0addf6ef69345aaf093bd054705b41ac2db7541dd3f0e105362c8e20e4; t_erfa_c.c sha256 8a92d0099c48df31ca566bea881c19497dc295dba58dba7136cc2f8443c31f15"
+retrieved = "2026-10-15"
+generated_by = "liberfa/erfa:src/t_erfa_c.c@9915ba38c9365f8b0738269b8c2ac1fdd5f8dee3"
+engine = { name = "ERFA t_erfa_c reference values", version = "ERFA 2.0.1 (SOFA 20231011)", settings = "C double; arguments as in the cited call" }
+tolerance = { abs = 0.0 }
+tolerance_rationale = "ERFA's own acceptance tolerance (dval) for this output in t_erfa_c.c, unchanged (DEP-009: reproduce ERFA's reference values). abs = 0 means ERFA requires an exact result."
+verified_by = "WP9 builder agent, 2026-10-15: value and dval extracted mechanically from the ERFA 2.0.1 t_erfa_c.c listed in citation (regex over the vvd calls), before the first run of the port."
+
+[[vector]]
+id = "ERFA-T-TR-22"
+requirement = ["DEP-009", "LIC-004"]
+quantity = "eraTr output rt[1][1] in t_erfa_c.c t_tr"
+value = 2.0
+unit = "1"
+kind = "computed-reference"
+source = "ERFA 2.0.1 regression test t_tr in src/t_erfa_c.c: vvd(rt[1][1], expected, dval). Value and tolerance (dval) are copied verbatim from that call; the call arguments are repeated, line-marked, in the test."
+citation = "liberfa/erfa v2.0.1 (BSD-3-Clause, NumFOCUS Foundation), src/t_erfa_c.c, release tarball erfa-2.0.1.tar.xz sha256 45111f0addf6ef69345aaf093bd054705b41ac2db7541dd3f0e105362c8e20e4; t_erfa_c.c sha256 8a92d0099c48df31ca566bea881c19497dc295dba58dba7136cc2f8443c31f15"
+retrieved = "2026-10-15"
+generated_by = "liberfa/erfa:src/t_erfa_c.c@9915ba38c9365f8b0738269b8c2ac1fdd5f8dee3"
+engine = { name = "ERFA t_erfa_c reference values", version = "ERFA 2.0.1 (SOFA 20231011)", settings = "C double; arguments as in the cited call" }
+tolerance = { abs = 0.0 }
+tolerance_rationale = "ERFA's own acceptance tolerance (dval) for this output in t_erfa_c.c, unchanged (DEP-009: reproduce ERFA's reference values). abs = 0 means ERFA requires an exact result."
+verified_by = "WP9 builder agent, 2026-10-15: value and dval extracted mechanically from the ERFA 2.0.1 t_erfa_c.c listed in citation (regex over the vvd calls), before the first run of the port."
+
+[[vector]]
+id = "ERFA-T-TR-23"
+requirement = ["DEP-009", "LIC-004"]
+quantity = "eraTr output rt[1][2] in t_erfa_c.c t_tr"
+value = 4.0
+unit = "1"
+kind = "computed-reference"
+source = "ERFA 2.0.1 regression test t_tr in src/t_erfa_c.c: vvd(rt[1][2], expected, dval). Value and tolerance (dval) are copied verbatim from that call; the call arguments are repeated, line-marked, in the test."
+citation = "liberfa/erfa v2.0.1 (BSD-3-Clause, NumFOCUS Foundation), src/t_erfa_c.c, release tarball erfa-2.0.1.tar.xz sha256 45111f0addf6ef69345aaf093bd054705b41ac2db7541dd3f0e105362c8e20e4; t_erfa_c.c sha256 8a92d0099c48df31ca566bea881c19497dc295dba58dba7136cc2f8443c31f15"
+retrieved = "2026-10-15"
+generated_by = "liberfa/erfa:src/t_erfa_c.c@9915ba38c9365f8b0738269b8c2ac1fdd5f8dee3"
+engine = { name = "ERFA t_erfa_c reference values", version = "ERFA 2.0.1 (SOFA 20231011)", settings = "C double; arguments as in the cited call" }
+tolerance = { abs = 0.0 }
+tolerance_rationale = "ERFA's own acceptance tolerance (dval) for this output in t_erfa_c.c, unchanged (DEP-009: reproduce ERFA's reference values). abs = 0 means ERFA requires an exact result."
+verified_by = "WP9 builder agent, 2026-10-15: value and dval extracted mechanically from the ERFA 2.0.1 t_erfa_c.c listed in citation (regex over the vvd calls), before the first run of the port."
+
+[[vector]]
+id = "ERFA-T-TR-31"
+requirement = ["DEP-009", "LIC-004"]
+quantity = "eraTr output rt[2][0] in t_erfa_c.c t_tr"
+value = 2.0
+unit = "1"
+kind = "computed-reference"
+source = "ERFA 2.0.1 regression test t_tr in src/t_erfa_c.c: vvd(rt[2][0], expected, dval). Value and tolerance (dval) are copied verbatim from that call; the call arguments are repeated, line-marked, in the test."
+citation = "liberfa/erfa v2.0.1 (BSD-3-Clause, NumFOCUS Foundation), src/t_erfa_c.c, release tarball erfa-2.0.1.tar.xz sha256 45111f0addf6ef69345aaf093bd054705b41ac2db7541dd3f0e105362c8e20e4; t_erfa_c.c sha256 8a92d0099c48df31ca566bea881c19497dc295dba58dba7136cc2f8443c31f15"
+retrieved = "2026-10-15"
+generated_by = "liberfa/erfa:src/t_erfa_c.c@9915ba38c9365f8b0738269b8c2ac1fdd5f8dee3"
+engine = { name = "ERFA t_erfa_c reference values", version = "ERFA 2.0.1 (SOFA 20231011)", settings = "C double; arguments as in the cited call" }
+tolerance = { abs = 0.0 }
+tolerance_rationale = "ERFA's own acceptance tolerance (dval) for this output in t_erfa_c.c, unchanged (DEP-009: reproduce ERFA's reference values). abs = 0 means ERFA requires an exact result."
+verified_by = "WP9 builder agent, 2026-10-15: value and dval extracted mechanically from the ERFA 2.0.1 t_erfa_c.c listed in citation (regex over the vvd calls), before the first run of the port."
+
+[[vector]]
+id = "ERFA-T-TR-32"
+requirement = ["DEP-009", "LIC-004"]
+quantity = "eraTr output rt[2][1] in t_erfa_c.c t_tr"
+value = 3.0
+unit = "1"
+kind = "computed-reference"
+source = "ERFA 2.0.1 regression test t_tr in src/t_erfa_c.c: vvd(rt[2][1], expected, dval). Value and tolerance (dval) are copied verbatim from that call; the call arguments are repeated, line-marked, in the test."
+citation = "liberfa/erfa v2.0.1 (BSD-3-Clause, NumFOCUS Foundation), src/t_erfa_c.c, release tarball erfa-2.0.1.tar.xz sha256 45111f0addf6ef69345aaf093bd054705b41ac2db7541dd3f0e105362c8e20e4; t_erfa_c.c sha256 8a92d0099c48df31ca566bea881c19497dc295dba58dba7136cc2f8443c31f15"
+retrieved = "2026-10-15"
+generated_by = "liberfa/erfa:src/t_erfa_c.c@9915ba38c9365f8b0738269b8c2ac1fdd5f8dee3"
+engine = { name = "ERFA t_erfa_c reference values", version = "ERFA 2.0.1 (SOFA 20231011)", settings = "C double; arguments as in the cited call" }
+tolerance = { abs = 0.0 }
+tolerance_rationale = "ERFA's own acceptance tolerance (dval) for this output in t_erfa_c.c, unchanged (DEP-009: reproduce ERFA's reference values). abs = 0 means ERFA requires an exact result."
+verified_by = "WP9 builder agent, 2026-10-15: value and dval extracted mechanically from the ERFA 2.0.1 t_erfa_c.c listed in citation (regex over the vvd calls), before the first run of the port."
+
+[[vector]]
+id = "ERFA-T-TR-33"
+requirement = ["DEP-009", "LIC-004"]
+quantity = "eraTr output rt[2][2] in t_erfa_c.c t_tr"
+value = 5.0
+unit = "1"
+kind = "computed-reference"
+source = "ERFA 2.0.1 regression test t_tr in src/t_erfa_c.c: vvd(rt[2][2], expected, dval). Value and tolerance (dval) are copied verbatim from that call; the call arguments are repeated, line-marked, in the test."
+citation = "liberfa/erfa v2.0.1 (BSD-3-Clause, NumFOCUS Foundation), src/t_erfa_c.c, release tarball erfa-2.0.1.tar.xz sha256 45111f0addf6ef69345aaf093bd054705b41ac2db7541dd3f0e105362c8e20e4; t_erfa_c.c sha256 8a92d0099c48df31ca566bea881c19497dc295dba58dba7136cc2f8443c31f15"
+retrieved = "2026-10-15"
+generated_by = "liberfa/erfa:src/t_erfa_c.c@9915ba38c9365f8b0738269b8c2ac1fdd5f8dee3"
+engine = { name = "ERFA t_erfa_c reference values", version = "ERFA 2.0.1 (SOFA 20231011)", settings = "C double; arguments as in the cited call" }
+tolerance = { abs = 0.0 }
+tolerance_rationale = "ERFA's own acceptance tolerance (dval) for this output in t_erfa_c.c, unchanged (DEP-009: reproduce ERFA's reference values). abs = 0 means ERFA requires an exact result."
+verified_by = "WP9 builder agent, 2026-10-15: value and dval extracted mechanically from the ERFA 2.0.1 t_erfa_c.c listed in citation (regex over the vvd calls), before the first run of the port."
+
+[[vector]]
+id = "ERFA-T-RXP-1"
+requirement = ["DEP-009", "LIC-004"]
+quantity = "eraRxp output rp[0] in t_erfa_c.c t_rxp"
+value = 5.1
+unit = "1"
+kind = "computed-reference"
+source = "ERFA 2.0.1 regression test t_rxp in src/t_erfa_c.c: vvd(rp[0], expected, dval). Value and tolerance (dval) are copied verbatim from that call; the call arguments are repeated, line-marked, in the test."
+citation = "liberfa/erfa v2.0.1 (BSD-3-Clause, NumFOCUS Foundation), src/t_erfa_c.c, release tarball erfa-2.0.1.tar.xz sha256 45111f0addf6ef69345aaf093bd054705b41ac2db7541dd3f0e105362c8e20e4; t_erfa_c.c sha256 8a92d0099c48df31ca566bea881c19497dc295dba58dba7136cc2f8443c31f15"
+retrieved = "2026-10-15"
+generated_by = "liberfa/erfa:src/t_erfa_c.c@9915ba38c9365f8b0738269b8c2ac1fdd5f8dee3"
+engine = { name = "ERFA t_erfa_c reference values", version = "ERFA 2.0.1 (SOFA 20231011)", settings = "C double; arguments as in the cited call" }
+tolerance = { abs = 1e-12 }
+tolerance_rationale = "ERFA's own acceptance tolerance (dval) for this output in t_erfa_c.c, unchanged (DEP-009: reproduce ERFA's reference values). abs = 0 means ERFA requires an exact result."
+verified_by = "WP9 builder agent, 2026-10-15: value and dval extracted mechanically from the ERFA 2.0.1 t_erfa_c.c listed in citation (regex over the vvd calls), before the first run of the port."
+
+[[vector]]
+id = "ERFA-T-RXP-2"
+requirement = ["DEP-009", "LIC-004"]
+quantity = "eraRxp output rp[1] in t_erfa_c.c t_rxp"
+value = 3.9
+unit = "1"
+kind = "computed-reference"
+source = "ERFA 2.0.1 regression test t_rxp in src/t_erfa_c.c: vvd(rp[1], expected, dval). Value and tolerance (dval) are copied verbatim from that call; the call arguments are repeated, line-marked, in the test."
+citation = "liberfa/erfa v2.0.1 (BSD-3-Clause, NumFOCUS Foundation), src/t_erfa_c.c, release tarball erfa-2.0.1.tar.xz sha256 45111f0addf6ef69345aaf093bd054705b41ac2db7541dd3f0e105362c8e20e4; t_erfa_c.c sha256 8a92d0099c48df31ca566bea881c19497dc295dba58dba7136cc2f8443c31f15"
+retrieved = "2026-10-15"
+generated_by = "liberfa/erfa:src/t_erfa_c.c@9915ba38c9365f8b0738269b8c2ac1fdd5f8dee3"
+engine = { name = "ERFA t_erfa_c reference values", version = "ERFA 2.0.1 (SOFA 20231011)", settings = "C double; arguments as in the cited call" }
+tolerance = { abs = 1e-12 }
+tolerance_rationale = "ERFA's own acceptance tolerance (dval) for this output in t_erfa_c.c, unchanged (DEP-009: reproduce ERFA's reference values). abs = 0 means ERFA requires an exact result."
+verified_by = "WP9 builder agent, 2026-10-15: value and dval extracted mechanically from the ERFA 2.0.1 t_erfa_c.c listed in citation (regex over the vvd calls), before the first run of the port."
+
+[[vector]]
+id = "ERFA-T-RXP-3"
+requirement = ["DEP-009", "LIC-004"]
+quantity = "eraRxp output rp[2] in t_erfa_c.c t_rxp"
+value = 7.1
+unit = "1"
+kind = "computed-reference"
+source = "ERFA 2.0.1 regression test t_rxp in src/t_erfa_c.c: vvd(rp[2], expected, dval). Value and tolerance (dval) are copied verbatim from that call; the call arguments are repeated, line-marked, in the test."
+citation = "liberfa/erfa v2.0.1 (BSD-3-Clause, NumFOCUS Foundation), src/t_erfa_c.c, release tarball erfa-2.0.1.tar.xz sha256 45111f0addf6ef69345aaf093bd054705b41ac2db7541dd3f0e105362c8e20e4; t_erfa_c.c sha256 8a92d0099c48df31ca566bea881c19497dc295dba58dba7136cc2f8443c31f15"
+retrieved = "2026-10-15"
+generated_by = "liberfa/erfa:src/t_erfa_c.c@9915ba38c9365f8b0738269b8c2ac1fdd5f8dee3"
+engine = { name = "ERFA t_erfa_c reference values", version = "ERFA 2.0.1 (SOFA 20231011)", settings = "C double; arguments as in the cited call" }
+tolerance = { abs = 1e-12 }
+tolerance_rationale = "ERFA's own acceptance tolerance (dval) for this output in t_erfa_c.c, unchanged (DEP-009: reproduce ERFA's reference values). abs = 0 means ERFA requires an exact result."
+verified_by = "WP9 builder agent, 2026-10-15: value and dval extracted mechanically from the ERFA 2.0.1 t_erfa_c.c listed in citation (regex over the vvd calls), before the first run of the port."
+
+[[vector]]
+id = "ERFA-T-TRXP-1"
+requirement = ["DEP-009", "LIC-004"]
+quantity = "eraTrxp output trp[0] in t_erfa_c.c t_trxp"
+value = 5.2
+unit = "1"
+kind = "computed-reference"
+source = "ERFA 2.0.1 regression test t_trxp in src/t_erfa_c.c: vvd(trp[0], expected, dval). Value and tolerance (dval) are copied verbatim from that call; the call arguments are repeated, line-marked, in the test."
+citation = "liberfa/erfa v2.0.1 (BSD-3-Clause, NumFOCUS Foundation), src/t_erfa_c.c, release tarball erfa-2.0.1.tar.xz sha256 45111f0addf6ef69345aaf093bd054705b41ac2db7541dd3f0e105362c8e20e4; t_erfa_c.c sha256 8a92d0099c48df31ca566bea881c19497dc295dba58dba7136cc2f8443c31f15"
+retrieved = "2026-10-15"
+generated_by = "liberfa/erfa:src/t_erfa_c.c@9915ba38c9365f8b0738269b8c2ac1fdd5f8dee3"
+engine = { name = "ERFA t_erfa_c reference values", version = "ERFA 2.0.1 (SOFA 20231011)", settings = "C double; arguments as in the cited call" }
+tolerance = { abs = 1e-12 }
+tolerance_rationale = "ERFA's own acceptance tolerance (dval) for this output in t_erfa_c.c, unchanged (DEP-009: reproduce ERFA's reference values). abs = 0 means ERFA requires an exact result."
+verified_by = "WP9 builder agent, 2026-10-15: value and dval extracted mechanically from the ERFA 2.0.1 t_erfa_c.c listed in citation (regex over the vvd calls), before the first run of the port."
+
+[[vector]]
+id = "ERFA-T-TRXP-2"
+requirement = ["DEP-009", "LIC-004"]
+quantity = "eraTrxp output trp[1] in t_erfa_c.c t_trxp"
+value = 4.0
+unit = "1"
+kind = "computed-reference"
+source = "ERFA 2.0.1 regression test t_trxp in src/t_erfa_c.c: vvd(trp[1], expected, dval). Value and tolerance (dval) are copied verbatim from that call; the call arguments are repeated, line-marked, in the test."
+citation = "liberfa/erfa v2.0.1 (BSD-3-Clause, NumFOCUS Foundation), src/t_erfa_c.c, release tarball erfa-2.0.1.tar.xz sha256 45111f0addf6ef69345aaf093bd054705b41ac2db7541dd3f0e105362c8e20e4; t_erfa_c.c sha256 8a92d0099c48df31ca566bea881c19497dc295dba58dba7136cc2f8443c31f15"
+retrieved = "2026-10-15"
+generated_by = "liberfa/erfa:src/t_erfa_c.c@9915ba38c9365f8b0738269b8c2ac1fdd5f8dee3"
+engine = { name = "ERFA t_erfa_c reference values", version = "ERFA 2.0.1 (SOFA 20231011)", settings = "C double; arguments as in the cited call" }
+tolerance = { abs = 1e-12 }
+tolerance_rationale = "ERFA's own acceptance tolerance (dval) for this output in t_erfa_c.c, unchanged (DEP-009: reproduce ERFA's reference values). abs = 0 means ERFA requires an exact result."
+verified_by = "WP9 builder agent, 2026-10-15: value and dval extracted mechanically from the ERFA 2.0.1 t_erfa_c.c listed in citation (regex over the vvd calls), before the first run of the port."
+
+[[vector]]
+id = "ERFA-T-TRXP-3"
+requirement = ["DEP-009", "LIC-004"]
+quantity = "eraTrxp output trp[2] in t_erfa_c.c t_trxp"
+value = 5.4
+unit = "1"
+kind = "computed-reference"
+source = "ERFA 2.0.1 regression test t_trxp in src/t_erfa_c.c: vvd(trp[2], expected, dval). Value and tolerance (dval) are copied verbatim from that call; the call arguments are repeated, line-marked, in the test."
+citation = "liberfa/erfa v2.0.1 (BSD-3-Clause, NumFOCUS Foundation), src/t_erfa_c.c, release tarball erfa-2.0.1.tar.xz sha256 45111f0addf6ef69345aaf093bd054705b41ac2db7541dd3f0e105362c8e20e4; t_erfa_c.c sha256 8a92d0099c48df31ca566bea881c19497dc295dba58dba7136cc2f8443c31f15"
+retrieved = "2026-10-15"
+generated_by = "liberfa/erfa:src/t_erfa_c.c@9915ba38c9365f8b0738269b8c2ac1fdd5f8dee3"
+engine = { name = "ERFA t_erfa_c reference values", version = "ERFA 2.0.1 (SOFA 20231011)", settings = "C double; arguments as in the cited call" }
+tolerance = { abs = 1e-12 }
+tolerance_rationale = "ERFA's own acceptance tolerance (dval) for this output in t_erfa_c.c, unchanged (DEP-009: reproduce ERFA's reference values). abs = 0 means ERFA requires an exact result."
+verified_by = "WP9 builder agent, 2026-10-15: value and dval extracted mechanically from the ERFA 2.0.1 t_erfa_c.c listed in citation (regex over the vvd calls), before the first run of the port."
+
+[[vector]]
+id = "ERFA-T-S2C-1"
+requirement = ["DEP-009", "LIC-004"]
+quantity = "eraS2c output c[0] in t_erfa_c.c t_s2c"
+value = "-0.5366267667260523906"
+unit = "1"
+kind = "computed-reference"
+source = "ERFA 2.0.1 regression test t_s2c in src/t_erfa_c.c: vvd(c[0], expected, dval). Value and tolerance (dval) are copied verbatim from that call; the call arguments are repeated, line-marked, in the test."
+citation = "liberfa/erfa v2.0.1 (BSD-3-Clause, NumFOCUS Foundation), src/t_erfa_c.c, release tarball erfa-2.0.1.tar.xz sha256 45111f0addf6ef69345aaf093bd054705b41ac2db7541dd3f0e105362c8e20e4; t_erfa_c.c sha256 8a92d0099c48df31ca566bea881c19497dc295dba58dba7136cc2f8443c31f15"
+retrieved = "2026-10-15"
+generated_by = "liberfa/erfa:src/t_erfa_c.c@9915ba38c9365f8b0738269b8c2ac1fdd5f8dee3"
+engine = { name = "ERFA t_erfa_c reference values", version = "ERFA 2.0.1 (SOFA 20231011)", settings = "C double; arguments as in the cited call" }
+tolerance = { abs = 1e-12 }
+tolerance_rationale = "ERFA's own acceptance tolerance (dval) for this output in t_erfa_c.c, unchanged (DEP-009: reproduce ERFA's reference values). abs = 0 means ERFA requires an exact result."
+verified_by = "WP9 builder agent, 2026-10-15: value and dval extracted mechanically from the ERFA 2.0.1 t_erfa_c.c listed in citation (regex over the vvd calls), before the first run of the port."
+
+[[vector]]
+id = "ERFA-T-S2C-2"
+requirement = ["DEP-009", "LIC-004"]
+quantity = "eraS2c output c[1] in t_erfa_c.c t_s2c"
+value = "0.0697711109765145365"
+unit = "1"
+kind = "computed-reference"
+source = "ERFA 2.0.1 regression test t_s2c in src/t_erfa_c.c: vvd(c[1], expected, dval). Value and tolerance (dval) are copied verbatim from that call; the call arguments are repeated, line-marked, in the test."
+citation = "liberfa/erfa v2.0.1 (BSD-3-Clause, NumFOCUS Foundation), src/t_erfa_c.c, release tarball erfa-2.0.1.tar.xz sha256 45111f0addf6ef69345aaf093bd054705b41ac2db7541dd3f0e105362c8e20e4; t_erfa_c.c sha256 8a92d0099c48df31ca566bea881c19497dc295dba58dba7136cc2f8443c31f15"
+retrieved = "2026-10-15"
+generated_by = "liberfa/erfa:src/t_erfa_c.c@9915ba38c9365f8b0738269b8c2ac1fdd5f8dee3"
+engine = { name = "ERFA t_erfa_c reference values", version = "ERFA 2.0.1 (SOFA 20231011)", settings = "C double; arguments as in the cited call" }
+tolerance = { abs = 1e-12 }
+tolerance_rationale = "ERFA's own acceptance tolerance (dval) for this output in t_erfa_c.c, unchanged (DEP-009: reproduce ERFA's reference values). abs = 0 means ERFA requires an exact result."
+verified_by = "WP9 builder agent, 2026-10-15: value and dval extracted mechanically from the ERFA 2.0.1 t_erfa_c.c listed in citation (regex over the vvd calls), before the first run of the port."
+
+[[vector]]
+id = "ERFA-T-S2C-3"
+requirement = ["DEP-009", "LIC-004"]
+quantity = "eraS2c output c[2] in t_erfa_c.c t_s2c"
+value = "-0.8409302618566214041"
+unit = "1"
+kind = "computed-reference"
+source = "ERFA 2.0.1 regression test t_s2c in src/t_erfa_c.c: vvd(c[2], expected, dval). Value and tolerance (dval) are copied verbatim from that call; the call arguments are repeated, line-marked, in the test."
+citation = "liberfa/erfa v2.0.1 (BSD-3-Clause, NumFOCUS Foundation), src/t_erfa_c.c, release tarball erfa-2.0.1.tar.xz sha256 45111f0addf6ef69345aaf093bd054705b41ac2db7541dd3f0e105362c8e20e4; t_erfa_c.c sha256 8a92d0099c48df31ca566bea881c19497dc295dba58dba7136cc2f8443c31f15"
+retrieved = "2026-10-15"
+generated_by = "liberfa/erfa:src/t_erfa_c.c@9915ba38c9365f8b0738269b8c2ac1fdd5f8dee3"
+engine = { name = "ERFA t_erfa_c reference values", version = "ERFA 2.0.1 (SOFA 20231011)", settings = "C double; arguments as in the cited call" }
+tolerance = { abs = 1e-12 }
+tolerance_rationale = "ERFA's own acceptance tolerance (dval) for this output in t_erfa_c.c, unchanged (DEP-009: reproduce ERFA's reference values). abs = 0 means ERFA requires an exact result."
+verified_by = "WP9 builder agent, 2026-10-15: value and dval extracted mechanically from the ERFA 2.0.1 t_erfa_c.c listed in citation (regex over the vvd calls), before the first run of the port."
+
+[[vector]]
+id = "ERFA-T-C2S-THETA"
+requirement = ["DEP-009", "LIC-004"]
+quantity = "eraC2s output theta in t_erfa_c.c t_c2s"
+value = "-0.4636476090008061162"
+unit = "rad"
+kind = "computed-reference"
+source = "ERFA 2.0.1 regression test t_c2s in src/t_erfa_c.c: vvd(theta, expected, dval). Value and tolerance (dval) are copied verbatim from that call; the call arguments are repeated, line-marked, in the test."
+citation = "liberfa/erfa v2.0.1 (BSD-3-Clause, NumFOCUS Foundation), src/t_erfa_c.c, release tarball erfa-2.0.1.tar.xz sha256 45111f0addf6ef69345aaf093bd054705b41ac2db7541dd3f0e105362c8e20e4; t_erfa_c.c sha256 8a92d0099c48df31ca566bea881c19497dc295dba58dba7136cc2f8443c31f15"
+retrieved = "2026-10-15"
+generated_by = "liberfa/erfa:src/t_erfa_c.c@9915ba38c9365f8b0738269b8c2ac1fdd5f8dee3"
+engine = { name = "ERFA t_erfa_c reference values", version = "ERFA 2.0.1 (SOFA 20231011)", settings = "C double; arguments as in the cited call" }
+tolerance = { abs = 1e-14 }
+tolerance_rationale = "ERFA's own acceptance tolerance (dval) for this output in t_erfa_c.c, unchanged (DEP-009: reproduce ERFA's reference values). abs = 0 means ERFA requires an exact result."
+verified_by = "WP9 builder agent, 2026-10-15: value and dval extracted mechanically from the ERFA 2.0.1 t_erfa_c.c listed in citation (regex over the vvd calls), before the first run of the port."
+
+[[vector]]
+id = "ERFA-T-C2S-PHI"
+requirement = ["DEP-009", "LIC-004"]
+quantity = "eraC2s output phi in t_erfa_c.c t_c2s"
+value = "0.2199879773954594463"
+unit = "rad"
+kind = "computed-reference"
+source = "ERFA 2.0.1 regression test t_c2s in src/t_erfa_c.c: vvd(phi, expected, dval). Value and tolerance (dval) are copied verbatim from that call; the call arguments are repeated, line-marked, in the test."
+citation = "liberfa/erfa v2.0.1 (BSD-3-Clause, NumFOCUS Foundation), src/t_erfa_c.c, release tarball erfa-2.0.1.tar.xz sha256 45111f0addf6ef69345aaf093bd054705b41ac2db7541dd3f0e105362c8e20e4; t_erfa_c.c sha256 8a92d0099c48df31ca566bea881c19497dc295dba58dba7136cc2f8443c31f15"
+retrieved = "2026-10-15"
+generated_by = "liberfa/erfa:src/t_erfa_c.c@9915ba38c9365f8b0738269b8c2ac1fdd5f8dee3"
+engine = { name = "ERFA t_erfa_c reference values", version = "ERFA 2.0.1 (SOFA 20231011)", settings = "C double; arguments as in the cited call" }
+tolerance = { abs = 1e-14 }
+tolerance_rationale = "ERFA's own acceptance tolerance (dval) for this output in t_erfa_c.c, unchanged (DEP-009: reproduce ERFA's reference values). abs = 0 means ERFA requires an exact result."
+verified_by = "WP9 builder agent, 2026-10-15: value and dval extracted mechanically from the ERFA 2.0.1 t_erfa_c.c listed in citation (regex over the vvd calls), before the first run of the port."
+
+[[vector]]
+id = "ERFA-T-ANP-VALUE"
+requirement = ["DEP-009", "LIC-004"]
+quantity = "eraAnp output eraAnp(-0.1) in t_erfa_c.c t_anp"
+value = "6.183185307179586477"
+unit = "rad"
+kind = "computed-reference"
+source = "ERFA 2.0.1 regression test t_anp in src/t_erfa_c.c: vvd(eraAnp(-0.1), expected, dval). Value and tolerance (dval) are copied verbatim from that call; the call arguments are repeated, line-marked, in the test."
+citation = "liberfa/erfa v2.0.1 (BSD-3-Clause, NumFOCUS Foundation), src/t_erfa_c.c, release tarball erfa-2.0.1.tar.xz sha256 45111f0addf6ef69345aaf093bd054705b41ac2db7541dd3f0e105362c8e20e4; t_erfa_c.c sha256 8a92d0099c48df31ca566bea881c19497dc295dba58dba7136cc2f8443c31f15"
+retrieved = "2026-10-15"
+generated_by = "liberfa/erfa:src/t_erfa_c.c@9915ba38c9365f8b0738269b8c2ac1fdd5f8dee3"
+engine = { name = "ERFA t_erfa_c reference values", version = "ERFA 2.0.1 (SOFA 20231011)", settings = "C double; arguments as in the cited call" }
+tolerance = { abs = 1e-12 }
+tolerance_rationale = "ERFA's own acceptance tolerance (dval) for this output in t_erfa_c.c, unchanged (DEP-009: reproduce ERFA's reference values). abs = 0 means ERFA requires an exact result."
+verified_by = "WP9 builder agent, 2026-10-15: value and dval extracted mechanically from the ERFA 2.0.1 t_erfa_c.c listed in citation (regex over the vvd calls), before the first run of the port."
+
+[[vector]]
+id = "ERFA-T-ANPM-VALUE"
+requirement = ["DEP-009", "LIC-004"]
+quantity = "eraAnpm output eraAnpm(-4.0) in t_erfa_c.c t_anpm"
+value = "2.283185307179586477"
+unit = "rad"
+kind = "computed-reference"
+source = "ERFA 2.0.1 regression test t_anpm in src/t_erfa_c.c: vvd(eraAnpm(-4.0), expected, dval). Value and tolerance (dval) are copied verbatim from that call; the call arguments are repeated, line-marked, in the test."
+citation = "liberfa/erfa v2.0.1 (BSD-3-Clause, NumFOCUS Foundation), src/t_erfa_c.c, release tarball erfa-2.0.1.tar.xz sha256 45111f0addf6ef69345aaf093bd054705b41ac2db7541dd3f0e105362c8e20e4; t_erfa_c.c sha256 8a92d0099c48df31ca566bea881c19497dc295dba58dba7136cc2f8443c31f15"
+retrieved = "2026-10-15"
+generated_by = "liberfa/erfa:src/t_erfa_c.c@9915ba38c9365f8b0738269b8c2ac1fdd5f8dee3"
+engine = { name = "ERFA t_erfa_c reference values", version = "ERFA 2.0.1 (SOFA 20231011)", settings = "C double; arguments as in the cited call" }
+tolerance = { abs = 1e-12 }
+tolerance_rationale = "ERFA's own acceptance tolerance (dval) for this output in t_erfa_c.c, unchanged (DEP-009: reproduce ERFA's reference values). abs = 0 means ERFA requires an exact result."
+verified_by = "WP9 builder agent, 2026-10-15: value and dval extracted mechanically from the ERFA 2.0.1 t_erfa_c.c listed in citation (regex over the vvd calls), before the first run of the port."
+
+[[vector]]
+id = "ERFA-T-OBL06-VALUE"
+requirement = ["DEP-009", "LIC-004"]
+quantity = "eraObl06 output eraObl06(2400000.5, 54388.0) in t_erfa_c.c t_obl06"
+value = "0.4090749229387258204"
+unit = "rad"
+kind = "computed-reference"
+source = "ERFA 2.0.1 regression test t_obl06 in src/t_erfa_c.c: vvd(eraObl06(2400000.5, 54388.0), expected, dval). Value and tolerance (dval) are copied verbatim from that call; the call arguments are repeated, line-marked, in the test."
+citation = "liberfa/erfa v2.0.1 (BSD-3-Clause, NumFOCUS Foundation), src/t_erfa_c.c, release tarball erfa-2.0.1.tar.xz sha256 45111f0addf6ef69345aaf093bd054705b41ac2db7541dd3f0e105362c8e20e4; t_erfa_c.c sha256 8a92d0099c48df31ca566bea881c19497dc295dba58dba7136cc2f8443c31f15"
+retrieved = "2026-10-15"
+generated_by = "liberfa/erfa:src/t_erfa_c.c@9915ba38c9365f8b0738269b8c2ac1fdd5f8dee3"
+engine = { name = "ERFA t_erfa_c reference values", version = "ERFA 2.0.1 (SOFA 20231011)", settings = "C double; arguments as in the cited call" }
+tolerance = { abs = 1e-14 }
+tolerance_rationale = "ERFA's own acceptance tolerance (dval) for this output in t_erfa_c.c, unchanged (DEP-009: reproduce ERFA's reference values). abs = 0 means ERFA requires an exact result."
+verified_by = "WP9 builder agent, 2026-10-15: value and dval extracted mechanically from the ERFA 2.0.1 t_erfa_c.c listed in citation (regex over the vvd calls), before the first run of the port."
+
+[[vector]]
+id = "ERFA-T-P06E-EPS0"
+requirement = ["DEP-009", "LIC-004"]
+quantity = "eraP06e output eps0 in t_erfa_c.c t_p06e"
+value = "0.4090926006005828715"
+unit = "rad"
+kind = "computed-reference"
+source = "ERFA 2.0.1 regression test t_p06e in src/t_erfa_c.c: vvd(eps0, expected, dval). Value and tolerance (dval) are copied verbatim from that call; the call arguments are repeated, line-marked, in the test."
+citation = "liberfa/erfa v2.0.1 (BSD-3-Clause, NumFOCUS Foundation), src/t_erfa_c.c, release tarball erfa-2.0.1.tar.xz sha256 45111f0addf6ef69345aaf093bd054705b41ac2db7541dd3f0e105362c8e20e4; t_erfa_c.c sha256 8a92d0099c48df31ca566bea881c19497dc295dba58dba7136cc2f8443c31f15"
+retrieved = "2026-10-15"
+generated_by = "liberfa/erfa:src/t_erfa_c.c@9915ba38c9365f8b0738269b8c2ac1fdd5f8dee3"
+engine = { name = "ERFA t_erfa_c reference values", version = "ERFA 2.0.1 (SOFA 20231011)", settings = "C double; arguments as in the cited call" }
+tolerance = { abs = 1e-14 }
+tolerance_rationale = "ERFA's own acceptance tolerance (dval) for this output in t_erfa_c.c, unchanged (DEP-009: reproduce ERFA's reference values). abs = 0 means ERFA requires an exact result."
+verified_by = "WP9 builder agent, 2026-10-15: value and dval extracted mechanically from the ERFA 2.0.1 t_erfa_c.c listed in citation (regex over the vvd calls), before the first run of the port."
+
+[[vector]]
+id = "ERFA-T-P06E-PSIA"
+requirement = ["DEP-009", "LIC-004"]
+quantity = "eraP06e output psia in t_erfa_c.c t_p06e"
+value = "0.6664369630191613431e-3"
+unit = "rad"
+kind = "computed-reference"
+source = "ERFA 2.0.1 regression test t_p06e in src/t_erfa_c.c: vvd(psia, expected, dval). Value and tolerance (dval) are copied verbatim from that call; the call arguments are repeated, line-marked, in the test."
+citation = "liberfa/erfa v2.0.1 (BSD-3-Clause, NumFOCUS Foundation), src/t_erfa_c.c, release tarball erfa-2.0.1.tar.xz sha256 45111f0addf6ef69345aaf093bd054705b41ac2db7541dd3f0e105362c8e20e4; t_erfa_c.c sha256 8a92d0099c48df31ca566bea881c19497dc295dba58dba7136cc2f8443c31f15"
+retrieved = "2026-10-15"
+generated_by = "liberfa/erfa:src/t_erfa_c.c@9915ba38c9365f8b0738269b8c2ac1fdd5f8dee3"
+engine = { name = "ERFA t_erfa_c reference values", version = "ERFA 2.0.1 (SOFA 20231011)", settings = "C double; arguments as in the cited call" }
+tolerance = { abs = 1e-14 }
+tolerance_rationale = "ERFA's own acceptance tolerance (dval) for this output in t_erfa_c.c, unchanged (DEP-009: reproduce ERFA's reference values). abs = 0 means ERFA requires an exact result."
+verified_by = "WP9 builder agent, 2026-10-15: value and dval extracted mechanically from the ERFA 2.0.1 t_erfa_c.c listed in citation (regex over the vvd calls), before the first run of the port."
+
+[[vector]]
+id = "ERFA-T-P06E-OMA"
+requirement = ["DEP-009", "LIC-004"]
+quantity = "eraP06e output oma in t_erfa_c.c t_p06e"
+value = "0.4090925973783255982"
+unit = "rad"
+kind = "computed-reference"
+source = "ERFA 2.0.1 regression test t_p06e in src/t_erfa_c.c: vvd(oma, expected, dval). Value and tolerance (dval) are copied verbatim from that call; the call arguments are repeated, line-marked, in the test."
+citation = "liberfa/erfa v2.0.1 (BSD-3-Clause, NumFOCUS Foundation), src/t_erfa_c.c, release tarball erfa-2.0.1.tar.xz sha256 45111f0addf6ef69345aaf093bd054705b41ac2db7541dd3f0e105362c8e20e4; t_erfa_c.c sha256 8a92d0099c48df31ca566bea881c19497dc295dba58dba7136cc2f8443c31f15"
+retrieved = "2026-10-15"
+generated_by = "liberfa/erfa:src/t_erfa_c.c@9915ba38c9365f8b0738269b8c2ac1fdd5f8dee3"
+engine = { name = "ERFA t_erfa_c reference values", version = "ERFA 2.0.1 (SOFA 20231011)", settings = "C double; arguments as in the cited call" }
+tolerance = { abs = 1e-14 }
+tolerance_rationale = "ERFA's own acceptance tolerance (dval) for this output in t_erfa_c.c, unchanged (DEP-009: reproduce ERFA's reference values). abs = 0 means ERFA requires an exact result."
+verified_by = "WP9 builder agent, 2026-10-15: value and dval extracted mechanically from the ERFA 2.0.1 t_erfa_c.c listed in citation (regex over the vvd calls), before the first run of the port."
+
+[[vector]]
+id = "ERFA-T-P06E-BPA"
+requirement = ["DEP-009", "LIC-004"]
+quantity = "eraP06e output bpa in t_erfa_c.c t_p06e"
+value = "0.5561149371265209445e-6"
+unit = "rad"
+kind = "computed-reference"
+source = "ERFA 2.0.1 regression test t_p06e in src/t_erfa_c.c: vvd(bpa, expected, dval). Value and tolerance (dval) are copied verbatim from that call; the call arguments are repeated, line-marked, in the test."
+citation = "liberfa/erfa v2.0.1 (BSD-3-Clause, NumFOCUS Foundation), src/t_erfa_c.c, release tarball erfa-2.0.1.tar.xz sha256 45111f0addf6ef69345aaf093bd054705b41ac2db7541dd3f0e105362c8e20e4; t_erfa_c.c sha256 8a92d0099c48df31ca566bea881c19497dc295dba58dba7136cc2f8443c31f15"
+retrieved = "2026-10-15"
+generated_by = "liberfa/erfa:src/t_erfa_c.c@9915ba38c9365f8b0738269b8c2ac1fdd5f8dee3"
+engine = { name = "ERFA t_erfa_c reference values", version = "ERFA 2.0.1 (SOFA 20231011)", settings = "C double; arguments as in the cited call" }
+tolerance = { abs = 1e-14 }
+tolerance_rationale = "ERFA's own acceptance tolerance (dval) for this output in t_erfa_c.c, unchanged (DEP-009: reproduce ERFA's reference values). abs = 0 means ERFA requires an exact result."
+verified_by = "WP9 builder agent, 2026-10-15: value and dval extracted mechanically from the ERFA 2.0.1 t_erfa_c.c listed in citation (regex over the vvd calls), before the first run of the port."
+
+[[vector]]
+id = "ERFA-T-P06E-BQA"
+requirement = ["DEP-009", "LIC-004"]
+quantity = "eraP06e output bqa in t_erfa_c.c t_p06e"
+value = "-0.6191517193290621270e-5"
+unit = "rad"
+kind = "computed-reference"
+source = "ERFA 2.0.1 regression test t_p06e in src/t_erfa_c.c: vvd(bqa, expected, dval). Value and tolerance (dval) are copied verbatim from that call; the call arguments are repeated, line-marked, in the test."
+citation = "liberfa/erfa v2.0.1 (BSD-3-Clause, NumFOCUS Foundation), src/t_erfa_c.c, release tarball erfa-2.0.1.tar.xz sha256 45111f0addf6ef69345aaf093bd054705b41ac2db7541dd3f0e105362c8e20e4; t_erfa_c.c sha256 8a92d0099c48df31ca566bea881c19497dc295dba58dba7136cc2f8443c31f15"
+retrieved = "2026-10-15"
+generated_by = "liberfa/erfa:src/t_erfa_c.c@9915ba38c9365f8b0738269b8c2ac1fdd5f8dee3"
+engine = { name = "ERFA t_erfa_c reference values", version = "ERFA 2.0.1 (SOFA 20231011)", settings = "C double; arguments as in the cited call" }
+tolerance = { abs = 1e-14 }
+tolerance_rationale = "ERFA's own acceptance tolerance (dval) for this output in t_erfa_c.c, unchanged (DEP-009: reproduce ERFA's reference values). abs = 0 means ERFA requires an exact result."
+verified_by = "WP9 builder agent, 2026-10-15: value and dval extracted mechanically from the ERFA 2.0.1 t_erfa_c.c listed in citation (regex over the vvd calls), before the first run of the port."
+
+[[vector]]
+id = "ERFA-T-P06E-PIA"
+requirement = ["DEP-009", "LIC-004"]
+quantity = "eraP06e output pia in t_erfa_c.c t_p06e"
+value = "0.6216441751884382923e-5"
+unit = "rad"
+kind = "computed-reference"
+source = "ERFA 2.0.1 regression test t_p06e in src/t_erfa_c.c: vvd(pia, expected, dval). Value and tolerance (dval) are copied verbatim from that call; the call arguments are repeated, line-marked, in the test."
+citation = "liberfa/erfa v2.0.1 (BSD-3-Clause, NumFOCUS Foundation), src/t_erfa_c.c, release tarball erfa-2.0.1.tar.xz sha256 45111f0addf6ef69345aaf093bd054705b41ac2db7541dd3f0e105362c8e20e4; t_erfa_c.c sha256 8a92d0099c48df31ca566bea881c19497dc295dba58dba7136cc2f8443c31f15"
+retrieved = "2026-10-15"
+generated_by = "liberfa/erfa:src/t_erfa_c.c@9915ba38c9365f8b0738269b8c2ac1fdd5f8dee3"
+engine = { name = "ERFA t_erfa_c reference values", version = "ERFA 2.0.1 (SOFA 20231011)", settings = "C double; arguments as in the cited call" }
+tolerance = { abs = 1e-14 }
+tolerance_rationale = "ERFA's own acceptance tolerance (dval) for this output in t_erfa_c.c, unchanged (DEP-009: reproduce ERFA's reference values). abs = 0 means ERFA requires an exact result."
+verified_by = "WP9 builder agent, 2026-10-15: value and dval extracted mechanically from the ERFA 2.0.1 t_erfa_c.c listed in citation (regex over the vvd calls), before the first run of the port."
+
+[[vector]]
+id = "ERFA-T-P06E-BPIA"
+requirement = ["DEP-009", "LIC-004"]
+quantity = "eraP06e output bpia in t_erfa_c.c t_p06e"
+value = "3.052014180023779882"
+unit = "rad"
+kind = "computed-reference"
+source = "ERFA 2.0.1 regression test t_p06e in src/t_erfa_c.c: vvd(bpia, expected, dval). Value and tolerance (dval) are copied verbatim from that call; the call arguments are repeated, line-marked, in the test."
+citation = "liberfa/erfa v2.0.1 (BSD-3-Clause, NumFOCUS Foundation), src/t_erfa_c.c, release tarball erfa-2.0.1.tar.xz sha256 45111f0addf6ef69345aaf093bd054705b41ac2db7541dd3f0e105362c8e20e4; t_erfa_c.c sha256 8a92d0099c48df31ca566bea881c19497dc295dba58dba7136cc2f8443c31f15"
+retrieved = "2026-10-15"
+generated_by = "liberfa/erfa:src/t_erfa_c.c@9915ba38c9365f8b0738269b8c2ac1fdd5f8dee3"
+engine = { name = "ERFA t_erfa_c reference values", version = "ERFA 2.0.1 (SOFA 20231011)", settings = "C double; arguments as in the cited call" }
+tolerance = { abs = 1e-14 }
+tolerance_rationale = "ERFA's own acceptance tolerance (dval) for this output in t_erfa_c.c, unchanged (DEP-009: reproduce ERFA's reference values). abs = 0 means ERFA requires an exact result."
+verified_by = "WP9 builder agent, 2026-10-15: value and dval extracted mechanically from the ERFA 2.0.1 t_erfa_c.c listed in citation (regex over the vvd calls), before the first run of the port."
+
+[[vector]]
+id = "ERFA-T-P06E-EPSA"
+requirement = ["DEP-009", "LIC-004"]
+quantity = "eraP06e output epsa in t_erfa_c.c t_p06e"
+value = "0.4090864054922431688"
+unit = "rad"
+kind = "computed-reference"
+source = "ERFA 2.0.1 regression test t_p06e in src/t_erfa_c.c: vvd(epsa, expected, dval). Value and tolerance (dval) are copied verbatim from that call; the call arguments are repeated, line-marked, in the test."
+citation = "liberfa/erfa v2.0.1 (BSD-3-Clause, NumFOCUS Foundation), src/t_erfa_c.c, release tarball erfa-2.0.1.tar.xz sha256 45111f0addf6ef69345aaf093bd054705b41ac2db7541dd3f0e105362c8e20e4; t_erfa_c.c sha256 8a92d0099c48df31ca566bea881c19497dc295dba58dba7136cc2f8443c31f15"
+retrieved = "2026-10-15"
+generated_by = "liberfa/erfa:src/t_erfa_c.c@9915ba38c9365f8b0738269b8c2ac1fdd5f8dee3"
+engine = { name = "ERFA t_erfa_c reference values", version = "ERFA 2.0.1 (SOFA 20231011)", settings = "C double; arguments as in the cited call" }
+tolerance = { abs = 1e-14 }
+tolerance_rationale = "ERFA's own acceptance tolerance (dval) for this output in t_erfa_c.c, unchanged (DEP-009: reproduce ERFA's reference values). abs = 0 means ERFA requires an exact result."
+verified_by = "WP9 builder agent, 2026-10-15: value and dval extracted mechanically from the ERFA 2.0.1 t_erfa_c.c listed in citation (regex over the vvd calls), before the first run of the port."
+
+[[vector]]
+id = "ERFA-T-P06E-CHIA"
+requirement = ["DEP-009", "LIC-004"]
+quantity = "eraP06e output chia in t_erfa_c.c t_p06e"
+value = "0.1387703379530915364e-5"
+unit = "rad"
+kind = "computed-reference"
+source = "ERFA 2.0.1 regression test t_p06e in src/t_erfa_c.c: vvd(chia, expected, dval). Value and tolerance (dval) are copied verbatim from that call; the call arguments are repeated, line-marked, in the test."
+citation = "liberfa/erfa v2.0.1 (BSD-3-Clause, NumFOCUS Foundation), src/t_erfa_c.c, release tarball erfa-2.0.1.tar.xz sha256 45111f0addf6ef69345aaf093bd054705b41ac2db7541dd3f0e105362c8e20e4; t_erfa_c.c sha256 8a92d0099c48df31ca566bea881c19497dc295dba58dba7136cc2f8443c31f15"
+retrieved = "2026-10-15"
+generated_by = "liberfa/erfa:src/t_erfa_c.c@9915ba38c9365f8b0738269b8c2ac1fdd5f8dee3"
+engine = { name = "ERFA t_erfa_c reference values", version = "ERFA 2.0.1 (SOFA 20231011)", settings = "C double; arguments as in the cited call" }
+tolerance = { abs = 1e-14 }
+tolerance_rationale = "ERFA's own acceptance tolerance (dval) for this output in t_erfa_c.c, unchanged (DEP-009: reproduce ERFA's reference values). abs = 0 means ERFA requires an exact result."
+verified_by = "WP9 builder agent, 2026-10-15: value and dval extracted mechanically from the ERFA 2.0.1 t_erfa_c.c listed in citation (regex over the vvd calls), before the first run of the port."
+
+[[vector]]
+id = "ERFA-T-P06E-ZA"
+requirement = ["DEP-009", "LIC-004"]
+quantity = "eraP06e output za in t_erfa_c.c t_p06e"
+value = "0.2921789846651790546e-3"
+unit = "rad"
+kind = "computed-reference"
+source = "ERFA 2.0.1 regression test t_p06e in src/t_erfa_c.c: vvd(za, expected, dval). Value and tolerance (dval) are copied verbatim from that call; the call arguments are repeated, line-marked, in the test."
+citation = "liberfa/erfa v2.0.1 (BSD-3-Clause, NumFOCUS Foundation), src/t_erfa_c.c, release tarball erfa-2.0.1.tar.xz sha256 45111f0addf6ef69345aaf093bd054705b41ac2db7541dd3f0e105362c8e20e4; t_erfa_c.c sha256 8a92d0099c48df31ca566bea881c19497dc295dba58dba7136cc2f8443c31f15"
+retrieved = "2026-10-15"
+generated_by = "liberfa/erfa:src/t_erfa_c.c@9915ba38c9365f8b0738269b8c2ac1fdd5f8dee3"
+engine = { name = "ERFA t_erfa_c reference values", version = "ERFA 2.0.1 (SOFA 20231011)", settings = "C double; arguments as in the cited call" }
+tolerance = { abs = 1e-14 }
+tolerance_rationale = "ERFA's own acceptance tolerance (dval) for this output in t_erfa_c.c, unchanged (DEP-009: reproduce ERFA's reference values). abs = 0 means ERFA requires an exact result."
+verified_by = "WP9 builder agent, 2026-10-15: value and dval extracted mechanically from the ERFA 2.0.1 t_erfa_c.c listed in citation (regex over the vvd calls), before the first run of the port."
+
+[[vector]]
+id = "ERFA-T-P06E-ZETAA"
+requirement = ["DEP-009", "LIC-004"]
+quantity = "eraP06e output zetaa in t_erfa_c.c t_p06e"
+value = "0.3178773290332009310e-3"
+unit = "rad"
+kind = "computed-reference"
+source = "ERFA 2.0.1 regression test t_p06e in src/t_erfa_c.c: vvd(zetaa, expected, dval). Value and tolerance (dval) are copied verbatim from that call; the call arguments are repeated, line-marked, in the test."
+citation = "liberfa/erfa v2.0.1 (BSD-3-Clause, NumFOCUS Foundation), src/t_erfa_c.c, release tarball erfa-2.0.1.tar.xz sha256 45111f0addf6ef69345aaf093bd054705b41ac2db7541dd3f0e105362c8e20e4; t_erfa_c.c sha256 8a92d0099c48df31ca566bea881c19497dc295dba58dba7136cc2f8443c31f15"
+retrieved = "2026-10-15"
+generated_by = "liberfa/erfa:src/t_erfa_c.c@9915ba38c9365f8b0738269b8c2ac1fdd5f8dee3"
+engine = { name = "ERFA t_erfa_c reference values", version = "ERFA 2.0.1 (SOFA 20231011)", settings = "C double; arguments as in the cited call" }
+tolerance = { abs = 1e-14 }
+tolerance_rationale = "ERFA's own acceptance tolerance (dval) for this output in t_erfa_c.c, unchanged (DEP-009: reproduce ERFA's reference values). abs = 0 means ERFA requires an exact result."
+verified_by = "WP9 builder agent, 2026-10-15: value and dval extracted mechanically from the ERFA 2.0.1 t_erfa_c.c listed in citation (regex over the vvd calls), before the first run of the port."
+
+[[vector]]
+id = "ERFA-T-P06E-THETAA"
+requirement = ["DEP-009", "LIC-004"]
+quantity = "eraP06e output thetaa in t_erfa_c.c t_p06e"
+value = "0.2650932701657497181e-3"
+unit = "rad"
+kind = "computed-reference"
+source = "ERFA 2.0.1 regression test t_p06e in src/t_erfa_c.c: vvd(thetaa, expected, dval). Value and tolerance (dval) are copied verbatim from that call; the call arguments are repeated, line-marked, in the test."
+citation = "liberfa/erfa v2.0.1 (BSD-3-Clause, NumFOCUS Foundation), src/t_erfa_c.c, release tarball erfa-2.0.1.tar.xz sha256 45111f0addf6ef69345aaf093bd054705b41ac2db7541dd3f0e105362c8e20e4; t_erfa_c.c sha256 8a92d0099c48df31ca566bea881c19497dc295dba58dba7136cc2f8443c31f15"
+retrieved = "2026-10-15"
+generated_by = "liberfa/erfa:src/t_erfa_c.c@9915ba38c9365f8b0738269b8c2ac1fdd5f8dee3"
+engine = { name = "ERFA t_erfa_c reference values", version = "ERFA 2.0.1 (SOFA 20231011)", settings = "C double; arguments as in the cited call" }
+tolerance = { abs = 1e-14 }
+tolerance_rationale = "ERFA's own acceptance tolerance (dval) for this output in t_erfa_c.c, unchanged (DEP-009: reproduce ERFA's reference values). abs = 0 means ERFA requires an exact result."
+verified_by = "WP9 builder agent, 2026-10-15: value and dval extracted mechanically from the ERFA 2.0.1 t_erfa_c.c listed in citation (regex over the vvd calls), before the first run of the port."
+
+[[vector]]
+id = "ERFA-T-P06E-PA"
+requirement = ["DEP-009", "LIC-004"]
+quantity = "eraP06e output pa in t_erfa_c.c t_p06e"
+value = "0.6651637681381016288e-3"
+unit = "rad"
+kind = "computed-reference"
+source = "ERFA 2.0.1 regression test t_p06e in src/t_erfa_c.c: vvd(pa, expected, dval). Value and tolerance (dval) are copied verbatim from that call; the call arguments are repeated, line-marked, in the test."
+citation = "liberfa/erfa v2.0.1 (BSD-3-Clause, NumFOCUS Foundation), src/t_erfa_c.c, release tarball erfa-2.0.1.tar.xz sha256 45111f0addf6ef69345aaf093bd054705b41ac2db7541dd3f0e105362c8e20e4; t_erfa_c.c sha256 8a92d0099c48df31ca566bea881c19497dc295dba58dba7136cc2f8443c31f15"
+retrieved = "2026-10-15"
+generated_by = "liberfa/erfa:src/t_erfa_c.c@9915ba38c9365f8b0738269b8c2ac1fdd5f8dee3"
+engine = { name = "ERFA t_erfa_c reference values", version = "ERFA 2.0.1 (SOFA 20231011)", settings = "C double; arguments as in the cited call" }
+tolerance = { abs = 1e-14 }
+tolerance_rationale = "ERFA's own acceptance tolerance (dval) for this output in t_erfa_c.c, unchanged (DEP-009: reproduce ERFA's reference values). abs = 0 means ERFA requires an exact result."
+verified_by = "WP9 builder agent, 2026-10-15: value and dval extracted mechanically from the ERFA 2.0.1 t_erfa_c.c listed in citation (regex over the vvd calls), before the first run of the port."
+
+[[vector]]
+id = "ERFA-T-P06E-GAM"
+requirement = ["DEP-009", "LIC-004"]
+quantity = "eraP06e output gam in t_erfa_c.c t_p06e"
+value = "0.1398077115963754987e-5"
+unit = "rad"
+kind = "computed-reference"
+source = "ERFA 2.0.1 regression test t_p06e in src/t_erfa_c.c: vvd(gam, expected, dval). Value and tolerance (dval) are copied verbatim from that call; the call arguments are repeated, line-marked, in the test."
+citation = "liberfa/erfa v2.0.1 (BSD-3-Clause, NumFOCUS Foundation), src/t_erfa_c.c, release tarball erfa-2.0.1.tar.xz sha256 45111f0addf6ef69345aaf093bd054705b41ac2db7541dd3f0e105362c8e20e4; t_erfa_c.c sha256 8a92d0099c48df31ca566bea881c19497dc295dba58dba7136cc2f8443c31f15"
+retrieved = "2026-10-15"
+generated_by = "liberfa/erfa:src/t_erfa_c.c@9915ba38c9365f8b0738269b8c2ac1fdd5f8dee3"
+engine = { name = "ERFA t_erfa_c reference values", version = "ERFA 2.0.1 (SOFA 20231011)", settings = "C double; arguments as in the cited call" }
+tolerance = { abs = 1e-14 }
+tolerance_rationale = "ERFA's own acceptance tolerance (dval) for this output in t_erfa_c.c, unchanged (DEP-009: reproduce ERFA's reference values). abs = 0 means ERFA requires an exact result."
+verified_by = "WP9 builder agent, 2026-10-15: value and dval extracted mechanically from the ERFA 2.0.1 t_erfa_c.c listed in citation (regex over the vvd calls), before the first run of the port."
+
+[[vector]]
+id = "ERFA-T-P06E-PHI"
+requirement = ["DEP-009", "LIC-004"]
+quantity = "eraP06e output phi in t_erfa_c.c t_p06e"
+value = "0.4090864090837462602"
+unit = "rad"
+kind = "computed-reference"
+source = "ERFA 2.0.1 regression test t_p06e in src/t_erfa_c.c: vvd(phi, expected, dval). Value and tolerance (dval) are copied verbatim from that call; the call arguments are repeated, line-marked, in the test."
+citation = "liberfa/erfa v2.0.1 (BSD-3-Clause, NumFOCUS Foundation), src/t_erfa_c.c, release tarball erfa-2.0.1.tar.xz sha256 45111f0addf6ef69345aaf093bd054705b41ac2db7541dd3f0e105362c8e20e4; t_erfa_c.c sha256 8a92d0099c48df31ca566bea881c19497dc295dba58dba7136cc2f8443c31f15"
+retrieved = "2026-10-15"
+generated_by = "liberfa/erfa:src/t_erfa_c.c@9915ba38c9365f8b0738269b8c2ac1fdd5f8dee3"
+engine = { name = "ERFA t_erfa_c reference values", version = "ERFA 2.0.1 (SOFA 20231011)", settings = "C double; arguments as in the cited call" }
+tolerance = { abs = 1e-14 }
+tolerance_rationale = "ERFA's own acceptance tolerance (dval) for this output in t_erfa_c.c, unchanged (DEP-009: reproduce ERFA's reference values). abs = 0 means ERFA requires an exact result."
+verified_by = "WP9 builder agent, 2026-10-15: value and dval extracted mechanically from the ERFA 2.0.1 t_erfa_c.c listed in citation (regex over the vvd calls), before the first run of the port."
+
+[[vector]]
+id = "ERFA-T-P06E-PSI"
+requirement = ["DEP-009", "LIC-004"]
+quantity = "eraP06e output psi in t_erfa_c.c t_p06e"
+value = "0.6664464807480920325e-3"
+unit = "rad"
+kind = "computed-reference"
+source = "ERFA 2.0.1 regression test t_p06e in src/t_erfa_c.c: vvd(psi, expected, dval). Value and tolerance (dval) are copied verbatim from that call; the call arguments are repeated, line-marked, in the test."
+citation = "liberfa/erfa v2.0.1 (BSD-3-Clause, NumFOCUS Foundation), src/t_erfa_c.c, release tarball erfa-2.0.1.tar.xz sha256 45111f0addf6ef69345aaf093bd054705b41ac2db7541dd3f0e105362c8e20e4; t_erfa_c.c sha256 8a92d0099c48df31ca566bea881c19497dc295dba58dba7136cc2f8443c31f15"
+retrieved = "2026-10-15"
+generated_by = "liberfa/erfa:src/t_erfa_c.c@9915ba38c9365f8b0738269b8c2ac1fdd5f8dee3"
+engine = { name = "ERFA t_erfa_c reference values", version = "ERFA 2.0.1 (SOFA 20231011)", settings = "C double; arguments as in the cited call" }
+tolerance = { abs = 1e-14 }
+tolerance_rationale = "ERFA's own acceptance tolerance (dval) for this output in t_erfa_c.c, unchanged (DEP-009: reproduce ERFA's reference values). abs = 0 means ERFA requires an exact result."
+verified_by = "WP9 builder agent, 2026-10-15: value and dval extracted mechanically from the ERFA 2.0.1 t_erfa_c.c listed in citation (regex over the vvd calls), before the first run of the port."
+
+[[vector]]
+id = "ERFA-T-PFW06-GAMB"
+requirement = ["DEP-009", "LIC-004"]
+quantity = "eraPfw06 output gamb in t_erfa_c.c t_pfw06"
+value = "-0.2243387670997995690e-5"
+unit = "rad"
+kind = "computed-reference"
+source = "ERFA 2.0.1 regression test t_pfw06 in src/t_erfa_c.c: vvd(gamb, expected, dval). Value and tolerance (dval) are copied verbatim from that call; the call arguments are repeated, line-marked, in the test."
+citation = "liberfa/erfa v2.0.1 (BSD-3-Clause, NumFOCUS Foundation), src/t_erfa_c.c, release tarball erfa-2.0.1.tar.xz sha256 45111f0addf6ef69345aaf093bd054705b41ac2db7541dd3f0e105362c8e20e4; t_erfa_c.c sha256 8a92d0099c48df31ca566bea881c19497dc295dba58dba7136cc2f8443c31f15"
+retrieved = "2026-10-15"
+generated_by = "liberfa/erfa:src/t_erfa_c.c@9915ba38c9365f8b0738269b8c2ac1fdd5f8dee3"
+engine = { name = "ERFA t_erfa_c reference values", version = "ERFA 2.0.1 (SOFA 20231011)", settings = "C double; arguments as in the cited call" }
+tolerance = { abs = 1e-16 }
+tolerance_rationale = "ERFA's own acceptance tolerance (dval) for this output in t_erfa_c.c, unchanged (DEP-009: reproduce ERFA's reference values). abs = 0 means ERFA requires an exact result."
+verified_by = "WP9 builder agent, 2026-10-15: value and dval extracted mechanically from the ERFA 2.0.1 t_erfa_c.c listed in citation (regex over the vvd calls), before the first run of the port."
+
+[[vector]]
+id = "ERFA-T-PFW06-PHIB"
+requirement = ["DEP-009", "LIC-004"]
+quantity = "eraPfw06 output phib in t_erfa_c.c t_pfw06"
+value = "0.4091014602391312808"
+unit = "rad"
+kind = "computed-reference"
+source = "ERFA 2.0.1 regression test t_pfw06 in src/t_erfa_c.c: vvd(phib, expected, dval). Value and tolerance (dval) are copied verbatim from that call; the call arguments are repeated, line-marked, in the test."
+citation = "liberfa/erfa v2.0.1 (BSD-3-Clause, NumFOCUS Foundation), src/t_erfa_c.c, release tarball erfa-2.0.1.tar.xz sha256 45111f0addf6ef69345aaf093bd054705b41ac2db7541dd3f0e105362c8e20e4; t_erfa_c.c sha256 8a92d0099c48df31ca566bea881c19497dc295dba58dba7136cc2f8443c31f15"
+retrieved = "2026-10-15"
+generated_by = "liberfa/erfa:src/t_erfa_c.c@9915ba38c9365f8b0738269b8c2ac1fdd5f8dee3"
+engine = { name = "ERFA t_erfa_c reference values", version = "ERFA 2.0.1 (SOFA 20231011)", settings = "C double; arguments as in the cited call" }
+tolerance = { abs = 1e-12 }
+tolerance_rationale = "ERFA's own acceptance tolerance (dval) for this output in t_erfa_c.c, unchanged (DEP-009: reproduce ERFA's reference values). abs = 0 means ERFA requires an exact result."
+verified_by = "WP9 builder agent, 2026-10-15: value and dval extracted mechanically from the ERFA 2.0.1 t_erfa_c.c listed in citation (regex over the vvd calls), before the first run of the port."
+
+[[vector]]
+id = "ERFA-T-PFW06-PSIB"
+requirement = ["DEP-009", "LIC-004"]
+quantity = "eraPfw06 output psib in t_erfa_c.c t_pfw06"
+value = "-0.9501954178013031895e-3"
+unit = "rad"
+kind = "computed-reference"
+source = "ERFA 2.0.1 regression test t_pfw06 in src/t_erfa_c.c: vvd(psib, expected, dval). Value and tolerance (dval) are copied verbatim from that call; the call arguments are repeated, line-marked, in the test."
+citation = "liberfa/erfa v2.0.1 (BSD-3-Clause, NumFOCUS Foundation), src/t_erfa_c.c, release tarball erfa-2.0.1.tar.xz sha256 45111f0addf6ef69345aaf093bd054705b41ac2db7541dd3f0e105362c8e20e4; t_erfa_c.c sha256 8a92d0099c48df31ca566bea881c19497dc295dba58dba7136cc2f8443c31f15"
+retrieved = "2026-10-15"
+generated_by = "liberfa/erfa:src/t_erfa_c.c@9915ba38c9365f8b0738269b8c2ac1fdd5f8dee3"
+engine = { name = "ERFA t_erfa_c reference values", version = "ERFA 2.0.1 (SOFA 20231011)", settings = "C double; arguments as in the cited call" }
+tolerance = { abs = 1e-14 }
+tolerance_rationale = "ERFA's own acceptance tolerance (dval) for this output in t_erfa_c.c, unchanged (DEP-009: reproduce ERFA's reference values). abs = 0 means ERFA requires an exact result."
+verified_by = "WP9 builder agent, 2026-10-15: value and dval extracted mechanically from the ERFA 2.0.1 t_erfa_c.c listed in citation (regex over the vvd calls), before the first run of the port."
+
+[[vector]]
+id = "ERFA-T-PFW06-EPSA"
+requirement = ["DEP-009", "LIC-004"]
+quantity = "eraPfw06 output epsa in t_erfa_c.c t_pfw06"
+value = "0.4091014316587367491"
+unit = "rad"
+kind = "computed-reference"
+source = "ERFA 2.0.1 regression test t_pfw06 in src/t_erfa_c.c: vvd(epsa, expected, dval). Value and tolerance (dval) are copied verbatim from that call; the call arguments are repeated, line-marked, in the test."
+citation = "liberfa/erfa v2.0.1 (BSD-3-Clause, NumFOCUS Foundation), src/t_erfa_c.c, release tarball erfa-2.0.1.tar.xz sha256 45111f0addf6ef69345aaf093bd054705b41ac2db7541dd3f0e105362c8e20e4; t_erfa_c.c sha256 8a92d0099c48df31ca566bea881c19497dc295dba58dba7136cc2f8443c31f15"
+retrieved = "2026-10-15"
+generated_by = "liberfa/erfa:src/t_erfa_c.c@9915ba38c9365f8b0738269b8c2ac1fdd5f8dee3"
+engine = { name = "ERFA t_erfa_c reference values", version = "ERFA 2.0.1 (SOFA 20231011)", settings = "C double; arguments as in the cited call" }
+tolerance = { abs = 1e-12 }
+tolerance_rationale = "ERFA's own acceptance tolerance (dval) for this output in t_erfa_c.c, unchanged (DEP-009: reproduce ERFA's reference values). abs = 0 means ERFA requires an exact result."
+verified_by = "WP9 builder agent, 2026-10-15: value and dval extracted mechanically from the ERFA 2.0.1 t_erfa_c.c listed in citation (regex over the vvd calls), before the first run of the port."
+
+[[vector]]
+id = "ERFA-T-FW2M-11"
+requirement = ["DEP-009", "LIC-004"]
+quantity = "eraFw2m output r[0][0] in t_erfa_c.c t_fw2m"
+value = "0.9999995505176007047"
+unit = "1"
+kind = "computed-reference"
+source = "ERFA 2.0.1 regression test t_fw2m in src/t_erfa_c.c: vvd(r[0][0], expected, dval). Value and tolerance (dval) are copied verbatim from that call; the call arguments are repeated, line-marked, in the test."
+citation = "liberfa/erfa v2.0.1 (BSD-3-Clause, NumFOCUS Foundation), src/t_erfa_c.c, release tarball erfa-2.0.1.tar.xz sha256 45111f0addf6ef69345aaf093bd054705b41ac2db7541dd3f0e105362c8e20e4; t_erfa_c.c sha256 8a92d0099c48df31ca566bea881c19497dc295dba58dba7136cc2f8443c31f15"
+retrieved = "2026-10-15"
+generated_by = "liberfa/erfa:src/t_erfa_c.c@9915ba38c9365f8b0738269b8c2ac1fdd5f8dee3"
+engine = { name = "ERFA t_erfa_c reference values", version = "ERFA 2.0.1 (SOFA 20231011)", settings = "C double; arguments as in the cited call" }
+tolerance = { abs = 1e-12 }
+tolerance_rationale = "ERFA's own acceptance tolerance (dval) for this output in t_erfa_c.c, unchanged (DEP-009: reproduce ERFA's reference values). abs = 0 means ERFA requires an exact result."
+verified_by = "WP9 builder agent, 2026-10-15: value and dval extracted mechanically from the ERFA 2.0.1 t_erfa_c.c listed in citation (regex over the vvd calls), before the first run of the port."
+
+[[vector]]
+id = "ERFA-T-FW2M-12"
+requirement = ["DEP-009", "LIC-004"]
+quantity = "eraFw2m output r[0][1] in t_erfa_c.c t_fw2m"
+value = "0.8695404617348192957e-3"
+unit = "1"
+kind = "computed-reference"
+source = "ERFA 2.0.1 regression test t_fw2m in src/t_erfa_c.c: vvd(r[0][1], expected, dval). Value and tolerance (dval) are copied verbatim from that call; the call arguments are repeated, line-marked, in the test."
+citation = "liberfa/erfa v2.0.1 (BSD-3-Clause, NumFOCUS Foundation), src/t_erfa_c.c, release tarball erfa-2.0.1.tar.xz sha256 45111f0addf6ef69345aaf093bd054705b41ac2db7541dd3f0e105362c8e20e4; t_erfa_c.c sha256 8a92d0099c48df31ca566bea881c19497dc295dba58dba7136cc2f8443c31f15"
+retrieved = "2026-10-15"
+generated_by = "liberfa/erfa:src/t_erfa_c.c@9915ba38c9365f8b0738269b8c2ac1fdd5f8dee3"
+engine = { name = "ERFA t_erfa_c reference values", version = "ERFA 2.0.1 (SOFA 20231011)", settings = "C double; arguments as in the cited call" }
+tolerance = { abs = 1e-12 }
+tolerance_rationale = "ERFA's own acceptance tolerance (dval) for this output in t_erfa_c.c, unchanged (DEP-009: reproduce ERFA's reference values). abs = 0 means ERFA requires an exact result."
+verified_by = "WP9 builder agent, 2026-10-15: value and dval extracted mechanically from the ERFA 2.0.1 t_erfa_c.c listed in citation (regex over the vvd calls), before the first run of the port."
+
+[[vector]]
+id = "ERFA-T-FW2M-13"
+requirement = ["DEP-009", "LIC-004"]
+quantity = "eraFw2m output r[0][2] in t_erfa_c.c t_fw2m"
+value = "0.3779735201865582571e-3"
+unit = "1"
+kind = "computed-reference"
+source = "ERFA 2.0.1 regression test t_fw2m in src/t_erfa_c.c: vvd(r[0][2], expected, dval). Value and tolerance (dval) are copied verbatim from that call; the call arguments are repeated, line-marked, in the test."
+citation = "liberfa/erfa v2.0.1 (BSD-3-Clause, NumFOCUS Foundation), src/t_erfa_c.c, release tarball erfa-2.0.1.tar.xz sha256 45111f0addf6ef69345aaf093bd054705b41ac2db7541dd3f0e105362c8e20e4; t_erfa_c.c sha256 8a92d0099c48df31ca566bea881c19497dc295dba58dba7136cc2f8443c31f15"
+retrieved = "2026-10-15"
+generated_by = "liberfa/erfa:src/t_erfa_c.c@9915ba38c9365f8b0738269b8c2ac1fdd5f8dee3"
+engine = { name = "ERFA t_erfa_c reference values", version = "ERFA 2.0.1 (SOFA 20231011)", settings = "C double; arguments as in the cited call" }
+tolerance = { abs = 1e-12 }
+tolerance_rationale = "ERFA's own acceptance tolerance (dval) for this output in t_erfa_c.c, unchanged (DEP-009: reproduce ERFA's reference values). abs = 0 means ERFA requires an exact result."
+verified_by = "WP9 builder agent, 2026-10-15: value and dval extracted mechanically from the ERFA 2.0.1 t_erfa_c.c listed in citation (regex over the vvd calls), before the first run of the port."
+
+[[vector]]
+id = "ERFA-T-FW2M-21"
+requirement = ["DEP-009", "LIC-004"]
+quantity = "eraFw2m output r[1][0] in t_erfa_c.c t_fw2m"
+value = "-0.8695404723772016038e-3"
+unit = "1"
+kind = "computed-reference"
+source = "ERFA 2.0.1 regression test t_fw2m in src/t_erfa_c.c: vvd(r[1][0], expected, dval). Value and tolerance (dval) are copied verbatim from that call; the call arguments are repeated, line-marked, in the test."
+citation = "liberfa/erfa v2.0.1 (BSD-3-Clause, NumFOCUS Foundation), src/t_erfa_c.c, release tarball erfa-2.0.1.tar.xz sha256 45111f0addf6ef69345aaf093bd054705b41ac2db7541dd3f0e105362c8e20e4; t_erfa_c.c sha256 8a92d0099c48df31ca566bea881c19497dc295dba58dba7136cc2f8443c31f15"
+retrieved = "2026-10-15"
+generated_by = "liberfa/erfa:src/t_erfa_c.c@9915ba38c9365f8b0738269b8c2ac1fdd5f8dee3"
+engine = { name = "ERFA t_erfa_c reference values", version = "ERFA 2.0.1 (SOFA 20231011)", settings = "C double; arguments as in the cited call" }
+tolerance = { abs = 1e-12 }
+tolerance_rationale = "ERFA's own acceptance tolerance (dval) for this output in t_erfa_c.c, unchanged (DEP-009: reproduce ERFA's reference values). abs = 0 means ERFA requires an exact result."
+verified_by = "WP9 builder agent, 2026-10-15: value and dval extracted mechanically from the ERFA 2.0.1 t_erfa_c.c listed in citation (regex over the vvd calls), before the first run of the port."
+
+[[vector]]
+id = "ERFA-T-FW2M-22"
+requirement = ["DEP-009", "LIC-004"]
+quantity = "eraFw2m output r[1][1] in t_erfa_c.c t_fw2m"
+value = "0.9999996219496027161"
+unit = "1"
+kind = "computed-reference"
+source = "ERFA 2.0.1 regression test t_fw2m in src/t_erfa_c.c: vvd(r[1][1], expected, dval). Value and tolerance (dval) are copied verbatim from that call; the call arguments are repeated, line-marked, in the test."
+citation = "liberfa/erfa v2.0.1 (BSD-3-Clause, NumFOCUS Foundation), src/t_erfa_c.c, release tarball erfa-2.0.1.tar.xz sha256 45111f0addf6ef69345aaf093bd054705b41ac2db7541dd3f0e105362c8e20e4; t_erfa_c.c sha256 8a92d0099c48df31ca566bea881c19497dc295dba58dba7136cc2f8443c31f15"
+retrieved = "2026-10-15"
+generated_by = "liberfa/erfa:src/t_erfa_c.c@9915ba38c9365f8b0738269b8c2ac1fdd5f8dee3"
+engine = { name = "ERFA t_erfa_c reference values", version = "ERFA 2.0.1 (SOFA 20231011)", settings = "C double; arguments as in the cited call" }
+tolerance = { abs = 1e-12 }
+tolerance_rationale = "ERFA's own acceptance tolerance (dval) for this output in t_erfa_c.c, unchanged (DEP-009: reproduce ERFA's reference values). abs = 0 means ERFA requires an exact result."
+verified_by = "WP9 builder agent, 2026-10-15: value and dval extracted mechanically from the ERFA 2.0.1 t_erfa_c.c listed in citation (regex over the vvd calls), before the first run of the port."
+
+[[vector]]
+id = "ERFA-T-FW2M-23"
+requirement = ["DEP-009", "LIC-004"]
+quantity = "eraFw2m output r[1][2] in t_erfa_c.c t_fw2m"
+value = "-0.1361752496887100026e-6"
+unit = "1"
+kind = "computed-reference"
+source = "ERFA 2.0.1 regression test t_fw2m in src/t_erfa_c.c: vvd(r[1][2], expected, dval). Value and tolerance (dval) are copied verbatim from that call; the call arguments are repeated, line-marked, in the test."
+citation = "liberfa/erfa v2.0.1 (BSD-3-Clause, NumFOCUS Foundation), src/t_erfa_c.c, release tarball erfa-2.0.1.tar.xz sha256 45111f0addf6ef69345aaf093bd054705b41ac2db7541dd3f0e105362c8e20e4; t_erfa_c.c sha256 8a92d0099c48df31ca566bea881c19497dc295dba58dba7136cc2f8443c31f15"
+retrieved = "2026-10-15"
+generated_by = "liberfa/erfa:src/t_erfa_c.c@9915ba38c9365f8b0738269b8c2ac1fdd5f8dee3"
+engine = { name = "ERFA t_erfa_c reference values", version = "ERFA 2.0.1 (SOFA 20231011)", settings = "C double; arguments as in the cited call" }
+tolerance = { abs = 1e-12 }
+tolerance_rationale = "ERFA's own acceptance tolerance (dval) for this output in t_erfa_c.c, unchanged (DEP-009: reproduce ERFA's reference values). abs = 0 means ERFA requires an exact result."
+verified_by = "WP9 builder agent, 2026-10-15: value and dval extracted mechanically from the ERFA 2.0.1 t_erfa_c.c listed in citation (regex over the vvd calls), before the first run of the port."
+
+[[vector]]
+id = "ERFA-T-FW2M-31"
+requirement = ["DEP-009", "LIC-004"]
+quantity = "eraFw2m output r[2][0] in t_erfa_c.c t_fw2m"
+value = "-0.3779734957034082790e-3"
+unit = "1"
+kind = "computed-reference"
+source = "ERFA 2.0.1 regression test t_fw2m in src/t_erfa_c.c: vvd(r[2][0], expected, dval). Value and tolerance (dval) are copied verbatim from that call; the call arguments are repeated, line-marked, in the test."
+citation = "liberfa/erfa v2.0.1 (BSD-3-Clause, NumFOCUS Foundation), src/t_erfa_c.c, release tarball erfa-2.0.1.tar.xz sha256 45111f0addf6ef69345aaf093bd054705b41ac2db7541dd3f0e105362c8e20e4; t_erfa_c.c sha256 8a92d0099c48df31ca566bea881c19497dc295dba58dba7136cc2f8443c31f15"
+retrieved = "2026-10-15"
+generated_by = "liberfa/erfa:src/t_erfa_c.c@9915ba38c9365f8b0738269b8c2ac1fdd5f8dee3"
+engine = { name = "ERFA t_erfa_c reference values", version = "ERFA 2.0.1 (SOFA 20231011)", settings = "C double; arguments as in the cited call" }
+tolerance = { abs = 1e-12 }
+tolerance_rationale = "ERFA's own acceptance tolerance (dval) for this output in t_erfa_c.c, unchanged (DEP-009: reproduce ERFA's reference values). abs = 0 means ERFA requires an exact result."
+verified_by = "WP9 builder agent, 2026-10-15: value and dval extracted mechanically from the ERFA 2.0.1 t_erfa_c.c listed in citation (regex over the vvd calls), before the first run of the port."
+
+[[vector]]
+id = "ERFA-T-FW2M-32"
+requirement = ["DEP-009", "LIC-004"]
+quantity = "eraFw2m output r[2][1] in t_erfa_c.c t_fw2m"
+value = "-0.1924880848087615651e-6"
+unit = "1"
+kind = "computed-reference"
+source = "ERFA 2.0.1 regression test t_fw2m in src/t_erfa_c.c: vvd(r[2][1], expected, dval). Value and tolerance (dval) are copied verbatim from that call; the call arguments are repeated, line-marked, in the test."
+citation = "liberfa/erfa v2.0.1 (BSD-3-Clause, NumFOCUS Foundation), src/t_erfa_c.c, release tarball erfa-2.0.1.tar.xz sha256 45111f0addf6ef69345aaf093bd054705b41ac2db7541dd3f0e105362c8e20e4; t_erfa_c.c sha256 8a92d0099c48df31ca566bea881c19497dc295dba58dba7136cc2f8443c31f15"
+retrieved = "2026-10-15"
+generated_by = "liberfa/erfa:src/t_erfa_c.c@9915ba38c9365f8b0738269b8c2ac1fdd5f8dee3"
+engine = { name = "ERFA t_erfa_c reference values", version = "ERFA 2.0.1 (SOFA 20231011)", settings = "C double; arguments as in the cited call" }
+tolerance = { abs = 1e-12 }
+tolerance_rationale = "ERFA's own acceptance tolerance (dval) for this output in t_erfa_c.c, unchanged (DEP-009: reproduce ERFA's reference values). abs = 0 means ERFA requires an exact result."
+verified_by = "WP9 builder agent, 2026-10-15: value and dval extracted mechanically from the ERFA 2.0.1 t_erfa_c.c listed in citation (regex over the vvd calls), before the first run of the port."
+
+[[vector]]
+id = "ERFA-T-FW2M-33"
+requirement = ["DEP-009", "LIC-004"]
+quantity = "eraFw2m output r[2][2] in t_erfa_c.c t_fw2m"
+value = "0.9999999285679971958"
+unit = "1"
+kind = "computed-reference"
+source = "ERFA 2.0.1 regression test t_fw2m in src/t_erfa_c.c: vvd(r[2][2], expected, dval). Value and tolerance (dval) are copied verbatim from that call; the call arguments are repeated, line-marked, in the test."
+citation = "liberfa/erfa v2.0.1 (BSD-3-Clause, NumFOCUS Foundation), src/t_erfa_c.c, release tarball erfa-2.0.1.tar.xz sha256 45111f0addf6ef69345aaf093bd054705b41ac2db7541dd3f0e105362c8e20e4; t_erfa_c.c sha256 8a92d0099c48df31ca566bea881c19497dc295dba58dba7136cc2f8443c31f15"
+retrieved = "2026-10-15"
+generated_by = "liberfa/erfa:src/t_erfa_c.c@9915ba38c9365f8b0738269b8c2ac1fdd5f8dee3"
+engine = { name = "ERFA t_erfa_c reference values", version = "ERFA 2.0.1 (SOFA 20231011)", settings = "C double; arguments as in the cited call" }
+tolerance = { abs = 1e-12 }
+tolerance_rationale = "ERFA's own acceptance tolerance (dval) for this output in t_erfa_c.c, unchanged (DEP-009: reproduce ERFA's reference values). abs = 0 means ERFA requires an exact result."
+verified_by = "WP9 builder agent, 2026-10-15: value and dval extracted mechanically from the ERFA 2.0.1 t_erfa_c.c listed in citation (regex over the vvd calls), before the first run of the port."
+
+[[vector]]
+id = "ERFA-T-PMAT06-11"
+requirement = ["DEP-009", "LIC-004"]
+quantity = "eraPmat06 output rbp[0][0] in t_erfa_c.c t_pmat06"
+value = "0.9999995505176007047"
+unit = "1"
+kind = "computed-reference"
+source = "ERFA 2.0.1 regression test t_pmat06 in src/t_erfa_c.c: vvd(rbp[0][0], expected, dval). Value and tolerance (dval) are copied verbatim from that call; the call arguments are repeated, line-marked, in the test."
+citation = "liberfa/erfa v2.0.1 (BSD-3-Clause, NumFOCUS Foundation), src/t_erfa_c.c, release tarball erfa-2.0.1.tar.xz sha256 45111f0addf6ef69345aaf093bd054705b41ac2db7541dd3f0e105362c8e20e4; t_erfa_c.c sha256 8a92d0099c48df31ca566bea881c19497dc295dba58dba7136cc2f8443c31f15"
+retrieved = "2026-10-15"
+generated_by = "liberfa/erfa:src/t_erfa_c.c@9915ba38c9365f8b0738269b8c2ac1fdd5f8dee3"
+engine = { name = "ERFA t_erfa_c reference values", version = "ERFA 2.0.1 (SOFA 20231011)", settings = "C double; arguments as in the cited call" }
+tolerance = { abs = 1e-12 }
+tolerance_rationale = "ERFA's own acceptance tolerance (dval) for this output in t_erfa_c.c, unchanged (DEP-009: reproduce ERFA's reference values). abs = 0 means ERFA requires an exact result."
+verified_by = "WP9 builder agent, 2026-10-15: value and dval extracted mechanically from the ERFA 2.0.1 t_erfa_c.c listed in citation (regex over the vvd calls), before the first run of the port."
+
+[[vector]]
+id = "ERFA-T-PMAT06-12"
+requirement = ["DEP-009", "LIC-004"]
+quantity = "eraPmat06 output rbp[0][1] in t_erfa_c.c t_pmat06"
+value = "0.8695404617348208406e-3"
+unit = "1"
+kind = "computed-reference"
+source = "ERFA 2.0.1 regression test t_pmat06 in src/t_erfa_c.c: vvd(rbp[0][1], expected, dval). Value and tolerance (dval) are copied verbatim from that call; the call arguments are repeated, line-marked, in the test."
+citation = "liberfa/erfa v2.0.1 (BSD-3-Clause, NumFOCUS Foundation), src/t_erfa_c.c, release tarball erfa-2.0.1.tar.xz sha256 45111f0addf6ef69345aaf093bd054705b41ac2db7541dd3f0e105362c8e20e4; t_erfa_c.c sha256 8a92d0099c48df31ca566bea881c19497dc295dba58dba7136cc2f8443c31f15"
+retrieved = "2026-10-15"
+generated_by = "liberfa/erfa:src/t_erfa_c.c@9915ba38c9365f8b0738269b8c2ac1fdd5f8dee3"
+engine = { name = "ERFA t_erfa_c reference values", version = "ERFA 2.0.1 (SOFA 20231011)", settings = "C double; arguments as in the cited call" }
+tolerance = { abs = 1e-14 }
+tolerance_rationale = "ERFA's own acceptance tolerance (dval) for this output in t_erfa_c.c, unchanged (DEP-009: reproduce ERFA's reference values). abs = 0 means ERFA requires an exact result."
+verified_by = "WP9 builder agent, 2026-10-15: value and dval extracted mechanically from the ERFA 2.0.1 t_erfa_c.c listed in citation (regex over the vvd calls), before the first run of the port."
+
+[[vector]]
+id = "ERFA-T-PMAT06-13"
+requirement = ["DEP-009", "LIC-004"]
+quantity = "eraPmat06 output rbp[0][2] in t_erfa_c.c t_pmat06"
+value = "0.3779735201865589104e-3"
+unit = "1"
+kind = "computed-reference"
+source = "ERFA 2.0.1 regression test t_pmat06 in src/t_erfa_c.c: vvd(rbp[0][2], expected, dval). Value and tolerance (dval) are copied verbatim from that call; the call arguments are repeated, line-marked, in the test."
+citation = "liberfa/erfa v2.0.1 (BSD-3-Clause, NumFOCUS Foundation), src/t_erfa_c.c, release tarball erfa-2.0.1.tar.xz sha256 45111f0addf6ef69345aaf093bd054705b41ac2db7541dd3f0e105362c8e20e4; t_erfa_c.c sha256 8a92d0099c48df31ca566bea881c19497dc295dba58dba7136cc2f8443c31f15"
+retrieved = "2026-10-15"
+generated_by = "liberfa/erfa:src/t_erfa_c.c@9915ba38c9365f8b0738269b8c2ac1fdd5f8dee3"
+engine = { name = "ERFA t_erfa_c reference values", version = "ERFA 2.0.1 (SOFA 20231011)", settings = "C double; arguments as in the cited call" }
+tolerance = { abs = 1e-14 }
+tolerance_rationale = "ERFA's own acceptance tolerance (dval) for this output in t_erfa_c.c, unchanged (DEP-009: reproduce ERFA's reference values). abs = 0 means ERFA requires an exact result."
+verified_by = "WP9 builder agent, 2026-10-15: value and dval extracted mechanically from the ERFA 2.0.1 t_erfa_c.c listed in citation (regex over the vvd calls), before the first run of the port."
+
+[[vector]]
+id = "ERFA-T-PMAT06-21"
+requirement = ["DEP-009", "LIC-004"]
+quantity = "eraPmat06 output rbp[1][0] in t_erfa_c.c t_pmat06"
+value = "-0.8695404723772031414e-3"
+unit = "1"
+kind = "computed-reference"
+source = "ERFA 2.0.1 regression test t_pmat06 in src/t_erfa_c.c: vvd(rbp[1][0], expected, dval). Value and tolerance (dval) are copied verbatim from that call; the call arguments are repeated, line-marked, in the test."
+citation = "liberfa/erfa v2.0.1 (BSD-3-Clause, NumFOCUS Foundation), src/t_erfa_c.c, release tarball erfa-2.0.1.tar.xz sha256 45111f0addf6ef69345aaf093bd054705b41ac2db7541dd3f0e105362c8e20e4; t_erfa_c.c sha256 8a92d0099c48df31ca566bea881c19497dc295dba58dba7136cc2f8443c31f15"
+retrieved = "2026-10-15"
+generated_by = "liberfa/erfa:src/t_erfa_c.c@9915ba38c9365f8b0738269b8c2ac1fdd5f8dee3"
+engine = { name = "ERFA t_erfa_c reference values", version = "ERFA 2.0.1 (SOFA 20231011)", settings = "C double; arguments as in the cited call" }
+tolerance = { abs = 1e-14 }
+tolerance_rationale = "ERFA's own acceptance tolerance (dval) for this output in t_erfa_c.c, unchanged (DEP-009: reproduce ERFA's reference values). abs = 0 means ERFA requires an exact result."
+verified_by = "WP9 builder agent, 2026-10-15: value and dval extracted mechanically from the ERFA 2.0.1 t_erfa_c.c listed in citation (regex over the vvd calls), before the first run of the port."
+
+[[vector]]
+id = "ERFA-T-PMAT06-22"
+requirement = ["DEP-009", "LIC-004"]
+quantity = "eraPmat06 output rbp[1][1] in t_erfa_c.c t_pmat06"
+value = "0.9999996219496027161"
+unit = "1"
+kind = "computed-reference"
+source = "ERFA 2.0.1 regression test t_pmat06 in src/t_erfa_c.c: vvd(rbp[1][1], expected, dval). Value and tolerance (dval) are copied verbatim from that call; the call arguments are repeated, line-marked, in the test."
+citation = "liberfa/erfa v2.0.1 (BSD-3-Clause, NumFOCUS Foundation), src/t_erfa_c.c, release tarball erfa-2.0.1.tar.xz sha256 45111f0addf6ef69345aaf093bd054705b41ac2db7541dd3f0e105362c8e20e4; t_erfa_c.c sha256 8a92d0099c48df31ca566bea881c19497dc295dba58dba7136cc2f8443c31f15"
+retrieved = "2026-10-15"
+generated_by = "liberfa/erfa:src/t_erfa_c.c@9915ba38c9365f8b0738269b8c2ac1fdd5f8dee3"
+engine = { name = "ERFA t_erfa_c reference values", version = "ERFA 2.0.1 (SOFA 20231011)", settings = "C double; arguments as in the cited call" }
+tolerance = { abs = 1e-12 }
+tolerance_rationale = "ERFA's own acceptance tolerance (dval) for this output in t_erfa_c.c, unchanged (DEP-009: reproduce ERFA's reference values). abs = 0 means ERFA requires an exact result."
+verified_by = "WP9 builder agent, 2026-10-15: value and dval extracted mechanically from the ERFA 2.0.1 t_erfa_c.c listed in citation (regex over the vvd calls), before the first run of the port."
+
+[[vector]]
+id = "ERFA-T-PMAT06-23"
+requirement = ["DEP-009", "LIC-004"]
+quantity = "eraPmat06 output rbp[1][2] in t_erfa_c.c t_pmat06"
+value = "-0.1361752497080270143e-6"
+unit = "1"
+kind = "computed-reference"
+source = "ERFA 2.0.1 regression test t_pmat06 in src/t_erfa_c.c: vvd(rbp[1][2], expected, dval). Value and tolerance (dval) are copied verbatim from that call; the call arguments are repeated, line-marked, in the test."
+citation = "liberfa/erfa v2.0.1 (BSD-3-Clause, NumFOCUS Foundation), src/t_erfa_c.c, release tarball erfa-2.0.1.tar.xz sha256 45111f0addf6ef69345aaf093bd054705b41ac2db7541dd3f0e105362c8e20e4; t_erfa_c.c sha256 8a92d0099c48df31ca566bea881c19497dc295dba58dba7136cc2f8443c31f15"
+retrieved = "2026-10-15"
+generated_by = "liberfa/erfa:src/t_erfa_c.c@9915ba38c9365f8b0738269b8c2ac1fdd5f8dee3"
+engine = { name = "ERFA t_erfa_c reference values", version = "ERFA 2.0.1 (SOFA 20231011)", settings = "C double; arguments as in the cited call" }
+tolerance = { abs = 1e-14 }
+tolerance_rationale = "ERFA's own acceptance tolerance (dval) for this output in t_erfa_c.c, unchanged (DEP-009: reproduce ERFA's reference values). abs = 0 means ERFA requires an exact result."
+verified_by = "WP9 builder agent, 2026-10-15: value and dval extracted mechanically from the ERFA 2.0.1 t_erfa_c.c listed in citation (regex over the vvd calls), before the first run of the port."
+
+[[vector]]
+id = "ERFA-T-PMAT06-31"
+requirement = ["DEP-009", "LIC-004"]
+quantity = "eraPmat06 output rbp[2][0] in t_erfa_c.c t_pmat06"
+value = "-0.3779734957034089490e-3"
+unit = "1"
+kind = "computed-reference"
+source = "ERFA 2.0.1 regression test t_pmat06 in src/t_erfa_c.c: vvd(rbp[2][0], expected, dval). Value and tolerance (dval) are copied verbatim from that call; the call arguments are repeated, line-marked, in the test."
+citation = "liberfa/erfa v2.0.1 (BSD-3-Clause, NumFOCUS Foundation), src/t_erfa_c.c, release tarball erfa-2.0.1.tar.xz sha256 45111f0addf6ef69345aaf093bd054705b41ac2db7541dd3f0e105362c8e20e4; t_erfa_c.c sha256 8a92d0099c48df31ca566bea881c19497dc295dba58dba7136cc2f8443c31f15"
+retrieved = "2026-10-15"
+generated_by = "liberfa/erfa:src/t_erfa_c.c@9915ba38c9365f8b0738269b8c2ac1fdd5f8dee3"
+engine = { name = "ERFA t_erfa_c reference values", version = "ERFA 2.0.1 (SOFA 20231011)", settings = "C double; arguments as in the cited call" }
+tolerance = { abs = 1e-14 }
+tolerance_rationale = "ERFA's own acceptance tolerance (dval) for this output in t_erfa_c.c, unchanged (DEP-009: reproduce ERFA's reference values). abs = 0 means ERFA requires an exact result."
+verified_by = "WP9 builder agent, 2026-10-15: value and dval extracted mechanically from the ERFA 2.0.1 t_erfa_c.c listed in citation (regex over the vvd calls), before the first run of the port."
+
+[[vector]]
+id = "ERFA-T-PMAT06-32"
+requirement = ["DEP-009", "LIC-004"]
+quantity = "eraPmat06 output rbp[2][1] in t_erfa_c.c t_pmat06"
+value = "-0.1924880847894457113e-6"
+unit = "1"
+kind = "computed-reference"
+source = "ERFA 2.0.1 regression test t_pmat06 in src/t_erfa_c.c: vvd(rbp[2][1], expected, dval). Value and tolerance (dval) are copied verbatim from that call; the call arguments are repeated, line-marked, in the test."
+citation = "liberfa/erfa v2.0.1 (BSD-3-Clause, NumFOCUS Foundation), src/t_erfa_c.c, release tarball erfa-2.0.1.tar.xz sha256 45111f0addf6ef69345aaf093bd054705b41ac2db7541dd3f0e105362c8e20e4; t_erfa_c.c sha256 8a92d0099c48df31ca566bea881c19497dc295dba58dba7136cc2f8443c31f15"
+retrieved = "2026-10-15"
+generated_by = "liberfa/erfa:src/t_erfa_c.c@9915ba38c9365f8b0738269b8c2ac1fdd5f8dee3"
+engine = { name = "ERFA t_erfa_c reference values", version = "ERFA 2.0.1 (SOFA 20231011)", settings = "C double; arguments as in the cited call" }
+tolerance = { abs = 1e-14 }
+tolerance_rationale = "ERFA's own acceptance tolerance (dval) for this output in t_erfa_c.c, unchanged (DEP-009: reproduce ERFA's reference values). abs = 0 means ERFA requires an exact result."
+verified_by = "WP9 builder agent, 2026-10-15: value and dval extracted mechanically from the ERFA 2.0.1 t_erfa_c.c listed in citation (regex over the vvd calls), before the first run of the port."
+
+[[vector]]
+id = "ERFA-T-PMAT06-33"
+requirement = ["DEP-009", "LIC-004"]
+quantity = "eraPmat06 output rbp[2][2] in t_erfa_c.c t_pmat06"
+value = "0.9999999285679971958"
+unit = "1"
+kind = "computed-reference"
+source = "ERFA 2.0.1 regression test t_pmat06 in src/t_erfa_c.c: vvd(rbp[2][2], expected, dval). Value and tolerance (dval) are copied verbatim from that call; the call arguments are repeated, line-marked, in the test."
+citation = "liberfa/erfa v2.0.1 (BSD-3-Clause, NumFOCUS Foundation), src/t_erfa_c.c, release tarball erfa-2.0.1.tar.xz sha256 45111f0addf6ef69345aaf093bd054705b41ac2db7541dd3f0e105362c8e20e4; t_erfa_c.c sha256 8a92d0099c48df31ca566bea881c19497dc295dba58dba7136cc2f8443c31f15"
+retrieved = "2026-10-15"
+generated_by = "liberfa/erfa:src/t_erfa_c.c@9915ba38c9365f8b0738269b8c2ac1fdd5f8dee3"
+engine = { name = "ERFA t_erfa_c reference values", version = "ERFA 2.0.1 (SOFA 20231011)", settings = "C double; arguments as in the cited call" }
+tolerance = { abs = 1e-12 }
+tolerance_rationale = "ERFA's own acceptance tolerance (dval) for this output in t_erfa_c.c, unchanged (DEP-009: reproduce ERFA's reference values). abs = 0 means ERFA requires an exact result."
+verified_by = "WP9 builder agent, 2026-10-15: value and dval extracted mechanically from the ERFA 2.0.1 t_erfa_c.c listed in citation (regex over the vvd calls), before the first run of the port."
+
+[[vector]]
+id = "ERFA-T-ECM06-RM11"
+requirement = ["DEP-009", "LIC-004"]
+quantity = "eraEcm06 output rm[0][0] in t_erfa_c.c t_ecm06"
+value = "0.9999952427708701137"
+unit = "1"
+kind = "computed-reference"
+source = "ERFA 2.0.1 regression test t_ecm06 in src/t_erfa_c.c: vvd(rm[0][0], expected, dval). Value and tolerance (dval) are copied verbatim from that call; the call arguments are repeated, line-marked, in the test."
+citation = "liberfa/erfa v2.0.1 (BSD-3-Clause, NumFOCUS Foundation), src/t_erfa_c.c, release tarball erfa-2.0.1.tar.xz sha256 45111f0addf6ef69345aaf093bd054705b41ac2db7541dd3f0e105362c8e20e4; t_erfa_c.c sha256 8a92d0099c48df31ca566bea881c19497dc295dba58dba7136cc2f8443c31f15"
+retrieved = "2026-10-15"
+generated_by = "liberfa/erfa:src/t_erfa_c.c@9915ba38c9365f8b0738269b8c2ac1fdd5f8dee3"
+engine = { name = "ERFA t_erfa_c reference values", version = "ERFA 2.0.1 (SOFA 20231011)", settings = "C double; arguments as in the cited call" }
+tolerance = { abs = 1e-14 }
+tolerance_rationale = "ERFA's own acceptance tolerance (dval) for this output in t_erfa_c.c, unchanged (DEP-009: reproduce ERFA's reference values). abs = 0 means ERFA requires an exact result."
+verified_by = "WP9 builder agent, 2026-10-15: value and dval extracted mechanically from the ERFA 2.0.1 t_erfa_c.c listed in citation (regex over the vvd calls), before the first run of the port."
+
+[[vector]]
+id = "ERFA-T-ECM06-RM12"
+requirement = ["DEP-009", "LIC-004"]
+quantity = "eraEcm06 output rm[0][1] in t_erfa_c.c t_ecm06"
+value = "-0.2829062057663042347e-2"
+unit = "1"
+kind = "computed-reference"
+source = "ERFA 2.0.1 regression test t_ecm06 in src/t_erfa_c.c: vvd(rm[0][1], expected, dval). Value and tolerance (dval) are copied verbatim from that call; the call arguments are repeated, line-marked, in the test."
+citation = "liberfa/erfa v2.0.1 (BSD-3-Clause, NumFOCUS Foundation), src/t_erfa_c.c, release tarball erfa-2.0.1.tar.xz sha256 45111f0addf6ef69345aaf093bd054705b41ac2db7541dd3f0e105362c8e20e4; t_erfa_c.c sha256 8a92d0099c48df31ca566bea881c19497dc295dba58dba7136cc2f8443c31f15"
+retrieved = "2026-10-15"
+generated_by = "liberfa/erfa:src/t_erfa_c.c@9915ba38c9365f8b0738269b8c2ac1fdd5f8dee3"
+engine = { name = "ERFA t_erfa_c reference values", version = "ERFA 2.0.1 (SOFA 20231011)", settings = "C double; arguments as in the cited call" }
+tolerance = { abs = 1e-14 }
+tolerance_rationale = "ERFA's own acceptance tolerance (dval) for this output in t_erfa_c.c, unchanged (DEP-009: reproduce ERFA's reference values). abs = 0 means ERFA requires an exact result."
+verified_by = "WP9 builder agent, 2026-10-15: value and dval extracted mechanically from the ERFA 2.0.1 t_erfa_c.c listed in citation (regex over the vvd calls), before the first run of the port."
+
+[[vector]]
+id = "ERFA-T-ECM06-RM13"
+requirement = ["DEP-009", "LIC-004"]
+quantity = "eraEcm06 output rm[0][2] in t_erfa_c.c t_ecm06"
+value = "-0.1229163741100017629e-2"
+unit = "1"
+kind = "computed-reference"
+source = "ERFA 2.0.1 regression test t_ecm06 in src/t_erfa_c.c: vvd(rm[0][2], expected, dval). Value and tolerance (dval) are copied verbatim from that call; the call arguments are repeated, line-marked, in the test."
+citation = "liberfa/erfa v2.0.1 (BSD-3-Clause, NumFOCUS Foundation), src/t_erfa_c.c, release tarball erfa-2.0.1.tar.xz sha256 45111f0addf6ef69345aaf093bd054705b41ac2db7541dd3f0e105362c8e20e4; t_erfa_c.c sha256 8a92d0099c48df31ca566bea881c19497dc295dba58dba7136cc2f8443c31f15"
+retrieved = "2026-10-15"
+generated_by = "liberfa/erfa:src/t_erfa_c.c@9915ba38c9365f8b0738269b8c2ac1fdd5f8dee3"
+engine = { name = "ERFA t_erfa_c reference values", version = "ERFA 2.0.1 (SOFA 20231011)", settings = "C double; arguments as in the cited call" }
+tolerance = { abs = 1e-14 }
+tolerance_rationale = "ERFA's own acceptance tolerance (dval) for this output in t_erfa_c.c, unchanged (DEP-009: reproduce ERFA's reference values). abs = 0 means ERFA requires an exact result."
+verified_by = "WP9 builder agent, 2026-10-15: value and dval extracted mechanically from the ERFA 2.0.1 t_erfa_c.c listed in citation (regex over the vvd calls), before the first run of the port."
+
+[[vector]]
+id = "ERFA-T-ECM06-RM21"
+requirement = ["DEP-009", "LIC-004"]
+quantity = "eraEcm06 output rm[1][0] in t_erfa_c.c t_ecm06"
+value = "0.3084546876908653562e-2"
+unit = "1"
+kind = "computed-reference"
+source = "ERFA 2.0.1 regression test t_ecm06 in src/t_erfa_c.c: vvd(rm[1][0], expected, dval). Value and tolerance (dval) are copied verbatim from that call; the call arguments are repeated, line-marked, in the test."
+citation = "liberfa/erfa v2.0.1 (BSD-3-Clause, NumFOCUS Foundation), src/t_erfa_c.c, release tarball erfa-2.0.1.tar.xz sha256 45111f0addf6ef69345aaf093bd054705b41ac2db7541dd3f0e105362c8e20e4; t_erfa_c.c sha256 8a92d0099c48df31ca566bea881c19497dc295dba58dba7136cc2f8443c31f15"
+retrieved = "2026-10-15"
+generated_by = "liberfa/erfa:src/t_erfa_c.c@9915ba38c9365f8b0738269b8c2ac1fdd5f8dee3"
+engine = { name = "ERFA t_erfa_c reference values", version = "ERFA 2.0.1 (SOFA 20231011)", settings = "C double; arguments as in the cited call" }
+tolerance = { abs = 1e-14 }
+tolerance_rationale = "ERFA's own acceptance tolerance (dval) for this output in t_erfa_c.c, unchanged (DEP-009: reproduce ERFA's reference values). abs = 0 means ERFA requires an exact result."
+verified_by = "WP9 builder agent, 2026-10-15: value and dval extracted mechanically from the ERFA 2.0.1 t_erfa_c.c listed in citation (regex over the vvd calls), before the first run of the port."
+
+[[vector]]
+id = "ERFA-T-ECM06-RM22"
+requirement = ["DEP-009", "LIC-004"]
+quantity = "eraEcm06 output rm[1][1] in t_erfa_c.c t_ecm06"
+value = "0.9174891871550392514"
+unit = "1"
+kind = "computed-reference"
+source = "ERFA 2.0.1 regression test t_ecm06 in src/t_erfa_c.c: vvd(rm[1][1], expected, dval). Value and tolerance (dval) are copied verbatim from that call; the call arguments are repeated, line-marked, in the test."
+citation = "liberfa/erfa v2.0.1 (BSD-3-Clause, NumFOCUS Foundation), src/t_erfa_c.c, release tarball erfa-2.0.1.tar.xz sha256 45111f0addf6ef69345aaf093bd054705b41ac2db7541dd3f0e105362c8e20e4; t_erfa_c.c sha256 8a92d0099c48df31ca566bea881c19497dc295dba58dba7136cc2f8443c31f15"
+retrieved = "2026-10-15"
+generated_by = "liberfa/erfa:src/t_erfa_c.c@9915ba38c9365f8b0738269b8c2ac1fdd5f8dee3"
+engine = { name = "ERFA t_erfa_c reference values", version = "ERFA 2.0.1 (SOFA 20231011)", settings = "C double; arguments as in the cited call" }
+tolerance = { abs = 1e-14 }
+tolerance_rationale = "ERFA's own acceptance tolerance (dval) for this output in t_erfa_c.c, unchanged (DEP-009: reproduce ERFA's reference values). abs = 0 means ERFA requires an exact result."
+verified_by = "WP9 builder agent, 2026-10-15: value and dval extracted mechanically from the ERFA 2.0.1 t_erfa_c.c listed in citation (regex over the vvd calls), before the first run of the port."
+
+[[vector]]
+id = "ERFA-T-ECM06-RM23"
+requirement = ["DEP-009", "LIC-004"]
+quantity = "eraEcm06 output rm[1][2] in t_erfa_c.c t_ecm06"
+value = "0.3977487611849338124"
+unit = "1"
+kind = "computed-reference"
+source = "ERFA 2.0.1 regression test t_ecm06 in src/t_erfa_c.c: vvd(rm[1][2], expected, dval). Value and tolerance (dval) are copied verbatim from that call; the call arguments are repeated, line-marked, in the test."
+citation = "liberfa/erfa v2.0.1 (BSD-3-Clause, NumFOCUS Foundation), src/t_erfa_c.c, release tarball erfa-2.0.1.tar.xz sha256 45111f0addf6ef69345aaf093bd054705b41ac2db7541dd3f0e105362c8e20e4; t_erfa_c.c sha256 8a92d0099c48df31ca566bea881c19497dc295dba58dba7136cc2f8443c31f15"
+retrieved = "2026-10-15"
+generated_by = "liberfa/erfa:src/t_erfa_c.c@9915ba38c9365f8b0738269b8c2ac1fdd5f8dee3"
+engine = { name = "ERFA t_erfa_c reference values", version = "ERFA 2.0.1 (SOFA 20231011)", settings = "C double; arguments as in the cited call" }
+tolerance = { abs = 1e-14 }
+tolerance_rationale = "ERFA's own acceptance tolerance (dval) for this output in t_erfa_c.c, unchanged (DEP-009: reproduce ERFA's reference values). abs = 0 means ERFA requires an exact result."
+verified_by = "WP9 builder agent, 2026-10-15: value and dval extracted mechanically from the ERFA 2.0.1 t_erfa_c.c listed in citation (regex over the vvd calls), before the first run of the port."
+
+[[vector]]
+id = "ERFA-T-ECM06-RM31"
+requirement = ["DEP-009", "LIC-004"]
+quantity = "eraEcm06 output rm[2][0] in t_erfa_c.c t_ecm06"
+value = "0.2488512951527405928e-5"
+unit = "1"
+kind = "computed-reference"
+source = "ERFA 2.0.1 regression test t_ecm06 in src/t_erfa_c.c: vvd(rm[2][0], expected, dval). Value and tolerance (dval) are copied verbatim from that call; the call arguments are repeated, line-marked, in the test."
+citation = "liberfa/erfa v2.0.1 (BSD-3-Clause, NumFOCUS Foundation), src/t_erfa_c.c, release tarball erfa-2.0.1.tar.xz sha256 45111f0addf6ef69345aaf093bd054705b41ac2db7541dd3f0e105362c8e20e4; t_erfa_c.c sha256 8a92d0099c48df31ca566bea881c19497dc295dba58dba7136cc2f8443c31f15"
+retrieved = "2026-10-15"
+generated_by = "liberfa/erfa:src/t_erfa_c.c@9915ba38c9365f8b0738269b8c2ac1fdd5f8dee3"
+engine = { name = "ERFA t_erfa_c reference values", version = "ERFA 2.0.1 (SOFA 20231011)", settings = "C double; arguments as in the cited call" }
+tolerance = { abs = 1e-14 }
+tolerance_rationale = "ERFA's own acceptance tolerance (dval) for this output in t_erfa_c.c, unchanged (DEP-009: reproduce ERFA's reference values). abs = 0 means ERFA requires an exact result."
+verified_by = "WP9 builder agent, 2026-10-15: value and dval extracted mechanically from the ERFA 2.0.1 t_erfa_c.c listed in citation (regex over the vvd calls), before the first run of the port."
+
+[[vector]]
+id = "ERFA-T-ECM06-RM32"
+requirement = ["DEP-009", "LIC-004"]
+quantity = "eraEcm06 output rm[2][1] in t_erfa_c.c t_ecm06"
+value = "-0.3977506604161195467"
+unit = "1"
+kind = "computed-reference"
+source = "ERFA 2.0.1 regression test t_ecm06 in src/t_erfa_c.c: vvd(rm[2][1], expected, dval). Value and tolerance (dval) are copied verbatim from that call; the call arguments are repeated, line-marked, in the test."
+citation = "liberfa/erfa v2.0.1 (BSD-3-Clause, NumFOCUS Foundation), src/t_erfa_c.c, release tarball erfa-2.0.1.tar.xz sha256 45111f0addf6ef69345aaf093bd054705b41ac2db7541dd3f0e105362c8e20e4; t_erfa_c.c sha256 8a92d0099c48df31ca566bea881c19497dc295dba58dba7136cc2f8443c31f15"
+retrieved = "2026-10-15"
+generated_by = "liberfa/erfa:src/t_erfa_c.c@9915ba38c9365f8b0738269b8c2ac1fdd5f8dee3"
+engine = { name = "ERFA t_erfa_c reference values", version = "ERFA 2.0.1 (SOFA 20231011)", settings = "C double; arguments as in the cited call" }
+tolerance = { abs = 1e-14 }
+tolerance_rationale = "ERFA's own acceptance tolerance (dval) for this output in t_erfa_c.c, unchanged (DEP-009: reproduce ERFA's reference values). abs = 0 means ERFA requires an exact result."
+verified_by = "WP9 builder agent, 2026-10-15: value and dval extracted mechanically from the ERFA 2.0.1 t_erfa_c.c listed in citation (regex over the vvd calls), before the first run of the port."
+
+[[vector]]
+id = "ERFA-T-ECM06-RM33"
+requirement = ["DEP-009", "LIC-004"]
+quantity = "eraEcm06 output rm[2][2] in t_erfa_c.c t_ecm06"
+value = "0.9174935488232863071"
+unit = "1"
+kind = "computed-reference"
+source = "ERFA 2.0.1 regression test t_ecm06 in src/t_erfa_c.c: vvd(rm[2][2], expected, dval). Value and tolerance (dval) are copied verbatim from that call; the call arguments are repeated, line-marked, in the test."
+citation = "liberfa/erfa v2.0.1 (BSD-3-Clause, NumFOCUS Foundation), src/t_erfa_c.c, release tarball erfa-2.0.1.tar.xz sha256 45111f0addf6ef69345aaf093bd054705b41ac2db7541dd3f0e105362c8e20e4; t_erfa_c.c sha256 8a92d0099c48df31ca566bea881c19497dc295dba58dba7136cc2f8443c31f15"
+retrieved = "2026-10-15"
+generated_by = "liberfa/erfa:src/t_erfa_c.c@9915ba38c9365f8b0738269b8c2ac1fdd5f8dee3"
+engine = { name = "ERFA t_erfa_c reference values", version = "ERFA 2.0.1 (SOFA 20231011)", settings = "C double; arguments as in the cited call" }
+tolerance = { abs = 1e-14 }
+tolerance_rationale = "ERFA's own acceptance tolerance (dval) for this output in t_erfa_c.c, unchanged (DEP-009: reproduce ERFA's reference values). abs = 0 means ERFA requires an exact result."
+verified_by = "WP9 builder agent, 2026-10-15: value and dval extracted mechanically from the ERFA 2.0.1 t_erfa_c.c listed in citation (regex over the vvd calls), before the first run of the port."
+
+[[vector]]
+id = "ERFA-T-EQEC06-DL"
+requirement = ["DEP-009", "LIC-004"]
+quantity = "eraEqec06 output dl in t_erfa_c.c t_eqec06"
+value = "1.342509918994654619"
+unit = "rad"
+kind = "computed-reference"
+source = "ERFA 2.0.1 regression test t_eqec06 in src/t_erfa_c.c: vvd(dl, expected, dval). Value and tolerance (dval) are copied verbatim from that call; the call arguments are repeated, line-marked, in the test."
+citation = "liberfa/erfa v2.0.1 (BSD-3-Clause, NumFOCUS Foundation), src/t_erfa_c.c, release tarball erfa-2.0.1.tar.xz sha256 45111f0addf6ef69345aaf093bd054705b41ac2db7541dd3f0e105362c8e20e4; t_erfa_c.c sha256 8a92d0099c48df31ca566bea881c19497dc295dba58dba7136cc2f8443c31f15"
+retrieved = "2026-10-15"
+generated_by = "liberfa/erfa:src/t_erfa_c.c@9915ba38c9365f8b0738269b8c2ac1fdd5f8dee3"
+engine = { name = "ERFA t_erfa_c reference values", version = "ERFA 2.0.1 (SOFA 20231011)", settings = "C double; arguments as in the cited call" }
+tolerance = { abs = 1e-14 }
+tolerance_rationale = "ERFA's own acceptance tolerance (dval) for this output in t_erfa_c.c, unchanged (DEP-009: reproduce ERFA's reference values). abs = 0 means ERFA requires an exact result."
+verified_by = "WP9 builder agent, 2026-10-15: value and dval extracted mechanically from the ERFA 2.0.1 t_erfa_c.c listed in citation (regex over the vvd calls), before the first run of the port."
+
+[[vector]]
+id = "ERFA-T-EQEC06-DB"
+requirement = ["DEP-009", "LIC-004"]
+quantity = "eraEqec06 output db in t_erfa_c.c t_eqec06"
+value = "0.5926215259704608132"
+unit = "rad"
+kind = "computed-reference"
+source = "ERFA 2.0.1 regression test t_eqec06 in src/t_erfa_c.c: vvd(db, expected, dval). Value and tolerance (dval) are copied verbatim from that call; the call arguments are repeated, line-marked, in the test."
+citation = "liberfa/erfa v2.0.1 (BSD-3-Clause, NumFOCUS Foundation), src/t_erfa_c.c, release tarball erfa-2.0.1.tar.xz sha256 45111f0addf6ef69345aaf093bd054705b41ac2db7541dd3f0e105362c8e20e4; t_erfa_c.c sha256 8a92d0099c48df31ca566bea881c19497dc295dba58dba7136cc2f8443c31f15"
+retrieved = "2026-10-15"
+generated_by = "liberfa/erfa:src/t_erfa_c.c@9915ba38c9365f8b0738269b8c2ac1fdd5f8dee3"
+engine = { name = "ERFA t_erfa_c reference values", version = "ERFA 2.0.1 (SOFA 20231011)", settings = "C double; arguments as in the cited call" }
+tolerance = { abs = 1e-14 }
+tolerance_rationale = "ERFA's own acceptance tolerance (dval) for this output in t_erfa_c.c, unchanged (DEP-009: reproduce ERFA's reference values). abs = 0 means ERFA requires an exact result."
+verified_by = "WP9 builder agent, 2026-10-15: value and dval extracted mechanically from the ERFA 2.0.1 t_erfa_c.c listed in citation (regex over the vvd calls), before the first run of the port."
+
+[[vector]]
+id = "ERFA-T-ECEQ06-DR"
+requirement = ["DEP-009", "LIC-004"]
+quantity = "eraEceq06 output dr in t_erfa_c.c t_eceq06"
+value = "5.533459733613627767"
+unit = "rad"
+kind = "computed-reference"
+source = "ERFA 2.0.1 regression test t_eceq06 in src/t_erfa_c.c: vvd(dr, expected, dval). Value and tolerance (dval) are copied verbatim from that call; the call arguments are repeated, line-marked, in the test."
+citation = "liberfa/erfa v2.0.1 (BSD-3-Clause, NumFOCUS Foundation), src/t_erfa_c.c, release tarball erfa-2.0.1.tar.xz sha256 45111f0addf6ef69345aaf093bd054705b41ac2db7541dd3f0e105362c8e20e4; t_erfa_c.c sha256 8a92d0099c48df31ca566bea881c19497dc295dba58dba7136cc2f8443c31f15"
+retrieved = "2026-10-15"
+generated_by = "liberfa/erfa:src/t_erfa_c.c@9915ba38c9365f8b0738269b8c2ac1fdd5f8dee3"
+engine = { name = "ERFA t_erfa_c reference values", version = "ERFA 2.0.1 (SOFA 20231011)", settings = "C double; arguments as in the cited call" }
+tolerance = { abs = 1e-14 }
+tolerance_rationale = "ERFA's own acceptance tolerance (dval) for this output in t_erfa_c.c, unchanged (DEP-009: reproduce ERFA's reference values). abs = 0 means ERFA requires an exact result."
+verified_by = "WP9 builder agent, 2026-10-15: value and dval extracted mechanically from the ERFA 2.0.1 t_erfa_c.c listed in citation (regex over the vvd calls), before the first run of the port."
+
+[[vector]]
+id = "ERFA-T-ECEQ06-DD"
+requirement = ["DEP-009", "LIC-004"]
+quantity = "eraEceq06 output dd in t_erfa_c.c t_eceq06"
+value = "-1.246542932554480576"
+unit = "rad"
+kind = "computed-reference"
+source = "ERFA 2.0.1 regression test t_eceq06 in src/t_erfa_c.c: vvd(dd, expected, dval). Value and tolerance (dval) are copied verbatim from that call; the call arguments are repeated, line-marked, in the test."
+citation = "liberfa/erfa v2.0.1 (BSD-3-Clause, NumFOCUS Foundation), src/t_erfa_c.c, release tarball erfa-2.0.1.tar.xz sha256 45111f0addf6ef69345aaf093bd054705b41ac2db7541dd3f0e105362c8e20e4; t_erfa_c.c sha256 8a92d0099c48df31ca566bea881c19497dc295dba58dba7136cc2f8443c31f15"
+retrieved = "2026-10-15"
+generated_by = "liberfa/erfa:src/t_erfa_c.c@9915ba38c9365f8b0738269b8c2ac1fdd5f8dee3"
+engine = { name = "ERFA t_erfa_c reference values", version = "ERFA 2.0.1 (SOFA 20231011)", settings = "C double; arguments as in the cited call" }
+tolerance = { abs = 1e-14 }
+tolerance_rationale = "ERFA's own acceptance tolerance (dval) for this output in t_erfa_c.c, unchanged (DEP-009: reproduce ERFA's reference values). abs = 0 means ERFA requires an exact result."
+verified_by = "WP9 builder agent, 2026-10-15: value and dval extracted mechanically from the ERFA 2.0.1 t_erfa_c.c listed in citation (regex over the vvd calls), before the first run of the port."
+
+# The expected values (and the call arguments quoted with them) are copied from ERFA 2.0.1
+# `src/t_erfa_c.c`; their ERFA notice, conditions and disclaimer follow (BSD-3-Clause,
+# clause 1; DEP-009, PR #13 judge review LIC-2).
+#
+# Copyright (C) 2013-2023, NumFOCUS Foundation.
+# All rights reserved.
+#
+# This library is derived, with permission, from the International
+# Astronomical Union's "Standards of Fundamental Astronomy" library,
+# available from http://www.iausofa.org.
+#
+# The ERFA version is intended to retain identical functionality to
+# the SOFA library, but made distinct through different function and
+# file names, as set out in the SOFA license conditions.  The SOFA
+# original has a role as a reference standard for the IAU and IERS,
+# and consequently redistribution is permitted only in its unaltered
+# state.  The ERFA version is not subject to this restriction and
+# therefore can be included in distributions which do not support the
+# concept of "read only" software.
+#
+# Although the intent is to replicate the SOFA API (other than
+# replacement of prefix names) and results (with the exception of
+# bugs;  any that are discovered will be fixed), SOFA is not
+# responsible for any errors found in this version of the library.
+#
+# If you wish to acknowledge the SOFA heritage, please acknowledge
+# that you are using a library derived from SOFA, rather than SOFA
+# itself.
+#
+#
+# TERMS AND CONDITIONS
+#
+# Redistribution and use in source and binary forms, with or without
+# modification, are permitted provided that the following conditions
+# are met:
+#
+# 1 Redistributions of source code must retain the above copyright
+#   notice, this list of conditions and the following disclaimer.
+#
+# 2 Redistributions in binary form must reproduce the above copyright
+#   notice, this list of conditions and the following disclaimer in
+#   the documentation and/or other materials provided with the
+#   distribution.
+#
+# 3 Neither the name of the Standards Of Fundamental Astronomy Board,
+#   the International Astronomical Union nor the names of its
+#   contributors may be used to endorse or promote products derived
+#   from this software without specific prior written permission.
+#
+# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+# "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+# LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
+# FOR A PARTICULAR PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE
+# COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
+# INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
+# BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+# LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+# CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+# LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN
+# ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+# POSSIBILITY OF SUCH DAMAGE.

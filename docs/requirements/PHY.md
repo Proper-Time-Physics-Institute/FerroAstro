@@ -424,8 +424,8 @@ statement: >-
   computed with the Park17 procedure: Mercury mean-orbit frame, 1000–3000 CE
   span, quadratic + periodic fit.
 acceptance: >-
-  PROVISIONAL protocol "report both" (ADR-0014; maintainer decision
-  2026-10-20): both protocols are computed from identical initial conditions
+  Protocol "report both" (ADR-0014; maintainer decision 2026-10-20,
+  confirmed 2026-10-21 against the Park 2017 text, OI-38): both protocols are computed from identical initial conditions
   with the NUM-013 harness and one estimator, Newtonian. ASSERTED (P-remove):
   the contribution of planet X is the rate of the full system minus the rate
   of the full system without X; each value within ±0.005 ″/cy of:
@@ -441,9 +441,18 @@ related: [NUM-011, NUM-013, CI-009]
 notes: >-
   AUTHORITATIVE over NUM-013 for expected values and tolerances of the
   per-planet contributions; NUM-013 is authoritative for the differential-run
-  harness that produces them. Park 2017's own switch-on/switch-off protocol is
-  not yet confirmed by a maintainer against the Park 2017 text (OI-38, which
-  stays open). Without a fixed protocol the oracle is ill-posed: cross terms
+  harness that produces them. OI-38 CLOSED 2026-10-21: the maintainer
+  confirmed P-remove against the Park 2017 text (Journal #12,
+  https://github.com/Proper-Time-Physics-Institute/FerroAstro/issues/1#issuecomment-6306718280;
+  Park 2017 §4 p. 5: "the Venus row represents the difference in Mercury's
+  precession rate when the mass of Venus is set to zero"; ADR-0014
+  Confirmation 2026-10-21). The P-remove assertion is no longer provisional
+  once the provisional field is removed from the Park 2017 Table 3 vectors in
+  the same PR (#13, ADR-0004 revision 2026-10-21). The choice is still
+  post hoc in its order (below), P-add misses stay reported as information,
+  and the interaction-row arithmetic remains a post-hoc operational
+  definition. HISTORY: before the confirmation, Park's protocol was open and
+  the oracle was ill-posed without a fixed protocol: cross terms
   reach 0.0411 (J+S) and −0.0209 (V+E/M), so toggling a planet off from the
   full model versus on from Sun + Mercury can differ by up to ~0.04 ″/cy, 8×
   the tolerance (red-team review 2026-10-14, Journal #9). PROTOCOL CHANGE
@@ -468,17 +477,17 @@ notes: >-
   made by setting a GM to zero in the nominal ephemeris, and Park's pair rows
   equal P-remove's joint removal minus the two single removals to
   ≤ 1.2e-4 ″/cy for all six pairs (progress review after WP18, R1; that
-  comparison is post hoc). REVERT CONDITION: the P-remove assertion is
-  PROVISIONAL until a maintainer confirms OI-38 against the Park 2017 text;
-  if the text says P-add, the assertion reverts to P-add and the 4 misses
-  above are treated as real discrepancies (type:physics-discrepancy). SCOPE
+  comparison is post hoc). REVERT CONDITION (not triggered; OI-38 closed
+  2026-10-21): the P-remove assertion was PROVISIONAL until a maintainer
+  confirmed OI-38 against the Park 2017 text; had the text said P-add, the
+  assertion would have reverted to P-add and the 4 misses above would have
+  been treated as real discrepancies (type:physics-discrepancy). SCOPE
   OF THE GATE: the ±0.005 ″/cy tolerance remains tighter than the protocol
   ambiguity (cross terms up to 0.041 ″/cy), so a pass establishes
   "consistent with Park 2017 under P-remove", not agreement independent of
-  the protocol. The vectors still carry blocked_by = "OI-38"; switching the
-  harness's asserted protocol and its vectors happens in the build PR, never
-  by ticking OI-38 alone (the WP15 review's F13: ticking OI-38 auto-arms the
-  P-add rows). The tolerance and the expected values are unchanged; the
+  the protocol. The OI-38 tick and the vector change (removing the
+  provisional/blocked_by "OI-38" fields from the Park rows) land in the same
+  PR, never the tick alone (the WP15 review's F13). The tolerance and the expected values are unchanged; the
   protocol SHALL NOT be tuned further to make a test pass. Clemence 1947
   per-planet values are [S] and are not asserted. Journal #5's illustrative
   example used "PHY-012" for the 1PN Schwarzschild advance; that example is

@@ -15,11 +15,13 @@
 //!
 //! * 64 runs × 2000 orbits (~1e7 steps): asserted against NUM-023's ±0.1;
 //! * 32 runs × 20 000 orbits (~5e7 steps): a **known failure** (WP3 NEEDS HUMAN REVIEW, the
-//!   energy slope is ≈ 0.63). The test passes while the failure reproduces and fails if it
-//!   stops reproducing, so a green nightly never implies that NUM-001's 1e9-step clause holds.
+//!   energy slope is ≈ 0.63). The test passes while the failure reproduces within its documented
+//!   0.629 ± 0.018 and fails if it stops reproducing or worsens, so a green nightly never implies
+//!   that NUM-001's 1e9-step clause holds.
 //!
-//! Diagnosis knobs `FA_NUM023_RUNS`, `FA_NUM023_ORBITS`, `FA_NUM023_EPSILON` and
-//! `FA_NUM023_PC_TOL` are **report-only**: when any is set, the numbers are printed and no
+//! Diagnosis knobs `FA_NUM023_RUNS`, `FA_NUM023_ORBITS`, `FA_NUM023_EPSILON`,
+//! `FA_NUM023_PC_TOL` and `FA_NUM023_PC_B_FROM_G=1` (the WP7 experiment
+//! `Ias15Config::pc_b_from_g`) are **report-only**: when any is set, the numbers are printed and no
 //! assertion is made (an environment change must never neuter or alter an asserted check).
 
 mod two_body;
@@ -42,7 +44,8 @@ const DEFAULT_ORBITS: u32 = 2000; // lint: allow-literal(run length in orbits, n
 const LONG_RUNS: u32 = 32;
 const LONG_ORBITS: u32 = 20_000; // lint: allow-literal(run length in orbits, not a physical value)
 /// The diagnosis knobs; any of them makes the tests report-only.
-const OVERRIDES: [&str; 4] = [
+const OVERRIDES: [&str; 5] = [
+    "FA_NUM023_PC_B_FROM_G",
     "FA_NUM023_RUNS",
     "FA_NUM023_ORBITS",
     "FA_NUM023_EPSILON",
@@ -83,6 +86,9 @@ fn cfg() -> Ias15Config {
         .and_then(|s| s.parse().ok())
     {
         c.pc_tolerance = tol;
+    }
+    if std::env::var("FA_NUM023_PC_B_FROM_G").is_ok_and(|v| v == "1") {
+        c.pc_b_from_g = true;
     }
     c
 }
@@ -152,7 +158,7 @@ struct Slopes {
 )]
 fn ensemble(runs: u32, orbits: u32) -> Slopes {
     let de = De440::load().unwrap();
-    let vs = VectorSet::load_workspace().unwrap();
+    let vs = VectorSet::load_canonical().unwrap();
     let (gm_sun, gm_me) = two_body::gms(&de);
     let mu = gm_sun + gm_me;
     let orbits = f64::from(orbits);
@@ -256,7 +262,7 @@ fn nightly_num023_brouwer_slopes_ias15_f64() {
     let Some(s) = checked_ensemble(DEFAULT_RUNS, DEFAULT_ORBITS) else {
         return;
     };
-    let vs = VectorSet::load_workspace().unwrap();
+    let vs = VectorSet::load_canonical().unwrap();
     let re = vs.get("NUM023-ENERGY-SLOPE").unwrap().check(s.energy);
     let rp = vs.get("NUM023-PHASE-SLOPE").unwrap().check(s.phase);
     println!("  energy slope check: {re:?}\n  phase slope check: {rp:?}");
@@ -266,15 +272,17 @@ fn nightly_num023_brouwer_slopes_ias15_f64() {
 
 /// Pre-registered long ensemble (32 × 20 000 orbits, ~5e7 steps): a KNOWN FAILURE of NUM-023
 /// (WP3 NEEDS HUMAN REVIEW: the energy error grows faster than Brouwer's t^½ over 1e4 orbits).
-/// The test passes while the failure reproduces and fails once both slopes meet NUM-023, so the
-/// fix is noticed and this test is turned into an assertion. It verifies nothing.
+/// The test passes while the failure reproduces within its documented bound
+/// (`NUM023-LONG-ENSEMBLE-KNOWN-FAILURE-ENERGY-SLOPE`) and fails once both slopes meet NUM-023
+/// or the slope leaves that bound (worse or different), so a fix or a regression is noticed. It
+/// verifies nothing.
 #[test]
 #[ignore = "nightly tier: ~5e7 IAS15 steps (~25 s in release on 32 threads)"]
 fn nightly_num023_long_ensemble_known_failure() {
     let Some(s) = checked_ensemble(LONG_RUNS, LONG_ORBITS) else {
         return;
     };
-    let vs = VectorSet::load_workspace().unwrap();
+    let vs = VectorSet::load_canonical().unwrap();
     let re = vs.get("NUM023-ENERGY-SLOPE").unwrap().check(s.energy);
     let rp = vs.get("NUM023-PHASE-SLOPE").unwrap().check(s.phase);
     println!("  energy slope check: {re:?}\n  phase slope check: {rp:?}");
@@ -284,6 +292,21 @@ fn nightly_num023_long_ensemble_known_failure() {
          update IMPLEMENTATION-NOTES (WP3/WP6 NEEDS HUMAN REVIEW) and assert here",
         s.energy,
         s.phase
+    );
+    // F3 (PR #13 review): the guard is bounded, so a failure that worsens or changes is noticed.
+    let known = vs
+        .get("NUM023-LONG-ENSEMBLE-KNOWN-FAILURE-ENERGY-SLOPE")
+        .unwrap();
+    let kc = known.check(s.energy);
+    println!("  documented-failure bound check: {kc:?}");
+    assert!(
+        kc.is_ok(),
+        "the known NUM-023 long-ensemble failure moved from its documented energy slope \
+         {} +/- {} (now {:.3}): if it worsened, this is a regression; update IMPLEMENTATION-NOTES \
+         either way",
+        known.value().unwrap(),
+        known.tolerance.allowed(known.value().unwrap()),
+        s.energy
     );
     println!(
         "  KNOWN FAILURE (NUM-023 / NUM-001 1e9-step clause NOT met; IMPLEMENTATION-NOTES WP3 \
@@ -299,7 +322,7 @@ fn nightly_num023_long_ensemble_known_failure() {
 #[ignore = "nightly tier"]
 fn nightly_num023_forward_backward_reversibility() {
     let de = De440::load().unwrap();
-    let vs = VectorSet::load_workspace().unwrap();
+    let vs = VectorSet::load_canonical().unwrap();
     let (gm_sun, gm_me) = two_body::gms(&de);
     let mu = gm_sun + gm_me;
     let el = two_body::sw92_elements(&vs, &de);

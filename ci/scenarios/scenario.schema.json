@@ -1,0 +1,450 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "FerroAstro scenario (CI-002)",
+  "description": "Tool-agnostic scenario spec read by FerroAstro and every oracle runner. Generated from ferroastro-scenario; do not edit by hand.",
+  "type": "object",
+  "properties": {
+    "bodies": {
+      "description": "The bodies, in storage order.",
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/BodyName"
+      }
+    },
+    "central_body": {
+      "description": "The body that test particles orbit and that perihelia are measured from.",
+      "$ref": "#/$defs/BodyName"
+    },
+    "constants": {
+      "description": "Constants.",
+      "$ref": "#/$defs/ConstantsSpec"
+    },
+    "description": {
+      "description": "One-line description.",
+      "type": "string"
+    },
+    "forces": {
+      "description": "Force switches.",
+      "$ref": "#/$defs/Forces"
+    },
+    "initial_conditions": {
+      "description": "Initial conditions.",
+      "$ref": "#/$defs/InitialConditionsSpec"
+    },
+    "integrator": {
+      "description": "Integrator.",
+      "$ref": "#/$defs/IntegratorSpec"
+    },
+    "mode": {
+      "description": "Integration mode.",
+      "$ref": "#/$defs/Mode"
+    },
+    "name": {
+      "description": "Short identifier.",
+      "type": "string"
+    },
+    "output": {
+      "description": "Outputs.",
+      "$ref": "#/$defs/OutputSpec",
+      "default": {}
+    },
+    "schema_version": {
+      "description": "Always 1.",
+      "type": "integer",
+      "format": "uint32",
+      "maximum": 1,
+      "minimum": 1
+    },
+    "span": {
+      "description": "Span.",
+      "$ref": "#/$defs/Span"
+    }
+  },
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "name",
+    "description",
+    "mode",
+    "bodies",
+    "central_body",
+    "initial_conditions",
+    "constants",
+    "forces",
+    "integrator",
+    "span"
+  ],
+  "$defs": {
+    "BodyName": {
+      "description": "A body a scenario may name. Planets beyond Venus are their system barycentres, as in DE440\n(`GM4…GM9` are system GMs); `EMB` is the Earth–Moon barycentre as one body.",
+      "oneOf": [
+        {
+          "description": "The Sun (NAIF 10).",
+          "type": "string",
+          "const": "Sun"
+        },
+        {
+          "description": "Mercury (NAIF 1; the barycentre is the planet).",
+          "type": "string",
+          "const": "Mercury"
+        },
+        {
+          "description": "Venus (NAIF 2; the barycentre is the planet).",
+          "type": "string",
+          "const": "Venus"
+        },
+        {
+          "description": "The Earth (NAIF 399).",
+          "type": "string",
+          "const": "Earth"
+        },
+        {
+          "description": "The Moon (NAIF 301).",
+          "type": "string",
+          "const": "Moon"
+        },
+        {
+          "description": "The Earth–Moon barycentre as one body (NAIF 3).",
+          "type": "string",
+          "const": "EMB"
+        },
+        {
+          "description": "Mars system barycentre (NAIF 4).",
+          "type": "string",
+          "const": "Mars"
+        },
+        {
+          "description": "Jupiter system barycentre (NAIF 5).",
+          "type": "string",
+          "const": "Jupiter"
+        },
+        {
+          "description": "Saturn system barycentre (NAIF 6).",
+          "type": "string",
+          "const": "Saturn"
+        },
+        {
+          "description": "Uranus system barycentre (NAIF 7).",
+          "type": "string",
+          "const": "Uranus"
+        },
+        {
+          "description": "Neptune system barycentre (NAIF 8).",
+          "type": "string",
+          "const": "Neptune"
+        },
+        {
+          "description": "Pluto system barycentre (NAIF 9).",
+          "type": "string",
+          "const": "Pluto"
+        }
+      ]
+    },
+    "ConstantsSpec": {
+      "description": "`[constants]`.",
+      "type": "object",
+      "properties": {
+        "gm_set": {
+          "description": "The GM set.",
+          "$ref": "#/$defs/GmSet"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "gm_set"
+      ]
+    },
+    "Forces": {
+      "description": "`[forces]`: exactly the CI-002 switches. Every switch but `newton` defaults to off.",
+      "type": "object",
+      "properties": {
+        "asteroids": {
+          "description": "Number of numbered asteroids added as Minor bodies: the first N numbered asteroids of\nheader.440 in header order (N <= 343), states from the REF-003 sampled file.",
+          "type": "integer",
+          "format": "uint32",
+          "default": 0,
+          "minimum": 0
+        },
+        "gr_1pn_central": {
+          "description": "1PN Schwarzschild field of the central body (test-particle mode).",
+          "type": "boolean",
+          "default": false
+        },
+        "gr_eih": {
+          "description": "1PN Einstein–Infeld–Hoffmann N-body equations.",
+          "type": "boolean",
+          "default": false
+        },
+        "kbo_ring": {
+          "description": "The DE440 KBO ring: 36 fixed Ring masses at 44 au in the ecliptic (provisional, OI-24;\nnot a CI-002 switch name, WP15).",
+          "type": "boolean"
+        },
+        "kbos": {
+          "description": "The identified Kuiper-belt objects of header.440 as Minor bodies (REF-003, provisional\nwhile OI-24 is open; not a CI-002 switch name, WP15).",
+          "type": "boolean"
+        },
+        "lense_thirring": {
+          "description": "Lense–Thirring field of the spinning central body (DE440 solar spin).",
+          "type": "boolean",
+          "default": false
+        },
+        "newton": {
+          "description": "Newtonian point-mass gravity.",
+          "type": "boolean"
+        },
+        "ppn": {
+          "description": "PPN β, γ of the relativistic terms (default: the DE440 values β = γ = 1).",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Ppn"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "sun_j2": {
+          "description": "Solar J2 (DE440 `J2SUN`, `ASUN`; with the reaction on the Sun in N-body mode).",
+          "type": "boolean",
+          "default": false
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "newton"
+      ]
+    },
+    "GmSet": {
+      "description": "The GM set (CI-002).",
+      "oneOf": [
+        {
+          "description": "DE440 (`header.440` GROUP 1041, as tabulated in `ferroastro-constants`).",
+          "type": "string",
+          "const": "de440"
+        }
+      ]
+    },
+    "IcSource": {
+      "description": "Where the initial conditions come from (CI-002: `de440-header | de440-bsp@JD | horizons@JD`).",
+      "oneOf": [
+        {
+          "description": "The DE440 initial conditions in `header.440` (GROUP 1041, at `JDEPOC`).",
+          "type": "string",
+          "const": "de440-header"
+        },
+        {
+          "description": "`de440.bsp` evaluated at `epoch_jd_tdb`.",
+          "type": "string",
+          "const": "de440-bsp"
+        },
+        {
+          "description": "JPL Horizons vectors at `epoch_jd_tdb` (supplied to the runner; runners do no network I/O).",
+          "type": "string",
+          "const": "horizons"
+        }
+      ]
+    },
+    "InitialConditionsSpec": {
+      "description": "`[initial_conditions]`.",
+      "type": "object",
+      "properties": {
+        "epoch_jd_tdb": {
+          "description": "Epoch (TDB Julian date): required for `de440-bsp` and `horizons`; for `de440-header`,\nabsent or equal to the header's `JDEPOC`.",
+          "type": [
+            "number",
+            "null"
+          ],
+          "format": "double"
+        },
+        "source": {
+          "description": "The source.",
+          "$ref": "#/$defs/IcSource"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "source"
+      ]
+    },
+    "IntegratorName": {
+      "description": "Integrator names known to the scenario spec (ADR-0008 and the M4/M5 integrators).",
+      "oneOf": [
+        {
+          "description": "IAS15-class 15th-order Gauss–Radau (default, ADR-0008).",
+          "type": "string",
+          "const": "ias15"
+        },
+        {
+          "description": "Adams–Bashforth–Moulton (WP24).",
+          "type": "string",
+          "const": "abm"
+        },
+        {
+          "description": "Wisdom–Holman / `WHFast` (WP29).",
+          "type": "string",
+          "const": "whfast"
+        },
+        {
+          "description": "Gauss–Legendre implicit Runge–Kutta, order 16 (WP29).",
+          "type": "string",
+          "const": "irk16"
+        }
+      ]
+    },
+    "IntegratorSpec": {
+      "description": "`[integrator]`. Unset settings take the integrator's defaults.",
+      "type": "object",
+      "properties": {
+        "dt0_days": {
+          "description": "First trial step in days (N-body default 0.1 d; the controller adapts it).",
+          "type": [
+            "number",
+            "null"
+          ],
+          "format": "double"
+        },
+        "epsilon": {
+          "description": "IAS15 step-control precision ε (default 1e-9).",
+          "type": [
+            "number",
+            "null"
+          ],
+          "format": "double"
+        },
+        "name": {
+          "description": "The integrator.",
+          "$ref": "#/$defs/IntegratorName"
+        },
+        "pc_tolerance": {
+          "description": "IAS15 predictor–corrector convergence threshold (default 1e-16).",
+          "type": [
+            "number",
+            "null"
+          ],
+          "format": "double"
+        },
+        "precision": {
+          "description": "The arithmetic.",
+          "$ref": "#/$defs/Precision"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "precision"
+      ]
+    },
+    "Mode": {
+      "description": "How the bodies are integrated.",
+      "oneOf": [
+        {
+          "description": "Every listed body moves and attracts every other (`ferroastro-forces` N-body model).",
+          "type": "string",
+          "const": "n-body"
+        },
+        {
+          "description": "Exactly two bodies: `central_body` fixed at the origin, the other a massless test\nparticle in its field (the single-body rungs, μ = GM of the central body).",
+          "type": "string",
+          "const": "test-particle"
+        },
+        {
+          "description": "Oracle stage B (REF-006, WP17): the first body other than `central_body` is a massless\nparticle integrated in the central body's frame (μ = GM of the central body) and pulled by\nevery other listed body, whose positions come from the DE440 SPK (third-body terms with\nthe indirect part; the field bodies are not integrated). Initial conditions `de440-bsp`.",
+          "type": "string",
+          "const": "ephemeris-field"
+        }
+      ]
+    },
+    "OutputSpec": {
+      "description": "`[output]`.",
+      "type": "object",
+      "properties": {
+        "cadence_days": {
+          "description": "Sample every body's state every this many days (from dense output; absent: no samples).",
+          "type": [
+            "number",
+            "null"
+          ],
+          "format": "double"
+        },
+        "perihelion": {
+          "description": "Bodies whose perihelion passages relative to `central_body` are located (NUM-010).",
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/BodyName"
+          }
+        },
+        "sample_bodies": {
+          "description": "Record only these bodies in each sample (absent: every body). Keeps the output of runs\nwith hundreds of small bodies small (WP15).",
+          "type": [
+            "array",
+            "null"
+          ],
+          "items": {
+            "$ref": "#/$defs/BodyName"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "Ppn": {
+      "description": "PPN parameters of the relativistic terms (`ppn{beta,gamma}`, CI-002).",
+      "type": "object",
+      "properties": {
+        "beta": {
+          "description": "PPN β.",
+          "type": "number",
+          "format": "double"
+        },
+        "gamma": {
+          "description": "PPN γ.",
+          "type": "number",
+          "format": "double"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "beta",
+        "gamma"
+      ]
+    },
+    "Precision": {
+      "description": "Arithmetic of the run (DEP-007).",
+      "oneOf": [
+        {
+          "description": "IEEE-754 binary64.",
+          "type": "string",
+          "const": "f64"
+        },
+        {
+          "description": "Double-double (`ferroastro-real`).",
+          "type": "string",
+          "const": "dd"
+        }
+      ]
+    },
+    "Span": {
+      "description": "`[span]`.",
+      "type": "object",
+      "properties": {
+        "stop_after_passages": {
+          "description": "Stop earlier, once this many perihelion passages have been found (the single-body rungs\nuse orbits + 1).",
+          "type": [
+            "integer",
+            "null"
+          ],
+          "format": "uint32",
+          "minimum": 0
+        },
+        "years": {
+          "description": "Length in Julian years of 365.25 d TDB from the IC epoch; negative integrates backwards.",
+          "type": "number",
+          "format": "double"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "years"
+      ]
+    }
+  }
+}

@@ -1,0 +1,79 @@
+# SPDX-FileCopyrightText: 2026 Proper-Time Physics Institute
+# SPDX-License-Identifier: Apache-2.0
+#
+# Nightly all-oracle drift job (CI-006; WP17). The maintainer decision of 2026-10-14 runs the
+# nightly and long tiers on the local machine: tools/oracles/nightly.sh from cron is the primary
+# path; the FerroAstro-side oracle differentials are a separate job, nightly_ferroastro.sh, that
+# reads this job's files (LIC-005). This workflow is the oracle job on a GitHub runner, manual
+# dispatch only: adding a `schedule:` trigger (runner class, cost, the
+# CI-006 "paid larger runners" note) is a maintainer decision (NEEDS HUMAN REVIEW, WP17 notes).
+#
+# GPL isolation (LIC-001/002, red-team L3/L4): `oracles` builds every image from a staged context
+# (no FerroAstro build) and never pushes it; `drift` is a separate job that receives plain files
+# only and opens a BLOCKING issue (labels golden-drift, blocking) when a committed golden is not
+# reproduced (red-team H3, control 5).
+#
+# Security (STD-012): actions pinned to commit SHAs; contents read-only except `drift`, which may
+# write issues only.
+name: oracle-nightly
+
+on:
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+jobs:
+  oracles:
+    name: every oracle on every scenario (no FerroAstro build)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 300
+    env:
+      FA_DATA_DIR: ${{ github.workspace }}/.fa-data
+      FA_ORACLE_OUT_DIR: ${{ github.workspace }}/oracle-out
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@1c37ad07a6a961277cf70c0d37d6f313000f5884 # v10.3.0
+      - name: Fetch the pinned JPL products (header.440, DE440 binary)
+        run: cd tools && uv run python fetch_jpl.py de440-header de440-linux-binary
+      - name: Run every oracle; the drift report is produced in the next job
+        run: tools/oracles/nightly.sh || true
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: oracle-nightly
+          # The committed-golden directories, logs and status; the ~100 MB P-add series stay
+          # behind (the FerroAstro-side differentials run locally).
+          path: |
+            oracle-out/
+            !oracle-out/*/oracle-padd-*/*.csv
+          if-no-files-found: error
+
+  drift:
+    name: golden drift (separate job; files only; opens a blocking issue)
+    needs: oracles
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      issues: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: oracle-nightly
+          path: candidate/
+      - uses: astral-sh/setup-uv@1c37ad07a6a961277cf70c0d37d6f313000f5884 # v10.3.0
+      - name: Drift check, report and blocking issue
+        run: |
+          cd tools
+          uv run python -m oracles.drift --candidate ../candidate --status ../candidate/status.tsv \
+            --report ../candidate/report.md --open-issue
+      - if: always()
+        run: cat candidate/report.md >> "$GITHUB_STEP_SUMMARY"

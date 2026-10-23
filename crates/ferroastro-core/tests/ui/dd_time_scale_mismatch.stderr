@@ -1,0 +1,8 @@
+error[E0308]: mismatched types
+ --> tests/ui/dd_time_scale_mismatch.rs:9:17
+  |
+9 |     let _ = a - b;
+  |                 ^ expected `Epoch<Tdb, DoubleDouble>`, found `Epoch<Tt, DoubleDouble>`
+  |
+  = note: expected struct `Epoch<Tdb, DoubleDouble>`
+             found struct `Epoch<Tt, DoubleDouble>`

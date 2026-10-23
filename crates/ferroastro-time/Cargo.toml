@@ -1,0 +1,34 @@
+# SPDX-FileCopyrightText: 2026 Proper-Time Physics Institute
+# SPDX-License-Identifier: Apache-2.0
+[package]
+name = "ferroastro-time"
+description = "FerroAstro time scales: typed TAI/TT/TDB/TCB/TCG conversions (ERFA port), generic over Real, with UTC through optional hifitime"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+authors.workspace = true
+repository.workspace = true
+
+[features]
+default = []
+# UTC and leap seconds through hifitime 4.x (MPL-2.0, unmodified; deny.toml exception, DEP-002).
+hifitime = ["dep:hifitime"]
+
+[dependencies]
+ferroastro-core.workspace = true
+ferroastro-erfa.workspace = true
+ferroastro-real.workspace = true
+hifitime = { workspace = true, optional = true }
+thiserror.workspace = true
+
+[dev-dependencies]
+# Turns on the `hifitime` feature for this crate's own tests, so the PR tier runs the UTC
+# cross-checks without `--all-features` (a self dev-dependency; tools/check_layers.py exempts it).
+ferroastro-time = { path = ".", version = "0.0.0", features = ["hifitime"] }
+ferroastro-testdata.workspace = true
+ferroastro-vectors.workspace = true
+sha2.workspace = true
+
+[lints]
+workspace = true

@@ -1,0 +1,33 @@
+# SPDX-FileCopyrightText: 2026 Proper-Time Physics Institute
+# SPDX-License-Identifier: Apache-2.0
+# Sun + 8 planets (Earth-Moon barycentre as one body; planets beyond Venus are system
+# barycentres), Newtonian + solar J2 with its reaction on the Sun (DE440 J2SUN, ASUN), from the
+# DE440 initial conditions in header.440, 1000 Julian years. The checkpoint/resume scenario of
+# CI-010 (WP13). Schema: scenario.schema.json (CI-002).
+schema_version = 1
+name = "sun-8planets-newton-j2-1000yr"
+description = "Sun + 8 planets (EMB), Newtonian + solar J2, header.440 ICs, 1000 yr, f64"
+mode = "n-body"
+bodies = ["Sun", "Mercury", "Venus", "EMB", "Mars", "Jupiter", "Saturn", "Uranus", "Neptune"]
+central_body = "Sun"
+
+[initial_conditions]
+source = "de440-header"
+
+[constants]
+gm_set = "de440"
+
+[forces]
+newton = true
+sun_j2 = true
+
+[integrator]
+name = "ias15"
+precision = "f64"
+
+[span]
+years = 1000.0
+
+[output]
+cadence_days = 3652.5
+perihelion = ["Mercury"]

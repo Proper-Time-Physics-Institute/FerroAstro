@@ -29,7 +29,7 @@ pub(crate) struct Ctx {
 pub(crate) fn ctx() -> Ctx {
     let de = De440::load().unwrap();
     let scn = Scenario::mercury_single_body().unwrap();
-    let vs = VectorSet::load_workspace().unwrap();
+    let vs = VectorSet::load_canonical().unwrap();
     let setup = SingleBody::mercury(&scn, &de).unwrap();
     Ctx { de, scn, vs, setup }
 }

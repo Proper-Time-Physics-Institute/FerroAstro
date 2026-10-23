@@ -175,3 +175,158 @@ fn workspace_vectors_all_validate() {
         );
     }
 }
+
+/// `blocked_by` names an open item; the vector is non-gating while OPEN-ITEMS.md leaves that item
+/// unticked (or lacks it), and gating once it is ticked.
+///
+/// Verifies: TST-002
+#[test]
+fn blocked_by_follows_the_open_item_checkbox() {
+    let blocked = fixture("verified_by", "blocked_by = \"OI-38\"\nverified_by");
+    let set = load(&blocked).unwrap();
+    let v = set.get("FIXTURE-A").unwrap();
+    assert_eq!(v.blocked_by.as_deref(), Some("OI-38"));
+    let open = "- [ ] **OI-38** Park 2017's protocol.\n- [x] **OI-3** closed.\n";
+    let closed = "- [x] **OI-38** Park 2017's protocol (closed by a maintainer).\n";
+    let other_closed = "- [x] **OI-380** another item.\n";
+    assert_eq!(v.blocking_open_item(open), Some("OI-38"));
+    assert_eq!(v.blocking_open_item(""), Some("OI-38"));
+    assert_eq!(v.blocking_open_item(other_closed), Some("OI-38"));
+    assert_eq!(v.blocking_open_item(closed), None);
+    let unblocked = load(&fixture("", "")).unwrap();
+    assert_eq!(
+        unblocked.get("FIXTURE-A").unwrap().blocking_open_item(open),
+        None
+    );
+    assert!(
+        schema_error(&fixture("verified_by", "blocked_by = \"38\"\nverified_by"))
+            .contains("blocked_by")
+    );
+}
+
+/// `provisional` names an open item under which the assertion is PROVISIONAL (ADR-0014). It gates
+/// like any vector, it must be a well-formed `OI-NN` that OPEN-ITEMS.md lists, it cannot be
+/// dropped or blanked to an empty reference, and it excludes `blocked_by`.
+///
+/// Verifies: TST-002
+#[test]
+fn provisional_gates_and_keeps_its_open_item_reference() {
+    let with = |value: &str| {
+        fixture(
+            "verified_by",
+            &format!("provisional = {value}\nverified_by"),
+        )
+    };
+    let set = load(&with("\"OI-38\"")).unwrap();
+    let v = set.get("FIXTURE-A").unwrap();
+    assert_eq!(v.provisional.as_deref(), Some("OI-38"));
+    // Gates: a provisional vector is never non-gating, and its failure message says PROVISIONAL.
+    assert_eq!(v.blocking_open_item(""), None);
+    let x = v.value().unwrap();
+    assert!(v.check(x).is_ok());
+    let err = v.check(x * 3.0).unwrap_err();
+    assert_eq!(err.code(), ErrorCode::ToleranceExceeded);
+    let msg = err.to_string();
+    assert!(msg.contains("PROVISIONAL") && msg.contains("OI-38") && msg.contains("revert"));
+
+    // The open item must exist in OPEN-ITEMS.md; its checkbox sets the label.
+    let open = "- [ ] **OI-38** Park 2017's protocol.\n- [x] **OI-3** closed.\n";
+    let closed = "- [x] **OI-38** Park 2017's protocol (closed by a maintainer).\n";
+    let p = v.provisional_open_item(open).unwrap().unwrap();
+    assert_eq!((p.open_item, p.open), ("OI-38", true));
+    let label = p.to_string();
+    assert!(label.contains("PROVISIONAL") && label.contains("revert"));
+    let p = v.provisional_open_item(closed).unwrap().unwrap();
+    assert!(!p.open);
+    assert!(p.to_string().contains("stale"));
+    for missing in [
+        "",
+        "- [ ] **OI-380** another item.\n",
+        "- [x] **OI-3** closed.\n",
+    ] {
+        let e = v.provisional_open_item(missing).unwrap_err();
+        assert_eq!(e.code(), ErrorCode::VectorSchema);
+        assert!(e.to_string().contains("provisional"));
+    }
+    assert!(
+        load(&fixture("", ""))
+            .unwrap()
+            .get("FIXTURE-A")
+            .unwrap()
+            .provisional_open_item(open)
+            .unwrap()
+            .is_none()
+    );
+
+    // The OI reference cannot be blanked, truncated or replaced by a non-string.
+    for bad in [
+        "\"\"",
+        "\"   \"",
+        "\"OI-\"",
+        "\"38\"",
+        "\"OI-38 \"",
+        "\"oi-38\"",
+        "\"OI-7\"", // ADR-0004 revision 2026-10-21: `^OI-\d{2,}$`
+    ] {
+        assert!(
+            schema_error(&with(bad)).contains("provisional"),
+            "provisional = {bad} was accepted"
+        );
+    }
+    for bad in ["true", "38", "[\"OI-38\"]"] {
+        assert_eq!(
+            load(&with(bad)).unwrap_err().code(),
+            ErrorCode::VectorParse,
+            "provisional = {bad} was accepted"
+        );
+    }
+
+    // Never both: a provisional vector gates, a blocked one does not.
+    let both = fixture(
+        "verified_by",
+        "provisional = \"OI-38\"\nblocked_by = \"OI-38\"\nverified_by",
+    );
+    let e = schema_error(&both);
+    assert!(e.contains("provisional") && e.contains("blocked_by"), "{e}");
+    let both_other = fixture(
+        "verified_by",
+        "blocked_by = \"OI-24\"\nprovisional = \"OI-38\"\nverified_by",
+    );
+    assert!(schema_error(&both_other).contains("blocked_by"));
+}
+
+/// Every committed provisional vector names an item that the committed OPEN-ITEMS.md lists, and
+/// the PHY-012 rows asserted under P-remove (ADR-0014) stay provisional while OI-38 is open: the
+/// label can only be dropped together with closing OI-38.
+///
+/// Verifies: TST-002, PHY-012
+#[test]
+fn workspace_provisional_vectors_reference_recorded_open_items() {
+    let set = VectorSet::load_workspace().unwrap();
+    let open_items = std::fs::read_to_string(
+        VectorSet::canonical_dir().join("../../docs/requirements/OPEN-ITEMS.md"),
+    )
+    .unwrap();
+    for (path, v) in set.iter() {
+        let state = v.provisional_open_item(&open_items);
+        assert!(state.is_ok(), "{} in {}: {state:?}", v.id, path.display());
+    }
+    let oi38_open = open_items
+        .lines()
+        .any(|l| l.trim_start().starts_with("- [ ] **OI-38**"));
+    for row in [
+        "VENUS",
+        "EARTH-MOON",
+        "MARS",
+        "JUPITER",
+        "SATURN",
+        "URANUS",
+        "NEPTUNE",
+    ] {
+        let v = set.get(&format!("PARK17-T3-{row}")).unwrap();
+        if oi38_open {
+            assert_eq!(v.provisional.as_deref(), Some("OI-38"), "{}", v.id);
+            assert!(v.blocked_by.is_none(), "{}: PHY-012 rows gate", v.id);
+        }
+    }
+}

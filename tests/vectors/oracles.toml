@@ -1,0 +1,106 @@
+# SPDX-FileCopyrightText: 2026 Proper-Time Physics Institute
+# SPDX-License-Identifier: Apache-2.0
+# WP16/WP17: tolerances of the oracle comparisons (ferroastro-oracle). The goldens themselves live in
+# ci/golden/<tool>/<scenario>/ with MANIFEST.json (CI-003). Derivations and the pre-registration:
+# docs/strategy/IMPLEMENTATION-NOTES.md, WP16 and WP17.
+schema_version = 1
+
+[[vector]]
+id = "ORACLE-STAGE-A-REBOUND-MAX-DR"
+requirement = ["CI-005", "REF-005"]
+quantity = "largest Euclidean position difference, over the 9 bodies and the 101 yearly output times, between FerroAstro IAS15 (f64) and REBOUND 5.2.2 IAS15 on scenario stage-a-sun-8planets-newton-100yr (Sun + 8 planets with the EMB, Newtonian, header.440 ICs at JDEPOC, 100 Julian years, epsilon 1e-9, first step 0.1 d)"
+value = 0.0
+unit = "km"
+kind = "computed-reference"
+source = "REBOUND 5.2.2 IAS15 run in the local ci/oracles/rebound image on the same scenario file; golden ci/golden/rebound/stage-a-sun-8planets-newton-100yr/ with its MANIFEST.json (image digest, runner commit, input and output SHA-256s)"
+citation = "Rein & Spiegel 2015, MNRAS 446, 1424 (IAS15); REBOUND 5.2.2 (PyPI, GPL-3.0, used as a black box in a separate container, LIC-001); WP16 plan, crate-plan.json"
+retrieved = "2026-10-15"
+tolerance = { abs = 1.0e-3 }
+tolerance_rationale = "PROVISIONAL 1 m (WP16 plan; NEEDS HUMAN REVIEW). Both codes integrate the same ICs and GMs with an IAS15-class 15th-order Gauss-Radau scheme at epsilon 1e-9, so the difference is step-sequence and round-off error only: REBOUND runs in au, day and G = 1 with GM in au^3/d^2 and its own (PRS23) step criterion, FerroAstro in km and s, and FerroAstro reads header.440 with its own parser (identical ICs up to the unit change, ~1e-8 km at t = 0). Along-track errors grow at most linearly with time over 100 yr (~415 Mercury orbits); with per-orbit relative energy errors of ~1e-15 this is far below 1 m for every body. 1 m sits ~4 orders above that expectation and ~5 orders below the WP12 Newtonian-vs-DE440 differences (tens of km), so it detects any model or IC error while tolerating integrator-implementation noise. Pre-registered in WP16 before the first FerroAstro-vs-REBOUND comparison."
+verified_by = "WP16 builder agent, 2026-10-15: tolerance from the WP16 plan, expectation derived above before the comparison was run."
+generated_by = "tools/oracles/rebound_runner.py@98ac4bb"
+engine = { name = "REBOUND", version = "5.2.2 (with REBOUNDx 5.1.0 installed, unused in stage A)", settings = "IAS15, epsilon 1e-9 (read back), adaptive_mode PRS23 (default), min_dt 0, sim.dt = 0.1 d, G = 1, units au/day, gravity basic, exact_finish_time = 1 at each yearly output" }
+notes = "Measured 2026-10-15 (WP16): 7.132e-4 km (Mercury at t = 100 yr; margin 0.71). The pre-registered expectation ('far below 1 m') was WRONG: both runs sit at their f64 round-off floor, not at truncation error. A FerroAstro double-double run (epsilon 1e-11, truncation-converged: DD at 1e-9 and 1e-11 agree to < 0.05 mm) is the reference: FerroAstro f64 is 0.106 m from it, REBOUND f64 0.685 m (epsilon 1e-9), 0.426 m (1e-10) and 1.511 m (1e-11). The difference is therefore dominated by REBOUND's own round-off, and a REBOUND run at epsilon 1e-11 would exceed 1 m against the DD truth. Tolerance and value unchanged; NEEDS HUMAN REVIEW (IMPLEMENTATION-NOTES WP16): the PROVISIONAL 1 m bound has only 1.4x margin over the oracle's round-off at epsilon 1e-9."
+
+[[vector]]
+id = "ORACLE-STAGE-A-SWIFTEST-MAX-DR"
+requirement = ["REF-007", "CI-002"]
+quantity = "largest Euclidean heliocentric position difference, over the 8 planets (EMB) and the 101 yearly output times, between FerroAstro IAS15 (f64, states minus the Sun's) and Swiftest 2026.7.1 WHM (dt = 1/128 d) on scenario stage-a-sun-8planets-newton-100yr (Sun + 8 planets, Newtonian, header.440 ICs at JDEPOC, 100 Julian years)"
+value = 0.0
+unit = "km"
+kind = "computed-reference"
+source = "Swiftest 2026.7.1 WHM run in the local ci/oracles/swiftest image on the same scenario file; golden ci/golden/swiftest/stage-a-sun-8planets-newton-100yr/ with its MANIFEST.json (image digest, runner commit, input and output SHA-256s, relative_energy_change)"
+citation = "Wisdom & Holman 1991, AJ 102, 1528 (WHM); Wishard et al. 2023, JOSS 8(90), 5409, doi:10.21105/joss.05409 (Swiftest; PyPI 2026.7.1, GPL-3.0-or-later, used as a black box in a separate container, LIC-001); WP17 plan"
+retrieved = "2026-10-15"
+tolerance = { abs = 60.0 }
+tolerance_rationale = "WIDENED after measurement, with a physical derivation (NEEDS HUMAN REVIEW, IMPLEMENTATION-NOTES WP17). The pre-registered PROVISIONAL bound was 1 km (WHM truncation estimate ~0.15 km for Mercury); the measured value 28.68 km (Mars) FAILED it. Cause, measured from Swiftest's own output and independent of FerroAstro: its total energy drifts secularly by -5.04e-10 over the 100 yr (manifest relative_energy_change), proportional to the number of steps (dt 1/32, 1/64, 1/128, 1/256 d give -1.24e-10, -2.5e-10, -5.04e-10, -1.03e-9: about -1.1e-16 per step, a per-step f64 bias, not truncation). A relative energy drift growing linearly to eps gives a mean-motion drift and a phase error (3/4) n T |eps|, i.e. |dr| ~ (3/4) n T |eps| a, which predicts (km) Mercury 57.1, Venus 41.8, EMB 35.6, Mars 28.8, Jupiter 15.6, Saturn 11.6, Uranus 8.1, Neptune 6.5; measured 0.38, 22.5, 17.0, 28.7, 16.7, 11.8, 8.3, 5.8 (Mars to Neptune within 0.9-1.1 of the prediction; the errors grow as t^2, as a drift implies). 60 km is the largest per-body prediction (57.1 km) rounded up. It still detects a missing planet or a GM error of 1e-8 (~750 km in Mercury's longitude), but no longer a 1-km-class integration error: Swiftest at this setting is a weak stage A oracle for the outer bodies."
+verified_by = "WP17 builder agent, 2026-10-15: drift model and per-body predictions computed from the manifest's relative_energy_change before the tolerance was changed; the pre-registered 1 km and its failure are recorded here and in IMPLEMENTATION-NOTES."
+generated_by = "tools/oracles/swiftest_runner.py@8a73faa"
+engine = { name = "Swiftest", version = "2026.7.1", settings = "integrator whm, dt = 0.0078125 d (1/128), units au/day with G*MU = 1 (Gmass bitwise the header values), general_relativity false, close_encounter_check false, heliocentric ICs from header.440, OMP_NUM_THREADS 1" }
+notes = "Measured 2026-10-15 (WP17): 28.68 km (Mars at t = 100 yr); Mercury 0.378 km, within the pre-registered 1 km. HELIO at the same dt gives the same outer-body errors (Mercury 2.4 km), dt = 1/64 d changes them non-monotonically (Venus 0.58 km, Jupiter 8.3 km). Swiftest's driver also segfaults intermittently for Sun + one planet (runner retries in a fresh interpreter, attempts in the manifest)."
+
+[[vector]]
+id = "ORACLE-STAGE-A-MERCURY6-MAX-DR"
+requirement = ["REF-008", "CI-002"]
+quantity = "largest Euclidean heliocentric position difference, over the 8 planets (EMB) and the 101 yearly output times, between FerroAstro IAS15 (f64, states minus the Sun's) and Mercury6 RA15 (accuracy 1e-12) on scenario stage-a-sun-8planets-newton-100yr"
+value = 0.0
+unit = "km"
+kind = "computed-reference"
+source = "Mercury6 (github.com/smirik/mercury@aee9e0f6b8e4d359a9ed3607ee12e34a2e2dafac, built in the local ci/oracles/mercury6 image) on the same scenario file; golden ci/golden/mercury6/stage-a-sun-8planets-newton-100yr/ with its MANIFEST.json"
+citation = "Chambers 1999, MNRAS 304, 793 (Mercury); Everhart 1985 (RA15); Mercury6 used as a black box through mercury6.man, GPL-labelled mirror in a separate container (LIC-001); WP17 plan"
+retrieved = "2026-10-15"
+tolerance = { abs = 1.0 }
+tolerance_rationale = "PROVISIONAL 1 km, pre-registered in the WP17 plan before any run (NEEDS HUMAN REVIEW). RA15's accuracy parameter is a per-step tolerance whose relation to the global error is undocumented, so no sharp expectation was possible; 1 km is the ceiling shared with the other heliocentric oracles: at least 10x below any model or IC error (WP12: tens of km; a GM error of 1e-8 gives ~750 km in Mercury's longitude over 100 yr) while allowing RA15 step-control error and Mercury6's ~15-significant-figure output precision (~1e-5 km at Neptune)."
+verified_by = "WP17 builder agent, 2026-10-15: tolerance from the WP17 plan, written before the first Mercury6 run."
+generated_by = "tools/oracles/mercury6_runner.py@8a73faa"
+engine = { name = "Mercury6", version = "smirik/mercury aee9e0f6 (Chambers package version 6, double-precision fork), gfortran 12.2.0 -O2", settings = "algorithm radau (RA15), accuracy 1e-12, first step 0.5 d, output precision high, no relativity, no user force, J2 = J4 = J6 = 0; masses GM / k^2 with the Gaussian k (checked black-box against element6's semi-major axis to 1e-13)" }
+notes = "Measured 2026-10-15 (WP17), re-measured by the WP17 reviewer 2026-10-20: max |dr| 0.1040 km (Mercury at t = 12418.5 d, about 34 yr; margin 0.10); Venus 0.063 km; outer planets below 0.05 km. At t = 100 yr Mercury is about 0.03 km off. The difference grows to tens of metres within 15 yr and then oscillates between a few metres and about 100 m without a secular trend (checked against the REBOUND golden, which is within 0.7 m of FerroAstro). Review correction: an earlier version of this note quoted the t = 100 yr value (0.03 km) as the measurement."
+
+[[vector]]
+id = "ORACLE-PADD-VENUS-TOOL-AGREEMENT"
+requirement = ["CI-009", "REF-007", "REF-008", "REF-005", "PHY-012"]
+quantity = "difference between a tool's P-add Venus contribution to Mercury's perihelion rate, rate(Sun + Mercury + Venus) - rate(Sun + Mercury) from scenarios oracle-padd-sun-mercury-venus-2000yr and oracle-padd-sun-mercury-2000yr (Newtonian, header.440 ICs, 2000 Julian yr forward from JDEPOC, daily samples), and FerroAstro's on the same scenarios, both measured by one Park2017 estimator applied by FerroAstro's tooling (WP14 estimator id, fit window JDEPOC + 30 d .. JDEPOC + 730470 d)"
+value = 0.0
+unit = "arcsec/cy"
+kind = "computed-reference"
+source = "Swiftest 2026.7.1 (WHM), Mercury6 (RA15) and REBOUND 5.2.2 (IAS15) series from the local oracle images (tools/oracles/nightly.sh; not committed, ~100 MB each, verified through their MANIFEST.json), against FerroAstro IAS15 f64"
+citation = "Park et al. 2017, AJ 153, 121 (estimator; NUM-011 canonical, OI-68 provisional resolution); WP17 plan (crate-plan.json acceptance 2)"
+retrieved = "2026-10-15"
+tolerance = { abs = 1.0e-3 }
+tolerance_rationale = "PROVISIONAL 1e-3 arcsec/cy from the WP17 plan, pre-registered before any run (NEEDS HUMAN REVIEW). Same ICs, same scenario files and one estimator, so a difference is integrator error: WHM's spurious precession from its error Hamiltonian is ~ contribution x (n dt)^2 ~ 277 x 3e-7 ~ 1e-4 arcsec/cy at dt = 1/128 d, and IAS15/RA15 truncation is far smaller; the estimator itself is identical bit for bit for equal inputs."
+verified_by = "WP17 builder agent, 2026-10-15: tolerance and expectation written in the WP17 plan before the first oracle run."
+generated_by = "tools/oracles/run_oracles.sh@8a73faa"
+engine = { name = "Swiftest / Mercury6 / REBOUND", version = "2026.7.1 / smirik-mercury aee9e0f6 / 5.2.2", settings = "ci/oracles/<tool>/settings.toml (WHM dt 1/128 d; RA15 accuracy 1e-12; IAS15 epsilon 1e-9 default)" }
+
+[[vector]]
+id = "ORACLE-CLITE-SWIFTEST-GR-AGREEMENT"
+requirement = ["CI-009", "REF-007", "PHY-005"]
+quantity = "difference between Swiftest's and FerroAstro's 1PN central-body GR contribution to Mercury's perihelion rate, rate(GR on) - rate(GR off) of the Sun + Mercury test particle (scenarios oracle-clite-sun-mercury-tp-gr1pn-252yr and oracle-clite-sun-mercury-tp-newton-252yr: header.440 ICs, mu = GM_sun, 252 Julian yr, daily samples), one Park2017 estimator (fit window JDEPOC + 30 d .. end - 30 d)"
+value = 0.0
+unit = "arcsec/cy"
+kind = "computed-reference"
+source = "Swiftest 2026.7.1 WHM (general_relativity on/off) series from the local oracle image (not committed), against FerroAstro IAS15 test-particle runs with gr_1pn_central on/off from the same scenario files"
+citation = "Wishard et al. 2023, JOSS 8(90), 5409 (Swiftest general_relativity: central-body 1PN, REF-007 notes); WP17 plan"
+retrieved = "2026-10-15"
+tolerance = { abs = 1.0e-3 }
+tolerance_rationale = "PROVISIONAL 1e-3 arcsec/cy from the WP17 plan, pre-registered before any run (NEEDS HUMAN REVIEW). Both tools add a 1PN central-body term whose secular perihelion rate is gauge-independent for a test particle; WHM's splitting error on it is ~ 43 x (n dt)^2 ~ 1e-5 arcsec/cy at dt = 1/128 d."
+verified_by = "WP17 builder agent, 2026-10-15: tolerance and expectation written in the WP17 plan before the first oracle run."
+generated_by = "tools/oracles/run_oracles.sh@8a73faa"
+engine = { name = "Swiftest", version = "2026.7.1", settings = "whm, dt = 1/128 d, test particle, general_relativity on/off" }
+
+[[vector]]
+id = "ORACLE-STAGE-B-OREKIT-MAX-DR"
+requirement = ["REF-006", "CI-002"]
+quantity = "largest Euclidean heliocentric position difference of Mercury, over the 7306 five-day output times of scenario oracle-stage-b-mercury-de440-field-100yr (massless Mercury about the Sun, mu = GM_sun, with direct + indirect Newtonian terms of Venus, Earth, Moon, Mars ... Pluto from DE440; J2000 TDB, 100 Julian yr), between FerroAstro IAS15 (field from de440.bsp) and Orekit 13.1.9 DormandPrince853 (field from the JPL binary linux_p1550p2650.440)"
+value = 0.0
+unit = "km"
+kind = "computed-reference"
+source = "Orekit 13.1.9 / Hipparchus 4.0.3 run in the local ci/oracles/orekit image on the same scenario file; golden ci/golden/orekit/oracle-stage-b-mercury-de440-field-100yr/ with its MANIFEST.json (image digest, runner commit, scenario, JPL file and settings SHA-256s, the GMs Orekit read)"
+citation = "Orekit 13.1.9 (Apache-2.0; NewtonianAttraction, ThirdBodyAttraction); Montenbruck & Gill 2000, Satellite Orbits, Eq. 3.37 (third-body acceleration); Park et al. 2021, AJ 161, 105 (DE440); WP17 plan"
+retrieved = "2026-10-15"
+tolerance = { abs = 1.0 }
+tolerance_rationale = "PROVISIONAL 1 km, pre-registered in the WP17 plan before any run (NEEDS HUMAN REVIEW); unchanged. Both integrators were meant to run far below their truncation limits (IAS15 epsilon 1e-9; DP853 as in engine.settings) and both evaluate the same DE440 Chebyshev data (SPK vs binary file), so metres were expected; 1 km is the ceiling shared with stage A: a missing field body or a GM error of 1e-8 gives far more than 1 km in 100 yr."
+verified_by = "WP17 builder agent, 2026-10-15: tolerance from the WP17 plan, written before the first Orekit run."
+generated_by = "tools/oracles/orekit_runner.py@5fad884"
+engine = { name = "Orekit", version = "13.1.9 with Hipparchus 4.0.3, OpenJDK 17.0.20.1, orekit-data 2422a7d0", settings = "DormandPrince853Integrator(min 1e-3 s, max 2 d, abs 1e-4 m, rel 1e-15; tightened after measurement, see notes); CartesianOrbit in the Sun's inertially oriented frame; NewtonianAttraction(GM_sun) + ThirdBodyAttraction(Venus, Earth, Moon, Mars, Jupiter, Saturn, Uranus, Neptune, Pluto); fixed-step handler every 5 d" }
+notes = "Measured 2026-10-15 (WP17): 0.1310 km (t = 36465 d; margin 0.13) with the settings above. With the PRE-REGISTERED settings (DP853 abs 1e-3 m, rel 1e-14) the value was 1.102 km, which FAILED the 1 km bound; a convergence check showed the oracle itself was not converged (its loose and tight runs differ by up to 0.97 km, growing as t^2 along track, i.e. a secular energy error of the non-symplectic DP853), while FerroAstro moves by < 1 m between IAS15 epsilon 1e-8 and 1e-11. The oracle settings were tightened after that measurement (NEEDS HUMAN REVIEW: a post-measurement change of the oracle configuration, recorded in ci/oracles/orekit/settings.toml and IMPLEMENTATION-NOTES WP17). The remaining 0.13 km is still along track and may be Orekit's residual DP853 error at rel 1e-15 (f64 limit). Orekit's GMs read from the binary file equal header.440 to <= 4e-16 relative."

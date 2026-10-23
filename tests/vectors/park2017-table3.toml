@@ -1,0 +1,219 @@
+# SPDX-FileCopyrightText: 2026 Proper-Time Physics Institute
+# SPDX-License-Identifier: Apache-2.0
+# WP14: Park et al. 2017 Table 3 per-planet Newtonian contributions (PHY-012, NUM-013(b)) and the planet-pair
+# interaction rows (informational). ADR-0014 (maintainer decision C of 2026-10-20, requirements PR #19): the seven
+# single-planet rows GATE under P-remove = rate(full) - rate(full - X) and carry `provisional = "OI-38"`, because
+# P-remove was chosen after the WP14/WP17 results were known and Park's own protocol is not yet confirmed against
+# the Park 2017 text (OI-38). P-add (pre-registered) is reported, not asserted. The pair rows stay informational
+# (blocked_by OI-38, never asserted). The asteroid row (PHY-019) gates under P-remove independently of OI-38.
+# Derivations: docs/strategy/IMPLEMENTATION-NOTES.md, WP14, WP15, WP17 and the ADR-0014 section.
+schema_version = 1
+
+[[vector]]
+id = "PARK17-T3-VENUS"
+requirement = ["PHY-012", "NUM-013"]
+quantity = "contribution of Venus to the precession rate of Mercury's perihelion, Mercury mean-orbit frame (Park17 Table 3 row 'Venus')"
+value = "277.4176"
+unit = "arcsec/cy"
+kind = "measured"
+source = "Park17 Table 3, row 'Venus': 277.4176 +/- <0.0001 arcsec/Julian century"
+citation = 'Park, R. S., Folkner, W. M., Konopliv, A. S., et al. 2017, AJ 153, 121, doi:10.3847/1538-3881/aa5be2, Table 3'
+retrieved = "2026-10-15"
+tolerance = { abs = 0.005 }
+tolerance_rationale = "PHY-012 acceptance (each value within +/- 0.005 arcsec/cy), copied; NUM-013(b) uses the same bound; value and tolerance unchanged since WP14. ASSERTED under P-remove = rate(full) - rate(full - X), identical ICs, one estimator, per ADR-0014 (maintainer decision C of 2026-10-20, requirements PR #19). PROVISIONAL (provisional = OI-38): P-remove was chosen AFTER the results were known. P-add = rate(Sun + Mercury + X) - rate(Sun + Mercury) was pre-registered (WP14) and missed 4 of 7 rows (IMPLEMENTATION-NOTES WP14: Venus -0.022706, Earth/Moon -0.018997, Jupiter +0.038832, Saturn +0.043049 arcsec/cy; WP17: P-add Venus -0.029820 on the forward window, the same for FerroAstro, REBOUND, Mercury6 and Swiftest to 2e-8). This row in WP14: P-remove 277.418142 (+0.000542), P-add 277.394894 (-0.022706, OUTSIDE); P-add is now reported, not asserted. A pass therefore means consistent with Park 2017 under P-remove, not protocol-independent agreement; the bound is tighter than the protocol ambiguity (cross terms up to 0.0411; red-team PHY-012 finding). REVERT CONDITION: if a maintainer's reading of the Park 2017 text (OI-38) says P-add, this row reverts to asserting P-add and the 4 P-add misses are real discrepancies (type:physics-discrepancy)."
+verified_by = "WP14 builder agent, 2026-10-15: read in the published PDF (iopscience.iop.org/article/10.3847/1538-3881/aa5be2/pdf, sha256 24fb2153f6b78109daa80171cd37006157b73564f8d0ac383532b5c92433380b, the copy WP5 read; re-downloaded 2026-10-15, same sha256), pdftotext -layout of page 6, Table 3."
+provisional = "OI-38"
+
+[[vector]]
+id = "PARK17-T3-EARTH-MOON"
+requirement = ["PHY-012", "NUM-013"]
+quantity = "contribution of Earth/Moon to the precession rate of Mercury's perihelion, Mercury mean-orbit frame (Park17 Table 3 row 'Earth/Moon')"
+value = "90.8881"
+unit = "arcsec/cy"
+kind = "measured"
+source = "Park17 Table 3, row 'Earth/Moon': 90.8881 +/- <0.0001 arcsec/Julian century"
+citation = 'Park, R. S., Folkner, W. M., Konopliv, A. S., et al. 2017, AJ 153, 121, doi:10.3847/1538-3881/aa5be2, Table 3'
+retrieved = "2026-10-15"
+tolerance = { abs = 0.005 }
+tolerance_rationale = "PHY-012 acceptance (each value within +/- 0.005 arcsec/cy), copied; NUM-013(b) uses the same bound; value and tolerance unchanged since WP14. ASSERTED under P-remove = rate(full) - rate(full - X), identical ICs, one estimator, per ADR-0014 (maintainer decision C of 2026-10-20, requirements PR #19). PROVISIONAL (provisional = OI-38): P-remove was chosen AFTER the results were known. P-add = rate(Sun + Mercury + X) - rate(Sun + Mercury) was pre-registered (WP14) and missed 4 of 7 rows (IMPLEMENTATION-NOTES WP14: Venus -0.022706, Earth/Moon -0.018997, Jupiter +0.038832, Saturn +0.043049 arcsec/cy; WP17: P-add Venus -0.029820 on the forward window, the same for FerroAstro, REBOUND, Mercury6 and Swiftest to 2e-8). This row in WP14: P-remove 90.888795 (+0.000695), P-add 90.869103 (-0.018997, OUTSIDE); P-add is now reported, not asserted. A pass therefore means consistent with Park 2017 under P-remove, not protocol-independent agreement; the bound is tighter than the protocol ambiguity (cross terms up to 0.0411; red-team PHY-012 finding). REVERT CONDITION: if a maintainer's reading of the Park 2017 text (OI-38) says P-add, this row reverts to asserting P-add and the 4 P-add misses are real discrepancies (type:physics-discrepancy)."
+verified_by = "WP14 builder agent, 2026-10-15: read in the published PDF (iopscience.iop.org/article/10.3847/1538-3881/aa5be2/pdf, sha256 24fb2153f6b78109daa80171cd37006157b73564f8d0ac383532b5c92433380b, the copy WP5 read; re-downloaded 2026-10-15, same sha256), pdftotext -layout of page 6, Table 3."
+provisional = "OI-38"
+
+[[vector]]
+id = "PARK17-T3-MARS"
+requirement = ["PHY-012", "NUM-013"]
+quantity = "contribution of Mars to the precession rate of Mercury's perihelion, Mercury mean-orbit frame (Park17 Table 3 row 'Mars')"
+value = "2.4814"
+unit = "arcsec/cy"
+kind = "measured"
+source = "Park17 Table 3, row 'Mars': 2.4814 +/- <0.0001 arcsec/Julian century"
+citation = 'Park, R. S., Folkner, W. M., Konopliv, A. S., et al. 2017, AJ 153, 121, doi:10.3847/1538-3881/aa5be2, Table 3'
+retrieved = "2026-10-15"
+tolerance = { abs = 0.005 }
+tolerance_rationale = "PHY-012 acceptance (each value within +/- 0.005 arcsec/cy), copied; NUM-013(b) uses the same bound; value and tolerance unchanged since WP14. ASSERTED under P-remove = rate(full) - rate(full - X), identical ICs, one estimator, per ADR-0014 (maintainer decision C of 2026-10-20, requirements PR #19). PROVISIONAL (provisional = OI-38): P-remove was chosen AFTER the results were known. P-add = rate(Sun + Mercury + X) - rate(Sun + Mercury) was pre-registered (WP14) and missed 4 of 7 rows (IMPLEMENTATION-NOTES WP14: Venus -0.022706, Earth/Moon -0.018997, Jupiter +0.038832, Saturn +0.043049 arcsec/cy; WP17: P-add Venus -0.029820 on the forward window, the same for FerroAstro, REBOUND, Mercury6 and Swiftest to 2e-8). This row in WP14: P-remove 2.481426 (+0.000026), P-add 2.479384 (-0.002016, within); P-add is now reported, not asserted. A pass therefore means consistent with Park 2017 under P-remove, not protocol-independent agreement; the bound is tighter than the protocol ambiguity (cross terms up to 0.0411; red-team PHY-012 finding). REVERT CONDITION: if a maintainer's reading of the Park 2017 text (OI-38) says P-add, this row reverts to asserting P-add and the 4 P-add misses are real discrepancies (type:physics-discrepancy)."
+verified_by = "WP14 builder agent, 2026-10-15: read in the published PDF (iopscience.iop.org/article/10.3847/1538-3881/aa5be2/pdf, sha256 24fb2153f6b78109daa80171cd37006157b73564f8d0ac383532b5c92433380b, the copy WP5 read; re-downloaded 2026-10-15, same sha256), pdftotext -layout of page 6, Table 3."
+provisional = "OI-38"
+
+[[vector]]
+id = "PARK17-T3-JUPITER"
+requirement = ["PHY-012", "NUM-013"]
+quantity = "contribution of Jupiter to the precession rate of Mercury's perihelion, Mercury mean-orbit frame (Park17 Table 3 row 'Jupiter')"
+value = "153.9899"
+unit = "arcsec/cy"
+kind = "measured"
+source = "Park17 Table 3, row 'Jupiter': 153.9899 +/- <0.0001 arcsec/Julian century"
+citation = 'Park, R. S., Folkner, W. M., Konopliv, A. S., et al. 2017, AJ 153, 121, doi:10.3847/1538-3881/aa5be2, Table 3'
+retrieved = "2026-10-15"
+tolerance = { abs = 0.005 }
+tolerance_rationale = "PHY-012 acceptance (each value within +/- 0.005 arcsec/cy), copied; NUM-013(b) uses the same bound; value and tolerance unchanged since WP14. ASSERTED under P-remove = rate(full) - rate(full - X), identical ICs, one estimator, per ADR-0014 (maintainer decision C of 2026-10-20, requirements PR #19). PROVISIONAL (provisional = OI-38): P-remove was chosen AFTER the results were known. P-add = rate(Sun + Mercury + X) - rate(Sun + Mercury) was pre-registered (WP14) and missed 4 of 7 rows (IMPLEMENTATION-NOTES WP14: Venus -0.022706, Earth/Moon -0.018997, Jupiter +0.038832, Saturn +0.043049 arcsec/cy; WP17: P-add Venus -0.029820 on the forward window, the same for FerroAstro, REBOUND, Mercury6 and Swiftest to 2e-8). This row in WP14: P-remove 153.990192 (+0.000292), P-add 154.028732 (+0.038832, OUTSIDE); P-add is now reported, not asserted. A pass therefore means consistent with Park 2017 under P-remove, not protocol-independent agreement; the bound is tighter than the protocol ambiguity (cross terms up to 0.0411; red-team PHY-012 finding). REVERT CONDITION: if a maintainer's reading of the Park 2017 text (OI-38) says P-add, this row reverts to asserting P-add and the 4 P-add misses are real discrepancies (type:physics-discrepancy)."
+verified_by = "WP14 builder agent, 2026-10-15: read in the published PDF (iopscience.iop.org/article/10.3847/1538-3881/aa5be2/pdf, sha256 24fb2153f6b78109daa80171cd37006157b73564f8d0ac383532b5c92433380b, the copy WP5 read; re-downloaded 2026-10-15, same sha256), pdftotext -layout of page 6, Table 3."
+provisional = "OI-38"
+
+[[vector]]
+id = "PARK17-T3-SATURN"
+requirement = ["PHY-012", "NUM-013"]
+quantity = "contribution of Saturn to the precession rate of Mercury's perihelion, Mercury mean-orbit frame (Park17 Table 3 row 'Saturn')"
+value = "7.3227"
+unit = "arcsec/cy"
+kind = "measured"
+source = "Park17 Table 3, row 'Saturn': 7.3227 +/- <0.0001 arcsec/Julian century"
+citation = 'Park, R. S., Folkner, W. M., Konopliv, A. S., et al. 2017, AJ 153, 121, doi:10.3847/1538-3881/aa5be2, Table 3'
+retrieved = "2026-10-15"
+tolerance = { abs = 0.005 }
+tolerance_rationale = "PHY-012 acceptance (each value within +/- 0.005 arcsec/cy), copied; NUM-013(b) uses the same bound; value and tolerance unchanged since WP14. ASSERTED under P-remove = rate(full) - rate(full - X), identical ICs, one estimator, per ADR-0014 (maintainer decision C of 2026-10-20, requirements PR #19). PROVISIONAL (provisional = OI-38): P-remove was chosen AFTER the results were known. P-add = rate(Sun + Mercury + X) - rate(Sun + Mercury) was pre-registered (WP14) and missed 4 of 7 rows (IMPLEMENTATION-NOTES WP14: Venus -0.022706, Earth/Moon -0.018997, Jupiter +0.038832, Saturn +0.043049 arcsec/cy; WP17: P-add Venus -0.029820 on the forward window, the same for FerroAstro, REBOUND, Mercury6 and Swiftest to 2e-8). This row in WP14: P-remove 7.322772 (+0.000072), P-add 7.365749 (+0.043049, OUTSIDE); P-add is now reported, not asserted. A pass therefore means consistent with Park 2017 under P-remove, not protocol-independent agreement; the bound is tighter than the protocol ambiguity (cross terms up to 0.0411; red-team PHY-012 finding). REVERT CONDITION: if a maintainer's reading of the Park 2017 text (OI-38) says P-add, this row reverts to asserting P-add and the 4 P-add misses are real discrepancies (type:physics-discrepancy)."
+verified_by = "WP14 builder agent, 2026-10-15: read in the published PDF (iopscience.iop.org/article/10.3847/1538-3881/aa5be2/pdf, sha256 24fb2153f6b78109daa80171cd37006157b73564f8d0ac383532b5c92433380b, the copy WP5 read; re-downloaded 2026-10-15, same sha256), pdftotext -layout of page 6, Table 3."
+provisional = "OI-38"
+
+[[vector]]
+id = "PARK17-T3-URANUS"
+requirement = ["PHY-012", "NUM-013"]
+quantity = "contribution of Uranus to the precession rate of Mercury's perihelion, Mercury mean-orbit frame (Park17 Table 3 row 'Uranus')"
+value = "0.1425"
+unit = "arcsec/cy"
+kind = "measured"
+source = "Park17 Table 3, row 'Uranus': 0.1425 +/- <0.0001 arcsec/Julian century"
+citation = 'Park, R. S., Folkner, W. M., Konopliv, A. S., et al. 2017, AJ 153, 121, doi:10.3847/1538-3881/aa5be2, Table 3'
+retrieved = "2026-10-15"
+tolerance = { abs = 0.005 }
+tolerance_rationale = "PHY-012 acceptance (each value within +/- 0.005 arcsec/cy), copied; NUM-013(b) uses the same bound; value and tolerance unchanged since WP14. ASSERTED under P-remove = rate(full) - rate(full - X), identical ICs, one estimator, per ADR-0014 (maintainer decision C of 2026-10-20, requirements PR #19). PROVISIONAL (provisional = OI-38): P-remove was chosen AFTER the results were known. P-add = rate(Sun + Mercury + X) - rate(Sun + Mercury) was pre-registered (WP14) and missed 4 of 7 rows (IMPLEMENTATION-NOTES WP14: Venus -0.022706, Earth/Moon -0.018997, Jupiter +0.038832, Saturn +0.043049 arcsec/cy; WP17: P-add Venus -0.029820 on the forward window, the same for FerroAstro, REBOUND, Mercury6 and Swiftest to 2e-8). This row in WP14: P-remove 0.142531 (+0.000031), P-add 0.139602 (-0.002898, within); P-add is now reported, not asserted. A pass therefore means consistent with Park 2017 under P-remove, not protocol-independent agreement; the bound is tighter than the protocol ambiguity (cross terms up to 0.0411; red-team PHY-012 finding). REVERT CONDITION: if a maintainer's reading of the Park 2017 text (OI-38) says P-add, this row reverts to asserting P-add and the 4 P-add misses are real discrepancies (type:physics-discrepancy)."
+verified_by = "WP14 builder agent, 2026-10-15: read in the published PDF (iopscience.iop.org/article/10.3847/1538-3881/aa5be2/pdf, sha256 24fb2153f6b78109daa80171cd37006157b73564f8d0ac383532b5c92433380b, the copy WP5 read; re-downloaded 2026-10-15, same sha256), pdftotext -layout of page 6, Table 3."
+provisional = "OI-38"
+
+[[vector]]
+id = "PARK17-T3-NEPTUNE"
+requirement = ["PHY-012", "NUM-013"]
+quantity = "contribution of Neptune to the precession rate of Mercury's perihelion, Mercury mean-orbit frame (Park17 Table 3 row 'Neptune')"
+value = "0.0424"
+unit = "arcsec/cy"
+kind = "measured"
+source = "Park17 Table 3, row 'Neptune': 0.0424 +/- <0.0001 arcsec/Julian century"
+citation = 'Park, R. S., Folkner, W. M., Konopliv, A. S., et al. 2017, AJ 153, 121, doi:10.3847/1538-3881/aa5be2, Table 3'
+retrieved = "2026-10-15"
+tolerance = { abs = 0.005 }
+tolerance_rationale = "PHY-012 acceptance (each value within +/- 0.005 arcsec/cy), copied; NUM-013(b) uses the same bound; value and tolerance unchanged since WP14. ASSERTED under P-remove = rate(full) - rate(full - X), identical ICs, one estimator, per ADR-0014 (maintainer decision C of 2026-10-20, requirements PR #19). PROVISIONAL (provisional = OI-38): P-remove was chosen AFTER the results were known. P-add = rate(Sun + Mercury + X) - rate(Sun + Mercury) was pre-registered (WP14) and missed 4 of 7 rows (IMPLEMENTATION-NOTES WP14: Venus -0.022706, Earth/Moon -0.018997, Jupiter +0.038832, Saturn +0.043049 arcsec/cy; WP17: P-add Venus -0.029820 on the forward window, the same for FerroAstro, REBOUND, Mercury6 and Swiftest to 2e-8). This row in WP14: P-remove 0.042378 (-0.000022), P-add 0.042068 (-0.000332, within); P-add is now reported, not asserted. A pass therefore means consistent with Park 2017 under P-remove, not protocol-independent agreement; the bound is tighter than the protocol ambiguity (cross terms up to 0.0411; red-team PHY-012 finding). REVERT CONDITION: if a maintainer's reading of the Park 2017 text (OI-38) says P-add, this row reverts to asserting P-add and the 4 P-add misses are real discrepancies (type:physics-discrepancy)."
+verified_by = "WP14 builder agent, 2026-10-15: read in the published PDF (iopscience.iop.org/article/10.3847/1538-3881/aa5be2/pdf, sha256 24fb2153f6b78109daa80171cd37006157b73564f8d0ac383532b5c92433380b, the copy WP5 read; re-downloaded 2026-10-15, same sha256), pdftotext -layout of page 6, Table 3."
+provisional = "OI-38"
+
+[[vector]]
+id = "PARK17-T3-X-VENUS-EARTH-MOON"
+requirement = ["PHY-012", "NUM-013"]
+quantity = "planet-pair interaction term of Mercury's perihelion precession rate (Park17 Table 3 row 'Venus+Earth/Moon Interaction'), informational"
+value = "-0.0209"
+unit = "arcsec/cy"
+kind = "measured"
+source = "Park17 Table 3, row 'Venus+Earth/Moon Interaction': -0.0209 arcsec/Julian century (no uncertainty given)"
+citation = 'Park, R. S., Folkner, W. M., Konopliv, A. S., et al. 2017, AJ 153, 121, doi:10.3847/1538-3881/aa5be2, Table 3'
+retrieved = "2026-10-15"
+tolerance = { abs = 0.005 }
+tolerance_rationale = "Informational only (PHY-012 notes and NUM-013(b): cross terms reported separately); never asserted. The PHY-012 bound is recorded for scale. FerroAstro's cross term is the P-add interaction rate(S+M+X+Y) - rate(S+M+X) - rate(S+M+Y) + rate(S+M); Park17 describes its interaction rows as indirect effects through the other planet's orbit (section 4), a different decomposition (OI-38)."
+verified_by = "WP14 builder agent, 2026-10-15: read in the published PDF (iopscience.iop.org/article/10.3847/1538-3881/aa5be2/pdf, sha256 24fb2153f6b78109daa80171cd37006157b73564f8d0ac383532b5c92433380b, the copy WP5 read; re-downloaded 2026-10-15, same sha256), pdftotext -layout of page 6, Table 3."
+blocked_by = "OI-38"
+
+[[vector]]
+id = "PARK17-T3-X-VENUS-JUPITER"
+requirement = ["PHY-012", "NUM-013"]
+quantity = "planet-pair interaction term of Mercury's perihelion precession rate (Park17 Table 3 row 'Venus+Jupiter Interaction'), informational"
+value = "-0.0012"
+unit = "arcsec/cy"
+kind = "measured"
+source = "Park17 Table 3, row 'Venus+Jupiter Interaction': -0.0012 arcsec/Julian century (no uncertainty given)"
+citation = 'Park, R. S., Folkner, W. M., Konopliv, A. S., et al. 2017, AJ 153, 121, doi:10.3847/1538-3881/aa5be2, Table 3'
+retrieved = "2026-10-15"
+tolerance = { abs = 0.005 }
+tolerance_rationale = "Informational only (PHY-012 notes and NUM-013(b): cross terms reported separately); never asserted. The PHY-012 bound is recorded for scale. FerroAstro's cross term is the P-add interaction rate(S+M+X+Y) - rate(S+M+X) - rate(S+M+Y) + rate(S+M); Park17 describes its interaction rows as indirect effects through the other planet's orbit (section 4), a different decomposition (OI-38)."
+verified_by = "WP14 builder agent, 2026-10-15: read in the published PDF (iopscience.iop.org/article/10.3847/1538-3881/aa5be2/pdf, sha256 24fb2153f6b78109daa80171cd37006157b73564f8d0ac383532b5c92433380b, the copy WP5 read; re-downloaded 2026-10-15, same sha256), pdftotext -layout of page 6, Table 3."
+blocked_by = "OI-38"
+
+[[vector]]
+id = "PARK17-T3-X-EARTH-MOON-MARS"
+requirement = ["PHY-012", "NUM-013"]
+quantity = "planet-pair interaction term of Mercury's perihelion precession rate (Park17 Table 3 row 'Earth/Moon+Mars Interaction'), informational"
+value = "-0.0016"
+unit = "arcsec/cy"
+kind = "measured"
+source = "Park17 Table 3, row 'Earth/Moon+Mars Interaction': -0.0016 arcsec/Julian century (no uncertainty given)"
+citation = 'Park, R. S., Folkner, W. M., Konopliv, A. S., et al. 2017, AJ 153, 121, doi:10.3847/1538-3881/aa5be2, Table 3'
+retrieved = "2026-10-15"
+tolerance = { abs = 0.005 }
+tolerance_rationale = "Informational only (PHY-012 notes and NUM-013(b): cross terms reported separately); never asserted. The PHY-012 bound is recorded for scale. FerroAstro's cross term is the P-add interaction rate(S+M+X+Y) - rate(S+M+X) - rate(S+M+Y) + rate(S+M); Park17 describes its interaction rows as indirect effects through the other planet's orbit (section 4), a different decomposition (OI-38)."
+verified_by = "WP14 builder agent, 2026-10-15: read in the published PDF (iopscience.iop.org/article/10.3847/1538-3881/aa5be2/pdf, sha256 24fb2153f6b78109daa80171cd37006157b73564f8d0ac383532b5c92433380b, the copy WP5 read; re-downloaded 2026-10-15, same sha256), pdftotext -layout of page 6, Table 3."
+blocked_by = "OI-38"
+
+[[vector]]
+id = "PARK17-T3-X-MARS-JUPITER"
+requirement = ["PHY-012", "NUM-013"]
+quantity = "planet-pair interaction term of Mercury's perihelion precession rate (Park17 Table 3 row 'Mars+Jupiter Interaction'), informational"
+value = "0.0002"
+unit = "arcsec/cy"
+kind = "measured"
+source = "Park17 Table 3, row 'Mars+Jupiter Interaction': 0.0002 arcsec/Julian century (no uncertainty given)"
+citation = 'Park, R. S., Folkner, W. M., Konopliv, A. S., et al. 2017, AJ 153, 121, doi:10.3847/1538-3881/aa5be2, Table 3'
+retrieved = "2026-10-15"
+tolerance = { abs = 0.005 }
+tolerance_rationale = "Informational only (PHY-012 notes and NUM-013(b): cross terms reported separately); never asserted. The PHY-012 bound is recorded for scale. FerroAstro's cross term is the P-add interaction rate(S+M+X+Y) - rate(S+M+X) - rate(S+M+Y) + rate(S+M); Park17 describes its interaction rows as indirect effects through the other planet's orbit (section 4), a different decomposition (OI-38)."
+verified_by = "WP14 builder agent, 2026-10-15: read in the published PDF (iopscience.iop.org/article/10.3847/1538-3881/aa5be2/pdf, sha256 24fb2153f6b78109daa80171cd37006157b73564f8d0ac383532b5c92433380b, the copy WP5 read; re-downloaded 2026-10-15, same sha256), pdftotext -layout of page 6, Table 3."
+blocked_by = "OI-38"
+
+[[vector]]
+id = "PARK17-T3-X-JUPITER-SATURN"
+requirement = ["PHY-012", "NUM-013"]
+quantity = "planet-pair interaction term of Mercury's perihelion precession rate (Park17 Table 3 row 'Jupiter+Saturn Interaction'), informational"
+value = "0.0411"
+unit = "arcsec/cy"
+kind = "measured"
+source = "Park17 Table 3, row 'Jupiter+Saturn Interaction': 0.0411 arcsec/Julian century (no uncertainty given)"
+citation = 'Park, R. S., Folkner, W. M., Konopliv, A. S., et al. 2017, AJ 153, 121, doi:10.3847/1538-3881/aa5be2, Table 3'
+retrieved = "2026-10-15"
+tolerance = { abs = 0.005 }
+tolerance_rationale = "Informational only (PHY-012 notes and NUM-013(b): cross terms reported separately); never asserted. The PHY-012 bound is recorded for scale. FerroAstro's cross term is the P-add interaction rate(S+M+X+Y) - rate(S+M+X) - rate(S+M+Y) + rate(S+M); Park17 describes its interaction rows as indirect effects through the other planet's orbit (section 4), a different decomposition (OI-38)."
+verified_by = "WP14 builder agent, 2026-10-15: read in the published PDF (iopscience.iop.org/article/10.3847/1538-3881/aa5be2/pdf, sha256 24fb2153f6b78109daa80171cd37006157b73564f8d0ac383532b5c92433380b, the copy WP5 read; re-downloaded 2026-10-15, same sha256), pdftotext -layout of page 6, Table 3."
+blocked_by = "OI-38"
+
+[[vector]]
+id = "PARK17-T3-X-SATURN-URANUS"
+requirement = ["PHY-012", "NUM-013"]
+quantity = "planet-pair interaction term of Mercury's perihelion precession rate (Park17 Table 3 row 'Saturn+Uranus Interaction'), informational"
+value = "0.0004"
+unit = "arcsec/cy"
+kind = "measured"
+source = "Park17 Table 3, row 'Saturn+Uranus Interaction': 0.0004 arcsec/Julian century (no uncertainty given)"
+citation = 'Park, R. S., Folkner, W. M., Konopliv, A. S., et al. 2017, AJ 153, 121, doi:10.3847/1538-3881/aa5be2, Table 3'
+retrieved = "2026-10-15"
+tolerance = { abs = 0.005 }
+tolerance_rationale = "Informational only (PHY-012 notes and NUM-013(b): cross terms reported separately); never asserted. The PHY-012 bound is recorded for scale. FerroAstro's cross term is the P-add interaction rate(S+M+X+Y) - rate(S+M+X) - rate(S+M+Y) + rate(S+M); Park17 describes its interaction rows as indirect effects through the other planet's orbit (section 4), a different decomposition (OI-38)."
+verified_by = "WP14 builder agent, 2026-10-15: read in the published PDF (iopscience.iop.org/article/10.3847/1538-3881/aa5be2/pdf, sha256 24fb2153f6b78109daa80171cd37006157b73564f8d0ac383532b5c92433380b, the copy WP5 read; re-downloaded 2026-10-15, same sha256), pdftotext -layout of page 6, Table 3."
+blocked_by = "OI-38"
+
+[[vector]]
+id = "PARK17-T3-ASTEROIDS"
+requirement = ["PHY-013", "PHY-019", "NUM-013"]
+quantity = "contribution of the 343 asteroids to the precession rate of Mercury's perihelion, Mercury mean-orbit frame (Park17 Table 3 row 'Asteroids', rung N-AST)"
+value = "0.0012"
+unit = "arcsec/cy"
+kind = "measured"
+source = "Park17 Table 3, row 'Asteroids': 0.0012 +/- <0.0001 arcsec/Julian century; the text attributes the uncertainty to the estimated GMs of the 343 asteroids."
+citation = 'Park, R. S., Folkner, W. M., Konopliv, A. S., et al. 2017, AJ 153, 121, doi:10.3847/1538-3881/aa5be2, Table 3'
+retrieved = "2026-10-15"
+tolerance = { abs = 0.0003 }
+tolerance_rationale = "Agent-set from the red-team PHY-014 proposal (an N-AST differential at +/- 0.0003) and the WP14/WP15 review correction; PHY-019 (rung N-AST) holds the same 0.0012 +/- 0.0003. Value and tolerance unchanged since WP15. ASSERTED under P-remove = rate(planets + asteroids) - rate(planets), as PHY-012 (ADR-0014, maintainer decision C of 2026-10-20, requirements PR #19); P-add = rate(Sun + Mercury + asteroids) - rate(Sun + Mercury) is reported. Gates independently of OI-38 (no blocked_by, not provisional): WP15 gave P-add 0.001242 and P-remove 0.001245 arcsec/cy, a protocol dependence of about 3e-6, 1% of the tolerance (progress review after WP15, F9)."
+verified_by = "WP15 builder agent, 2026-10-15: read in the published PDF (sha256 24fb2153f6b78109daa80171cd37006157b73564f8d0ac383532b5c92433380b), pdftotext -layout of page 6, Table 3."

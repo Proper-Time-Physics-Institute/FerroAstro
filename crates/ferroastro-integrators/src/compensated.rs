@@ -6,9 +6,11 @@
 //! represented total is `sum − comp`. Kahan 1965, "Further remarks on reducing truncation errors",
 //! Commun. ACM 8, 40; the use for the IAS15 state update follows Rein & Spiegel 2015 §3.5.
 
-/// Add `x` to the compensated pair `(sum, comp)`.
+use ferroastro_real::Real;
+
+/// Add `x` to the compensated pair `(sum, comp)` (any backend; for `f64` the M0 code).
 #[inline]
-pub fn kahan_add(sum: &mut f64, comp: &mut f64, x: f64) {
+pub fn kahan_add<R: Real>(sum: &mut R, comp: &mut R, x: R) {
     let y = x - *comp;
     let t = *sum + y;
     *comp = (t - *sum) - y;
@@ -17,8 +19,8 @@ pub fn kahan_add(sum: &mut f64, comp: &mut f64, x: f64) {
 
 /// Compensated sum of a slice.
 #[must_use]
-pub fn kahan_sum(values: &[f64]) -> f64 {
-    let (mut s, mut c) = (0.0, 0.0);
+pub fn kahan_sum<R: Real>(values: &[R]) -> R {
+    let (mut s, mut c) = (R::ZERO, R::ZERO);
     for &x in values {
         kahan_add(&mut s, &mut c, x);
     }

@@ -105,9 +105,117 @@ pub struct Vector {
     pub engine: Option<Engine>,
     /// Free-form notes.
     pub notes: Option<String>,
+    /// An open item (`OI-NN`) that keeps this oracle non-gating while it is open in
+    /// `docs/requirements/OPEN-ITEMS.md` (e.g. an unverified protocol behind a published value).
+    pub blocked_by: Option<String>,
+    /// An open item (`OI-NN`) under which this vector's assertion is PROVISIONAL (e.g. a protocol
+    /// chosen before a published method was confirmed; ADR-0014, OI-38). Unlike `blocked_by` it
+    /// does not change gating: the vector is checked like any other. It labels the result, and it
+    /// must name an item recorded in `docs/requirements/OPEN-ITEMS.md`
+    /// ([`Vector::provisional_open_item`]), where the revert condition lives. Excludes
+    /// `blocked_by`.
+    pub provisional: Option<String>,
+}
+
+/// The state of a vector's `provisional` open item, from [`Vector::provisional_open_item`].
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Provisional<'a> {
+    /// The open item, `OI-NN`.
+    pub open_item: &'a str,
+    /// True while the item is unticked in `OPEN-ITEMS.md`.
+    pub open: bool,
+}
+
+impl std::fmt::Display for Provisional<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let oi = self.open_item;
+        if self.open {
+            write!(
+                f,
+                "PROVISIONAL ({oi} open): this assertion reverts if {oi} is closed against its \
+                 protocol; revert condition in OPEN-ITEMS.md {oi} and the vector's tolerance_rationale"
+            )
+        } else {
+            write!(
+                f,
+                "PROVISIONAL label stale: {oi} is closed in OPEN-ITEMS.md; drop `provisional` or \
+                 apply the revert condition recorded in {oi} and the vector's tolerance_rationale"
+            )
+        }
+    }
+}
+
+/// `Some(true)` if `oi` is an unticked item of `open_items_md`, `Some(false)` if ticked
+/// (`- [x] **OI-NN**`), `None` if the file does not list it.
+fn open_item_state(open_items_md: &str, oi: &str) -> Option<bool> {
+    let tag = format!("**{oi}**");
+    let mut state = None;
+    for l in open_items_md.lines() {
+        let l = l.trim_start();
+        let Some(rest) = l.strip_prefix("- [") else {
+            continue;
+        };
+        let open = match rest.get(..2) {
+            Some("x]" | "X]") => false,
+            Some(" ]") => true,
+            _ => continue,
+        };
+        if rest
+            .get(2..)
+            .is_some_and(|r| r.trim_start().starts_with(&tag))
+        {
+            if !open {
+                return Some(false);
+            }
+            state = Some(true);
+        }
+    }
+    state
 }
 
 impl Vector {
+    /// The open item that keeps this vector non-gating, if `blocked_by` names one that
+    /// `open_items_md` (the text of `docs/requirements/OPEN-ITEMS.md`) does not mark closed
+    /// (`- [x] **OI-NN**`). An item missing from the file counts as open.
+    #[must_use]
+    pub fn blocking_open_item(&self, open_items_md: &str) -> Option<&str> {
+        let oi = self.blocked_by.as_deref()?;
+        (open_item_state(open_items_md, oi) != Some(false)).then_some(oi)
+    }
+
+    /// The `provisional` open item of this vector and whether it is still open in
+    /// `open_items_md` (the text of `docs/requirements/OPEN-ITEMS.md`); `None` for a vector
+    /// that is not provisional. A provisional vector gates like any other; callers print the
+    /// returned label ([`Provisional`]'s `Display`) next to every result it judges.
+    ///
+    /// # Errors
+    /// [`VectorError::Schema`] (`FA-E0102`) if the item is not listed in `open_items_md` at all:
+    /// a provisional assertion must point at a recorded open item and its revert condition
+    /// (unlike `blocked_by`, where a missing item counts as open).
+    pub fn provisional_open_item<'a>(
+        &'a self,
+        open_items_md: &str,
+    ) -> Result<Option<Provisional<'a>>, VectorError> {
+        let Some(oi) = self.provisional.as_deref() else {
+            return Ok(None);
+        };
+        match open_item_state(open_items_md, oi) {
+            Some(open) => Ok(Some(Provisional {
+                open_item: oi,
+                open,
+            })),
+            None => Err(VectorError::Schema {
+                path: Path::new("docs/requirements/OPEN-ITEMS.md").to_path_buf(),
+                id: self.id.clone(),
+                field: "provisional",
+                problem: format!(
+                    "names {oi}, which OPEN-ITEMS.md does not list; fix: record the open item and \
+                     its revert condition there, or drop `provisional`"
+                ),
+            }),
+        }
+    }
+
     /// The expected value as `f64`.
     ///
     /// # Errors
@@ -150,6 +258,7 @@ impl Vector {
                 diff,
                 allowed,
                 tolerance: self.tolerance,
+                provisional: self.provisional.clone(),
             })))
         }
     }
@@ -181,6 +290,8 @@ struct RawVector {
     generated_by: Option<String>,
     engine: Option<Engine>,
     notes: Option<String>,
+    blocked_by: Option<String>,
+    provisional: Option<String>,
 }
 
 struct Ctx<'a> {
@@ -235,6 +346,67 @@ fn valid_date(d: &str) -> bool {
                 c.is_ascii_digit()
             }
         })
+}
+
+fn check_computed_reference(
+    ctx: &Ctx<'_>,
+    kind: Kind,
+    generated_by: Option<&str>,
+    engine: Option<&Engine>,
+) -> Result<(), VectorError> {
+    if kind != Kind::ComputedReference {
+        return Ok(());
+    }
+    if !generated_by.is_some_and(|g| {
+        g.split_once('@')
+            .is_some_and(|(p, sha)| !p.is_empty() && sha.len() >= 7)
+    }) {
+        return Err(ctx.err(
+            "generated_by",
+            "computed-reference needs `path@sha` (TST-003)",
+        ));
+    }
+    if !engine.is_some_and(|e| {
+        [&e.name, &e.version, &e.settings]
+            .iter()
+            .all(|s| !s.trim().is_empty())
+    }) {
+        return Err(ctx.err("engine", "computed-reference needs name, version, settings"));
+    }
+    Ok(())
+}
+
+/// `blocked_by` and `provisional` each name one well-formed `OI-NN` id, and never both.
+fn check_open_item_refs(
+    ctx: &Ctx<'_>,
+    blocked_by: Option<&str>,
+    provisional: Option<&str>,
+) -> Result<(), VectorError> {
+    // ADR-0004 revision 2026-10-21: `provisional` matches `^OI-\d{2,}$`; `blocked_by` keeps its
+    // original `^OI-\d+$`.
+    for (field, v, min_digits) in [
+        ("blocked_by", blocked_by, 1),
+        ("provisional", provisional, 2),
+    ] {
+        let well_formed = |v: &str| {
+            v.strip_prefix("OI-")
+                .is_some_and(|n| n.len() >= min_digits && n.chars().all(|c| c.is_ascii_digit()))
+        };
+        match v {
+            Some(v) if !well_formed(v) => {
+                return Err(ctx.err(field, format!("{v:?} is not an OI-NN open-item id")));
+            }
+            _ => {}
+        }
+    }
+    if blocked_by.is_some() && provisional.is_some() {
+        return Err(ctx.err(
+            "provisional",
+            "cannot be combined with `blocked_by`: a provisional vector gates, a blocked one \
+             does not; keep one",
+        ));
+    }
+    Ok(())
 }
 
 /// Largest integer that converts to f64 exactly.
@@ -309,26 +481,8 @@ fn validate(path: &Path, raw: RawVector) -> Result<Vector, VectorError> {
 
     let generated_by = raw.generated_by;
     let engine = raw.engine;
-    if kind == Kind::ComputedReference {
-        match &generated_by {
-            Some(g)
-                if g.split_once('@')
-                    .is_some_and(|(p, sha)| !p.is_empty() && sha.len() >= 7) => {}
-            _ => {
-                return Err(ctx.err(
-                    "generated_by",
-                    "computed-reference needs `path@sha` (TST-003)",
-                ));
-            }
-        }
-        match &engine {
-            Some(e)
-                if [&e.name, &e.version, &e.settings]
-                    .iter()
-                    .all(|s| !s.trim().is_empty()) => {}
-            _ => return Err(ctx.err("engine", "computed-reference needs name, version, settings")),
-        }
-    }
+    check_computed_reference(&ctx, kind, generated_by.as_deref(), engine.as_ref())?;
+    check_open_item_refs(&ctx, raw.blocked_by.as_deref(), raw.provisional.as_deref())?;
 
     Ok(Vector {
         quantity: ctx.text("quantity", raw.quantity)?,
@@ -346,6 +500,8 @@ fn validate(path: &Path, raw: RawVector) -> Result<Vector, VectorError> {
         generated_by,
         engine,
         notes: raw.notes,
+        blocked_by: raw.blocked_by,
+        provisional: raw.provisional,
     })
 }
 

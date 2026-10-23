@@ -1,0 +1,34 @@
+# SPDX-FileCopyrightText: 2026 Proper-Time Physics Institute
+# SPDX-License-Identifier: Apache-2.0
+[package]
+name = "ferroastro-oracle"
+description = "Oracle glue: reads plain-file oracle goldens and their MANIFEST.json, verifies provenance and SHA-256s, and compares FerroAstro runs with them (CI-003, CI-005, REF-005)"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+authors.workspace = true
+repository.workspace = true
+publish = false
+
+[dependencies]
+ferroastro-core.workspace = true
+ferroastro-propagate.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+sha2.workspace = true
+thiserror.workspace = true
+
+[dev-dependencies]
+proptest.workspace = true
+ferroastro-constants.workspace = true
+ferroastro-diffrun.workspace = true
+ferroastro-ephem.workspace = true
+ferroastro-precession.workspace = true
+ferroastro-scenario.workspace = true
+ferroastro-system.workspace = true
+ferroastro-testdata.workspace = true
+ferroastro-vectors.workspace = true
+
+[lints]
+workspace = true

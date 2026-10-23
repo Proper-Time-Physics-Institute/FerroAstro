@@ -1,0 +1,29 @@
+# SPDX-FileCopyrightText: 2026 Proper-Time Physics Institute
+# SPDX-License-Identifier: Apache-2.0
+[package]
+name = "ferroastro-erfa"
+description = "FerroAstro port of the ERFA (BSD-3-Clause) calendar, time-scale and IAU 2006 precession routines, generic over Real"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+# The ported files are derived from ERFA 2.0.1 (BSD-3-Clause, NumFOCUS Foundation); FerroAstro's
+# own code is Apache-2.0 (DEP-009, LIC-004). Each file states its own SPDX expression.
+license = "Apache-2.0 AND BSD-3-Clause"
+authors.workspace = true
+repository.workspace = true
+
+[features]
+default = ["std"]
+# Platform f64 math through ferroastro-real. Without it the crate is no_std and needs `libm`.
+std = ["ferroastro-real/std"]
+libm = ["ferroastro-real/libm"]
+
+[dependencies]
+# Not the workspace entry: that one enables ferroastro-real/std, and this crate must build no_std.
+ferroastro-real = { path = "../ferroastro-real", version = "0.0.0", default-features = false }
+
+[dev-dependencies]
+ferroastro-vectors.workspace = true
+
+[lints]
+workspace = true

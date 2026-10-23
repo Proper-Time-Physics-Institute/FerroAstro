@@ -11,34 +11,42 @@
 use crate::AnalyticError;
 use ferroastro_core::time::{DAYS_PER_JULIAN_CENTURY, SECONDS_PER_DAY};
 use ferroastro_core::units::{Angle, AngularRate, GravParam, Length, SpinGm, TimeSpan, Velocity};
-use std::f64::consts::{PI, TAU};
+use ferroastro_real::Real;
 
-/// The analytic advance and the numbers it was built from.
+/// The analytic advance and the numbers it was built from (backend `R`, default `f64`).
 #[derive(Debug, Clone, Copy, PartialEq)]
-pub struct SchwarzschildAdvance {
+pub struct SchwarzschildAdvance<R: Real = f64> {
     /// Advance per orbit.
-    pub per_orbit: Angle,
+    pub per_orbit: Angle<R>,
     /// Keplerian period.
-    pub period: TimeSpan,
+    pub period: TimeSpan<R>,
     /// Orbits per Julian century (36 525 d of 86 400 s).
-    pub orbits_per_century: f64,
+    pub orbits_per_century: R,
     /// Secular rate.
-    pub rate: AngularRate,
+    pub rate: AngularRate<R>,
 }
 
-impl SchwarzschildAdvance {
+impl<R: Real> SchwarzschildAdvance<R> {
     /// The rate in arcseconds per Julian century.
     #[must_use]
-    pub fn arcsec_per_century(&self) -> f64 {
+    pub fn arcsec_per_century(&self) -> R {
         rate_arcsec_per_century(self.rate)
     }
 }
 
 /// Convert an angular rate to arcseconds per Julian century.
 #[must_use]
-pub fn rate_arcsec_per_century(rate: AngularRate) -> f64 {
-    let rad = rate.rad_per_s() * SECONDS_PER_DAY * DAYS_PER_JULIAN_CENTURY;
-    Angle::from_radians(rad).map_or(f64::NAN, Angle::arcsec)
+pub fn rate_arcsec_per_century<R: Real>(rate: AngularRate<R>) -> R {
+    let rad =
+        rate.rad_per_s() * R::from_f64(SECONDS_PER_DAY) * R::from_f64(DAYS_PER_JULIAN_CENTURY);
+    Angle::from_radians(rad).map_or(R::from_f64(f64::NAN), Angle::arcsec)
+}
+
+fn dom<R: Real>(what: &'static str, value: R) -> AnalyticError {
+    AnalyticError::Domain {
+        what,
+        value: value.to_f64(),
+    }
 }
 
 /// Evaluate the Schwarzschild advance.
@@ -47,23 +55,30 @@ pub fn rate_arcsec_per_century(rate: AngularRate) -> f64 {
 /// * `c`: speed of light; `a`, `e`: semi-major axis and eccentricity;
 /// * `mu_period`: the gravitational parameter of the Keplerian period.
 ///
+/// **μ convention used throughout FerroAstro** (caveat C7, WP6 review): the advance takes the
+/// central mass alone, `gm_advance = GM☉` (test-particle limit of the Schwarzschild field), and
+/// the period — hence the mean motion `n` — takes the two-body `mu_period = GM☉ + GM☿`, which is
+/// also the GM with which JPL Horizons computes osculating elements. Using `GM☉` in both places
+/// changes Mercury's rate by about 4e-6 ″/cy (7e-6 ″/cy for `GM☉ + GM☿` in both). Harmless
+/// against PHY-004's 1e-4, but it matters once rates are differenced at NUM-013's 1e-4 level, so
+/// callers must keep the convention fixed across the runs they difference.
+///
 /// # Errors
 /// `FA-E0600` for `e ∉ [0, 1)` or non-positive `a`, `c`, `GM` or `μ`.
-pub fn schwarzschild_advance(
-    gm_advance: GravParam,
-    c: Velocity,
-    a: Length,
-    e: f64,
-    mu_period: GravParam,
-) -> Result<SchwarzschildAdvance, AnalyticError> {
-    let dom = |what, value| AnalyticError::Domain { what, value };
+pub fn schwarzschild_advance<R: Real>(
+    gm_advance: GravParam<R>,
+    c: Velocity<R>,
+    a: Length<R>,
+    e: R,
+    mu_period: GravParam<R>,
+) -> Result<SchwarzschildAdvance<R>, AnalyticError> {
     let (gm, cc, aa, mu) = (
         gm_advance.km3_per_s2(),
         c.km_per_s(),
         a.km(),
         mu_period.km3_per_s2(),
     );
-    if !(0.0..1.0).contains(&e) {
+    if !(e >= R::ZERO && e < R::ONE) {
         return Err(dom("eccentricity", e));
     }
     for (what, v) in [
@@ -72,13 +87,13 @@ pub fn schwarzschild_advance(
         ("a (km)", aa),
         ("mu (km^3/s^2)", mu),
     ] {
-        if !(v > 0.0 && v.is_finite()) {
+        if !(v > R::ZERO && v.is_finite()) {
             return Err(dom(what, v));
         }
     }
-    let per_orbit = 6.0 * PI * gm / (cc * cc * aa * e.mul_add(-e, 1.0));
-    let period = TAU * (aa * aa * aa / mu).sqrt();
-    let century = SECONDS_PER_DAY * DAYS_PER_JULIAN_CENTURY;
+    let per_orbit = R::from_f64(6.0) * R::PI * gm / (cc * cc * aa * e.mul_add(-e, R::ONE));
+    let period = R::TAU * (aa * aa * aa / mu).sqrt();
+    let century = R::from_f64(SECONDS_PER_DAY) * R::from_f64(DAYS_PER_JULIAN_CENTURY);
     let orbits_per_century = century / period;
     let ang = Angle::from_radians(per_orbit).map_err(|_| dom("advance per orbit", per_orbit))?;
     let per = TimeSpan::from_seconds(period).map_err(|_| dom("period (s)", period))?;
@@ -94,37 +109,34 @@ pub fn schwarzschild_advance(
 // Single-body analytic oracles (NUM-015; rungs SR-a, SR-b, PPN, J2, LT).
 // ---------------------------------------------------------------------------------------------
 
-fn positive(what: &'static str, v: f64) -> Result<f64, AnalyticError> {
-    if v.is_finite() && v > 0.0 {
+fn positive<R: Real>(what: &'static str, v: R) -> Result<R, AnalyticError> {
+    if v.is_finite() && v > R::ZERO {
         Ok(v)
     } else {
-        Err(AnalyticError::Domain { what, value: v })
+        Err(dom(what, v))
     }
 }
 
-fn eccentricity(e: f64) -> Result<f64, AnalyticError> {
-    if (0.0..1.0).contains(&e) {
+fn eccentricity<R: Real>(e: R) -> Result<R, AnalyticError> {
+    if e >= R::ZERO && e < R::ONE {
         Ok(e)
     } else {
-        Err(AnalyticError::Domain {
-            what: "eccentricity",
-            value: e,
-        })
+        Err(dom("eccentricity", e))
     }
 }
 
-fn angle(what: &'static str, rad: f64) -> Result<Angle, AnalyticError> {
-    Angle::from_radians(rad).map_err(|_| AnalyticError::Domain { what, value: rad })
+fn angle<R: Real>(what: &'static str, rad: R) -> Result<Angle<R>, AnalyticError> {
+    Angle::from_radians(rad).map_err(|_| dom(what, rad))
 }
 
-fn rate(what: &'static str, rad_s: f64) -> Result<AngularRate, AnalyticError> {
-    AngularRate::from_rad_per_s(rad_s).map_err(|_| AnalyticError::Domain { what, value: rad_s })
+fn rate<R: Real>(what: &'static str, rad_s: R) -> Result<AngularRate<R>, AnalyticError> {
+    AngularRate::from_rad_per_s(rad_s).map_err(|_| dom(what, rad_s))
 }
 
 /// PPN scaling of the Schwarzschild advance, `(2 + 2γ − β)/3` (Will 2014 Eq. 65; PHY-006).
 #[must_use]
-pub fn ppn_scaling(beta: f64, gamma: f64) -> f64 {
-    2.0f64.mul_add(gamma, 2.0 - beta) / 3.0
+pub fn ppn_scaling<R: Real>(beta: R, gamma: R) -> R {
+    R::TWO.mul_add(gamma, R::TWO - beta) / R::from_f64(3.0)
 }
 
 /// The 1PN advance unit `πμ/(c²p)` (PHY-009): a single coefficient of the general test-particle
@@ -132,11 +144,15 @@ pub fn ppn_scaling(beta: f64, gamma: f64) -> f64 {
 ///
 /// # Errors
 /// `FA-E0600` for non-positive `μ`, `c` or `p`.
-pub fn pn_unit(mu: GravParam, c: Velocity, p: Length) -> Result<Angle, AnalyticError> {
+pub fn pn_unit<R: Real>(
+    mu: GravParam<R>,
+    c: Velocity<R>,
+    p: Length<R>,
+) -> Result<Angle<R>, AnalyticError> {
     let m = positive("GM (km^3/s^2)", mu.km3_per_s2())?;
     let cc = positive("c (km/s)", c.km_per_s())?;
     let pp = positive("semi-latus rectum (km)", p.km())?;
-    angle("1PN unit", PI * m / (cc * cc * pp))
+    angle("1PN unit", R::PI * m / (cc * cc * pp))
 }
 
 /// Exact SR-Kepler advance per orbit (Journal #4 R2):
@@ -145,44 +161,41 @@ pub fn pn_unit(mu: GravParam, c: Velocity, p: Length) -> Result<Angle, AnalyticE
 ///
 /// # Errors
 /// `FA-E0600` for non-positive `μ` or `c`, `|v| ≥ c`, or `μ ≥ c h` (no bound rosette).
-pub fn sr_exact_advance(
-    mu: GravParam,
-    c: Velocity,
-    r: [f64; 3],
-    v: [f64; 3],
-) -> Result<Angle, AnalyticError> {
+pub fn sr_exact_advance<R: Real>(
+    mu: GravParam<R>,
+    c: Velocity<R>,
+    r: [R; 3],
+    v: [R; 3],
+) -> Result<Angle<R>, AnalyticError> {
     let m = positive("GM (km^3/s^2)", mu.km3_per_s2())?;
     let cc = positive("c (km/s)", c.km_per_s())?;
     let b2 = crate::vector::dot(v, v) / (cc * cc);
-    if b2.is_nan() || b2 >= 1.0 {
-        return Err(AnalyticError::Domain {
-            what: "v^2/c^2",
-            value: b2,
-        });
+    if b2.is_nan() || b2 >= R::ONE {
+        return Err(dom("v^2/c^2", b2));
     }
-    let h = crate::vector::norm(crate::vector::cross(r, v)) / (1.0 - b2).sqrt();
+    let h = crate::vector::norm(crate::vector::cross(r, v)) / (R::ONE - b2).sqrt();
     let x = m * m / (cc * cc * h * h);
-    if x.is_nan() || x >= 1.0 {
-        return Err(AnalyticError::Domain {
-            what: "mu^2/(c^2 h^2)",
-            value: x,
-        });
+    if x.is_nan() || x >= R::ONE {
+        return Err(dom("mu^2/(c^2 h^2)", x));
     }
-    angle("SR exact advance", TAU * (-0.5 * (-x).ln_1p()).exp_m1())
+    angle(
+        "SR exact advance",
+        R::TAU * (R::from_f64(-0.5) * (-x).ln_1p()).exp_m1(),
+    )
 }
 
 /// Keplerian period `2π√(a³/μ)`.
 ///
 /// # Errors
 /// `FA-E0600` for non-positive `a` or `μ`.
-pub fn keplerian_period(mu: GravParam, a: Length) -> Result<TimeSpan, AnalyticError> {
+pub fn keplerian_period<R: Real>(
+    mu: GravParam<R>,
+    a: Length<R>,
+) -> Result<TimeSpan<R>, AnalyticError> {
     let m = positive("GM (km^3/s^2)", mu.km3_per_s2())?;
     let aa = positive("a (km)", a.km())?;
-    let p = TAU * (aa * aa * aa / m).sqrt();
-    TimeSpan::from_seconds(p).map_err(|_| AnalyticError::Domain {
-        what: "period (s)",
-        value: p,
-    })
+    let p = R::TAU * (aa * aa * aa / m).sqrt();
+    TimeSpan::from_seconds(p).map_err(|_| dom("period (s)", p))
 }
 
 /// Rung J2, orbit in the central body's equatorial plane: `3πJ₂R²/p²` per orbit
@@ -190,16 +203,20 @@ pub fn keplerian_period(mu: GravParam, a: Length) -> Result<TimeSpan, AnalyticEr
 ///
 /// # Errors
 /// `FA-E0600` for a non-finite `J₂` or non-positive `R` or `p`.
-pub fn j2_planar_advance(j2: f64, radius: Length, p: Length) -> Result<Angle, AnalyticError> {
+pub fn j2_planar_advance<R: Real>(
+    j2: R,
+    radius: Length<R>,
+    p: Length<R>,
+) -> Result<Angle<R>, AnalyticError> {
     if !j2.is_finite() {
-        return Err(AnalyticError::Domain {
-            what: "J2",
-            value: j2,
-        });
+        return Err(dom("J2", j2));
     }
     let rr = positive("radius (km)", radius.km())?;
     let pp = positive("semi-latus rectum (km)", p.km())?;
-    angle("J2 advance", 3.0 * PI * j2 * rr * rr / (pp * pp))
+    angle(
+        "J2 advance",
+        R::from_f64(3.0) * R::PI * j2 * rr * rr / (pp * pp),
+    )
 }
 
 /// Rung J2 for an orbit inclined by `i` to the central body's equator, the rate of the
@@ -209,30 +226,28 @@ pub fn j2_planar_advance(j2: f64, radius: Length, p: Length) -> Result<Angle, An
 ///
 /// # Errors
 /// `FA-E0600` for invalid `μ`, `a`, `e`, `R` or a non-finite `J₂`.
-pub fn j2_inclined_rate(
-    mu: GravParam,
-    j2: f64,
-    radius: Length,
-    a: Length,
-    e: f64,
-    inclination: Angle,
-) -> Result<AngularRate, AnalyticError> {
+pub fn j2_inclined_rate<R: Real>(
+    mu: GravParam<R>,
+    j2: R,
+    radius: Length<R>,
+    a: Length<R>,
+    e: R,
+    inclination: Angle<R>,
+) -> Result<AngularRate<R>, AnalyticError> {
     if !j2.is_finite() {
-        return Err(AnalyticError::Domain {
-            what: "J2",
-            value: j2,
-        });
+        return Err(dom("J2", j2));
     }
     let m = positive("GM (km^3/s^2)", mu.km3_per_s2())?;
     let aa = positive("a (km)", a.km())?;
     let rr = positive("radius (km)", radius.km())?;
-    let one_e2 = eccentricity(e)?.mul_add(-e, 1.0);
+    let one_e2 = eccentricity(e)?.mul_add(-e, R::ONE);
     let n = (m / (aa * aa * aa)).sqrt();
     let s = inclination.radians().sin();
-    let geom = (-1.5 * s).mul_add(s, 1.0);
+    let three_halves = R::from_f64(1.5);
+    let geom = (-three_halves * s).mul_add(s, R::ONE);
     rate(
         "J2 rate",
-        1.5 * n * j2 * (rr / aa) * (rr / aa) / (one_e2 * one_e2) * geom,
+        three_halves * n * j2 * (rr / aa) * (rr / aa) / (one_e2 * one_e2) * geom,
     )
 }
 
@@ -243,28 +258,25 @@ pub fn j2_inclined_rate(
 ///
 /// # Errors
 /// `FA-E0600` for invalid `c`, `a`, `e`, a negative `G·S` or non-finite `γ`.
-pub fn lense_thirring_rate(
-    gs: SpinGm,
-    c: Velocity,
-    gamma: f64,
-    a: Length,
-    e: f64,
-    inclination: Angle,
-) -> Result<AngularRate, AnalyticError> {
+pub fn lense_thirring_rate<R: Real>(
+    gs: SpinGm<R>,
+    c: Velocity<R>,
+    gamma: R,
+    a: Length<R>,
+    e: R,
+    inclination: Angle<R>,
+) -> Result<AngularRate<R>, AnalyticError> {
     let g = gs.km5_per_s3();
-    if !(g.is_finite() && g >= 0.0 && gamma.is_finite()) {
-        return Err(AnalyticError::Domain {
-            what: "G S (km^5/s^3) or gamma",
-            value: g,
-        });
+    if !(g.is_finite() && g >= R::ZERO && gamma.is_finite()) {
+        return Err(dom("G S (km^5/s^3) or gamma", g));
     }
     let cc = positive("c (km/s)", c.km_per_s())?;
     let aa = positive("a (km)", a.km())?;
-    let one_e2 = eccentricity(e)?.mul_add(-e, 1.0);
+    let one_e2 = eccentricity(e)?.mul_add(-e, R::ONE);
     let denom = cc * cc * aa * aa * aa * one_e2 * one_e2.sqrt();
     rate(
         "LT rate",
-        -2.0 * (1.0 + gamma) * g * inclination.radians().cos() / denom,
+        -R::TWO * (R::ONE + gamma) * g * inclination.radians().cos() / denom,
     )
 }
 

@@ -1,0 +1,4 @@
+# SPDX-FileCopyrightText: 2026 Proper-Time Physics Institute
+# SPDX-License-Identifier: Apache-2.0
+# REF-005 / CI-001: REBOUNDx 5.1.0 sdist (GPL-3.0-only), built in the image against rebound 5.2.2.
+reboundx==5.1.0 --hash=sha256:25fcccc8194a83b548a8e11d81f295fb12a21ece2538e61be93d8256d9cbc1b2

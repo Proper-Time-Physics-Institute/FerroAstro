@@ -18,6 +18,8 @@ dependencies = [
 
 [dependency-groups]
 dev = ["ruff", "mypy", "pytest", "pre-commit", "reuse", "types-PyYAML", "types-jsonschema"]
+# Computed-reference generators (TST-003, REF-009): pinned oracle engines, run by tools/goldens/*.
+goldens = ["pyerfa==2.0.1.5"]
 
 [tool.ruff]
 line-length = 100
@@ -65,3 +67,25 @@ python_version = "3.11"
 testpaths = ["tests"]
 pythonpath = ["."]
 addopts = "-ra --strict-markers"
+
+[[tool.mypy.overrides]]
+# pyerfa ships no type information; it is only installed with the `goldens` group.
+module = ["erfa", "erfa.*"]
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+# jplephem (MIT, the REF-004 reference reader) ships no type information.
+module = ["jplephem", "jplephem.*"]
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+# REBOUND/REBOUNDx (GPL-3.0) exist only inside the ci/oracles/rebound image (LIC-001, red-team
+# L4/L12): never a dependency of tools/, so mypy cannot see them.
+module = ["rebound", "rebound.*", "reboundx", "reboundx.*"]
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+# Swiftest (GPL-3.0-or-later) exists only inside the ci/oracles/swiftest image (LIC-001, red-team
+# L4/L12): never a dependency of tools/, so mypy cannot see it.
+module = ["swiftest", "swiftest.*"]
+ignore_missing_imports = true

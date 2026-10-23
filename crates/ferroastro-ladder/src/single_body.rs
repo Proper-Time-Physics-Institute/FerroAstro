@@ -8,7 +8,7 @@
 //! (`ferroastro_precession::passages`) and compares it with the rung's analytic oracle
 //! (`ferroastro_analytic`, NUM-015). Every result carries a [`RateReport`] (PHY-015).
 
-use crate::passage_run::{find_perihelia, sample_uniform};
+use crate::passage_run::{PassageRun, find_perihelia, sample_uniform};
 use crate::{LadderError, Scenario};
 use ferroastro_analytic::advance::{
     j2_inclined_rate, keplerian_period, lense_thirring_rate, pn_unit, ppn_scaling,
@@ -31,6 +31,7 @@ use ferroastro_precession::park2017::{
 };
 use ferroastro_precession::passages::{self, OrbitPlane, PerOrbitFit, fit_per_orbit};
 use ferroastro_precession::report::{RateReport, RateReportBuilder};
+use ferroastro_real::Real;
 
 /// The dynamics of a rung (all add to Newtonian `−μr/r³` about a fixed Sun).
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -200,10 +201,20 @@ pub fn rung_set(name: &str, scn: &Scenario, de: &De440) -> Result<Vec<Rung>, Lad
     }
 }
 
+/// The μ convention of every analytic rate in ″/cy (review F5, PHY-004 acceptance text): the
+/// per-orbit advance is that of the integrated dynamics (test particle, μ = GM☉), and it is
+/// converted to a rate with the mean motion `n = √((GM☉ + GM☿)/a³)` of the initial osculating
+/// `a`, the same `mu_period` that every `ferroastro_analytic::advance::schwarzschild_advance`
+/// caller passes. Printed in every rung's report metadata.
+pub const RATE_CONVENTION: &str = "analytic rate = analytic per-orbit advance (test particle, mu = GM_sun) x n, n = sqrt((GM_sun + GM_Mercury)/a^3) (PHY-004 convention, review F5)";
+
 /// The set-up shared by all single-body rungs: initial state, constants and run settings.
 #[derive(Debug, Clone)]
 pub struct SingleBody<F: Frame> {
     mu: GravParam,
+    /// `GM☉ + GM☿`: the μ of the mean motion that converts an analytic per-orbit advance to a
+    /// rate ([`RATE_CONVENTION`], review F5).
+    mu_rate: GravParam,
     c: Velocity,
     gamma: f64,
     radius: Length,
@@ -277,8 +288,16 @@ impl<F: Frame> SingleBody<F> {
         let mu = de.gm_sun();
         // Validates that the orbit is elliptic and non-degenerate.
         Elements::from_vectors(r0, v0, mu.km3_per_s2())?;
+        let mu_rate = GravParam::from_km3_per_s2(
+            mu.km3_per_s2() + de.gm(ferroastro_constants::Body::Mercury).km3_per_s2(),
+        )
+        .map_err(|e| LadderError::Scenario {
+            name: "DE440".into(),
+            problem: e.to_string(),
+        })?;
         Ok(Self {
             mu,
+            mu_rate,
             c: de.speed_of_light(),
             gamma: de.ppn_gamma(),
             radius: de.sun_radius(),
@@ -298,6 +317,42 @@ impl<F: Frame> SingleBody<F> {
     #[must_use]
     pub const fn initial_state(&self) -> ([f64; 3], [f64; 3]) {
         (self.r0, self.v0)
+    }
+
+    /// The same set-up with the initial state at `epoch` (TDB) instead of J2000. The dynamics of
+    /// a single body do not depend on the epoch; it only dates the passages (and so matters for
+    /// time-dependent frames such as the ecliptic of date, NUM-014) and the report metadata.
+    #[must_use]
+    pub const fn with_epoch(mut self, epoch: Epoch<Tdb>) -> Self {
+        self.epoch = epoch;
+        self
+    }
+
+    /// The epoch (TDB) of the initial state.
+    #[must_use]
+    pub const fn epoch(&self) -> Epoch<Tdb> {
+        self.epoch
+    }
+
+    /// The perihelion passages of a rung's run (f64), as [`SingleBody::run`] finds them: times
+    /// in seconds from [`SingleBody::epoch`], heliocentric positions and velocities in frame `F`.
+    ///
+    /// # Errors
+    /// Force-model and integrator errors; `FA-E0601` if too few passages occur.
+    pub fn perihelion_passages(&self, rung: &Rung) -> Result<PassageRun, LadderError> {
+        let model = self.model(rung)?;
+        let el = self.initial_elements()?;
+        let period = keplerian_period(self.mu, el.a)?;
+        let passages_wanted = usize::try_from(self.orbits).unwrap_or(usize::MAX) + 1;
+        Ok(find_perihelia(
+            &model,
+            self.r0,
+            self.v0,
+            self.mu.km3_per_s2(),
+            passages_wanted,
+            period.seconds() * (f64::from(self.orbits) + 2.0),
+            self.ias15,
+        )?)
     }
 
     /// Hash of the initial conditions: FNV-1a (64 bit) over the IEEE-754 bit patterns of the six
@@ -336,6 +391,12 @@ impl<F: Frame> SingleBody<F> {
     }
 
     fn pole(&self, spec: PoleSpec) -> Result<Pole<F>, LadderError> {
+        self.pole_in::<f64>(spec)
+    }
+
+    /// The pole in backend `R`: its unnormalised direction is formed in f64 from the initial
+    /// state and normalised in `R`.
+    fn pole_in<R: Real>(&self, spec: PoleSpec) -> Result<Pole<F, R>, LadderError> {
         let v = match spec {
             PoleSpec::Fixed(v) => v,
             PoleSpec::OrbitNormalTilted(t) => {
@@ -355,29 +416,44 @@ impl<F: Frame> SingleBody<F> {
                 ]
             }
         };
-        Ok(Pole::from_components(v)?)
+        Ok(Pole::from_components(v.map(R::from_f64))?)
     }
 
-    /// The force model of a rung.
+    /// The force model of a rung (f64).
     ///
     /// # Errors
     /// Force-model construction errors.
     pub fn model(&self, rung: &Rung) -> Result<TestParticle<F>, LadderError> {
-        let (mu, c) = (self.mu, self.c);
-        let term: Box<dyn CentralTerm<F>> = match rung.model {
+        self.model_in::<f64>(rung)
+    }
+
+    /// The force model of a rung in backend `R` (DEP-007). The constants are the binary64 DE440
+    /// values, converted exactly; the dynamics are then evaluated in `R`.
+    ///
+    /// # Errors
+    /// Force-model construction errors.
+    pub fn model_in<R: Real>(&self, rung: &Rung) -> Result<TestParticle<F, R>, LadderError> {
+        let (mu, c) = (self.mu.cast::<R>(), self.c.cast::<R>());
+        let r = R::from_f64;
+        let term: Box<dyn CentralTerm<F, R>> = match rung.model {
             Model::SrKepler => Box::new(SrKepler::new(mu, c)?),
             Model::SrBHarmonic => Box::new(PnLagrangian::sr_b_harmonic(mu, c)?),
             Model::SrBAreal => Box::new(PnLagrangian::sr_b_areal(mu, c)?),
             Model::Schwarzschild { beta, gamma } => {
-                Box::new(SchwarzschildPpn::new(mu, c, beta, gamma)?)
+                Box::new(SchwarzschildPpn::new(mu, c, r(beta), r(gamma))?)
             }
             Model::Lagrangian(k) => Box::new(PnLagrangian::generic(mu, c, k)?),
-            Model::J2 { j2 } => Box::new(SolarJ2::new(mu, j2, self.radius, self.pole(rung.pole)?)?),
+            Model::J2 { j2 } => Box::new(SolarJ2::new(
+                mu,
+                r(j2),
+                self.radius.cast(),
+                self.pole_in(rung.pole)?,
+            )?),
             Model::LenseThirring => Box::new(LenseThirring::new(
-                self.gs,
+                self.gs.cast(),
                 c,
-                self.gamma,
-                self.pole(rung.pole)?,
+                r(self.gamma),
+                self.pole_in(rung.pole)?,
             )?),
         };
         Ok(TestParticle::new(mu, vec![term])?)
@@ -460,24 +536,34 @@ impl<F: Frame> SingleBody<F> {
         Ok(pn_unit(self.mu, self.c, p)?)
     }
 
-    /// Run a rung.
+    /// Run a rung (f64).
     ///
     /// # Errors
     /// Force-model, integrator, estimator or report errors.
     pub fn run(&self, rung: &Rung) -> Result<RungResult, LadderError> {
+        self.run_in::<f64>(rung)
+    }
+
+    /// Run a rung with the dynamics integrated in backend `R` (DEP-007): force model, IAS15 and
+    /// the passage refinement run in `R`; the passages are rounded to f64 for the estimator,
+    /// whose own round-off (~1e-16 rad per passage) is far below the rung tolerances.
+    ///
+    /// # Errors
+    /// Force-model, integrator, estimator or report errors.
+    pub fn run_in<R: Real>(&self, rung: &Rung) -> Result<RungResult, LadderError> {
         let started = std::time::Instant::now();
-        let model = self.model(rung)?;
+        let model = self.model_in::<R>(rung)?;
         let el = self.initial_elements()?;
         let period = keplerian_period(self.mu, el.a)?;
         let passages_wanted = usize::try_from(self.orbits).unwrap_or(usize::MAX) + 1;
         let max_time = period.seconds() * (f64::from(self.orbits) + 2.0);
         let run = find_perihelia(
             &model,
-            self.r0,
-            self.v0,
-            self.mu.km3_per_s2(),
+            self.r0.map(R::from_f64),
+            self.v0.map(R::from_f64),
+            R::from_f64(self.mu.km3_per_s2()),
             passages_wanted,
-            max_time,
+            R::from_f64(max_time),
             self.ias15,
         )?;
         let plane = OrbitPlane::osculating(self.r0, self.v0, self.mu.km3_per_s2())?;
@@ -485,10 +571,13 @@ impl<F: Frame> SingleBody<F> {
         let lrl = fit_line(&run.lrl_times, &run.lrl_longitudes)?;
         let lrl_rate = AngularRate::from_rad_per_s(lrl.slope).unwrap_or(AngularRate::ZERO);
         let analytic = self.analytic_per_orbit(rung)?;
-        let analytic_rate = analytic / period;
+        // F5: the analytic ″/cy rate uses n from GM☉ + GM☿ (RATE_CONVENTION); the per-orbit
+        // advance itself (the NUM-015 oracle) is that of the integrated test particle (μ = GM☉).
+        let rate_period = keplerian_period(self.mu_rate, el.a)?;
+        let analytic_rate = analytic / rate_period;
         let gauge = model.gauge();
         let cfg = self.ias15;
-        let mut constants = self.constants.clone();
+        let mut constants = format!("{}; {RATE_CONVENTION}", self.constants);
         if !rung.extra_constants.is_empty() {
             constants.push_str("; ");
             constants.push_str(&rung.extra_constants);
@@ -504,11 +593,12 @@ impl<F: Frame> SingleBody<F> {
             .gauge(gauge.label())
             .estimator(passages::ESTIMATOR)
             .dynamics(format!(
-                "{}; IAS15 (FerroAstro clean-room) epsilon = {:e}, safety = {}, PC tolerance = {:e}, f64 + compensated summation",
+                "{}; IAS15 (FerroAstro clean-room) epsilon = {:e}, safety = {}, PC tolerance = {:e}, {} + compensated summation",
                 model.describe(),
                 cfg.epsilon,
                 cfg.safety,
-                cfg.pc_tolerance
+                cfg.pc_tolerance,
+                R::NAME
             ))
             .build()?;
         Ok(RungResult {
@@ -651,9 +741,10 @@ pub struct RungResult {
     pub fit: PerOrbitFit,
     /// Analytic per-orbit advance (NUM-015 oracle).
     pub analytic_per_orbit: Angle,
-    /// Analytic rate: analytic per-orbit advance / Keplerian period of the initial orbit.
+    /// Analytic rate: analytic per-orbit advance / Keplerian period of the initial orbit with
+    /// `μ = GM☉ + GM☿` ([`RATE_CONVENTION`]).
     pub analytic_rate: AngularRate,
-    /// Keplerian period of the initial osculating orbit.
+    /// Keplerian period of the initial osculating orbit of the integrated dynamics (`μ = GM☉`).
     pub kepler_period: TimeSpan,
     /// Cross-check: rate of the LRL eccentricity-vector longitude (all steps, OLS).
     pub lrl_rate: AngularRate,
@@ -678,7 +769,7 @@ impl RungResult {
         self.report.arcsec_per_century()
     }
 
-    /// Analytic rate in ″/cy (analytic per-orbit advance / Keplerian period).
+    /// Analytic rate in ″/cy (analytic per-orbit advance / Keplerian period, [`RATE_CONVENTION`]).
     #[must_use]
     pub fn analytic_arcsec_per_century(&self) -> f64 {
         rate_arcsec_per_century(self.analytic_rate)

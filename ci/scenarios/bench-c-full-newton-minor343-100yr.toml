@@ -1,0 +1,36 @@
+# SPDX-FileCopyrightText: 2026 Proper-Time Physics Institute
+# SPDX-License-Identifier: Apache-2.0
+# WP18 speed table, scenario (c) (CI-008, NUM-009): the full Newtonian point-mass system of header.440
+# (Sun, planets with Earth and Moon resolved, Pluto) plus the 343 numbered asteroids as Minor bodies,
+# the 3 identified KBOs and the 36-point KBO ring (WP15 tiers, REF-003 states), DE440 GMs, IAS15 f64
+# defaults, 100 Julian years, every body sampled every 10 years. Every oracle runner refuses the
+# small-body switches (REF-011), so this row is FerroAstro's. Run by tools/bench/speed_table.sh only.
+# Schema: scenario.schema.json (CI-002).
+schema_version = 1
+name = "bench-c-full-newton-minor343-100yr"
+description = "Bench (c): full Newtonian system + 343 asteroids + KBOs + KBO ring, header.440 ICs, 100 yr"
+mode = "n-body"
+bodies = ["Sun", "Mercury", "Venus", "Earth", "Moon", "Mars", "Jupiter", "Saturn", "Uranus", "Neptune", "Pluto"]
+central_body = "Sun"
+
+[initial_conditions]
+source = "de440-header"
+
+[constants]
+gm_set = "de440"
+
+[forces]
+newton = true
+asteroids = 343
+kbos = true
+kbo_ring = true
+
+[integrator]
+name = "ias15"
+precision = "f64"
+
+[span]
+years = 100.0
+
+[output]
+cadence_days = 3652.5
