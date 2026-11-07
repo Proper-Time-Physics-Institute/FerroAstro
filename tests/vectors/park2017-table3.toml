@@ -4,8 +4,8 @@
 # interaction rows. ADR-0014 (maintainer decision C of 2026-10-20, requirements PR #19; confirmed 2026-10-21,
 # OI-38 closed): the seven single-planet rows GATE under P-remove = rate(full) - rate(full - X). P-remove was
 # chosen after the WP14/WP17 results were known (disclosed). P-add (pre-registered) is reported, not asserted.
-# The pair rows stay blocked_by OI-38 until the harness asserts them. The asteroid row (PHY-019) gates under
-# P-remove independently of OI-38.
+# The six pair rows are ASSERTED under P-remove in Park17 sign convention (maintainer decision 2026-10-21).
+# The asteroid row (PHY-019) gates under P-remove independently of OI-38.
 # Derivations: docs/strategy/IMPLEMENTATION-NOTES.md, WP14, WP15, WP17 and the ADR-0014 section.
 schema_version = 1
 
@@ -110,7 +110,7 @@ verified_by = "WP14 builder agent, 2026-10-15: read in the published PDF (iopsci
 [[vector]]
 id = "PARK17-T3-X-VENUS-EARTH-MOON"
 requirement = ["PHY-012", "NUM-013"]
-quantity = "planet-pair interaction term of Mercury's perihelion precession rate (Park17 Table 3 row 'Venus+Earth/Moon Interaction'), informational"
+quantity = "planet-pair interaction term of Mercury's perihelion precession rate (Park17 Table 3 row 'Venus+Earth/Moon Interaction')"
 value = "-0.0209"
 unit = "arcsec/cy"
 kind = "measured"
@@ -118,14 +118,13 @@ source = "Park17 Table 3, row 'Venus+Earth/Moon Interaction': -0.0209 arcsec/Jul
 citation = 'Park, R. S., Folkner, W. M., Konopliv, A. S., et al. 2017, AJ 153, 121, doi:10.3847/1538-3881/aa5be2, Table 3'
 retrieved = "2026-10-15"
 tolerance = { abs = 0.005 }
-tolerance_rationale = "Informational only (PHY-012 notes and NUM-013(b): cross terms reported separately); never asserted. The PHY-012 bound is recorded for scale. FerroAstro's cross term is the P-add interaction rate(S+M+X+Y) - rate(S+M+X) - rate(S+M+Y) + rate(S+M); Park17 describes its interaction rows as indirect effects through the other planet's orbit (section 4), a different decomposition (OI-38)."
+tolerance_rationale = "ASSERTED (maintainer decision 2026-10-21 on PR #13, after OI-38 closed): the P-remove cross term (inclusion-exclusion second difference of P-remove runs from identical ICs), converted to Park17 sign convention by Protocol::to_park17 (ADR-0014, PO-4), must lie within the PHY-012 bound of +/- 0.005 arcsec/cy. Value and tolerance unchanged since WP14. Before arming, all six measured within 1.2e-4 arcsec/cy (build report 2026-10-21). P-add cross terms are reported, not asserted. Park17 gives no uncertainty for these rows."
 verified_by = "WP14 builder agent, 2026-10-15: read in the published PDF (iopscience.iop.org/article/10.3847/1538-3881/aa5be2/pdf, sha256 24fb2153f6b78109daa80171cd37006157b73564f8d0ac383532b5c92433380b, the copy WP5 read; re-downloaded 2026-10-15, same sha256), pdftotext -layout of page 6, Table 3."
-blocked_by = "OI-38"
 
 [[vector]]
 id = "PARK17-T3-X-VENUS-JUPITER"
 requirement = ["PHY-012", "NUM-013"]
-quantity = "planet-pair interaction term of Mercury's perihelion precession rate (Park17 Table 3 row 'Venus+Jupiter Interaction'), informational"
+quantity = "planet-pair interaction term of Mercury's perihelion precession rate (Park17 Table 3 row 'Venus+Jupiter Interaction')"
 value = "-0.0012"
 unit = "arcsec/cy"
 kind = "measured"
@@ -133,14 +132,13 @@ source = "Park17 Table 3, row 'Venus+Jupiter Interaction': -0.0012 arcsec/Julian
 citation = 'Park, R. S., Folkner, W. M., Konopliv, A. S., et al. 2017, AJ 153, 121, doi:10.3847/1538-3881/aa5be2, Table 3'
 retrieved = "2026-10-15"
 tolerance = { abs = 0.005 }
-tolerance_rationale = "Informational only (PHY-012 notes and NUM-013(b): cross terms reported separately); never asserted. The PHY-012 bound is recorded for scale. FerroAstro's cross term is the P-add interaction rate(S+M+X+Y) - rate(S+M+X) - rate(S+M+Y) + rate(S+M); Park17 describes its interaction rows as indirect effects through the other planet's orbit (section 4), a different decomposition (OI-38)."
+tolerance_rationale = "ASSERTED (maintainer decision 2026-10-21 on PR #13, after OI-38 closed): the P-remove cross term (inclusion-exclusion second difference of P-remove runs from identical ICs), converted to Park17 sign convention by Protocol::to_park17 (ADR-0014, PO-4), must lie within the PHY-012 bound of +/- 0.005 arcsec/cy. Value and tolerance unchanged since WP14. Before arming, all six measured within 1.2e-4 arcsec/cy (build report 2026-10-21). P-add cross terms are reported, not asserted. Park17 gives no uncertainty for these rows."
 verified_by = "WP14 builder agent, 2026-10-15: read in the published PDF (iopscience.iop.org/article/10.3847/1538-3881/aa5be2/pdf, sha256 24fb2153f6b78109daa80171cd37006157b73564f8d0ac383532b5c92433380b, the copy WP5 read; re-downloaded 2026-10-15, same sha256), pdftotext -layout of page 6, Table 3."
-blocked_by = "OI-38"
 
 [[vector]]
 id = "PARK17-T3-X-EARTH-MOON-MARS"
 requirement = ["PHY-012", "NUM-013"]
-quantity = "planet-pair interaction term of Mercury's perihelion precession rate (Park17 Table 3 row 'Earth/Moon+Mars Interaction'), informational"
+quantity = "planet-pair interaction term of Mercury's perihelion precession rate (Park17 Table 3 row 'Earth/Moon+Mars Interaction')"
 value = "-0.0016"
 unit = "arcsec/cy"
 kind = "measured"
@@ -148,14 +146,13 @@ source = "Park17 Table 3, row 'Earth/Moon+Mars Interaction': -0.0016 arcsec/Juli
 citation = 'Park, R. S., Folkner, W. M., Konopliv, A. S., et al. 2017, AJ 153, 121, doi:10.3847/1538-3881/aa5be2, Table 3'
 retrieved = "2026-10-15"
 tolerance = { abs = 0.005 }
-tolerance_rationale = "Informational only (PHY-012 notes and NUM-013(b): cross terms reported separately); never asserted. The PHY-012 bound is recorded for scale. FerroAstro's cross term is the P-add interaction rate(S+M+X+Y) - rate(S+M+X) - rate(S+M+Y) + rate(S+M); Park17 describes its interaction rows as indirect effects through the other planet's orbit (section 4), a different decomposition (OI-38)."
+tolerance_rationale = "ASSERTED (maintainer decision 2026-10-21 on PR #13, after OI-38 closed): the P-remove cross term (inclusion-exclusion second difference of P-remove runs from identical ICs), converted to Park17 sign convention by Protocol::to_park17 (ADR-0014, PO-4), must lie within the PHY-012 bound of +/- 0.005 arcsec/cy. Value and tolerance unchanged since WP14. Before arming, all six measured within 1.2e-4 arcsec/cy (build report 2026-10-21). P-add cross terms are reported, not asserted. Park17 gives no uncertainty for these rows."
 verified_by = "WP14 builder agent, 2026-10-15: read in the published PDF (iopscience.iop.org/article/10.3847/1538-3881/aa5be2/pdf, sha256 24fb2153f6b78109daa80171cd37006157b73564f8d0ac383532b5c92433380b, the copy WP5 read; re-downloaded 2026-10-15, same sha256), pdftotext -layout of page 6, Table 3."
-blocked_by = "OI-38"
 
 [[vector]]
 id = "PARK17-T3-X-MARS-JUPITER"
 requirement = ["PHY-012", "NUM-013"]
-quantity = "planet-pair interaction term of Mercury's perihelion precession rate (Park17 Table 3 row 'Mars+Jupiter Interaction'), informational"
+quantity = "planet-pair interaction term of Mercury's perihelion precession rate (Park17 Table 3 row 'Mars+Jupiter Interaction')"
 value = "0.0002"
 unit = "arcsec/cy"
 kind = "measured"
@@ -163,14 +160,13 @@ source = "Park17 Table 3, row 'Mars+Jupiter Interaction': 0.0002 arcsec/Julian c
 citation = 'Park, R. S., Folkner, W. M., Konopliv, A. S., et al. 2017, AJ 153, 121, doi:10.3847/1538-3881/aa5be2, Table 3'
 retrieved = "2026-10-15"
 tolerance = { abs = 0.005 }
-tolerance_rationale = "Informational only (PHY-012 notes and NUM-013(b): cross terms reported separately); never asserted. The PHY-012 bound is recorded for scale. FerroAstro's cross term is the P-add interaction rate(S+M+X+Y) - rate(S+M+X) - rate(S+M+Y) + rate(S+M); Park17 describes its interaction rows as indirect effects through the other planet's orbit (section 4), a different decomposition (OI-38)."
+tolerance_rationale = "ASSERTED (maintainer decision 2026-10-21 on PR #13, after OI-38 closed): the P-remove cross term (inclusion-exclusion second difference of P-remove runs from identical ICs), converted to Park17 sign convention by Protocol::to_park17 (ADR-0014, PO-4), must lie within the PHY-012 bound of +/- 0.005 arcsec/cy. Value and tolerance unchanged since WP14. Before arming, all six measured within 1.2e-4 arcsec/cy (build report 2026-10-21). P-add cross terms are reported, not asserted. Park17 gives no uncertainty for these rows."
 verified_by = "WP14 builder agent, 2026-10-15: read in the published PDF (iopscience.iop.org/article/10.3847/1538-3881/aa5be2/pdf, sha256 24fb2153f6b78109daa80171cd37006157b73564f8d0ac383532b5c92433380b, the copy WP5 read; re-downloaded 2026-10-15, same sha256), pdftotext -layout of page 6, Table 3."
-blocked_by = "OI-38"
 
 [[vector]]
 id = "PARK17-T3-X-JUPITER-SATURN"
 requirement = ["PHY-012", "NUM-013"]
-quantity = "planet-pair interaction term of Mercury's perihelion precession rate (Park17 Table 3 row 'Jupiter+Saturn Interaction'), informational"
+quantity = "planet-pair interaction term of Mercury's perihelion precession rate (Park17 Table 3 row 'Jupiter+Saturn Interaction')"
 value = "0.0411"
 unit = "arcsec/cy"
 kind = "measured"
@@ -178,14 +174,13 @@ source = "Park17 Table 3, row 'Jupiter+Saturn Interaction': 0.0411 arcsec/Julian
 citation = 'Park, R. S., Folkner, W. M., Konopliv, A. S., et al. 2017, AJ 153, 121, doi:10.3847/1538-3881/aa5be2, Table 3'
 retrieved = "2026-10-15"
 tolerance = { abs = 0.005 }
-tolerance_rationale = "Informational only (PHY-012 notes and NUM-013(b): cross terms reported separately); never asserted. The PHY-012 bound is recorded for scale. FerroAstro's cross term is the P-add interaction rate(S+M+X+Y) - rate(S+M+X) - rate(S+M+Y) + rate(S+M); Park17 describes its interaction rows as indirect effects through the other planet's orbit (section 4), a different decomposition (OI-38)."
+tolerance_rationale = "ASSERTED (maintainer decision 2026-10-21 on PR #13, after OI-38 closed): the P-remove cross term (inclusion-exclusion second difference of P-remove runs from identical ICs), converted to Park17 sign convention by Protocol::to_park17 (ADR-0014, PO-4), must lie within the PHY-012 bound of +/- 0.005 arcsec/cy. Value and tolerance unchanged since WP14. Before arming, all six measured within 1.2e-4 arcsec/cy (build report 2026-10-21). P-add cross terms are reported, not asserted. Park17 gives no uncertainty for these rows."
 verified_by = "WP14 builder agent, 2026-10-15: read in the published PDF (iopscience.iop.org/article/10.3847/1538-3881/aa5be2/pdf, sha256 24fb2153f6b78109daa80171cd37006157b73564f8d0ac383532b5c92433380b, the copy WP5 read; re-downloaded 2026-10-15, same sha256), pdftotext -layout of page 6, Table 3."
-blocked_by = "OI-38"
 
 [[vector]]
 id = "PARK17-T3-X-SATURN-URANUS"
 requirement = ["PHY-012", "NUM-013"]
-quantity = "planet-pair interaction term of Mercury's perihelion precession rate (Park17 Table 3 row 'Saturn+Uranus Interaction'), informational"
+quantity = "planet-pair interaction term of Mercury's perihelion precession rate (Park17 Table 3 row 'Saturn+Uranus Interaction')"
 value = "0.0004"
 unit = "arcsec/cy"
 kind = "measured"
@@ -193,9 +188,8 @@ source = "Park17 Table 3, row 'Saturn+Uranus Interaction': 0.0004 arcsec/Julian 
 citation = 'Park, R. S., Folkner, W. M., Konopliv, A. S., et al. 2017, AJ 153, 121, doi:10.3847/1538-3881/aa5be2, Table 3'
 retrieved = "2026-10-15"
 tolerance = { abs = 0.005 }
-tolerance_rationale = "Informational only (PHY-012 notes and NUM-013(b): cross terms reported separately); never asserted. The PHY-012 bound is recorded for scale. FerroAstro's cross term is the P-add interaction rate(S+M+X+Y) - rate(S+M+X) - rate(S+M+Y) + rate(S+M); Park17 describes its interaction rows as indirect effects through the other planet's orbit (section 4), a different decomposition (OI-38)."
+tolerance_rationale = "ASSERTED (maintainer decision 2026-10-21 on PR #13, after OI-38 closed): the P-remove cross term (inclusion-exclusion second difference of P-remove runs from identical ICs), converted to Park17 sign convention by Protocol::to_park17 (ADR-0014, PO-4), must lie within the PHY-012 bound of +/- 0.005 arcsec/cy. Value and tolerance unchanged since WP14. Before arming, all six measured within 1.2e-4 arcsec/cy (build report 2026-10-21). P-add cross terms are reported, not asserted. Park17 gives no uncertainty for these rows."
 verified_by = "WP14 builder agent, 2026-10-15: read in the published PDF (iopscience.iop.org/article/10.3847/1538-3881/aa5be2/pdf, sha256 24fb2153f6b78109daa80171cd37006157b73564f8d0ac383532b5c92433380b, the copy WP5 read; re-downloaded 2026-10-15, same sha256), pdftotext -layout of page 6, Table 3."
-blocked_by = "OI-38"
 
 [[vector]]
 id = "PARK17-T3-ASTEROIDS"
