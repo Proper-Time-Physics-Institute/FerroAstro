@@ -131,20 +131,6 @@ tolerance_rationale = "NUM-010's location bound applied to the double-double run
 verified_by = "WP7 builder agent, 2026-10-15: analytic (Kepler's third law); measured values in IMPLEMENTATION-NOTES WP7."
 
 [[vector]]
-id = "NUM023-LONG-ENSEMBLE-KNOWN-FAILURE-ENERGY-SLOPE"
-requirement = ["NUM-023"]
-quantity = "KNOWN-FAILURE GUARD, not an acceptance value: Brouwer-law energy-error exponent of the pre-registered NUM-023 long ensemble (32 runs x 20 000 orbits, Sun + Mercury, IAS15 f64 defaults), as documented when the failure was recorded"
-value = 0.629
-unit = "1"
-kind = "measured"
-source = "FerroAstro nightly_num023_long_ensemble_known_failure, first recorded in WP3/WP6 and reproduced unchanged in every later review: energy slope 0.629 +/- 0.018 (fit standard error), phase 1.590, 4.89e7 steps; NUM-023 asks 0.5 +/- 0.1, so this is a FAILURE (NEEDS HUMAN REVIEW)."
-citation = "FerroAstro docs/strategy/IMPLEMENTATION-NOTES.md WP6 (NUM-023 long ensemble table) and the WP7 baseline row '0.629 +/- 0.018'"
-retrieved = "2026-10-20"
-tolerance = { abs = 0.018 }
-tolerance_rationale = "The fitted slope's own standard error as recorded with the failure. The run is deterministic, so the documented value reproduces exactly; the band only lets the guard notice when the failure WORSENS (slope > 0.647) or changes (slope < 0.611) instead of passing for any failing slope (PR #13 judge review F3). Never an acceptance tolerance: NUM-023's +/-0.1 stays in NUM023-ENERGY-SLOPE. Set after the value was measured; it widens nothing."
-verified_by = "PR #13 judge-fix builder agent, 2026-10-20: value and standard error copied from IMPLEMENTATION-NOTES (WP6/WP7 tables); re-run in the PR #13 judge-fix nightly."
-
-[[vector]]
 id = "WP12-1B-KNOWN-FAILURE-ENERGY-SLOPE"
 requirement = ["NUM-023"]
 quantity = "KNOWN-FAILURE GUARD, not an acceptance value: fitted energy-error exponent of the pre-registered WP12 check 1b N-body ensemble (32 x 100 000 yr, Sun + planets + solar J2 with reaction, IAS15 f64), as documented when the failure was recorded"
