@@ -183,7 +183,7 @@ Applied 2026-10-21 from the maintainer sign-offs in [Journal #12](https://github
 | PHY-011, NUM-019 | OI-35 closed: R3b = DE440 §3.4 Eqs. 37–39 = INPOP21a Eq. 1; Park 2017 Eq. 2 is the rate check. Stale "INPOP21a could not be retrieved" / "UNVERIFIED" text removed. NUM-019 **statement**: LT on every non-Sun body, Major and Minor, with the Sun's reaction on by default. | Journal #12 |
 | NUM-018 | **Statement and acceptance changed** (OI-75 closed): ephemeris-mode barycentring uses Σ μ* r = 0 and Σ(μ̇* r + μ* v) = 0 (DE430 Eq. 3; Subbotin 2023 Eq. 5), required in ephemeris mode, optional elsewhere. The note endorsing the neglect of dμ*/dt is withdrawn (DE430 pp. 5–6: DE405 drifted ~0.5 m/century). µm acceptance kept (build evidence 2.92 µm / 40 yr DD, `m5-performance`). | Journal #12 |
 | NUM-023 | Notes: blocks M3 and #13; must pass with an asserting test at ≥ 5e7 steps, not a known-failure guard. Added to the ROADMAP M3 exit criterion. | #13 ruling |
-| REF-007 | Notes: the Stage A Swiftest tolerance widening (1 km → 60 km) is rejected; 1 km restored. | #13 ruling |
+| REF-007 | Notes: the Stage A Swiftest widening (1 km → 60 km) was rejected; no WHM step meets 1 km for every body, so stage A runs at dt = 1/16 d with 2 km (maintainer decision 2026-11-08). | #13 rulings |
 | OI-38 | Not ticked here: P-remove confirmed by the maintainer; the item closes in #13 together with the `provisional`-field removal (ADR-0004). | Journal #12 |
 
 ADRs: ADR-0004's 2026-10-21 revision (`provisional` field) is no longer marked proposed; it was accepted when #28 merged.

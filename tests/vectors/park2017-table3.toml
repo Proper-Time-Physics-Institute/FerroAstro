@@ -4,7 +4,8 @@
 # interaction rows. ADR-0014 (maintainer decision C of 2026-10-20, requirements PR #19; confirmed 2026-10-21,
 # OI-38 closed): the seven single-planet rows GATE under P-remove = rate(full) - rate(full - X). P-remove was
 # chosen after the WP14/WP17 results were known (disclosed). P-add (pre-registered) is reported, not asserted.
-# The six pair rows are ASSERTED under P-remove in Park17 sign convention (maintainer decision 2026-10-21).
+# The six pair rows are ASSERTED under P-remove in Park17 sign convention (maintainer decision 2026-10-21)
+# at +/- 5e-4 arcsec/cy (golden-change, maintainer decision 2026-11-08).
 # The asteroid row (PHY-019) gates under P-remove independently of OI-38.
 # Derivations: docs/strategy/IMPLEMENTATION-NOTES.md, WP14, WP15, WP17 and the ADR-0014 section.
 schema_version = 1
@@ -117,8 +118,8 @@ kind = "measured"
 source = "Park17 Table 3, row 'Venus+Earth/Moon Interaction': -0.0209 arcsec/Julian century (no uncertainty given)"
 citation = 'Park, R. S., Folkner, W. M., Konopliv, A. S., et al. 2017, AJ 153, 121, doi:10.3847/1538-3881/aa5be2, Table 3'
 retrieved = "2026-10-15"
-tolerance = { abs = 0.005 }
-tolerance_rationale = "ASSERTED (maintainer decision 2026-10-21 on PR #13, after OI-38 closed): the P-remove cross term (inclusion-exclusion second difference of P-remove runs from identical ICs), converted to Park17 sign convention by Protocol::to_park17 (ADR-0014, PO-4), must lie within the PHY-012 bound of +/- 0.005 arcsec/cy. Value and tolerance unchanged since WP14. Before arming, all six measured within 1.2e-4 arcsec/cy (build report 2026-10-21). P-add cross terms are reported, not asserted. Park17 gives no uncertainty for these rows."
+tolerance = { abs = 0.0005 }
+tolerance_rationale = "ASSERTED (maintainer decision 2026-10-21 on PR #13, after OI-38 closed): the P-remove cross term (inclusion-exclusion second difference of P-remove runs from identical ICs), converted to Park17 sign convention by Protocol::to_park17 (ADR-0014, PO-4), must lie within +/- 5e-4 arcsec/cy. GOLDEN-CHANGE, maintainer decision 2026-11-08 on PR #13: tightened from PHY-012's 0.005 after an independent review found four of the six rows smaller than 0.005 in magnitude, so a zero or sign-flipped term would have passed. 5e-4 is about 4x the measured worst difference (1.2e-4) and 10x Park's 4-decimal rounding. At this bound Venus+Earth/Moon, Jupiter+Saturn, Earth/Moon+Mars and Venus+Jupiter can detect a sign error; Mars+Jupiter (0.0002) and Saturn+Uranus (0.0004) cannot at any reasonable bound. Value unchanged since WP14. Before arming, all six measured within 1.2e-4 arcsec/cy (build report 2026-10-21). P-add cross terms are reported, not asserted. Park17 gives no uncertainty for these rows."
 verified_by = "WP14 builder agent, 2026-10-15: read in the published PDF (iopscience.iop.org/article/10.3847/1538-3881/aa5be2/pdf, sha256 24fb2153f6b78109daa80171cd37006157b73564f8d0ac383532b5c92433380b, the copy WP5 read; re-downloaded 2026-10-15, same sha256), pdftotext -layout of page 6, Table 3."
 
 [[vector]]
@@ -131,8 +132,8 @@ kind = "measured"
 source = "Park17 Table 3, row 'Venus+Jupiter Interaction': -0.0012 arcsec/Julian century (no uncertainty given)"
 citation = 'Park, R. S., Folkner, W. M., Konopliv, A. S., et al. 2017, AJ 153, 121, doi:10.3847/1538-3881/aa5be2, Table 3'
 retrieved = "2026-10-15"
-tolerance = { abs = 0.005 }
-tolerance_rationale = "ASSERTED (maintainer decision 2026-10-21 on PR #13, after OI-38 closed): the P-remove cross term (inclusion-exclusion second difference of P-remove runs from identical ICs), converted to Park17 sign convention by Protocol::to_park17 (ADR-0014, PO-4), must lie within the PHY-012 bound of +/- 0.005 arcsec/cy. Value and tolerance unchanged since WP14. Before arming, all six measured within 1.2e-4 arcsec/cy (build report 2026-10-21). P-add cross terms are reported, not asserted. Park17 gives no uncertainty for these rows."
+tolerance = { abs = 0.0005 }
+tolerance_rationale = "ASSERTED (maintainer decision 2026-10-21 on PR #13, after OI-38 closed): the P-remove cross term (inclusion-exclusion second difference of P-remove runs from identical ICs), converted to Park17 sign convention by Protocol::to_park17 (ADR-0014, PO-4), must lie within +/- 5e-4 arcsec/cy. GOLDEN-CHANGE, maintainer decision 2026-11-08 on PR #13: tightened from PHY-012's 0.005 after an independent review found four of the six rows smaller than 0.005 in magnitude, so a zero or sign-flipped term would have passed. 5e-4 is about 4x the measured worst difference (1.2e-4) and 10x Park's 4-decimal rounding. At this bound Venus+Earth/Moon, Jupiter+Saturn, Earth/Moon+Mars and Venus+Jupiter can detect a sign error; Mars+Jupiter (0.0002) and Saturn+Uranus (0.0004) cannot at any reasonable bound. Value unchanged since WP14. Before arming, all six measured within 1.2e-4 arcsec/cy (build report 2026-10-21). P-add cross terms are reported, not asserted. Park17 gives no uncertainty for these rows."
 verified_by = "WP14 builder agent, 2026-10-15: read in the published PDF (iopscience.iop.org/article/10.3847/1538-3881/aa5be2/pdf, sha256 24fb2153f6b78109daa80171cd37006157b73564f8d0ac383532b5c92433380b, the copy WP5 read; re-downloaded 2026-10-15, same sha256), pdftotext -layout of page 6, Table 3."
 
 [[vector]]
@@ -145,8 +146,8 @@ kind = "measured"
 source = "Park17 Table 3, row 'Earth/Moon+Mars Interaction': -0.0016 arcsec/Julian century (no uncertainty given)"
 citation = 'Park, R. S., Folkner, W. M., Konopliv, A. S., et al. 2017, AJ 153, 121, doi:10.3847/1538-3881/aa5be2, Table 3'
 retrieved = "2026-10-15"
-tolerance = { abs = 0.005 }
-tolerance_rationale = "ASSERTED (maintainer decision 2026-10-21 on PR #13, after OI-38 closed): the P-remove cross term (inclusion-exclusion second difference of P-remove runs from identical ICs), converted to Park17 sign convention by Protocol::to_park17 (ADR-0014, PO-4), must lie within the PHY-012 bound of +/- 0.005 arcsec/cy. Value and tolerance unchanged since WP14. Before arming, all six measured within 1.2e-4 arcsec/cy (build report 2026-10-21). P-add cross terms are reported, not asserted. Park17 gives no uncertainty for these rows."
+tolerance = { abs = 0.0005 }
+tolerance_rationale = "ASSERTED (maintainer decision 2026-10-21 on PR #13, after OI-38 closed): the P-remove cross term (inclusion-exclusion second difference of P-remove runs from identical ICs), converted to Park17 sign convention by Protocol::to_park17 (ADR-0014, PO-4), must lie within +/- 5e-4 arcsec/cy. GOLDEN-CHANGE, maintainer decision 2026-11-08 on PR #13: tightened from PHY-012's 0.005 after an independent review found four of the six rows smaller than 0.005 in magnitude, so a zero or sign-flipped term would have passed. 5e-4 is about 4x the measured worst difference (1.2e-4) and 10x Park's 4-decimal rounding. At this bound Venus+Earth/Moon, Jupiter+Saturn, Earth/Moon+Mars and Venus+Jupiter can detect a sign error; Mars+Jupiter (0.0002) and Saturn+Uranus (0.0004) cannot at any reasonable bound. Value unchanged since WP14. Before arming, all six measured within 1.2e-4 arcsec/cy (build report 2026-10-21). P-add cross terms are reported, not asserted. Park17 gives no uncertainty for these rows."
 verified_by = "WP14 builder agent, 2026-10-15: read in the published PDF (iopscience.iop.org/article/10.3847/1538-3881/aa5be2/pdf, sha256 24fb2153f6b78109daa80171cd37006157b73564f8d0ac383532b5c92433380b, the copy WP5 read; re-downloaded 2026-10-15, same sha256), pdftotext -layout of page 6, Table 3."
 
 [[vector]]
@@ -159,8 +160,8 @@ kind = "measured"
 source = "Park17 Table 3, row 'Mars+Jupiter Interaction': 0.0002 arcsec/Julian century (no uncertainty given)"
 citation = 'Park, R. S., Folkner, W. M., Konopliv, A. S., et al. 2017, AJ 153, 121, doi:10.3847/1538-3881/aa5be2, Table 3'
 retrieved = "2026-10-15"
-tolerance = { abs = 0.005 }
-tolerance_rationale = "ASSERTED (maintainer decision 2026-10-21 on PR #13, after OI-38 closed): the P-remove cross term (inclusion-exclusion second difference of P-remove runs from identical ICs), converted to Park17 sign convention by Protocol::to_park17 (ADR-0014, PO-4), must lie within the PHY-012 bound of +/- 0.005 arcsec/cy. Value and tolerance unchanged since WP14. Before arming, all six measured within 1.2e-4 arcsec/cy (build report 2026-10-21). P-add cross terms are reported, not asserted. Park17 gives no uncertainty for these rows."
+tolerance = { abs = 0.0005 }
+tolerance_rationale = "ASSERTED (maintainer decision 2026-10-21 on PR #13, after OI-38 closed): the P-remove cross term (inclusion-exclusion second difference of P-remove runs from identical ICs), converted to Park17 sign convention by Protocol::to_park17 (ADR-0014, PO-4), must lie within +/- 5e-4 arcsec/cy. GOLDEN-CHANGE, maintainer decision 2026-11-08 on PR #13: tightened from PHY-012's 0.005 after an independent review found four of the six rows smaller than 0.005 in magnitude, so a zero or sign-flipped term would have passed. 5e-4 is about 4x the measured worst difference (1.2e-4) and 10x Park's 4-decimal rounding. At this bound Venus+Earth/Moon, Jupiter+Saturn, Earth/Moon+Mars and Venus+Jupiter can detect a sign error; Mars+Jupiter (0.0002) and Saturn+Uranus (0.0004) cannot at any reasonable bound. Value unchanged since WP14. Before arming, all six measured within 1.2e-4 arcsec/cy (build report 2026-10-21). P-add cross terms are reported, not asserted. Park17 gives no uncertainty for these rows."
 verified_by = "WP14 builder agent, 2026-10-15: read in the published PDF (iopscience.iop.org/article/10.3847/1538-3881/aa5be2/pdf, sha256 24fb2153f6b78109daa80171cd37006157b73564f8d0ac383532b5c92433380b, the copy WP5 read; re-downloaded 2026-10-15, same sha256), pdftotext -layout of page 6, Table 3."
 
 [[vector]]
@@ -173,8 +174,8 @@ kind = "measured"
 source = "Park17 Table 3, row 'Jupiter+Saturn Interaction': 0.0411 arcsec/Julian century (no uncertainty given)"
 citation = 'Park, R. S., Folkner, W. M., Konopliv, A. S., et al. 2017, AJ 153, 121, doi:10.3847/1538-3881/aa5be2, Table 3'
 retrieved = "2026-10-15"
-tolerance = { abs = 0.005 }
-tolerance_rationale = "ASSERTED (maintainer decision 2026-10-21 on PR #13, after OI-38 closed): the P-remove cross term (inclusion-exclusion second difference of P-remove runs from identical ICs), converted to Park17 sign convention by Protocol::to_park17 (ADR-0014, PO-4), must lie within the PHY-012 bound of +/- 0.005 arcsec/cy. Value and tolerance unchanged since WP14. Before arming, all six measured within 1.2e-4 arcsec/cy (build report 2026-10-21). P-add cross terms are reported, not asserted. Park17 gives no uncertainty for these rows."
+tolerance = { abs = 0.0005 }
+tolerance_rationale = "ASSERTED (maintainer decision 2026-10-21 on PR #13, after OI-38 closed): the P-remove cross term (inclusion-exclusion second difference of P-remove runs from identical ICs), converted to Park17 sign convention by Protocol::to_park17 (ADR-0014, PO-4), must lie within +/- 5e-4 arcsec/cy. GOLDEN-CHANGE, maintainer decision 2026-11-08 on PR #13: tightened from PHY-012's 0.005 after an independent review found four of the six rows smaller than 0.005 in magnitude, so a zero or sign-flipped term would have passed. 5e-4 is about 4x the measured worst difference (1.2e-4) and 10x Park's 4-decimal rounding. At this bound Venus+Earth/Moon, Jupiter+Saturn, Earth/Moon+Mars and Venus+Jupiter can detect a sign error; Mars+Jupiter (0.0002) and Saturn+Uranus (0.0004) cannot at any reasonable bound. Value unchanged since WP14. Before arming, all six measured within 1.2e-4 arcsec/cy (build report 2026-10-21). P-add cross terms are reported, not asserted. Park17 gives no uncertainty for these rows."
 verified_by = "WP14 builder agent, 2026-10-15: read in the published PDF (iopscience.iop.org/article/10.3847/1538-3881/aa5be2/pdf, sha256 24fb2153f6b78109daa80171cd37006157b73564f8d0ac383532b5c92433380b, the copy WP5 read; re-downloaded 2026-10-15, same sha256), pdftotext -layout of page 6, Table 3."
 
 [[vector]]
@@ -187,8 +188,8 @@ kind = "measured"
 source = "Park17 Table 3, row 'Saturn+Uranus Interaction': 0.0004 arcsec/Julian century (no uncertainty given)"
 citation = 'Park, R. S., Folkner, W. M., Konopliv, A. S., et al. 2017, AJ 153, 121, doi:10.3847/1538-3881/aa5be2, Table 3'
 retrieved = "2026-10-15"
-tolerance = { abs = 0.005 }
-tolerance_rationale = "ASSERTED (maintainer decision 2026-10-21 on PR #13, after OI-38 closed): the P-remove cross term (inclusion-exclusion second difference of P-remove runs from identical ICs), converted to Park17 sign convention by Protocol::to_park17 (ADR-0014, PO-4), must lie within the PHY-012 bound of +/- 0.005 arcsec/cy. Value and tolerance unchanged since WP14. Before arming, all six measured within 1.2e-4 arcsec/cy (build report 2026-10-21). P-add cross terms are reported, not asserted. Park17 gives no uncertainty for these rows."
+tolerance = { abs = 0.0005 }
+tolerance_rationale = "ASSERTED (maintainer decision 2026-10-21 on PR #13, after OI-38 closed): the P-remove cross term (inclusion-exclusion second difference of P-remove runs from identical ICs), converted to Park17 sign convention by Protocol::to_park17 (ADR-0014, PO-4), must lie within +/- 5e-4 arcsec/cy. GOLDEN-CHANGE, maintainer decision 2026-11-08 on PR #13: tightened from PHY-012's 0.005 after an independent review found four of the six rows smaller than 0.005 in magnitude, so a zero or sign-flipped term would have passed. 5e-4 is about 4x the measured worst difference (1.2e-4) and 10x Park's 4-decimal rounding. At this bound Venus+Earth/Moon, Jupiter+Saturn, Earth/Moon+Mars and Venus+Jupiter can detect a sign error; Mars+Jupiter (0.0002) and Saturn+Uranus (0.0004) cannot at any reasonable bound. Value unchanged since WP14. Before arming, all six measured within 1.2e-4 arcsec/cy (build report 2026-10-21). P-add cross terms are reported, not asserted. Park17 gives no uncertainty for these rows."
 verified_by = "WP14 builder agent, 2026-10-15: read in the published PDF (iopscience.iop.org/article/10.3847/1538-3881/aa5be2/pdf, sha256 24fb2153f6b78109daa80171cd37006157b73564f8d0ac383532b5c92433380b, the copy WP5 read; re-downloaded 2026-10-15, same sha256), pdftotext -layout of page 6, Table 3."
 
 [[vector]]
