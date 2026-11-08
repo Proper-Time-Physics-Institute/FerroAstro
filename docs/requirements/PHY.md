@@ -477,7 +477,9 @@ notes: >-
   made by setting a GM to zero in the nominal ephemeris, and Park's pair rows
   equal P-remove's joint removal minus the two single removals to
   ≤ 1.2e-4 ″/cy for all six pairs (progress review after WP18, R1; that
-  comparison is post hoc). REVERT CONDITION (not triggered; OI-38 closed
+  comparison is post hoc). MAINTAINER DECISIONS 2026-10-21 and 2026-11-08
+  (#13): those six P-remove cross terms are ASSERTED in Park's sign
+  convention at ±5e-4 ″/cy (PARK17-T3-X-*, golden-change). REVERT CONDITION (not triggered; OI-38 closed
   2026-10-21): the P-remove assertion was PROVISIONAL until a maintainer
   confirmed OI-38 against the Park 2017 text; had the text said P-add, the
   assertion would have reverted to P-add and the 4 misses above would have

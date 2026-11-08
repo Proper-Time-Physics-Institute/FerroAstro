@@ -16,7 +16,7 @@ pub enum Protocol {
     /// (pre-registered for PHY-012 in WP14; reported as information only since ADR-0014).
     Add,
     /// `ϖ̇(full) − ϖ̇(full without X)` (the protocol PHY-012, NUM-013(b) and PHY-019 assert,
-    /// ADR-0014; PROVISIONAL for PHY-012 while OI-38 is open).
+    /// ADR-0014; OI-38 closed 2026-10-21).
     Remove,
     /// `ϖ̇(base + X + Y) − ϖ̇(base + X) − ϖ̇(base + Y) + ϖ̇(base)`: the interaction of two
     /// toggles under [`Protocol::Add`] (reported separately). Like [`Protocol::CrossTermRemove`],
@@ -24,7 +24,8 @@ pub enum Protocol {
     /// (ADR-0014); compare it with Park only through [`Protocol::to_park17`].
     CrossTerm,
     /// `ϖ̇(full) − ϖ̇(full − X) − ϖ̇(full − Y) + ϖ̇(full − X − Y)`: the interaction of two toggles
-    /// under [`Protocol::Remove`] (informational). This inclusion–exclusion second difference is
+    /// under [`Protocol::Remove`] (asserted against Park17's pair rows at +/- 5e-4 ″/cy since the
+    /// maintainer decisions of 2026-10-21 and 2026-11-08). This inclusion–exclusion second difference is
     /// the NEGATIVE of Park et al. 2017's pair rows ("pair removal minus single removals",
     /// ADR-0014); compare it with Park only through [`Protocol::to_park17`].
     CrossTermRemove,

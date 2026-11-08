@@ -510,7 +510,11 @@ notes: >-
   second difference; Park17's pair rows are the joint removal minus the two
   single removals, i.e. its negative, and match P-remove's to ≤ 1.2e-4 ″/cy
   in all six pairs (progress review after WP18, R1, post hoc). Reports SHALL
-  label which convention a cross-term column uses. BUILD EVIDENCE for the
+  label which convention a cross-term column uses. MAINTAINER DECISIONS
+  2026-10-21 and 2026-11-08 (#13): the six P-remove cross terms are also
+  ASSERTED against Park17's pair rows in Park's sign convention at
+  ±5e-4 ″/cy (PARK17-T3-X-* vectors, golden-change); P-add cross terms stay
+  reported. BUILD EVIDENCE for the
   harness (m3-newtonian-nbody): ferroastro-diffrun (WP14) checks identical
   per-body IC records and one shared IC hash before any run (FA-E1401 on a
   one-ulp tamper), runs long legs in checkpointed segments (CI-010), and
