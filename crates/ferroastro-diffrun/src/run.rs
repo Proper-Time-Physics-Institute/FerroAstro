@@ -428,6 +428,9 @@ pub struct PlanResult {
     pub shared_ic_hash: String,
     /// Constants version.
     pub constants: String,
+    /// Initial epoch shared by every leg, TDB Julian date (rule 4, PO-5).
+    #[serde(default)]
+    pub ic_epoch_jd_tdb: f64,
     /// Per configuration.
     pub configs: Vec<ConfigResult>,
     /// The table.
@@ -604,6 +607,9 @@ pub fn run_plan(
             .first()
             .map(|(_, i)| i.constants.clone())
             .unwrap_or_default(),
+        ic_epoch_jd_tdb: initial
+            .first()
+            .map_or(f64::NAN, |(_, i)| i.epoch_jd_tdb[0] + i.epoch_jd_tdb[1]),
         configs,
         rows,
     })
@@ -641,7 +647,12 @@ impl PlanResult {
             "**Shared IC hash (base bodies)** `{}`  ",
             self.shared_ic_hash
         );
-        let _ = writeln!(s, "**Constants** {}\n", self.constants);
+        let _ = writeln!(s, "**Constants** {}  ", self.constants);
+        let _ = writeln!(
+            s,
+            "**IC epoch** JD {:.6} TDB (shared by every leg)\n",
+            self.ic_epoch_jd_tdb
+        );
         let _ = writeln!(
             s,
             "| configuration | bodies (NAIF) | ϖ̇ (″/cy) | jack-knife σ | formal σ | Q (″/cy²) | rms (″) | passages | cross-check ϖ̇ | steps |"
@@ -665,6 +676,15 @@ impl PlanResult {
                     .map_or_else(|| "—".into(), |x| format!("{:.6}", x.rate)),
                 c.steps
             );
+        }
+        // Rule 4 (PO-5): every configuration states its force model and gauge.
+        let _ = writeln!(
+            s,
+            "\n| configuration | force model (gauge) and integrator |"
+        );
+        let _ = writeln!(s, "|---|---|");
+        for c in &self.configs {
+            let _ = writeln!(s, "| {} | {} |", c.label, c.model.replace('\n', " "));
         }
         for p in [
             Protocol::Add,

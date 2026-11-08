@@ -192,6 +192,18 @@ fn plan_shares_identical_ics_and_rows_are_signed_sums() {
             && md.contains("Park17 sign: pair removal − single removals"),
         "markdown must print the P-remove cross term in Park17's convention:\n{md}"
     );
+    // Review item PO-5 (AGENTS.md rule 4): the report states the shared IC epoch and each configuration's gauge.
+    assert!(
+        md.contains(&format!("**IC epoch** JD {:.6} TDB", r.ic_epoch_jd_tdb))
+            && r.ic_epoch_jd_tdb.is_finite()
+            && r.configs.iter().all(|c| md.contains(&format!(
+                "| {} | {} |",
+                c.label,
+                c.model.replace('\n', " ")
+            )))
+            && md.contains("gauge"),
+        "markdown must state the IC epoch and every configuration's force model and gauge:\n{md}"
+    );
     // The base run (Sun + Mercury, Newtonian) has no secular precession: its rate is the
     // estimator's numerical floor over 20 years, printed.
     println!(
