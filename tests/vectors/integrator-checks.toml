@@ -133,11 +133,11 @@ verified_by = "WP7 builder agent, 2026-10-15: analytic (Kepler's third law); mea
 [[vector]]
 id = "WP12-1B-KNOWN-FAILURE-ENERGY-SLOPE"
 requirement = ["NUM-023"]
-quantity = "KNOWN-FAILURE GUARD, not an acceptance value: fitted energy-error exponent of the pre-registered WP12 check 1b N-body ensemble (32 x 100 000 yr, Sun + planets + solar J2 with reaction, IAS15 f64), as documented when the failure was recorded"
+quantity = "KNOWN-FAILURE GUARD, not an acceptance value: fitted energy-error exponent of the pre-registered WP12 check 1b N-body ensemble (32 x 100 000 yr, Sun + planets + solar J2 with reaction, IAS15 f64), as documented when the failure was recorded; it reproduces under both IAS15 predictors (B-increment accumulation before 2026-11-08, pc_b_from_g since)"
 value = 0.050
 unit = "1"
 kind = "measured"
-source = "FerroAstro nightly_nbody_brouwer_energy_slope_with_solar_j2, first run 2026-10-15: energy slope 0.050 +/- 0.027 (fit standard error) over 1.01e9 steps; NUM-023 asks 0.5 +/- 0.1, so this is a FAILURE (NEEDS HUMAN REVIEW)."
+source = "FerroAstro nightly_nbody_brouwer_energy_slope_with_solar_j2, first run 2026-10-15: energy slope 0.050 +/- 0.027 (fit standard error) over 1.01e9 steps; NUM-023 asks 0.5 +/- 0.1, so this is a FAILURE (NEEDS HUMAN REVIEW). Re-run 2026-11-08 after pc_b_from_g became the IAS15 default (#13, B5): energy slope 0.065 +/- 0.025, inside this guard's band, run solo in 7200 s. The test's own diagnostic says the f64-evaluated energy error stays on its ~1e-15 evaluation floor for 1e5 yr, so the fitted slope does not measure Brouwer growth under either predictor. Value and tolerance unchanged."
 citation = "FerroAstro docs/strategy/IMPLEMENTATION-NOTES.md WP12 (check 1b result table, '0.050 +/- 0.027')"
 retrieved = "2026-10-20"
 tolerance = { abs = 0.027 }
