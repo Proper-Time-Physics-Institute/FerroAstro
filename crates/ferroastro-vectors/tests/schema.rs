@@ -297,7 +297,8 @@ fn provisional_gates_and_keeps_its_open_item_reference() {
 
 /// Every committed provisional vector names an item that the committed OPEN-ITEMS.md lists, and
 /// the PHY-012 rows asserted under P-remove (ADR-0014) stay provisional while OI-38 is open: the
-/// label can only be dropped together with closing OI-38.
+/// label can only be dropped together with closing OI-38. Once OI-38 is closed (2026-10-21), the
+/// rows gate with neither `provisional` nor `blocked_by`, so a stale label fails here.
 ///
 /// Verifies: TST-002, PHY-012
 #[test]
@@ -326,7 +327,13 @@ fn workspace_provisional_vectors_reference_recorded_open_items() {
         let v = set.get(&format!("PARK17-T3-{row}")).unwrap();
         if oi38_open {
             assert_eq!(v.provisional.as_deref(), Some("OI-38"), "{}", v.id);
-            assert!(v.blocked_by.is_none(), "{}: PHY-012 rows gate", v.id);
+        } else {
+            assert!(
+                v.provisional.is_none(),
+                "{}: OI-38 is closed; drop `provisional`",
+                v.id
+            );
         }
+        assert!(v.blocked_by.is_none(), "{}: PHY-012 rows gate", v.id);
     }
 }
