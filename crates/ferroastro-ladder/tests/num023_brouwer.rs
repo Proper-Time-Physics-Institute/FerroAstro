@@ -255,7 +255,7 @@ fn checked_ensemble(runs: u32, orbits: u32) -> Option<Slopes> {
 
 /// Pre-registered default ensemble (64 × 2000 orbits), asserted against NUM-023.
 ///
-/// Verifies: NUM-023, NUM-001
+/// Verifies: NUM-023
 #[test]
 #[ignore = "nightly tier: ~1e7 IAS15 steps; run with --profile nightly --run-ignored only"]
 fn nightly_num023_brouwer_slopes_ias15_f64() {
