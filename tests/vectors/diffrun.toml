@@ -57,6 +57,5 @@ source = "Park17 Table 3, row 'Lense-Thirring (Gravitomagnetic)': -0.0020 +/- 0.
 citation = "Park, R. S., Folkner, W. M., Konopliv, A. S., et al. 2017, AJ 153, 121, doi:10.3847/1538-3881/aa5be2, Table 3; FerroAstro docs/requirements/NUM.md NUM-019"
 retrieved = "2026-10-20"
 tolerance = { abs = 2.0e-4 }
-tolerance_rationale = "Park17's quoted 1-sigma, which NUM-019 copies. Non-gating while OI-35 (the transcription of the LT form against DE440 and INPOP21a) is open, as the WP20 task requires for the asserting N-body LT test. Pre-registered in IMPLEMENTATION-NOTES WP20 (N3) before the first run."
+tolerance_rationale = "Park17's quoted 1-sigma, which NUM-019 copies. GATES since OI-35 closed on 2026-10-21 (maintainer sign-off, Journal #12: the LT form equals DE440 Eqs. 37-39 and INPOP21a Eq. 1). It was non-gating while OI-35 was open, as the WP20 task required. Pre-registered in IMPLEMENTATION-NOTES WP20 (N3) before the first run."
 verified_by = "WP20 builder agent, 2026-10-20: value as PARK17-LT-RATE (read by the WP4 builder in the published PDF, sha256 24fb2153f6b78109daa80171cd37006157b73564f8d0ac383532b5c92433380b)."
-blocked_by = "OI-35"

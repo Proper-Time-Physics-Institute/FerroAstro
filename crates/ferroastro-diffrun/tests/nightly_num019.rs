@@ -10,8 +10,8 @@
 //! `PARK17-J2SUN`, WGCCRE 2015 pole) and LT (DE440 spin, with reaction); P-add, P-remove and the
 //! J2×LT cross term; one IC hash; the Park2017 estimator (daily samples, Park17 mean-orbit plane,
 //! quadratic + 14 Table-2 terms). J2 P-add is asserted against `PARK17-J2-RATE`; the LT row's
-//! vector `NUM019-NBODY-LT-CONTRIBUTION` carries `blocked_by = "OI-35"` and gates only once OI-35
-//! is closed. The evidence is written to `target/diffrun/` as markdown and JSON.
+//! vector `NUM019-NBODY-LT-CONTRIBUTION` gates (OI-35 closed 2026-10-21; it was `blocked_by = "OI-35"`
+//! before). The evidence is written to `target/diffrun/` as markdown and JSON.
 
 mod common;
 
