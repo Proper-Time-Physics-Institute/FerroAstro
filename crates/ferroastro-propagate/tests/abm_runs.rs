@@ -309,3 +309,86 @@ fn abm_span_not_a_multiple_of_the_step_ends_on_the_span() {
     );
     assert!(mercury.is_finite() && dt.is_finite());
 }
+
+/// B2d (M5 review #18, WP24-1, maintainer decision 2026-11-12: "compare against a DD truth"):
+/// the WP24 B2 comparison with the f64 round-off removed. ABM13 PECEC and IAS15 (ε = 1e-9), both
+/// in double-double, 40 yr, Mercury max |Δr| within `ABM-VS-IAS15-MERCURY-40YR-DR-DD` (the B2
+/// bound, 1 m, now applied to the method difference). Each f64 run's distance from its own DD
+/// twin is reported. Pre-registered before the first run; B2 itself stays a known failure.
+///
+/// Verifies: NUM-002
+#[test]
+#[ignore = "nightly: four 40-yr runs, two in double-double (about 2 min in release)"]
+fn nightly_abm_vs_ias15_forty_years_in_double_double() {
+    use ferroastro_scenario::Precision;
+    let vs = VectorSet::load_canonical().unwrap();
+    let tol = vs.get("ABM-VS-IAS15-MERCURY-40YR-DR-DD").unwrap();
+    let (h, prov) = header();
+    let data = DataSources::none().with_header(&h, &prov);
+    let abm64 = spec(SCENARIO);
+    let mut abm_dd = abm64.clone();
+    abm_dd.integrator.precision = Precision::Dd;
+    let ias64 = ias15_twin(&abm64);
+    let mut ias_dd = ias64.clone();
+    ias_dd.integrator.precision = Precision::Dd;
+    let [a64, add, i64r, idd] = std::thread::scope(|sc| {
+        let hs = [&abm64, &abm_dd, &ias64, &ias_dd].map(|s| sc.spawn(|| run(s, &data).unwrap()));
+        hs.map(|h| h.join().unwrap())
+    });
+    for (name, o) in [
+        ("ABM f64", &a64),
+        ("ABM DD", &add),
+        ("IAS15 f64", &i64r),
+        ("IAS15 DD", &idd),
+    ] {
+        println!(
+            "  {name}: {} steps, {} samples; model: {}",
+            o.stats.steps,
+            o.states.len(),
+            o.model.rsplit(';').next().unwrap_or_default()
+        );
+    }
+    let mercury = |x: &RunOutput, y: &RunOutput| {
+        differences(x, y)
+            .0
+            .iter()
+            .find(|r| r.0 == MERCURY)
+            .unwrap()
+            .1
+    };
+    // The DD comparison in double-double: an f64 difference of 5e7-km positions cannot resolve
+    // less than ~4e-9 km (it printed exactly 0 on the first run).
+    let mercury_dd = |x: &RunOutput, y: &RunOutput| {
+        use ferroastro_real::{DoubleDouble, Real};
+        let at = |r: &StateRecord| r.bodies.iter().position(|&b| b == MERCURY).unwrap();
+        let finals = [
+            x.final_state.clone().unwrap(),
+            y.final_state.clone().unwrap(),
+        ];
+        x.states
+            .iter()
+            .zip(&y.states)
+            .chain(std::iter::once((&finals[0], &finals[1])))
+            .map(|(a, b)| {
+                let (pa, pb) = (a.positions[at(a)], b.positions[at(b)]);
+                let d: [f64; 3] = [0, 1, 2].map(|k| {
+                    (DoubleDouble::from_parts(pa[k][0], pa[k][1])
+                        - DoubleDouble::from_parts(pb[k][0], pb[k][1]))
+                    .to_f64()
+                });
+                d[0].hypot(d[1]).hypot(d[2])
+            })
+            .fold(0.0, f64::max)
+    };
+    let (m_dd, m_abm_ro, m_ias_ro, m_f64) = (
+        mercury_dd(&add, &idd),
+        mercury(&a64, &add),
+        mercury(&i64r, &idd),
+        mercury(&a64, &i64r),
+    );
+    println!(
+        "B2d: Mercury max |dr| over 40 yr: ABM_DD vs IAS15_DD {m_dd:.6e} km; ABM f64 vs ABM_DD \
+         {m_abm_ro:.6e} km; IAS15 f64 vs IAS15_DD {m_ias_ro:.6e} km; (B2, f64 vs f64: {m_f64:.6e} km)"
+    );
+    tol.check(m_dd).unwrap();
+}

@@ -19,11 +19,11 @@ schema_version = 1
 test = "nightly_abm_vs_ias15_forty_year_mercury_bound"
 vector = "ABM-VS-IAS15-MERCURY-40YR-DR"
 review = "IMPLEMENTATION-NOTES WP24 (B2, PROVISIONAL 1 m bound) and the WP26 progress review W3"
-last_value = 0.002241985949833485
+last_value = 0.002073811
 unit = "km"
-measured_on = "2026-10-20, WP26 progress review at 6cae36b"
+measured_on = "2026-11-12, M5 review fixes (the same f64-vs-f64 comparison inside nightly_abm_vs_ias15_forty_years_in_double_double, printed to 7 digits; 2.241986e-3 km at 6cae36b before the M4/D1 merge changed the EIH summation order)"
 value_regex = 'id: "ABM-VS-IAS15-MERCURY-40YR-DR".*?measured: ([0-9.eE+-]+)'
-rel_change = 1e-9
+rel_change = 1e-6 # the last value was read from a 7-digit print (M5 review fixes)
 
 [[failure]]
 test = "nightly_mu_star_rate_pre_registered_bound"

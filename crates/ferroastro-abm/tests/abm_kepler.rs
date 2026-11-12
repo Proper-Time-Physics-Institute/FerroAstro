@@ -248,13 +248,15 @@ fn unit_energy_error(o: &Orbit<D>, steps: u32, cfg: AbmConfig) -> (f64, f64) {
 }
 
 /// A4: convergence order by halving h (`ABM-ORDER-SLOPE`), on the energy error; the position
-/// error slopes are reported.
+/// error slopes are asserted against the wider `ABM-ORDER-SLOPE-POSITION` band (WP24-2, accepted
+/// by the maintainer 2026-11-12; the band was set after the WP24 exploratory scan, disclosed).
 ///
 /// Verifies: NUM-002, DEP-007
 #[test]
 fn convergence_order_matches_the_configured_order() {
     let vs = vectors();
     let tol = vs.get("ABM-ORDER-SLOPE").unwrap();
+    let ptol = vs.get("ABM-ORDER-SLOPE-POSITION").unwrap();
     let o = Orbit::<D>::unit(&vs);
     println!(
         "A4: unit Kepler orbit, e = {}, {SHORT_ORBITS} orbits, double-double; slope = \
@@ -271,11 +273,14 @@ fn convergence_order_matches_the_configured_order() {
             let pslope = (p1 / p2).log2();
             println!(
                 "  {}: steps/orbit {steps}/{}: energy {e1:.3e} -> {e2:.3e}, slope {slope:.3}; \
-                 position {p1:.3e} -> {p2:.3e}, slope {pslope:.3} (reported)",
+                 position {p1:.3e} -> {p2:.3e}, slope {pslope:.3}",
                 cfg.describe(),
                 2 * steps
             );
             if let Err(e) = tol.check(slope - f64::from(p)) {
+                failures.push(e.to_string());
+            }
+            if let Err(e) = ptol.check(pslope - f64::from(p)) {
                 failures.push(e.to_string());
             }
         }

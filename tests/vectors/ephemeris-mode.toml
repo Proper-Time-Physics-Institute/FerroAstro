@@ -203,3 +203,17 @@ retrieved = "2026-11-12"
 tolerance = { abs = 1.0e-6 }
 tolerance_rationale = "The run is deterministic; WP25 printed six decimals (half a unit = 5e-7 km), so 1e-6 km admits only the print rounding. The all-body EIH (eih_scope = all) gives 0.784609 km, 1.4e-5 km away, so the check tells the two scopes apart."
 verified_by = "WP22/M5 review builder agent, 2026-11-12: value copied from WP25 D1; the 2026-11-12 re-measurement agrees to the printed digits."
+
+[[vector]]
+id = "EPH-MUSTAR-RATE-REL-CORRECTED"
+requirement = ["NUM-018"]
+quantity = "the quantity of EPH-MUSTAR-RATE-REL (C3b: mu*' against a central difference, d = 3600 s, double-double), with the corrected truncation bound"
+value = 0.0
+unit = "1"
+kind = "analytic"
+source = "The central-difference error scales with (omega d)^2 = (2 pi d / P)^2, not (d / P)^2 as EPH-MUSTAR-RATE-REL's source wrote: for Mercury (P = 88 d) and d = 1 h, (2 pi / 2112)^2 = 8.85e-6. Measured 3.93e-6 (WP25, 2026-10-20); the m4 line's E5 measured 1.09e-9 at d = 60 s, which is 3.9e-6 at d = 1 h under d^2 scaling."
+citation = "Park et al. 2021, Eq. 2 (mu*); IMPLEMENTATION-NOTES WP25 (C3b, NEEDS HUMAN REVIEW 3) and the M5 review fixes (WP25-3)"
+retrieved = "2026-11-12"
+tolerance = { abs = 4.4e-5 }
+tolerance_rationale = "5 x 8.85e-6, the original rule (5x the estimated truncation) with the (2 pi)^2 restored. POST HOC: written after the 3.93e-6 result was known, by maintainer decision (2026-11-12, #18 questionnaire WP25-3); EPH-MUSTAR-RATE-REL is unchanged and its nightly test remains a recorded known failure."
+verified_by = "M5 review-fix builder agent, 2026-11-12: post hoc, disclosed."

@@ -135,3 +135,31 @@ retrieved = "2026-11-12"
 tolerance = { abs = 0.0 }
 tolerance_rationale = "One-sided threshold, pre-registered before T1c's first run: the lower end of the expected range (>= 30, as the review's correction 2 states). ABM-COMPENSATION-GAIN-MIN (10) and T1 are unchanged and cross-referenced. The tolerance field is unused."
 verified_by = "M5 review-fix builder agent, 2026-11-12: written before T1c's first run."
+
+[[vector]]
+id = "ABM-VS-IAS15-MERCURY-40YR-DR-DD"
+requirement = ["NUM-002"]
+quantity = "max over yearly samples and the final state of Mercury's barycentric |r_ABM - r_IAS15|, the B2 setup (EIH Sun + 8 planets + geocentric Moon, header.440, 40 Julian years, ABM13 PECEC h = 1/16 d vs IAS15 epsilon 1e-9) with BOTH runs in double-double"
+value = 0.0
+unit = "km"
+kind = "analytic"
+source = "M5 review #18, WP24-1 (maintainer decision 2026-11-12: compare against a DD truth). B2's 2.24 m was attributed to f64 round-off of the ABM history sums; in double-double that round-off is ~1e-16 smaller, so what remains is the two methods' truncation, expected well below 1 m (IAS15 vs REBOUNDx gr_full 0.85 m over 100 yr in f64, WP21 S1)."
+citation = "WP24 task text (1 m); IMPLEMENTATION-NOTES WP24 (B2) and the M5 review fixes"
+retrieved = "2026-11-12"
+tolerance = { abs = 1.0e-3 }
+tolerance_rationale = "B2's PROVISIONAL 1 m, unchanged, applied to the method difference without f64 round-off. Pre-registered before the first run; B2 (f64) stays a known failure."
+verified_by = "M5 review-fix builder agent, 2026-11-12: written before the first run."
+
+[[vector]]
+id = "ABM-ORDER-SLOPE-POSITION"
+requirement = ["NUM-002"]
+quantity = "position-error slope minus the configured order p, log2(err(h)/err(h/2)) of the position error, for the A4 (p, corrector, steps) pairs (unit Kepler orbit, double-double)"
+value = 0.25
+unit = "1"
+kind = "analytic"
+source = "The global position error of an order-p method converges as h^p; at the A4 step pairs the approach is slow and the WP24 scan measured position slopes 0.3-0.9 above p (PECE p = 12: 12.89, PECE p = 14: 14.87), while the energy error (ABM-ORDER-SLOPE) converges at exactly p."
+citation = "IMPLEMENTATION-NOTES WP24 (NEEDS HUMAN REVIEW 2) and the M5 review fixes (WP24-2, maintainer decision 2026-11-12)"
+retrieved = "2026-11-12"
+tolerance = { abs = 0.75 }
+tolerance_rationale = "Band [p - 0.5, p + 1.0]: wide enough for the pre-asymptotic excess the scan showed (<= 0.9), narrow enough that a method of order p - 1 or p + 2 fails. NOT pre-registered in the strict sense: set after the WP24 exploratory scan, at the maintainer's request (WP24-2), and disclosed."
+verified_by = "M5 review-fix builder agent, 2026-11-12: band set from the WP24 scan, before this assertion's first run."
