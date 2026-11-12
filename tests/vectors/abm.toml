@@ -121,3 +121,17 @@ retrieved = "2026-10-20"
 tolerance = { abs = 0.0 }
 tolerance_rationale = "A lower bound: the test asserts ratio >= value (10), the k suggested by the WP26 review from B3's ~100 and about 3x below the position-error estimate (~33). An anti-compensated or uncompensated update gives a ratio <= 1."
 verified_by = "WP28 builder agent, 2026-10-20: fixed in the WP28 plan before the first run."
+
+[[vector]]
+id = "ABM-COMPENSATION-GAIN-SHARED-STARTUP-MIN"
+requirement = ["NUM-002", "NUM-007"]
+quantity = "lower bound on max|r_plain - r_DD| / max|r_comp - r_DD| for the T1 Mars-like Kepler orbit (a = 1.5 au, e = 0.09, ABM13 PECEC h = 1/16 d, 10 orbits), with ONE start-up history computed in double-double, rounded to f64 and restored into all three runs (T1c)"
+value = 30.0
+unit = "1"
+kind = "defined"
+source = "Progress review after WP29, X1: T1's 10.36 measured the f64-vs-DD difference of the DP8 start-up, not the state update. The reviewer's independent ABM13 PECEC (exact rational coefficients, Kahan update, start-up shared bit for bit, 80-bit truth) gave ratios 43-412 over five starting phases (116 at phase 0); WP28's per-step estimate was 30-100."
+citation = "IMPLEMENTATION-NOTES progress review after WP29 (X1, correction 2); M5 review #18 SF4"
+retrieved = "2026-11-12"
+tolerance = { abs = 0.0 }
+tolerance_rationale = "One-sided threshold, pre-registered before T1c's first run: the lower end of the expected range (>= 30, as the review's correction 2 states). ABM-COMPENSATION-GAIN-MIN (10) and T1 are unchanged and cross-referenced. The tolerance field is unused."
+verified_by = "M5 review-fix builder agent, 2026-11-12: written before T1c's first run."

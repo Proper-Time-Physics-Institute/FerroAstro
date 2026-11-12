@@ -732,3 +732,111 @@ fn one_compensated_step_is_the_documented_sequence_bit_for_bit() {
     assert_eq!(bits(&first(&after.y)), bits(&want_y), "state");
     assert_eq!(bits(&first(&after.y_comp)), bits(&want_c), "compensation");
 }
+
+/// T1c (progress review after WP29, X1; M5 review #18 SF4): T1 with a SHARED start-up. T1's
+/// margin (10.36) measured the f64-vs-DD difference of the DP8 start-up, which the f64 runs share
+/// and the DD truth does not. Here the start-up runs once in double-double; its snapshot (state,
+/// derivative history, start-up arrays) is rounded to f64 and restored into all three runs (f64
+/// compensated, f64 plain, DD truth), so they start the regular ABM13 PECEC steps from identical
+/// bits and the ratio measures the state update only. Bound pre-registered before the first run:
+/// `ABM-COMPENSATION-GAIN-SHARED-STARTUP-MIN` (30; the reviewer's independent recomputation gave
+/// 43–412 over five phases). `ABM-COMPENSATION-GAIN-MIN` and T1 are unchanged.
+///
+/// Verifies: NUM-002, NUM-007
+#[test]
+#[expect(
+    clippy::cast_possible_truncation,
+    clippy::cast_sign_loss,
+    reason = "the step count is a small positive integer"
+)]
+fn compensated_update_gain_with_a_shared_start_up_history() {
+    let vs = vectors();
+    let min = vs
+        .get("ABM-COMPENSATION-GAIN-SHARED-STARTUP-MIN")
+        .unwrap()
+        .value()
+        .unwrap();
+    let au_km = value(&vs, "CONST-AU-IAU2012");
+    let mu = value(&vs, "DE440-GMS-KM3S2");
+    let h = SECONDS_PER_DAY / STEPS_PER_DAY;
+    let o = Orbit::<f64>::new(mu, T1_A_AU * au_km, T1_E);
+    let start = o.start();
+    // The start-up, once, in double-double: step until the regular history exists.
+    let sys_d = Kepler {
+        mu: D::from_f64(mu),
+    };
+    let mut dd = Abm::<D>::new(
+        2,
+        D::ZERO,
+        &start.0.map(D::from_f64),
+        &start.1.map(D::from_f64),
+        D::from_f64(h),
+        config(13, Corrector::Pecec, true),
+    )
+    .unwrap();
+    let mut snap = dd.snapshot().unwrap();
+    while snap.history.is_empty() {
+        dd.step(&sys_d).unwrap();
+        snap = dd.snapshot().unwrap();
+    }
+    let done = snap.steps;
+    // Round every stored value to f64 (low words zero), compensation words cleared.
+    let round = |p: &mut [f64; 2]| *p = [p[0] + p[1], 0.0];
+    for p in &mut snap.y {
+        round(p);
+    }
+    for p in &mut snap.y_comp {
+        *p = [0.0, 0.0];
+    }
+    for row in snap
+        .history
+        .iter_mut()
+        .chain(snap.startup_states.iter_mut())
+        .chain(snap.startup_derivatives.iter_mut())
+    {
+        for p in row {
+            round(p);
+        }
+    }
+    let total = (T1_ORBITS * o.period / h).round() as u64;
+    let run_f64 = |compensated: bool| -> Vec<[D; 2]> {
+        let mut s = snap.clone();
+        s.backend = <f64 as Real>::NAME.to_owned();
+        s.config.compensated = compensated;
+        let mut abm = Abm::<f64>::restore(&s).unwrap();
+        let sys = Kepler { mu };
+        let mut out = Vec::new();
+        for k in done..total {
+            abm.step(&sys).unwrap();
+            if (k + 1) % SAMPLE_EVERY == 0 {
+                let x = abm.positions();
+                out.push([D::from_f64(x[0]), D::from_f64(x[1])]);
+            }
+        }
+        out
+    };
+    let truth = {
+        let mut abm = Abm::<D>::restore(&snap).unwrap();
+        let mut out = Vec::new();
+        for k in done..total {
+            abm.step(&sys_d).unwrap();
+            if (k + 1) % SAMPLE_EVERY == 0 {
+                let x = abm.positions();
+                out.push([x[0], x[1]]);
+            }
+        }
+        out
+    };
+    let (comp, plain) = (run_f64(true), run_f64(false));
+    let (e_comp, e_plain) = (max_distance(&comp, &truth), max_distance(&plain, &truth));
+    let ratio = e_plain / e_comp;
+    println!(
+        "T1c (shared DD start-up of {done} steps, {} samples): max |r - r_DD| compensated \
+         {e_comp:.4e} km, plain {e_plain:.4e} km, ratio {ratio:.2} (bound >= {min})",
+        truth.len()
+    );
+    assert!(
+        ratio >= min,
+        "ABM-COMPENSATION-GAIN-SHARED-STARTUP-MIN: ratio {ratio:.3} < {min}"
+    );
+}
