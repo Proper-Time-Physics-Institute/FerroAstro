@@ -197,7 +197,9 @@ statement: >-
   Subbotin mixed scheme: state, integrator sums and coefficients in
   double-double; forces in f64.
 acceptance: >-
-  Mercury round-off over 40 yr ≤ 1 cm relative to a full double-double run.
+  In ephemeris mode, Mercury's round-off over 40 yr is ≤ 3 cm relative to a
+  full double-double run in mixed double-double (measured 2.04 cm, WP25
+  run 2); Subbotin et al. 2023's 8.4 mm is reported (maintainer decision 2026-11-12, #18 review; previously: "≤ 1 cm").
 source: >-
   docs/strategy/journal/04-numerical-methods.md §2 and NUM-007; Subbotin et al.
   2023 (mixed DD ≈ 3× f64 cost; Mercury 8.4 mm / 40 yr).
@@ -339,6 +341,13 @@ notes: >-
   bodies; Ring masses are 1PN sources only (v = a = 0) and receive nothing.
   (3) MinorReaction::Off also switches off the Lense–Thirring reaction that
   Minor bodies send to the Sun (fixed in wp22-eih-all-bodies, 15615ca).
+  SOURCE-SPECIFIC TIERING (maintainer decision 2026-11-12, #18 review
+  WP25-4/5): tiering accuracy depends on the reference ephemeris. With
+  Subbotin et al. 2023's EPM2021 tiering (16 Majors including (1) Ceres,
+  (2) Pallas, (4) Vesta, (7) Iris, (324) Bamberga; scenario
+  eih_scope = "majors"), tiering costs < 1 cm (planets) and < 1 mm (Moon)
+  over 40 yr for their body set. For the DE440 set (eih_scope = "all", D1)
+  FerroAstro measures Mars 2.2 cm (WP25 N4), reported.
 ```
 
 ### NUM-010 — Dense output and perihelion event location
@@ -963,8 +972,11 @@ statement: >-
   sweeps, plus optional SIMD batch-lane integration of independent initial
   conditions.
 acceptance: >-
-  Throughput scales linearly with core count when the number of runs is at
-  least the number of cores.
+  Throughput scales linearly with the number of performance cores of a
+  homogeneous, otherwise idle runner (SMT off) when the number of runs is at
+  least the number of cores; heterogeneous or shared machines report the
+  efficiency (maintainer decision 2026-11-12, #18 review; previously: no hardware qualifier; WP26-3 failed beyond 4
+  threads on a shared machine).
 source: >-
   docs/strategy/journal/04-numerical-methods.md §5 and NUM-022.
 parent: null
@@ -1029,8 +1041,11 @@ statement: >-
   + 343 Minor bodies in f64 and in mixed DD, and SHALL publish wall times
   against Subbotin's 81 s (f64) and 246 s (mixed DD), hardware-normalised.
 acceptance: >-
-  Criterion benchmarks run in CI (CI-008 conditions). Target: within 1× of
-  81 s / 246 s on comparable hardware.
+  Criterion benchmarks run in CI (CI-008 conditions). The 40-yr NUM-024 runs
+  (16 Major + 338 Minor, DE440 set) are timed and reported against Subbotin
+  et al. 2023 Table 1 (81 s / 246 s) as context only. The comparison is not
+  assessed while hardware (OI-44) and workload (~338 vs ~642 small bodies)
+  differ (maintainer decision 2026-11-12, #18 review; previously: "within 1× of 81 s / 246 s on comparable hardware").
 source: >-
   docs/strategy/journal/04-numerical-methods.md §1.4, §5 and NUM-024; Subbotin
   et al. 2023 Table 1.
