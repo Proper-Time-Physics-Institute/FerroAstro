@@ -19,7 +19,7 @@ This page states what FerroAstro guarantees about the bits of its results, and w
      - `simd_and_scalar_newtonian_kernels_are_bitwise_identical`;
      - `simd_and_scalar_eih_kernels_are_bitwise_identical`;
      - `simd_and_scalar_soa_models_integrate_bitwise` (10 yr of ABM steps);
-     - `tools/simd_identity.py` (whole runs from separately built CLIs).
+     - `tools/simd_identity.py` (whole runs from separately built CLIs) on `wp26-p7-epm16-majors-20yr`, a Major-only-EIH scenario so that `EihSoa` runs its lanes; the earlier P7 evidence ran `wp26-headline-substitute-20yr`, which under the all-body EIH (D1) falls back to the scalar `Eih` (M5 review #18, B1; to be re-run).
 4. **Checkpoint and resume continue bit for bit (CI-010).**
 
 ## Why: the arithmetic rules
