@@ -275,3 +275,31 @@ retrieved = "2026-11-12"
 tolerance = { abs = 1.0e-12 }
 tolerance_rationale = "Far above f64 round-off (~1e-18 km/s); a missing pass or a wrong sign leaves a residual of the order of the removed velocity offset, many orders larger. Whether the mu*' term is present is tested by E6 (EIH-MUSTAR-RATE-DRIFT-RATIO-MIN), not here."
 verified_by = "WP22 builder agent, 2026-11-12: fixed in the WP22 plan before the first run."
+
+[[vector]]
+id = "PHY014-EIH-FULL-RATE"
+requirement = ["PHY-014"]
+quantity = "Mercury's total secular perihelion rate in the Park17 mean-orbit frame from DE440-equivalent physics run with the DE440 constants: EIH N-body (beta = gamma = 1) for every moving body, solar J2 = 2.19614e-7 (DE440), Lense-Thirring with the DE440 solar spin, 343 asteroids, the identified KBOs and the 36-point KBO ring; header.440 ICs; Park2017 estimator over 1000-3000 CE (quadratic + 14 Table-2 terms)"
+value = 575.3093
+unit = "arcsec/cy"
+kind = "measured"
+source = "PHY-014 acceptance (maintainer decision 2026-10-15): Park17 Table 3 total 575.3100 +/- 0.0015 used Park's fitted J2 = 2.25e-7; the J2 term is 0.028601 at Park's J2 vs 0.027917 at DE440's (PHY-010), difference -0.000684, so the expected value with the DE440 constants is 575.3100 - 0.0007 = 575.3093."
+citation = "Park, R. S., Folkner, W. M., Konopliv, A. S., et al. 2017, AJ 153, 121, doi:10.3847/1538-3881/aa5be2, Table 3 ('Total'); Park et al. 2021, AJ 161, 105 (DE440 constants and body set); FerroAstro docs/requirements/PHY.md PHY-014 and PHY-010"
+retrieved = "2026-11-12"
+tolerance = { abs = 5.0e-3 }
+tolerance_rationale = "PHY-014's authoritative tolerance: 3x Park's sigma (0.0015) plus margin for the DE430-to-DE440 model difference. PHY-014 cannot detect a dropped component smaller than this (LT -0.0020, N-AST 0.0012; PHY-014 notes). WP22 prediction before any run: 575.30916 (N3 planets + J2(Park) + LT 575.308579, - 0.000684 J2 DE440 vs Park, + 0.001245 N-AST P-remove, + 0.000019 KBOs + ring)."
+verified_by = "WP22 builder agent, 2026-11-12: copied from PHY-014's acceptance text (value, tolerance and derivation) before any PHY-014 run."
+
+[[vector]]
+id = "EIH-ALLBODY-SUN-IMPROVEMENT-MIN"
+requirement = ["PHY-014", "NUM-009"]
+quantity = "lower bound on (the Sun's max barycentric residual vs de440.bsp without the small bodies) / (the same with the 343 asteroids, 3 identified KBOs and the 36-point KBO ring), EIH for every moving body + solar J2 (DE440) + LT, Sun + 8 planets + geocentric Moon from header.440, 10 yr every 10 d"
+value = 2.0
+unit = "1"
+kind = "defined"
+source = "WP19 C7 and WP20 D1: the Sun's barycentric residual (1.40 km over 10 yr) is unchanged by EIH and LT and is attributed to the omitted asteroids, KBOs and ring, which move the SSB. Including them should remove most of it."
+citation = "IMPLEMENTATION-NOTES WP19 (C7) and WP20 (D1); Park et al. 2021, AJ 161, 105, Sec. 2.2 (body set); WP22 plan check E10"
+retrieved = "2026-11-12"
+tolerance = { abs = 0.0 }
+tolerance_rationale = "PROVISIONAL sanity, one-sided (measured factor must be >= the value); the tolerance field is unused. The factor 2 leaves room for REF-003 IC errors and the omitted figure, tide and libration terms."
+verified_by = "WP22 builder agent, 2026-11-12: fixed in the WP22 plan before the first run."
