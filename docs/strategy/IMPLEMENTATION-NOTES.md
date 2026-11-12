@@ -6920,3 +6920,48 @@ Reviewer artefacts are in the session scratchpad `rev29/`, not committed:
 - logs: `prepush.log`, `data.log`, `nightly.log`, `mutate.log`, `mutate_data.log`;
 - `mutate.py`;
 - `py/hdr.py`, `py/abm_t1.py` (+ `abm_t1v.py`, `abm_t1n.py`), `py/gr2body.py` and `py/j2rate.py`.
+
+## WP-EIH-SCOPE — [M5] Per-scenario EIH scope (`forces.eih_scope`, maintainer decision 2026-11-12)
+Branch `m5-eih-scope`, based on `c30f2ec` (main merged into m5-performance).
+
+**What was built.**
+- `ferroastro-eih`: `EihScope::{All, Majors}` and `Eih::with_scope` (default `All`). `All` is the WP22 / D1 tiered
+  all-body EIH (DE440). `Majors` (EPM2021, Subbotin et al. 2023 §2) leaves the Minor and Ring lists out of the
+  interaction graph, so the edges are the Major–Major pairs, `U` and the right-hand-side `a_j` run over the Major
+  bodies, and Minor and Ring bodies get no 1PN correction: the WP19 Majors-only sums. **`eih.rs` diff** (blob
+  `26c2721b…` → `78784dc0…`; the NUM-020 sign-off pins this file): the `EihScope` enum; the `scope` field,
+  `with_scope`, `scope()`; `Graph::new` takes the scope and empties `minor`/`ring` under `Majors`; `tiers()` is
+  `[Major]` and `minor_reaction()` is `None` under `Majors` (the setting does not enter); the scope parameter and the
+  `Display` text name `eih_scope = majors`. Under `All` the parameters and the `Display` text are unchanged. **No
+  Eq. 27 term, coefficient or `term()` line changed.**
+- `EihSoa`: falls back to the scalar `Eih` only under `All` with Minor or Ring bodies; under `Majors` the SoA lanes
+  are exactly the scope's graph and run whatever Minor or Ring bodies the layout holds.
+- `ferroastro-scenario`: `forces.eih_scope = "all" | "majors"` (default `all`, not serialized when `all`, so every
+  existing scenario digest is unchanged); in `SWITCHES` and `requested()` when `majors`; refused without `gr_eih`
+  (FA-E1203). Schema regenerated. `ferroastro-propagate` implements it in n-body mode and passes it to `Eih`. The
+  scope is recorded in the scenario digest (and so in checkpoints, which resume only under the same digest) and in
+  the model string; it is a model choice, not an IC change, so the IC hash does not include it. The Python oracle
+  runners treat the key as an unknown switch and refuse it by name (no change needed).
+- Scenarios: `eih_scope = "majors"` on the three EPM2021 reproductions (`ephemeris-mixed-epm16-40yr`,
+  `bench-h-num024-epm16-f64-40yr`, `bench-h-num024-epm16-dd-40yr`, each read: 16 EIH Majors + 338 Newtonian Minor,
+  no J2/LT/KBOs, Subbotin's configuration). Left on `all`: `bench-j-de440class-{dd,mixed}-40yr` (DE440 class: J2, LT,
+  KBOs, ring) and `wp26-headline-substitute-20yr` (a WP22-like DE440 model); `abm-sun-planets-moon-eih-40yr` has no
+  Minor bodies, so the scope does not matter.
+
+**Tests.** `crates/ferroastro-eih/tests/eih_scope.rs`: S1 under `Majors` the EPM16 system with the five EPM2021
+asteroids as Minor gives, bit for bit on the Major bodies, the correction of the system without them, and exactly 0
+on the Minor bodies; S2 under `Majors` with Minor bodies, `EihSoa` runs its own lanes (bitwise different from the
+scalar, so no fallback) and agrees to 3.8e-16 (`SIMD-SOA-EIH-REL`, 1e-12); S3 under `All` with Minor bodies `EihSoa`
+falls back (bitwise equal to `Eih`) and the Minor bodies get non-zero corrections (the fallback had no test); S4 the
+Minor reaction constrains `All` only. `crates/ferroastro-propagate/tests/eih_scope_runs.rs`: refusal without
+`gr_eih` (FA-E1203), explicit `all` = absent (same digest), `majors` changes the digest and appears in the model
+string, the IC hash is unchanged. `ephemeris_mode.rs` asserts the reference model string contains
+`eih_scope = majors`.
+
+**Does `majors` reproduce M5's recorded Major-only behaviour?** Short check (release, scratch, not committed): the
+WP25 D1 setup (the reference scenario, 5 yr, 10-d samples, f64 plain) against de440.bsp, maximum heliocentric
+residual. Mercury **0.784623 km under `majors`**, equal to the WP25 D1 recorded f64-plain value 0.784623 km; under
+`all` 0.784609 km (−14 m). Venus 0.163461 (majors) vs 0.163495 (all); the outer planets agree to ≤ 1 m. To be
+re-confirmed by the nightlies that recorded M5 numbers on these scenarios: `nightly_ephemeris_mode.rs` (WP25 N1–N4,
+NUM-007/NUM-018 SSB drift), `data_ephemeris_mode_de440` (WP25 D1, data tier), and the WP28 speed table
+(`ferroastro-bench` `nightly_speed_table`, `data_num024_de440`), whose rows (h) use `bench-h-*`.
