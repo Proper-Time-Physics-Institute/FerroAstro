@@ -237,9 +237,15 @@ impl<R: Real> Stepper<R> {
             }
             Stepper::Irk16(k) => {
                 let s = k.stats();
+                // IRK16's fixed-point counters in the shared record (M5 review #18 SF1):
+                // iterations; steps that hit the cap as `unconverged`; steps that stalled above the
+                // round-off floor as `stalled`.
                 RunStats {
                     steps: s.steps,
                     force_evaluations: s.force_evaluations,
+                    iterations: s.iterations,
+                    unconverged: s.capped_steps,
+                    stalled: s.stalled_steps,
                     ..RunStats::default()
                 }
             }

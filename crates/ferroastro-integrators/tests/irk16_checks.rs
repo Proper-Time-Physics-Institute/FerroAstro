@@ -325,3 +325,36 @@ fn irk16_dense_output_and_events() {
     assert!(worst <= dense_bound);
     assert!((apo - std::f64::consts::PI).abs() <= dense_bound);
 }
+
+/// M5 review #18 SF1: a fixed-point iteration that stalls above the round-off floor is no
+/// longer accepted silently. With an oversized step on the e = 0.5 Kepler orbit (h = 4 time
+/// units, 0.64 of an orbit; probed: 2 of 3 steps stall, h = 2 still converges) the stall is
+/// counted in `stalled_steps` (or the cap in `capped_steps`); with an ordinary step (256 per
+/// orbit) neither counter moves.
+///
+/// Verifies: NUM-003
+#[test]
+fn irk16_counts_fixed_point_stalls_above_the_round_off_floor() {
+    let e = 0.5; // lint: allow-literal(test orbit eccentricity)
+    let x0 = [1.0 - e, 0.0];
+    let v0 = [0.0, ((1.0 + e) / (1.0 - e)).sqrt()];
+    let run = |h: f64, steps: u32| {
+        let mut irk = Irk16::<f64>::new(2, 0.0, &x0, &v0, h, Irk16Config::default()).unwrap();
+        for _ in 0..steps {
+            irk.step(&KeplerR).unwrap();
+        }
+        irk.stats()
+    };
+    let bad = run(4.0, 3); // lint: allow-literal(oversized step, 0.64 orbit)
+    println!(
+        "SF1 oversized step (h = 4): {} steps, {} iterations, stalled {}, capped {}",
+        bad.steps, bad.iterations, bad.stalled_steps, bad.capped_steps
+    );
+    assert!(bad.stalled_steps + bad.capped_steps > 0, "{bad:?}");
+    let good = run(TAU / 256.0, 512); // lint: allow-literal(256 steps per orbit, two orbits)
+    println!(
+        "SF1 ordinary step (256/orbit): {} steps, {} iterations, stalled {}, capped {}",
+        good.steps, good.iterations, good.stalled_steps, good.capped_steps
+    );
+    assert_eq!((good.stalled_steps, good.capped_steps), (0, 0), "{good:?}");
+}

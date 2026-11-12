@@ -304,7 +304,17 @@ pub struct Irk16Stats {
     pub iterations: u64,
     /// Steps that reached the iteration cap.
     pub capped_steps: u64,
+    /// Steps whose fixed-point iteration stalled (the correction stopped decreasing) while still
+    /// above [`STALL_ULPS`] ulp of the largest stage acceleration: accepted, but not converged to
+    /// round-off (M5 review #18 SF1). Absent in checkpoints written before it existed (0).
+    #[cfg_attr(feature = "serde", serde(default))]
+    pub stalled_steps: u64,
 }
+
+/// A stalled fixed-point iteration whose last correction is at most this many ulp of the largest
+/// stage acceleration counts as converged to round-off; above it the step is counted in
+/// [`Irk16Stats::stalled_steps`].
+pub const STALL_ULPS: f64 = 64.0;
 
 /// What one step did.
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -571,14 +581,23 @@ impl<R: Real> Irk16<R> {
                 }
             }
             let mut delta = R::ZERO;
+            let mut scale = R::ZERO;
             for (gi, fi) in g.iter().zip(f.iter_mut()) {
                 for (gq, fq) in gi.iter().zip(fi.iter_mut()) {
                     delta = delta.max((*gq - *fq).abs());
+                    scale = scale.max(gq.abs());
                     *fq = *gq;
                 }
             }
             let stalled = delta_prev.is_some_and(|p| delta >= p);
-            if delta == R::ZERO || stalled {
+            if delta == R::ZERO {
+                break;
+            }
+            if stalled {
+                // A stall on the round-off floor is convergence; a stall above it is not.
+                if delta > R::from_f64(STALL_ULPS) * R::EPSILON * scale {
+                    self.stats.stalled_steps += 1;
+                }
                 break;
             }
             if iterations >= self.cfg.max_iterations {

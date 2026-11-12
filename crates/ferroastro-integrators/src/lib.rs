@@ -52,4 +52,5 @@ pub use ias15::{
 pub use irk16::{
     DEFAULT_MAX_ITERATIONS as IRK16_DEFAULT_MAX_ITERATIONS, GaussLegendre8, Irk16, Irk16Config,
     Irk16Snapshot, Irk16Stats, Irk16StepReport, STAGES as IRK16_STAGES,
+    STALL_ULPS as IRK16_STALL_ULPS,
 };
