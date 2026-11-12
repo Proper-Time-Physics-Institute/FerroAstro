@@ -428,9 +428,11 @@ pub struct PlanResult {
     pub shared_ic_hash: String,
     /// Constants version.
     pub constants: String,
-    /// Initial epoch shared by every leg, TDB Julian date (rule 4, PO-5).
+    /// Initial epoch shared by every leg, TDB Julian date (rule 4, PO-5). `None` for a plan with
+    /// no legs and for results written before the field existed (never a sentinel such as NaN,
+    /// which JSON cannot hold, or JD 0).
     #[serde(default)]
-    pub ic_epoch_jd_tdb: f64,
+    pub ic_epoch_jd_tdb: Option<f64>,
     /// Per configuration.
     pub configs: Vec<ConfigResult>,
     /// The table.
@@ -609,7 +611,7 @@ pub fn run_plan(
             .unwrap_or_default(),
         ic_epoch_jd_tdb: initial
             .first()
-            .map_or(f64::NAN, |(_, i)| i.epoch_jd_tdb[0] + i.epoch_jd_tdb[1]),
+            .map(|(_, i)| i.epoch_jd_tdb[0] + i.epoch_jd_tdb[1]),
         configs,
         rows,
     })
@@ -650,8 +652,9 @@ impl PlanResult {
         let _ = writeln!(s, "**Constants** {}  ", self.constants);
         let _ = writeln!(
             s,
-            "**IC epoch** JD {:.6} TDB (shared by every leg)\n",
+            "**IC epoch** {} (shared by every leg)\n",
             self.ic_epoch_jd_tdb
+                .map_or_else(|| "unknown".into(), |jd| format!("JD {jd:.6} TDB"))
         );
         let _ = writeln!(
             s,

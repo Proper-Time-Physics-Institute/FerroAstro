@@ -14,15 +14,17 @@
 //! --run-ignored only`). Two pre-registered sizes, run in parallel threads:
 //!
 //! * 64 runs × 2000 orbits (~1e7 steps): asserted against NUM-023's ±0.1;
-//! * 32 runs × 20 000 orbits (~5e7 steps): a **known failure** (WP3 NEEDS HUMAN REVIEW, the
-//!   energy slope is ≈ 0.63). The test passes while the failure reproduces within its documented
-//!   0.629 ± 0.018 and fails if it stops reproducing or worsens, so a green nightly never implies
-//!   that NUM-001's 1e9-step clause holds.
+//! * 32 runs × 20 000 orbits (~5e7 steps): asserted against NUM-023's ±0.1 (the maintainer's
+//!   blocking condition for #13). It passes since `Ias15Config::pc_b_from_g` became the default
+//!   (2026-11-08). With the earlier B-increment accumulation, this ensemble's energy slope was
+//!   0.629 ± 0.018, a documented failure. A green nightly still does not show NUM-001's 1e9-step
+//!   clause, which is ~20× longer.
 //!
 //! Diagnosis knobs `FA_NUM023_RUNS`, `FA_NUM023_ORBITS`, `FA_NUM023_EPSILON`,
-//! `FA_NUM023_PC_TOL` and `FA_NUM023_PC_B_FROM_G=1` (the WP7 experiment
-//! `Ias15Config::pc_b_from_g`) are **report-only**: when any is set, the numbers are printed and no
-//! assertion is made (an environment change must never neuter or alter an asserted check).
+//! `FA_NUM023_PC_TOL` and `FA_NUM023_PC_B_FROM_G=0` (the earlier B-increment accumulation,
+//! `Ias15Config::pc_b_from_g = false`) are **report-only**: when any is set, the numbers are printed and no
+//! assertion is made, only when `FA_NUM023_REPORT_ONLY=1` is also set (otherwise the test fails, so an
+//! environment change can never neuter or alter an asserted check unnoticed).
 
 mod two_body;
 
@@ -40,7 +42,7 @@ const FIRST_ORBIT: f64 = 10.0;
 /// Default ensemble size and run length (fixed before the first run; see IMPLEMENTATION-NOTES).
 const DEFAULT_RUNS: u32 = 64;
 const DEFAULT_ORBITS: u32 = 2000; // lint: allow-literal(run length in orbits, not a physical value)
-/// Long ensemble (pre-registered in WP6 from the WP3 exploratory size; known failure).
+/// Long ensemble (pre-registered in WP6 from the WP3 exploratory size; asserted since 2026-11-08).
 const LONG_RUNS: u32 = 32;
 const LONG_ORBITS: u32 = 20_000; // lint: allow-literal(run length in orbits, not a physical value)
 /// The diagnosis knobs; any of them makes the tests report-only.
@@ -87,8 +89,8 @@ fn cfg() -> Ias15Config {
     {
         c.pc_tolerance = tol;
     }
-    if std::env::var("FA_NUM023_PC_B_FROM_G").is_ok_and(|v| v == "1") {
-        c.pc_b_from_g = true;
+    if std::env::var("FA_NUM023_PC_B_FROM_G").is_ok_and(|v| v == "0") {
+        c.pc_b_from_g = false;
     }
     c
 }
@@ -241,6 +243,13 @@ fn checked_ensemble(runs: u32, orbits: u32) -> Option<Slopes> {
     if overrides.is_empty() {
         return Some(ensemble(runs, orbits));
     }
+    // Review S4 (#13): an override must never turn an asserting test into a silent pass. A
+    // diagnosis run has to opt in explicitly, and is then labelled REPORT ONLY.
+    assert!(
+        std::env::var("FA_NUM023_REPORT_ONLY").is_ok_and(|v| v == "1"),
+        "FA_NUM023_* overrides {overrides:?} are set, so this asserting NUM-023 test would not assert; \
+         unset them, or set FA_NUM023_REPORT_ONLY=1 for a report-only diagnosis run"
+    );
     let s = ensemble(
         env_or("FA_NUM023_RUNS", runs),
         env_or("FA_NUM023_ORBITS", orbits),
@@ -270,15 +279,14 @@ fn nightly_num023_brouwer_slopes_ias15_f64() {
     rp.unwrap();
 }
 
-/// Pre-registered long ensemble (32 × 20 000 orbits, ~5e7 steps): a KNOWN FAILURE of NUM-023
-/// (WP3 NEEDS HUMAN REVIEW: the energy error grows faster than Brouwer's t^½ over 1e4 orbits).
-/// The test passes while the failure reproduces within its documented bound
-/// (`NUM023-LONG-ENSEMBLE-KNOWN-FAILURE-ENERGY-SLOPE`) and fails once both slopes meet NUM-023
-/// or the slope leaves that bound (worse or different), so a fix or a regression is noticed. It
-/// verifies nothing.
+/// Pre-registered long ensemble (32 × 20 000 orbits, ~5e7 steps), asserted against NUM-023. This is
+/// the maintainer's blocking condition for #13 (NUM-023 notes, 2026-10-21), and it passes with the
+/// default `pc_b_from_g` predictor. It replaces the earlier known-failure guard.
+///
+/// Verifies: NUM-023
 #[test]
-#[ignore = "nightly tier: ~5e7 IAS15 steps (~25 s in release on 32 threads)"]
-fn nightly_num023_long_ensemble_known_failure() {
+#[ignore = "nightly tier: ~5e7 IAS15 steps (~80 s in release on 32 threads)"]
+fn nightly_num023_long_ensemble_brouwer_slopes_ias15_f64() {
     let Some(s) = checked_ensemble(LONG_RUNS, LONG_ORBITS) else {
         return;
     };
@@ -286,33 +294,8 @@ fn nightly_num023_long_ensemble_known_failure() {
     let re = vs.get("NUM023-ENERGY-SLOPE").unwrap().check(s.energy);
     let rp = vs.get("NUM023-PHASE-SLOPE").unwrap().check(s.phase);
     println!("  energy slope check: {re:?}\n  phase slope check: {rp:?}");
-    assert!(
-        re.is_err() || rp.is_err(),
-        "the known NUM-023 long-ensemble failure no longer reproduces (energy {:.3}, phase {:.3}): \
-         update IMPLEMENTATION-NOTES (WP3/WP6 NEEDS HUMAN REVIEW) and assert here",
-        s.energy,
-        s.phase
-    );
-    // F3 (PR #13 review): the guard is bounded, so a failure that worsens or changes is noticed.
-    let known = vs
-        .get("NUM023-LONG-ENSEMBLE-KNOWN-FAILURE-ENERGY-SLOPE")
-        .unwrap();
-    let kc = known.check(s.energy);
-    println!("  documented-failure bound check: {kc:?}");
-    assert!(
-        kc.is_ok(),
-        "the known NUM-023 long-ensemble failure moved from its documented energy slope \
-         {} +/- {} (now {:.3}): if it worsened, this is a regression; update IMPLEMENTATION-NOTES \
-         either way",
-        known.value().unwrap(),
-        known.tolerance.allowed(known.value().unwrap()),
-        s.energy
-    );
-    println!(
-        "  KNOWN FAILURE (NUM-023 / NUM-001 1e9-step clause NOT met; IMPLEMENTATION-NOTES WP3 \
-         and WP6, NEEDS HUMAN REVIEW): energy {:.3}, phase {:.3} vs Brouwer 0.5 / 1.5 +/- 0.1",
-        s.energy, s.phase
-    );
+    re.unwrap();
+    rp.unwrap();
 }
 
 /// Forward–backward reversibility of one 1000-orbit Sun + Mercury run (NUM-023, reported).

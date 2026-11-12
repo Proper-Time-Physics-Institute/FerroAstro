@@ -119,7 +119,7 @@ fn cross_terms_follow_park17_convention_with_the_second_difference_alongside() {
         cross_check_estimator: format!("{:?}", PassageSource::SampledStates),
         shared_ic_hash: String::new(),
         constants: String::new(),
-        ic_epoch_jd_tdb: 0.0, // lint: allow-literal(synthetic result; NaN would serialise as null)
+        ic_epoch_jd_tdb: None,
         configs,
         rows,
     };

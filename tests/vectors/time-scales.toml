@@ -178,7 +178,7 @@ citation = "Joldes, Muller & Popescu 2017, ACM TOMS 44(2) 15res (double-word bou
 retrieved = "2026-10-15"
 tolerance = { abs = 1e-20 }
 tolerance_rationale = "Round-off bound from the resolution argument above. NOT blind: this vector was added after the first run measured 1.4e-22 s (that run had borrowed TIME-ROUNDTRIP-DD-MAX, whose quantity is the scale-pair round trip); same 1e-20 s value as that pre-registered bound."
-verified_by = "WP8 builder agent, 2026-10-15; NEEDS HUMAN REVIEW (non-blind, IMPLEMENTATION-NOTES WP8)."
+verified_by = "WP8 builder agent, 2026-10-15; REVIEWED, accepted by the maintainer 2026-11-08 (#13 questionnaire, Journal #14) (non-blind, IMPLEMENTATION-NOTES WP8)."
 
 [[vector]]
 id = "HIFITIME-UTC-JD-PATH-MAX"

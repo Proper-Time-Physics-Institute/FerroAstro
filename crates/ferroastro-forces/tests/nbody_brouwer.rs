@@ -11,7 +11,7 @@
 //! in IMPLEMENTATION-NOTES WP12). Momentum and angular-momentum errors are reported.
 //!
 //! **Status: known failure** (first run 2026-10-15: slope 0.050). The test is a guard in the
-//! style of `nightly_num023_long_ensemble_known_failure`; two post-hoc diagnostics (energy of the
+//! style of the former NUM-023 long-ensemble known-failure guard (retired 2026-11-08); two post-hoc diagnostics (energy of the
 //! same f64 states evaluated in double-double, and L·k̂) are printed, never asserted.
 //!
 //! Tier: nightly (`#[ignore]`, `nightly_` prefix, runs alone through the nightly profile's

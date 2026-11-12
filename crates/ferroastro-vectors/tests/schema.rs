@@ -336,4 +336,21 @@ fn workspace_provisional_vectors_reference_recorded_open_items() {
         }
         assert!(v.blocked_by.is_none(), "{}: PHY-012 rows gate", v.id);
     }
+    if !oi38_open {
+        for pair in [
+            "VENUS-EARTH-MOON",
+            "VENUS-JUPITER",
+            "EARTH-MOON-MARS",
+            "MARS-JUPITER",
+            "JUPITER-SATURN",
+            "SATURN-URANUS",
+        ] {
+            let v = set.get(&format!("PARK17-T3-X-{pair}")).unwrap();
+            assert!(
+                v.blocked_by.is_none() && v.provisional.is_none(),
+                "{}: the pair rows gate since 2026-10-21",
+                v.id
+            );
+        }
+    }
 }
