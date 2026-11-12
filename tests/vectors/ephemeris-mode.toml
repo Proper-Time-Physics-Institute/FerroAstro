@@ -189,3 +189,17 @@ retrieved = "2026-10-20"
 tolerance = { abs = 1.0e-5 }
 tolerance_rationale = "The NUM-007 40-yr bound applied to a 5-yr run (round-off grows with time, so it is conservative). Heliocentric residuals are used because the re-barycentred ICs sit ~123 km from DE440's own SSB (the body subset has no KBOs or ring)."
 verified_by = "WP25 builder agent, 2026-10-20: fixed in the WP25 plan addendum before the first run."
+
+[[vector]]
+id = "EPH-MAJORS-F64-MERCURY-HELIO-KM"
+requirement = ["NUM-009", "NUM-007"]
+quantity = "Mercury's maximum heliocentric residual against de440.bsp over 5 yr (10-d samples, the samples only), ephemeris-mixed-epm16-40yr with forces.eih_scope = \"majors\", precision f64 with the plain state update (the WP25 D1 setup)"
+value = 0.784623
+unit = "km"
+kind = "measured"
+source = "WP25 D1 (IMPLEMENTATION-NOTES WP25, data tier, 2026-10-20): f64 plain column, Mercury 0.784623 km, recorded when the EIH term summed over the Major bodies only. Re-measured 2026-11-12 under eih_scope = majors: 0.784623 km (and 0.784609 km under eih_scope = all)."
+citation = "FerroAstro docs/strategy/IMPLEMENTATION-NOTES.md WP25 (D1 table) and WP-EIH-SCOPE; M5 review #18 SF3"
+retrieved = "2026-11-12"
+tolerance = { abs = 1.0e-6 }
+tolerance_rationale = "The run is deterministic; WP25 printed six decimals (half a unit = 5e-7 km), so 1e-6 km admits only the print rounding. The all-body EIH (eih_scope = all) gives 0.784609 km, 1.4e-5 km away, so the check tells the two scopes apart."
+verified_by = "WP22/M5 review builder agent, 2026-11-12: value copied from WP25 D1; the 2026-11-12 re-measurement agrees to the printed digits."

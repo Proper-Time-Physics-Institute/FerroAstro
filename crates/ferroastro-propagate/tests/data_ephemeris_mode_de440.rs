@@ -135,3 +135,61 @@ fn data_ephemeris_mode_mixed_and_dd_vs_de440_bsp() {
         .check(delta)
         .unwrap();
 }
+
+/// M5 review #18 SF3: with `forces.eih_scope = "majors"` (the EPM2021 scope the reference scenario
+/// now sets), the WP25 D1 run in f64 with the plain state update reproduces the Mercury
+/// heliocentric residual WP25 recorded under the then Major-only EIH, 0.784623 km
+/// (`EPH-MAJORS-F64-MERCURY-HELIO-KM`). The same run under `eih_scope = "all"` is printed for
+/// comparison (0.784609 km on 2026-11-12), not asserted.
+///
+/// Verifies: NUM-009, NUM-007
+#[test]
+#[ignore = "data: downloads JPL header.440 and de440.bsp (network); run with --profile data"]
+fn data_ephemeris_mode_majors_scope_reproduces_the_wp25_f64_residual() {
+    let hf = ferroastro_testdata::fetch_product("de440-header").unwrap();
+    let hprov = hf.provenance();
+    println!("de440-header: {hprov}");
+    let h = Header::parse(&std::fs::read_to_string(&hf.path).unwrap()).unwrap();
+    let bf = ferroastro_testdata::fetch_product("de440-bsp").unwrap();
+    println!("de440-bsp: {}", bf.provenance());
+    let bytes = std::fs::read(&bf.path).unwrap();
+    let spk = Spk::parse(&bytes).unwrap();
+    let sb = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("../../tests/goldens/sb441-n373s-jdepoc-states.csv");
+    let file =
+        ferroastro_system::SmallBodyStates::parse(&std::fs::read_to_string(sb).unwrap()).unwrap();
+    let data = DataSources::none()
+        .with_header(&h, &hprov)
+        .with_small_bodies(&file);
+    let mut majors = scenario("ephemeris-mixed-epm16-40yr.toml");
+    assert_eq!(
+        majors.forces.eih_scope,
+        ferroastro_scenario::EihScope::Majors
+    );
+    majors.span.years = SPAN_YEARS;
+    majors.output.cadence_days = Some(CADENCE_DAYS);
+    majors.integrator.precision = Precision::F64;
+    majors.integrator.compensated = Some(false);
+    let mut all = majors.clone();
+    all.forces.eih_scope = ferroastro_scenario::EihScope::All;
+    let (m, a) = std::thread::scope(|sc| {
+        let x = sc.spawn(|| run(&majors, &data).unwrap());
+        let y = sc.spawn(|| run(&all, &data).unwrap());
+        (x.join().unwrap(), y.join().unwrap())
+    });
+    let (rm, ra) = (helio_residuals(&m, &spk), helio_residuals(&a, &spk));
+    for (x, y) in rm.iter().zip(&ra) {
+        println!("  {:<6} majors {:>12.6} km, all {:>12.6} km", x.0, x.1, y.1);
+    }
+    let k = rm.iter().position(|r| r.0 == MERCURY).unwrap();
+    println!(
+        "SF3: Mercury max heliocentric residual, f64 plain, 5 yr: majors {:.6} km, all {:.6} km",
+        rm[k].1, ra[k].1
+    );
+    VectorSet::load_canonical()
+        .unwrap()
+        .get("EPH-MAJORS-F64-MERCURY-HELIO-KM")
+        .unwrap()
+        .check(rm[k].1)
+        .unwrap();
+}
