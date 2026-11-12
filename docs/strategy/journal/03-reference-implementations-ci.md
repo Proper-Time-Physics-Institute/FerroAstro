@@ -2,7 +2,7 @@
 
 > **Lead review notes:**
 > - Spot-checked `GMS` and `J2SUN` against the known DE440 header values; both match.
-> - **Runner decision (2026-10-14):** Stage D and the nightly long runs move from self-hosted to **GitHub paid larger runners**. GitHub-hosted jobs, larger runners included, are capped at 6 h per job, so DE440 reproduction and multi-millennia runs must checkpoint and chain across jobs.
+> - **Runner decision (2026-10-14):** Stage D and the nightly long runs move from self-hosted to **GitHub paid larger runners**. GitHub-hosted jobs, larger runners included, are capped at 6 h per job, so DE440 reproduction and multi-millennia runs must checkpoint and chain across jobs. *(Superseded 2026-10-15, Journal #10: the local machine for now. See ADR-0013.)*
 > - **Big takeaway:** no external code exposes PPN β/γ, so the β/γ ≠ 1 rungs are validated *analytically* (REF-010). That is also a place where FerroAstro fills a real gap.
 
 **Date:** 2026-10-14 · **Branch context:** `1-scientific-computing-strategy`
@@ -211,7 +211,7 @@ ci/
 | **PR-fast** | every PR | FerroAstro vs **cached goldens only** (no oracle containers). JPL `testpo.440` points; jplephem states at ~50 epochs; 2-body/Schwarzschild analytic precession (42.98″/cy class); 100-yr Sun + 8 planets Newtonian vs REBOUND-IAS15 golden; ERFA time/frame goldens | < 10 min |
 | **PR-label `oracle`** | opt-in label | Rebuild/run the affected oracle(s) on the same scenario as the PR, plus diff vs golden | < 45 min |
 | **Nightly** | cron | All oracles × all scenarios. Stages A–C, 1000-yr spans; speed table; drift check of goldens (a re-run oracle must reproduce its golden bit-for-bit or within its stated tolerance) | hours OK |
-| **Weekly / release** | cron + tag | Stage D: full DE440 reproduction (343 asteroids + KBOs + ring, EIH, Sun J2 + LT) over 1550–2650 vs `de440.bsp`; publish comparison report as a release asset | long-running / self-hosted |
+| **Weekly / release** | cron + tag | Stage D: full DE440 reproduction (343 asteroids + KBOs + ring, EIH, Sun J2 + LT) over 1550–2650 vs `de440.bsp`; publish comparison report as a release asset | long-running / self-hosted |  *(Superseded: the local machine, Journal #10; see CI-007.)*
 
 **Scenario ladder (flagship)**
 

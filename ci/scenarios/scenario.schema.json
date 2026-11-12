@@ -263,10 +263,10 @@
       ]
     },
     "IcBarycentre": {
-      "description": "How the initial conditions are re-barycentred (`initial_conditions.barycentre`, WP25).",
+      "description": "How the initial conditions are re-barycentred (`initial_conditions.barycentre`, NUM-018).",
       "oneOf": [
         {
-          "description": "Σ μᵢ* rᵢ = 0 and Σ (μ̇ᵢ* rᵢ + μᵢ* vᵢ) = 0 (Subbotin et al. 2023 Eq. 5), with\nμᵢ* = μᵢ [1 + vᵢ²/(2c²) − Σⱼ μⱼ/(2c² rᵢⱼ)] (Park et al. 2021 Eq. 2) and μ̇ᵢ* from the\nNewtonian accelerations. Every body is translated by the same position and velocity.",
+          "description": "Σ μᵢ* rᵢ = 0 and Σ (μ̇ᵢ* rᵢ + μᵢ* vᵢ) = 0 (Subbotin et al. 2023 Eq. 5), with\nμᵢ* = μᵢ [1 + vᵢ²/(2c²) − Σⱼ μⱼ/(2c² rᵢⱼ)] (Park et al. 2021 Eq. 2) and μ̇ᵢ* from the\nNewtonian accelerations. Every moving body is translated by the same position and\nvelocity; fixed Ring masses by the position only.",
           "type": "string",
           "const": "relativistic"
         }
@@ -297,7 +297,7 @@
       "type": "object",
       "properties": {
         "barycentre": {
-          "description": "Re-barycentre the assembled initial conditions (n-body mode; absent: use the source's\nstates as given). `relativistic` moves the origin to the relativistic SSB with the μᵢ* of\nPark et al. 2021 Eqs. 1–2, computed in the run's backend (NUM-018, WP25).",
+          "description": "Re-barycentre the assembled initial conditions (n-body mode; absent: use the source's\nstates as given). `relativistic` moves the origin to the relativistic SSB with the μᵢ* of\nPark et al. 2021 Eqs. 1–2 and the velocity condition with dμ*/dt (NUM-018, OI-75; WP22),\ncomputed in the run's backend (WP25).",
           "anyOf": [
             {
               "$ref": "#/$defs/IcBarycentre"

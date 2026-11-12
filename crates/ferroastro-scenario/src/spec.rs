@@ -12,6 +12,12 @@ pub const SCHEMA_VERSION: u32 = 1;
 /// Julian year in days (the span unit).
 pub const DAYS_PER_JULIAN_YEAR: f64 = 365.25;
 
+/// Largest number of output samples (`|span| / output.cadence_days` whole intervals, plus the
+/// initial state) a scenario may request: 2²⁶ = 67 108 864, about 184 000 Julian years of daily
+/// samples. [`ScenarioSpec::validate`] refuses more, and the sampling drivers refuse a grid past
+/// it with an error instead of counting it (AGENTS rule 5; PR #13 review B4).
+pub const MAX_OUTPUT_SAMPLES: u32 = 1 << 26;
+
 /// How the bodies are integrated.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "kebab-case")]
@@ -147,18 +153,20 @@ pub struct InitialConditionsSpec {
     pub epoch_jd_tdb: Option<f64>,
     /// Re-barycentre the assembled initial conditions (n-body mode; absent: use the source's
     /// states as given). `relativistic` moves the origin to the relativistic SSB with the μᵢ* of
-    /// Park et al. 2021 Eqs. 1–2, computed in the run's backend (NUM-018, WP25).
+    /// Park et al. 2021 Eqs. 1–2 and the velocity condition with dμ*/dt (NUM-018, OI-75; WP22),
+    /// computed in the run's backend (WP25).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub barycentre: Option<IcBarycentre>,
 }
 
-/// How the initial conditions are re-barycentred (`initial_conditions.barycentre`, WP25).
+/// How the initial conditions are re-barycentred (`initial_conditions.barycentre`, NUM-018).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "kebab-case")]
 pub enum IcBarycentre {
     /// Σ μᵢ* rᵢ = 0 and Σ (μ̇ᵢ* rᵢ + μᵢ* vᵢ) = 0 (Subbotin et al. 2023 Eq. 5), with
     /// μᵢ* = μᵢ [1 + vᵢ²/(2c²) − Σⱼ μⱼ/(2c² rᵢⱼ)] (Park et al. 2021 Eq. 2) and μ̇ᵢ* from the
-    /// Newtonian accelerations. Every body is translated by the same position and velocity.
+    /// Newtonian accelerations. Every moving body is translated by the same position and
+    /// velocity; fixed Ring masses by the position only.
     Relativistic,
 }
 
@@ -655,6 +663,15 @@ impl ScenarioSpec {
             }
         }
         let ic = self.initial_conditions;
+        if self.mode != Mode::NBody {
+            if let Some(b) = ic.barycentre {
+                return err(
+                    "initial_conditions.barycentre",
+                    &b.label(),
+                    "re-barycentring applies to n-body initial conditions only",
+                );
+            }
+        }
         match (ic.source, ic.epoch_jd_tdb) {
             (IcSource::De440Bsp | IcSource::Horizons, None) => {
                 return err(
@@ -674,15 +691,6 @@ impl ScenarioSpec {
                 &self.forces.major_asteroids.label(),
                 "selects Major bodies among forces.asteroids, which is 0",
             );
-        }
-        if self.mode != Mode::NBody {
-            if let Some(b) = self.initial_conditions.barycentre {
-                return err(
-                    "initial_conditions.barycentre",
-                    &b.label(),
-                    "re-barycentring applies to n-body initial conditions only",
-                );
-            }
         }
         if let Some(p) = self.forces.ppn {
             if !(p.beta.is_finite() && p.gamma.is_finite()) {
@@ -709,6 +717,16 @@ impl ScenarioSpec {
         if let Some(c) = self.output.cadence_days {
             if !(c.is_finite() && c > 0.0) {
                 return err("output.cadence_days", &c, "finite and > 0");
+            }
+            // Closed form, no loop: whole cadence intervals in the span. A ratio that overflows
+            // to infinity fails the comparison too.
+            let intervals = (self.span.years.abs() * DAYS_PER_JULIAN_YEAR / c).floor();
+            if intervals >= f64::from(MAX_OUTPUT_SAMPLES) {
+                return err(
+                    "output.cadence_days",
+                    &c,
+                    "|span| / cadence exceeds MAX_OUTPUT_SAMPLES (2^26 samples); use a longer cadence or a shorter span",
+                );
             }
         }
         for b in &self.output.perihelion {

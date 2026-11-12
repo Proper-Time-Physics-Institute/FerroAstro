@@ -35,6 +35,7 @@ pub use lane::F64x4;
 pub use lane::{Lane, Scalar};
 pub use newton::{NewtonianMutualSoa, coinciding, newtonian_soa};
 
+use crate::ForceError;
 use crate::nbody::View;
 use ferroastro_real::Real;
 
@@ -110,15 +111,27 @@ pub const fn padded(n: usize) -> usize {
 
 impl<R: Real> SoaBodies<R> {
     /// Gather the bodies `index` (layout indices) from a view; `group(k)` labels the `k`-th one.
-    #[must_use]
-    pub fn gather(view: &View<'_, R>, index: &[usize], group: impl Fn(usize) -> usize) -> Self {
-        let pos: Vec<[R; 3]> = index.iter().map(|&i| view.position(i)).collect();
-        let vel: Vec<[R; 3]> = index.iter().map(|&i| view.velocity(i)).collect();
+    ///
+    /// # Errors
+    /// `FA-E0500` if the view's state does not hold an indexed body ([`View::position`]).
+    pub fn gather(
+        view: &View<'_, R>,
+        index: &[usize],
+        group: impl Fn(usize) -> usize,
+    ) -> Result<Self, ForceError> {
+        let pos = index
+            .iter()
+            .map(|&i| view.position(i))
+            .collect::<Result<Vec<[R; 3]>, _>>()?;
+        let vel = index
+            .iter()
+            .map(|&i| view.velocity(i))
+            .collect::<Result<Vec<[R; 3]>, _>>()?;
         let gm: Vec<R> = index.iter().map(|&i| view.layout().gm(i)).collect();
         let groups: Vec<usize> = (0..index.len()).map(group).collect();
         let mut b = Self::from_bodies(&pos, &vel, &gm, &groups);
         b.index = index.to_vec();
-        b
+        Ok(b)
     }
 
     /// Bodies from per-body positions (km), velocities (km/s), GMs (km³/s²) and group labels

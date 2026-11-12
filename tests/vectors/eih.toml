@@ -116,7 +116,7 @@ source = "WP19 task check 5 (PROVISIONAL sanity): the EIH Mercury residual must 
 citation = "JPL DE440 (Park et al. 2021): header.440 sha256 0f4636b663e6f00af9efa2b605ef23635489f56b23dd1a5e3821d3acc6ac3359; de440.bsp sha256 a4ce9bf9b3282becc9f4b2ac3cebe03a2ae7599981aabd7265fd8482fff7c4b5; WP19 plan check C7"
 retrieved = "2026-10-20"
 tolerance = { abs = 0.0 }
-tolerance_rationale = "One-sided threshold (measured factor must be >= the value; PROVISIONAL, NEEDS HUMAN REVIEW). The remaining EIH residual is expected from omitted asteroids, KBOs, ring, lunar and terrestrial figure, tides and Lense-Thirring."
+tolerance_rationale = "One-sided threshold (measured factor must be >= the value; PROVISIONAL, REVIEWED, accepted by the maintainer 2026-11-12 (#17 questionnaire)). The remaining EIH residual is expected from omitted asteroids, KBOs, ring, lunar and terrestrial figure, tides and Lense-Thirring."
 verified_by = "WP19 builder agent, 2026-10-20: bound from the WP19 task text, fixed in the plan before the first run."
 
 [[vector]]
@@ -188,3 +188,146 @@ retrieved = "2026-10-20"
 tolerance = { abs = 1.5 }
 tolerance_rationale = "PROVISIONAL sanity window [1e-3, 1] km, fixed before the first run (IMPLEMENTATION-NOTES WP20 D1): log10(shift / km) = -1.5 +/- 1.5, i.e. the shift is neither ~0 (LT a no-op) nor ~1000x the expectation. It does not test the LT form."
 verified_by = "WP20 builder agent, 2026-10-20: order-of-magnitude estimate above."
+
+# WP22: pre-registered in IMPLEMENTATION-NOTES "WP22 ... Plan and pre-registered checks" (2026-11-12 01:36 UTC),
+# before any WP22 code or run.
+
+[[vector]]
+id = "EIH-TIER-SINGLE-MINOR-REL"
+requirement = ["NUM-009", "NUM-020", "PHY-014"]
+quantity = "max over the moving bodies of |delta a_1 - delta a_2| / |delta a_2| between two evaluations of the c^-2 part of Eq. 27 that must agree exactly: (E1) Sun + 8 planets + Moon + Ceres from header.440/REF-003 with Ceres Minor vs Major; (E2) the production term over the tiered interaction graph vs an independent O(N^3) evaluation of Eq. 27 with an explicit edge predicate (synthetic system with heavy Minor bodies and Ring masses)"
+value = 0.0
+unit = "1"
+kind = "analytic"
+source = "Exact identities: with a single Minor body the tiered graph (no Minor-Minor, no Ring-Ring edge) is the complete graph, so Minor and Major give the same sums; the E2 reference implements the same set rules from the typeset Eq. 27. Only the floating-point summation orders differ."
+citation = "Park et al. 2021, AJ 161, 105, Eq. 27; maintainer decision D1 of 2026-10-21 (NUM-009, NUM-020, PHY-014 notes); WP22 plan checks E1, E2"
+retrieved = "2026-11-12"
+tolerance = { abs = 1.0e-13 }
+tolerance_rationale = "About 450 ulp, as EIH-R3-LIMIT-CORRECTION-REL: round-off of different summation orders. A wrong set rule (a missing source, potential or acceleration term) changes a body's correction at O(GM_source/GM_dominant) or more, which is >= 1e-10 for Ceres' own correction and O(1e-2) for the heavy synthetic Minor bodies."
+verified_by = "WP22 builder agent, 2026-11-12: fixed in the WP22 plan before the first run."
+
+[[vector]]
+id = "EIH-MUSTAR-RATE-FD-REL"
+requirement = ["NUM-018"]
+quantity = "max_i |mu*'_i - [mu*_i(t+d) - mu*_i(t-d)]/(2d)| / max_i |mu*'_i|, d = 60 s, mu*' from mu_star_rate, the shifted states from the second-order Taylor flow under the Newtonian accelerations, double-double, header.440 Sun + 8 planets + Moon (barycentric)"
+value = 0.0
+unit = "1"
+kind = "analytic"
+source = "mu*'_i = (GM_i/c^2)[v_i.a_i + (1/2) sum_j GM_j (r_ij.v_ij)/r_ij^3] is the time derivative of Park et al. 2021 Eq. 2 (DE430 Eq. 2). A central difference converges to it as d^2 (the Taylor-flow errors are odd in d and enter at the same order)."
+citation = "Park et al. 2021, AJ 161, 105, Eq. 2; Folkner et al. 2014, IPN PR 42-196, Eqs. 2-3; Subbotin et al. 2023, arXiv:2304.04458v1, Eq. 5; NUM-018 sign-off (OI-75); WP22 plan check E5"
+retrieved = "2026-11-12"
+tolerance = { abs = 1.0e-6 }
+tolerance_rationale = "Truncation O((omega d)^2): the Moon is fastest, (2.7e-6 rad/s x 60 s)^2/6 ~ 4e-9; the m5-performance WP25 run measured 3.9e-6 at d = 1 h, which scales by (60/3600)^2 to 1.1e-9. The bound leaves ~1000x for higher-order terms; a wrong coefficient (the 1/2, a sign, a missing v.a) is O(1)."
+verified_by = "WP22 builder agent, 2026-11-12: fixed in the WP22 plan before the first run."
+
+[[vector]]
+id = "EIH-REL-SSB-DRIFT-10YR-KM"
+requirement = ["NUM-018"]
+quantity = "max over 10 yr (every 10 d) of |R*(t) - R*(0)|, R* = sum mu* r / sum mu* (Park et al. 2021 Eqs. 1-2), EIH (beta = gamma = 1) Sun + 8 planets + Moon (all Major, barycentric Moon), f64 IAS15 default, from the header.440 states re-barycentred with sum mu* r = 0 and sum (mu*' r + mu* v) = 0 (two passes)"
+value = 0.0
+unit = "km"
+kind = "analytic"
+source = "EIH conserves the 1PN centre of mass to O(c^-4): sum mu* r = P t + const with P = sum (mu*' r + mu* v). The velocity condition sets P = 0, so R* stays at its initial value up to round-off."
+citation = "Folkner et al. 2014, IPN PR 42-196, Eq. 3 and pp. 5-6; Subbotin et al. 2023 Eq. 5; NUM-018 sign-off (OI-75); WP22 plan check E6"
+retrieved = "2026-11-12"
+tolerance = { abs = 5.0e-6 }
+tolerance_rationale = "f64 round-off of the velocity condition (~1e-15 km/s x 3e8 s ~ 3e-7 km) plus the WP19 C6 integration floor (3.2e-10 km); about 15x the larger estimate."
+verified_by = "WP22 builder agent, 2026-11-12: fixed in the WP22 plan before the first run."
+
+[[vector]]
+id = "EIH-MUSTAR-RATE-DRIFT-RATIO-MIN"
+requirement = ["NUM-018"]
+quantity = "lower bound on (the EIH-REL-SSB-DRIFT-10YR-KM drift with the velocity condition sum mu* v = 0, i.e. without the mu*' term) / (the same drift with the full condition)"
+value = 5.0
+unit = "1"
+kind = "defined"
+source = "DE430 pp. 5-6: DE405 neglected the rate of change of mu* for the Sun's initial velocity and its barycentre moved by about 0.5 m/century, i.e. ~5e-5 km per 10 yr, against the ~3e-7 km round-off estimate with the full condition: the check must tell the two apart."
+citation = "Folkner et al. 2014, IPN PR 42-196, pp. 5-6; WP22 plan check E6"
+retrieved = "2026-11-12"
+tolerance = { abs = 0.0 }
+tolerance_rationale = "One-sided threshold (measured ratio must be >= the value); the tolerance field is unused."
+verified_by = "WP22 builder agent, 2026-11-12: fixed in the WP22 plan before the first run."
+
+[[vector]]
+id = "EIH-REBARY-RESIDUAL-KM"
+requirement = ["NUM-018"]
+quantity = "|sum mu*_i r_i| / sum mu*_i (km) of the n-body initial conditions after initial_conditions.barycentre = \"relativistic\" (two passes, f64), recomputed in the test from the hashed IC records (physical Earth and Moon reconstructed when geocentric)"
+value = 0.0
+unit = "km"
+kind = "analytic"
+source = "The re-barycentring sets sum mu* r = 0 (Park et al. 2021 Eqs. 1-2); what remains is f64 round-off of a weighted sum of positions up to ~6e9 km (WP15 measured 7.5e-12 km with mu* after two passes)."
+citation = "Park et al. 2021, AJ 161, 105, Eqs. 1-2; NUM-018 sign-off (OI-75); WP22 plan check E7"
+retrieved = "2026-11-12"
+tolerance = { abs = 1.0e-6 }
+tolerance_rationale = "Far above round-off (1e-11 km scale) and far below any physical offset (the header ICs differ from the subset's relativistic SSB by metres to kilometres): it catches a missing pass, a wrong sign or a skipped body, nothing else."
+verified_by = "WP22 builder agent, 2026-11-12: fixed in the WP22 plan before the first run."
+
+[[vector]]
+id = "EIH-REBARY-RESIDUAL-KMS"
+requirement = ["NUM-018"]
+quantity = "|sum (mu*'_i r_i + mu*_i v_i)| / sum mu*_i (km/s) of the initial conditions of EIH-REBARY-RESIDUAL-KM"
+value = 0.0
+unit = "km/s"
+kind = "analytic"
+source = "The re-barycentring sets the velocity condition of DE430 Eq. 3 / Subbotin et al. 2023 Eq. 5 to zero; what remains is f64 round-off (~1e-16 x 1e9 km^4/s / 1.3e11 ~ 1e-18 km/s)."
+citation = "Folkner et al. 2014, IPN PR 42-196, Eq. 3; Subbotin et al. 2023, Eq. 5; NUM-018 sign-off (OI-75); WP22 plan check E7"
+retrieved = "2026-11-12"
+tolerance = { abs = 1.0e-12 }
+tolerance_rationale = "Far above f64 round-off (~1e-18 km/s); a missing pass or a wrong sign leaves a residual of the order of the removed velocity offset, many orders larger. Whether the mu*' term is present is tested by E6 (EIH-MUSTAR-RATE-DRIFT-RATIO-MIN), not here."
+verified_by = "WP22 builder agent, 2026-11-12: fixed in the WP22 plan before the first run."
+
+[[vector]]
+id = "PHY014-EIH-FULL-RATE"
+requirement = ["PHY-014"]
+quantity = "Mercury's total secular perihelion rate in the Park17 mean-orbit frame from DE440-equivalent physics run with the DE440 constants: EIH N-body (beta = gamma = 1) for every moving body, solar J2 = 2.19614e-7 (DE440), Lense-Thirring with the DE440 solar spin, 343 asteroids, the identified KBOs and the 36-point KBO ring; header.440 ICs; Park2017 estimator over 1000-3000 CE (quadratic + 14 Table-2 terms)"
+value = 575.3093
+unit = "arcsec/cy"
+kind = "measured"
+source = "PHY-014 acceptance (maintainer decision 2026-10-15): Park17 Table 3 total 575.3100 +/- 0.0015 used Park's fitted J2 = 2.25e-7; the J2 term is 0.028601 at Park's J2 vs 0.027917 at DE440's (PHY-010), difference -0.000684, so the expected value with the DE440 constants is 575.3100 - 0.0007 = 575.3093."
+citation = "Park, R. S., Folkner, W. M., Konopliv, A. S., et al. 2017, AJ 153, 121, doi:10.3847/1538-3881/aa5be2, Table 3 ('Total'); Park et al. 2021, AJ 161, 105 (DE440 constants and body set); FerroAstro docs/requirements/PHY.md PHY-014 and PHY-010"
+retrieved = "2026-11-12"
+tolerance = { abs = 5.0e-3 }
+tolerance_rationale = "PHY-014's authoritative tolerance: 3x Park's sigma (0.0015) plus margin for the DE430-to-DE440 model difference. PHY-014 cannot detect a dropped component smaller than this (LT -0.0020, N-AST 0.0012; PHY-014 notes). WP22 prediction before any run: 575.30916 (N3 planets + J2(Park) + LT 575.308579, - 0.000684 J2 DE440 vs Park, + 0.001245 N-AST P-remove, + 0.000019 KBOs + ring)."
+verified_by = "WP22 builder agent, 2026-11-12: copied from PHY-014's acceptance text (value, tolerance and derivation) before any PHY-014 run."
+
+[[vector]]
+id = "EIH-ALLBODY-SUN-IMPROVEMENT-MIN"
+requirement = ["PHY-014", "NUM-009"]
+quantity = "lower bound on (the Sun's max barycentric residual vs de440.bsp without the small bodies) / (the same with the 343 asteroids, 3 identified KBOs and the 36-point KBO ring), EIH for every moving body + solar J2 (DE440) + LT, Sun + 8 planets + geocentric Moon from header.440, 10 yr every 10 d"
+value = 2.0
+unit = "1"
+kind = "defined"
+source = "WP19 C7 and WP20 D1: the Sun's barycentric residual (1.40 km over 10 yr) is unchanged by EIH and LT and is attributed to the omitted asteroids, KBOs and ring, which move the SSB. Including them should remove most of it."
+citation = "IMPLEMENTATION-NOTES WP19 (C7) and WP20 (D1); Park et al. 2021, AJ 161, 105, Sec. 2.2 (body set); WP22 plan check E10"
+retrieved = "2026-11-12"
+tolerance = { abs = 0.0 }
+tolerance_rationale = "PROVISIONAL sanity, one-sided (measured factor must be >= the value); the tolerance field is unused. The factor 2 leaves room for REF-003 IC errors and the omitted figure, tide and libration terms."
+verified_by = "WP22 builder agent, 2026-11-12: fixed in the WP22 plan before the first run."
+
+[[vector]]
+id = "EIH-ALLBODY-MARS-HELIO-IMPROVEMENT-MIN"
+requirement = ["NUM-009", "REF-003"]
+quantity = "lower bound on (the Mars system's max heliocentric residual vs de440.bsp without the small bodies) / (the same with the 343 asteroids, 3 identified KBOs and the 36-point KBO ring), the runs of EIH-ALLBODY-SUN-IMPROVEMENT-MIN"
+value = 10.0
+unit = "1"
+kind = "defined"
+source = "Mars is the planet the 343 DE asteroids were selected for (Folkner et al. 2014, IPN PR 42-196: 'A set of 343 asteroids that have the largest perturbation on the orbit of Mars'), so the planets-only Mars residual is dominated by the asteroid signal. With DE440's masses (header.440) and initial states from the same ephemeris family (REF-003; Ceres agrees with DE430 Table 13 to 43 km and 1.3e-6 km/s), including them must remove at least 90% of it. Heliocentric residuals do not depend on the barycentre definition (the 27 unmodelled KBOs of DE440's SSBC), which E10's barycentric metric measured."
+citation = "Folkner et al. 2014, IPN PR 42-196, Sec. VII (asteroids) and Table 13; Park et al. 2021, AJ 161, 105, Sec. 2.2; IMPLEMENTATION-NOTES WP22 (E10 result and review item 2)"
+retrieved = "2026-11-12"
+tolerance = { abs = 0.0 }
+tolerance_rationale = "POST HOC: written AFTER the E10 result was known (E10 measured a Mars heliocentric improvement of 560x), at the reviewer's request (WP22 review item 2), and disclosed as such. The factor 10 is an order-of-magnitude bound set from the physics above (asteroid signal dominant, the rest >= 10x smaller), not from the measurement. One-sided; the tolerance field is unused."
+verified_by = "WP22 builder agent, 2026-11-12: post hoc, disclosed."
+
+[[vector]]
+id = "E10-KNOWN-FAILURE-SUN-BARY-FACTOR"
+requirement = ["NUM-009", "NUM-019"]
+quantity = "KNOWN-FAILURE GUARD, not an acceptance value: the E10 factor (the Sun's max barycentric residual vs de440.bsp without the small bodies) / (the same with the 343 asteroids, 3 identified KBOs and the 36-point KBO ring), all-body EIH + DE440 J2 + LT, Sun + 8 planets + geocentric Moon (no Pluto, the E10 template), header.440, 10 yr every 10 d, as documented when the failure was recorded"
+value = 0.573
+unit = "1"
+kind = "measured"
+source = "FerroAstro data_eih_all_bodies_with_small_bodies_ten_years_vs_de440_bsp, first run 2026-11-12 (WP22): 1.3992 km -> 2.4405 km, factor 0.5733; the pre-registered EIH-ALLBODY-SUN-IMPROVEMENT-MIN (>= 2) FAILS. Reproduced in four scratch runs (0.5733 with and without the Minor 1PN terms). Cause (WP22 follow-up): the template omits Pluto and DE440's SSBC contains 27 KBOs FerroAstro does not integrate; with Pluto added the Sun's residual falls to 0.238 km. Kept as a recorded failure by the maintainer (2026-11-11); the reviewer asked for a bounded guard (WP22 review S2)."
+citation = "FerroAstro docs/strategy/IMPLEMENTATION-NOTES.md WP22 (real-data result E10 and the review follow-up)"
+retrieved = "2026-11-12"
+tolerance = { abs = 0.05 }
+tolerance_rationale = "The run is deterministic (same binary inputs give 0.5733 to 4 digits in every reproduction); the band [0.523, 0.623] is about 9% of the value, wide enough for round-off-level changes of the force summation and narrow enough that a change of the body set, the ICs or the barycentre treatment (adding Pluto to the template lowers the full-set Sun residual from 2.44 to 0.24 km) fails the guard and forces a re-evaluation. It also fails if the factor ever reaches the original >= 2. Never an acceptance tolerance. Set after the value was measured; it widens nothing."
+verified_by = "WP22 builder agent, 2026-11-12: value copied from the recorded E10 run; band set for the guard at the reviewer's request."

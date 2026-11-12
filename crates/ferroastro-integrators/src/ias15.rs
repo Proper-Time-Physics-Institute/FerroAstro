@@ -71,11 +71,13 @@ pub struct Ias15Config {
     /// [`Ias15::locate_event`] (NUM-010). Off by default: it copies the step's coefficients after
     /// every step, which the plain propagation does not need.
     pub dense_output: bool,
-    /// EXPERIMENTAL (NUM-023 diagnosis, WP7): after each node update, recompute every
-    /// `Bₘ = Σₖ c[k][m] gₖ` from the Newton coefficients instead of accumulating the increments
-    /// `c[node][m]·Δg` into `B`. In WP7's 32 × 20 000-orbit ensemble this removed the systematic
-    /// energy drift (Brouwer slopes 0.51 / 1.47 instead of 0.63 / 1.59) at ~1.5× the wall time.
-    /// Off by default: adopting it changes every f64 result and is a maintainer decision.
+    /// After each node update, recompute every `Bₘ = Σₖ c[k][m] gₖ` from the Newton coefficients
+    /// instead of accumulating the increments `c[node][m]·Δg` into `B` (WP7, NUM-023). Accumulating
+    /// the increments leaves a systematic energy drift: Brouwer slope 0.629 over the 32 × 20 000-orbit
+    /// ensemble, against ½ ± 0.1. Recomputing gives 0.466 (energy) and 1.442 (phase), at about 1.5×
+    /// the wall time. ON by default since 2026-11-08, per the maintainer ruling on PR #13 (NUM-023
+    /// notes: "it must become the asserted default path"). This changed every f64 result. `false`
+    /// reproduces the earlier accumulation and is for diagnosis only.
     pub pc_b_from_g: bool,
 }
 
@@ -89,7 +91,7 @@ impl Default for Ias15Config {
             min_dt: 0.0,
             max_rejections: 64,
             dense_output: false,
-            pc_b_from_g: false,
+            pc_b_from_g: true,
         }
     }
 }

@@ -138,7 +138,7 @@ quantity = "|sum_i GM_i a_i| / (eps * sum_i GM_i |a_i|) for the SolarLenseThirri
 value = 0.0
 unit = "1"
 kind = "analytic"
-source = "The reaction a_Sun = -sum_i (GM_i/GM_Sun) a_i makes the GM-weighted sum vanish algebraically (the J2 reaction pattern of DE440 Eq. 29 applied to the DE440 Eq. 37-39 LT acceleration; WP20 interpretation, NEEDS HUMAN REVIEW)."
+source = "The reaction a_Sun = -sum_i (GM_i/GM_Sun) a_i makes the GM-weighted sum vanish algebraically (the J2 reaction pattern of DE440 Eq. 29 applied to the DE440 Eq. 37-39 LT acceleration; WP20 interpretation, resolved by the OI-35 sign-off of 2026-10-21 ('Sun reaction on'))."
 citation = "Park et al. 2021, AJ 161, 105 (DE440), Eqs. 37-39; FerroAstro docs/requirements/NUM.md NUM-019"
 retrieved = "2026-10-20"
 tolerance = { abs = 8.0 }

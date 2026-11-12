@@ -20,8 +20,9 @@ Implemented (everything else is refused by name, exit status 3):
   whole number of steps, the span a whole number of outputs, forward in time.
 
 The scenario's ``[integrator]`` names FerroAstro's IAS15, which Swiftest does not have: the run uses
-the integrator and fixed step of ``ci/oracles/swiftest/settings.toml`` (WHM, dt = 1/128 d; WP17
-plan, NEEDS HUMAN REVIEW), and the mapping is recorded in the manifest.
+the integrator and fixed step of ``ci/oracles/swiftest/settings.toml`` (WHM, dt = 1/128 d; stage A
+1/16 d since 2026-11-08; WP17 plan, NEEDS HUMAN REVIEW), and the mapping is recorded in the
+manifest.
 
 Units inside Swiftest: au, day (TDB), GM in au^3/d^2 (bodies are added by ``Gmass``, so neither G
 nor a solar mass enters). Initial conditions are heliocentric (body minus Sun, header.440 at
@@ -383,7 +384,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         print(f"SETUP ERROR: {e}", file=sys.stderr)
         return common.SETUP_EXIT
     args.out_dir.mkdir(parents=True, exist_ok=True)
-    name = f"{scenario['name']}.{TOOL}.states.csv"
+    name = common.output_file(scenario, TOOL)
     path = args.out_dir / name
     nbody_io.write_states_csv(
         path,

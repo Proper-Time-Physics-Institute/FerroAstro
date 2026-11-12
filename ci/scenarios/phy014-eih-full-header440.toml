@@ -1,0 +1,44 @@
+# SPDX-FileCopyrightText: 2026 Proper-Time Physics Institute
+# SPDX-License-Identifier: Apache-2.0
+# PHY-014 rung EIH-FULL template (WP22/WP23): DE440-equivalent physics. The PHY-012 full system
+# (Sun, the planets with Earth and Moon resolved, Pluto) plus the 343 numbered asteroids and the 3
+# identified KBOs (Minor) and the 36-point KBO ring (fixed), DE440 GMs, the 1PN EIH terms for every
+# moving body over the tiered interaction graph (decision D1, beta = gamma = 1 from DE440), solar
+# J2 with the DE440 value (2.19614e-7) and the WGCCRE 2015 pole, solar Lense-Thirring on every
+# non-Sun moving body with the reaction on the Sun (DE440 spin). Header.440 ICs at JDEPOC, used
+# unchanged (no re-barycentring: the heliocentric rate does not depend on it). The test runs one
+# leg backwards to J2000 - 1000 Julian yr - 30 d and one forwards to J2000 + 1000 Julian yr + 30 d;
+# this file's span is the forward leg. Mercury relative to the Sun is sampled daily for the
+# Park2017 estimator. Schema: scenario.schema.json (CI-002).
+schema_version = 1
+name = "phy014-eih-full-header440"
+description = "DE440-equivalent physics (EIH all bodies, solar J2 DE440, LT, 343 asteroids, 3 KBOs, KBO ring), header.440 ICs, 1969 -> 3000 CE leg (PHY-014 template)"
+mode = "n-body"
+bodies = ["Sun", "Mercury", "Venus", "Earth", "Moon", "Mars", "Jupiter", "Saturn", "Uranus", "Neptune", "Pluto"]
+central_body = "Sun"
+
+[initial_conditions]
+source = "de440-header"
+
+[constants]
+gm_set = "de440"
+
+[forces]
+newton = true
+gr_eih = true
+sun_j2 = true
+lense_thirring = true
+asteroids = 343
+kbos = true
+kbo_ring = true
+
+[integrator]
+name = "ias15"
+precision = "f64"
+
+[span]
+years = 1030.5941136208078
+
+[output]
+cadence_days = 1.0
+perihelion = ["Mercury"]

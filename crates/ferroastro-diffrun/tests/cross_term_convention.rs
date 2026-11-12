@@ -1,8 +1,9 @@
 // SPDX-FileCopyrightText: 2026 Proper-Time Physics Institute
 // SPDX-License-Identifier: Apache-2.0
-//! Progress review after WP18, R1: cross terms are reported in Park et al. 2017 Table 3's
-//! convention (the pair's contribution minus the single contributions, under each protocol), and
-//! the inclusion–exclusion second difference is kept as its own labelled column. Synthetic rates
+//! Progress review after WP18, R1 (and PO-4 / ADR-0014): cross-term rows hold the
+//! inclusion–exclusion second difference; [`Protocol::to_park17`] maps them into Park et al. 2017
+//! Table 3's sign ("pair removal minus single removals"), which the markdown prints, with the
+//! second difference kept as its own labelled column. Synthetic rates
 //! (no integration): the numbers below are arbitrary test inputs, not physical values.
 
 mod common;
@@ -76,10 +77,8 @@ fn cross_terms_follow_park17_convention_with_the_second_difference_alongside() {
             .unwrap()
     };
     let rate = |l: &str| RATES.iter().find(|r| r.0 == l).unwrap().1;
-    // Park17 convention, computed here from its definition.
-    let add_pair = (rate("base+V+J") - rate("base"))
-        - (rate("base+V") - rate("base"))
-        - (rate("base+J") - rate("base"));
+    // Park17's pair rows, computed here from their definition ("pair removal minus single
+    // removals").
     let rem_pair = (rate("full") - rate("full-V-J"))
         - (rate("full") - rate("full-V"))
         - (rate("full") - rate("full-J"));
@@ -87,41 +86,55 @@ fn cross_terms_follow_park17_convention_with_the_second_difference_alongside() {
     let rem_second = rate("full") - rate("full-V") - rate("full-J") + rate("full-V-J");
     let a = row(Protocol::CrossTerm, "V+J");
     let r = row(Protocol::CrossTermRemove, "V+J");
+    let a_park = Protocol::CrossTerm.to_park17(a.value);
+    let r_park = Protocol::CrossTermRemove.to_park17(r.value);
     println!(
-        "P-add pair {} (second difference {:?}); P-remove pair {} (second difference {:?})",
-        a.value, a.second_difference, r.value, r.second_difference
+        "P-add second difference {} (Park17 sign {a_park}); P-remove second difference {} (Park17 sign {r_park})",
+        a.value, r.value
     );
-    assert_eq!(a.value.to_bits(), add_pair.to_bits());
-    assert_eq!(r.value.to_bits(), rem_pair.to_bits());
-    assert_eq!(a.second_difference.unwrap().to_bits(), add_second.to_bits());
-    assert_eq!(r.second_difference.unwrap().to_bits(), rem_second.to_bits());
-    // The P-remove sign is what R1 is about: the two conventions differ in sign there.
-    assert!(r.value > 0.0 && r.second_difference.unwrap() < 0.0);
-    assert!(r.convention.starts_with("Park17"));
-    assert!(a.convention.starts_with("Park17"));
-    assert!(row(Protocol::Add, "V").second_difference.is_none());
-    // The convention is labelled in the markdown and the JSON.
+    // `Row::value` (and the JSON) is the raw inclusion–exclusion second difference of either
+    // protocol; `Protocol::to_park17` negates it into Park17's sign (ADR-0014).
+    assert_eq!(a.value.to_bits(), add_second.to_bits());
+    assert_eq!(r.value.to_bits(), rem_second.to_bits());
+    assert_eq!(r_park.to_bits(), rem_pair.to_bits());
+    assert_eq!(a_park.to_bits(), (-add_second).to_bits());
+    // The P-remove sign is what R1 / PO-4 is about: the two conventions differ in sign there.
+    assert!(r_park > 0.0 && r.value < 0.0);
+    assert!(
+        Protocol::CrossTermRemove
+            .park17_convention()
+            .starts_with("Park17")
+    );
+    assert!(
+        Protocol::CrossTerm
+            .park17_convention()
+            .starts_with("Park17")
+    );
+    let v = row(Protocol::Add, "V").value;
+    assert_eq!(Protocol::Add.to_park17(v).to_bits(), v.to_bits());
+    // The convention is labelled in the markdown; the JSON keeps the raw second differences.
     let result = PlanResult {
         plan: plan.name.clone(),
         estimator: "synthetic".into(),
         cross_check_estimator: format!("{:?}", PassageSource::SampledStates),
         shared_ic_hash: String::new(),
         constants: String::new(),
+        ic_epoch_jd_tdb: None,
         configs,
         rows,
     };
     let md = result.markdown(&|_, _| None);
-    assert!(md.contains(&format!(
-        "*{} convention: {}*",
-        Protocol::CrossTermRemove.label(),
-        Protocol::CrossTermRemove.convention()
-    )));
+    assert!(md.contains(Protocol::CrossTermRemove.park17_convention()));
     assert!(md.contains("second difference (″/cy)"));
-    let json = result.to_json().unwrap();
-    assert!(json.contains("\"second_difference\""));
-    assert!(
-        json.contains("Park17 Table 3: pair contribution minus single contributions, P-remove")
-    );
+    assert!(md.contains(&format!("| V+J | {r_park:.6} |")));
+    assert!(md.contains(&format!(" {rem_second:.6} |")));
+    let back: PlanResult = serde_json::from_str(&result.to_json().unwrap()).unwrap();
+    let r_json = back
+        .rows
+        .iter()
+        .find(|w| w.combination.protocol == Protocol::CrossTermRemove)
+        .unwrap();
+    assert_eq!(r_json.value.to_bits(), rem_second.to_bits());
 }
 
 /// WP20: the switch plan with both protocols runs each toggle subset once and its rows follow
@@ -179,8 +192,14 @@ fn switch_plan_with_both_protocols_has_each_subset_once_and_park17_signs() {
     );
     let cross = rate("base+J2+LT") - rate("base+J2") - rate("base+LT") + rate("base");
     assert_eq!(row(Protocol::CrossTerm, "J2+LT"), cross);
-    // With two toggles the P-remove pair contribution is the whole J2 + LT effect, so its
-    // Park17-convention cross term is again the second difference, with the opposite sign
-    // convention of Protocol::CrossTermRemove.
-    assert_eq!(row(Protocol::CrossTermRemove, "J2+LT"), -cross);
+    // With two toggles `all − X − Y` is the base, so the P-remove second difference is the same
+    // four configurations with the same signs: the raw rows agree, and Park17's sign
+    // (`Protocol::to_park17`, pair removal minus single removals) is its negative.
+    let rem = row(Protocol::CrossTermRemove, "J2+LT");
+    assert_eq!(rem, cross);
+    assert_eq!(Protocol::CrossTermRemove.to_park17(rem), -cross);
+    let pair_removal = (rate("base+J2+LT") - rate("base"))
+        - (rate("base+J2+LT") - rate("base+LT"))
+        - (rate("base+J2+LT") - rate("base+J2"));
+    assert_eq!(Protocol::CrossTermRemove.to_park17(rem), pair_removal);
 }

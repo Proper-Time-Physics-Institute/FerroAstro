@@ -68,3 +68,10 @@ slow-timeout = { period = "600s", terminate-after = 12 }
 filter = "test(nightly_wp25_tiering_double_double)"
 threads-required = 2
 slow-timeout = { period = "1800s", terminate-after = 20 }
+
+# WP23 PHY-014 (rung EIH-FULL): 2 legs of ~1000 yr with 393 moving bodies under EIH for every body,
+# solar J2 and LT; measured ~40 ms per IAS15 step (WP22 E11, loaded machine), i.e. several hours per
+# leg. Legs checkpoint every 50 yr and resume (CI-010). Scheduling only.
+[[profile.nightly.overrides]]
+filter = "test(nightly_phy014_eih_full_rate_with_de440_constants)"
+slow-timeout = { period = "900s", terminate-after = 64 }

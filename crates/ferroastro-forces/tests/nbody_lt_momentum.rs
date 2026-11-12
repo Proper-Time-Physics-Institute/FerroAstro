@@ -28,13 +28,13 @@ fn run(years: f64, reaction: LtReaction) -> (f64, u64) {
     let m = model_lt::<f64>(&de, &ids(false), Moon::Geocentric, true, Some(reaction));
     println!("{}", m.describe());
     let mut p = propagator(m, &ic, Ias15Config::default());
-    let (p0, scale0) = p.momentum_over_g();
+    let (p0, scale0) = p.momentum_over_g().unwrap();
     let samples = 100;
     let step = years * ferroastro_core::time::DAYS_PER_JULIAN_YEAR / f64::from(samples);
     let mut worst = 0.0_f64;
     for e in epochs(ic.epoch(), step, samples) {
         p.advance_to(e).unwrap();
-        let (pt, _) = p.momentum_over_g();
+        let (pt, _) = p.momentum_over_g().unwrap();
         let dp = (pt[0] - p0[0]).hypot(pt[1] - p0[1]).hypot(pt[2] - p0[2]) / scale0;
         worst = worst.max(dp);
     }

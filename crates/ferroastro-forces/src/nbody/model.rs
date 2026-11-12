@@ -50,7 +50,8 @@ impl<F: Frame, R: Real> NBodyModel<F, R> {
     ///
     /// # Errors
     /// `FA-E0500` for an invalid layout, a term that cannot bind, or a geocentric pair without
-    /// exactly one term that supplies Moon − Earth (or such a term without the pair);
+    /// exactly one term that supplies Moon − Earth (or such a term without the pair), or terms
+    /// that disagree on the Minor bodies' reaction setting;
     /// `FA-E0502` if two terms declare different relativistic gauges.
     pub fn new(
         bodies: &[NBody<R>],
@@ -65,6 +66,14 @@ impl<F: Frame, R: Real> NBodyModel<F, R> {
                 "terms supplying the geocentric Moon acceleration",
                 f64::from(u32::try_from(suppliers).unwrap_or(u32::MAX)),
                 "exactly 1 with MoonVariables::Geocentric, 0 otherwise",
+            ));
+        }
+        let reactions: Vec<_> = terms.iter().filter_map(|t| t.minor_reaction()).collect();
+        if reactions.windows(2).any(|w| w.first() != w.get(1)) {
+            return Err(invalid(
+                "terms with different Minor-body reaction settings (MinorReaction)",
+                f64::from(u32::try_from(reactions.len()).unwrap_or(u32::MAX)),
+                "the same setting in MinorFromMajors, SolarLenseThirring and Eih",
             ));
         }
         let mut gauge = Gauge::Newtonian;
@@ -282,7 +291,7 @@ impl<F: Frame, R: Real> NBodyModel<F, R> {
         let view = View::new(&self.layout, x, v);
         let mut e = Neumaier::new();
         for i in (0..self.layout.len()).filter(|&i| self.layout.moves(i)) {
-            let w = view.velocity(i);
+            let w = view.velocity(i).ok()?;
             let v2 = w[0].mul_add(w[0], w[1].mul_add(w[1], w[2] * w[2]));
             e.add(R::HALF * self.layout.gm(i) * v2);
         }
@@ -293,21 +302,25 @@ impl<F: Frame, R: Real> NBodyModel<F, R> {
     }
 
     /// Total linear momentum divided by G, `Σ μᵢ vᵢ` over the moving bodies (km⁴/s³), and the
-    /// scale `Σ μᵢ |vᵢ|` against which its round-off is judged. Neumaier-summed.
+    /// scale `Σ μᵢ |vᵢ|` against which its round-off is judged. Neumaier-summed. `None` if `x` or
+    /// `v` does not have length `3 n` (PR #13 review R13-CODE-2/3: never a silent zero).
     #[must_use]
-    pub fn momentum_over_g(&self, x: &[R], v: &[R]) -> ([R; 3], R) {
+    pub fn momentum_over_g(&self, x: &[R], v: &[R]) -> Option<([R; 3], R)> {
+        if self.layout.check_len(x.len()).is_err() || self.layout.check_len(v.len()).is_err() {
+            return None;
+        }
         let view = View::new(&self.layout, x, v);
         let mut p = [Neumaier::new(), Neumaier::new(), Neumaier::new()];
         let mut scale = Neumaier::new();
         for i in (0..self.layout.len()).filter(|&i| self.layout.moves(i)) {
-            let w = view.velocity(i);
+            let w = view.velocity(i).ok()?;
             let g = self.layout.gm(i);
             for (pk, wk) in p.iter_mut().zip(w) {
                 pk.add(g * wk);
             }
             scale.add(g * w[0].hypot(w[1]).hypot(w[2]));
         }
-        (p.map(|a| a.total()), scale.total())
+        Some((p.map(|a| a.total()), scale.total()))
     }
 }
 

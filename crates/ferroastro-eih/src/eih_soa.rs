@@ -9,13 +9,21 @@
 //! sources of each target summed in storage order inside one lane. Pass A gives `U_i` and the
 //! Newtonian `a_i` over all Major bodies, pass B the c⁻² correction. The scalar and SIMD
 //! instantiations are bitwise identical ([`ferroastro_forces::soa::Lane`]).
+//!
+//! **Scope (merge of M4's WP22 D1).** The SoA kernel covers the Major–Major graph only. Since
+//! WP22, [`Eih`] sums over the whole tiered interaction graph (Minor receivers, Ring sources with
+//! `v = a = 0`, Minor sources per [`ferroastro_forces::MinorReaction`]). For a layout with any
+//! Minor or Ring body, [`EihSoa`] therefore delegates to [`Eih`] itself, so the physics never
+//! depends on the kernel choice; only an all-Major layout runs on the SoA lanes.
 
 use crate::eih::{Eih, RhsAcceleration};
 use ferroastro_core::frames::Frame;
 use ferroastro_forces::soa::{
     Lane, Scalar, SoaBackend, SoaBodies, coinciding, dot3, inv_r3_exact, load3, splat3,
 };
-use ferroastro_forces::{Accelerations, ForceError, ForceTerm, Gauge, Layout, TermParameter, View};
+use ferroastro_forces::{
+    Accelerations, ForceError, ForceTerm, Gauge, Layout, MinorReaction, TermParameter, View,
+};
 use ferroastro_real::Real;
 use ferroastro_system::Tier;
 
@@ -217,13 +225,20 @@ impl<R: Real> EihSoa<R> {
         &self.eih
     }
 
-    /// The c⁻² corrections of the Major bodies (km/s²), in `layout.indices(Tier::Major)` order.
+    /// The c⁻² corrections (km/s²) of every body, in storage order, as [`Eih::corrections`]:
+    /// on the SoA lanes for an all-Major layout, by [`Eih`] itself otherwise (module docs).
     ///
     /// # Errors
-    /// `FA-E0501` if two Major bodies coincide.
+    /// `FA-E0501` if two bodies joined by the interaction graph coincide; `FA-E0500` for a view
+    /// whose layout does not match its state.
     pub fn corrections(&self, t: R, view: &View<'_, R>) -> Result<Vec<[R; 3]>, ForceError> {
-        let major = view.layout().indices(Tier::Major);
-        let b = SoaBodies::gather(view, major, |k| k);
+        let layout = view.layout();
+        if !(layout.indices(Tier::Minor).is_empty() && layout.indices(Tier::Ring).is_empty()) {
+            return self.eih.corrections(t, view);
+        }
+        let n = layout.len();
+        let major = layout.indices(Tier::Major);
+        let b = SoaBodies::gather(view, major, |k| k)?;
         let k = Coefficients::of(&self.eih);
         let iterate = self.eih.rhs() == RhsAcceleration::Iterated;
         let out =
@@ -232,16 +247,18 @@ impl<R: Real> EihSoa<R> {
                 j: major.get(j).copied().unwrap_or(j),
                 t: t.to_f64(),
             })?;
-        Ok((0..major.len())
-            .map(|i| {
-                core::array::from_fn(|q| {
+        let mut all = vec![[R::ZERO; 3]; n];
+        for (k, &i) in major.iter().enumerate() {
+            if let Some(slot) = all.get_mut(i) {
+                *slot = core::array::from_fn(|q| {
                     out.get(q)
-                        .and_then(|v| v.get(i))
+                        .and_then(|v| v.get(k))
                         .copied()
                         .unwrap_or(R::ZERO)
-                })
-            })
-            .collect())
+                });
+            }
+        }
+        Ok(all)
     }
 }
 
@@ -282,7 +299,10 @@ impl<F: Frame, R: Real> ForceTerm<F, R> for EihSoa<R> {
         <Eih<R> as ForceTerm<F, R>>::parameters(&self.eih)
     }
     fn tiers(&self) -> &'static [Tier] {
-        &[Tier::Major]
+        <Eih<R> as ForceTerm<F, R>>::tiers(&self.eih)
+    }
+    fn minor_reaction(&self) -> Option<MinorReaction> {
+        Some(self.eih.minor_reaction())
     }
     fn bind(&mut self, _layout: &Layout<R>) -> Result<(), ForceError> {
         Ok(())
@@ -293,9 +313,11 @@ impl<F: Frame, R: Real> ForceTerm<F, R> for EihSoa<R> {
         view: &View<'_, R>,
         acc: &mut Accelerations<'_, R>,
     ) -> Result<(), ForceError> {
-        let major = view.layout().indices(Tier::Major);
-        for (&i, a) in major.iter().zip(self.corrections(t, view)?) {
-            acc.add(i, a);
+        let layout = view.layout();
+        for (i, a) in self.corrections(t, view)?.into_iter().enumerate() {
+            if layout.moves(i) {
+                acc.add(i, a);
+            }
         }
         Ok(())
     }

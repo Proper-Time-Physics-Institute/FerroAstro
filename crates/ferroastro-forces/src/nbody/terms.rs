@@ -47,6 +47,12 @@ pub trait ForceTerm<F: Frame, R: Real = f64>: fmt::Debug + Send + Sync {
     fn supplies_moon_relative(&self) -> bool {
         false
     }
+    /// The Minor bodies' reaction setting this term assumes, if it depends on it
+    /// ([`MinorFromMajors`], [`SolarLenseThirring`], `ferroastro_eih::Eih`). Every term of a model
+    /// that returns `Some` must agree; [`crate::NBodyModel::new`] refuses a model where they differ.
+    fn minor_reaction(&self) -> Option<MinorReaction> {
+        None
+    }
     /// Resolve body indices against the model's layout (called once, when the model is built).
     ///
     /// # Errors
@@ -141,12 +147,12 @@ impl<F: Frame, R: Real> ForceTerm<F, R> for NewtonianMutual {
         let is_pair = |i: usize| pair.is_some_and(|(e, m)| i == e || i == m);
         let major = layout.indices(Tier::Major);
         for (k, &i) in major.iter().enumerate() {
-            let (pi, gi) = (view.position(i), layout.gm(i));
+            let (pi, gi) = (view.position(i)?, layout.gm(i));
             for &j in major.iter().skip(k + 1) {
                 if is_pair(i) && is_pair(j) {
                     continue;
                 }
-                let d = sub(view.position(j), pi);
+                let d = sub(view.position(j)?, pi);
                 let r2 = r2_of(d);
                 if r2 == R::ZERO {
                     return Err(singular(i, j, t));
@@ -164,7 +170,7 @@ impl<F: Frame, R: Real> ForceTerm<F, R> for NewtonianMutual {
         let mut u = R::ZERO;
         for (k, &i) in major.iter().enumerate() {
             for &j in major.iter().skip(k + 1) {
-                let d = sub(view.position(j), view.position(i));
+                let d = sub(view.position(j).ok()?, view.position(i).ok()?);
                 u -= layout.gm(i) * layout.gm(j) / r2_of(d).sqrt();
             }
         }
@@ -228,6 +234,9 @@ impl<F: Frame, R: Real> ForceTerm<F, R> for MinorFromMajors {
             MinorReaction::Off => &[Tier::Minor],
         }
     }
+    fn minor_reaction(&self) -> Option<MinorReaction> {
+        Some(self.reaction)
+    }
     fn bind(&mut self, _layout: &Layout<R>) -> Result<(), ForceError> {
         Ok(())
     }
@@ -239,9 +248,9 @@ impl<F: Frame, R: Real> ForceTerm<F, R> for MinorFromMajors {
     ) -> Result<(), ForceError> {
         let layout = view.layout();
         for &i in layout.indices(Tier::Minor) {
-            let (pi, gi) = (view.position(i), layout.gm(i));
+            let (pi, gi) = (view.position(i)?, layout.gm(i));
             for &j in layout.indices(Tier::Major) {
-                let d = sub(view.position(j), pi);
+                let d = sub(view.position(j)?, pi);
                 let r2 = r2_of(d);
                 if r2 == R::ZERO {
                     return Err(singular(i, j, t));
@@ -263,7 +272,7 @@ impl<F: Frame, R: Real> ForceTerm<F, R> for MinorFromMajors {
         let mut u = R::ZERO;
         for &i in layout.indices(Tier::Minor) {
             for &j in layout.indices(Tier::Major) {
-                let d = sub(view.position(j), view.position(i));
+                let d = sub(view.position(j).ok()?, view.position(i).ok()?);
                 u -= layout.gm(i) * layout.gm(j) / r2_of(d).sqrt();
             }
         }
@@ -301,9 +310,9 @@ impl<F: Frame, R: Real> ForceTerm<F, R> for RingMasses {
     ) -> Result<(), ForceError> {
         let layout = view.layout();
         for &k in layout.indices(Tier::Ring) {
-            let (pk, gk) = (view.position(k), layout.gm(k));
+            let (pk, gk) = (view.position(k)?, layout.gm(k));
             for i in (0..layout.len()).filter(|&i| layout.moves(i)) {
-                let d = sub(pk, view.position(i));
+                let d = sub(pk, view.position(i)?);
                 let r2 = r2_of(d);
                 if r2 == R::ZERO {
                     return Err(singular(i, k, t));
@@ -318,7 +327,7 @@ impl<F: Frame, R: Real> ForceTerm<F, R> for RingMasses {
         let mut u = R::ZERO;
         for &k in layout.indices(Tier::Ring) {
             for i in (0..layout.len()).filter(|&i| layout.moves(i)) {
-                let d = sub(view.position(k), view.position(i));
+                let d = sub(view.position(k).ok()?, view.position(i).ok()?);
                 u -= layout.gm(i) * layout.gm(k) / r2_of(d).sqrt();
             }
         }
@@ -474,9 +483,9 @@ impl<F: Frame, R: Real> ForceTerm<F, R> for GeocentricMoon<R> {
             return Err(singular(p.earth, p.moon, t));
         }
         acc.add_moon_relative(scaled(-self.earth_moon_gm, rho, inv_r3(r2)));
-        let pe = view.position(p.earth);
+        let pe = view.position(p.earth)?;
         for &j in &self.third {
-            let d = sub(view.position(j), pe);
+            let d = sub(view.position(j)?, pe);
             if r2_of(d) == R::ZERO {
                 return Err(singular(p.earth, j, t));
             }
@@ -620,10 +629,10 @@ impl<F: Frame, R: Real> ForceTerm<F, R> for SolarJ2WithReaction<F, R> {
         view: &View<'_, R>,
         acc: &mut Accelerations<'_, R>,
     ) -> Result<(), ForceError> {
-        let ps = view.position(self.sun);
+        let ps = view.position(self.sun)?;
         let k_hat = self.pole.unit();
         for &i in &self.bodies {
-            let r = sub(view.position(i), ps);
+            let r = sub(view.position(i)?, ps);
             if r2_of(r) == R::ZERO {
                 return Err(singular(self.sun, i, t));
             }
@@ -635,11 +644,11 @@ impl<F: Frame, R: Real> ForceTerm<F, R> for SolarJ2WithReaction<F, R> {
         Ok(())
     }
     fn potential_over_g(&self, view: &View<'_, R>) -> Option<R> {
-        let ps = view.position(self.sun);
+        let ps = view.position(self.sun).ok()?;
         let k_hat = self.pole.unit();
         let mut u = R::ZERO;
         for &i in &self.bodies {
-            let r = sub(view.position(i), ps);
+            let r = sub(view.position(i).ok()?, ps);
             u += view.layout().gm(i) * j2_potential(self.sun_gm, self.j2, self.radius, k_hat, r);
         }
         Some(u)
@@ -734,12 +743,12 @@ impl<F: Frame, R: Real> ForceTerm<F, R> for GrPotential<R> {
         acc: &mut Accelerations<'_, R>,
     ) -> Result<(), ForceError> {
         let layout = view.layout();
-        let ps = view.position(self.sun);
+        let ps = view.position(self.sun)?;
         for &i in layout.indices(Tier::Major) {
             if i == self.sun {
                 continue;
             }
-            let r = sub(view.position(i), ps);
+            let r = sub(view.position(i)?, ps);
             let r2 = r2_of(r);
             if r2 == R::ZERO {
                 return Err(singular(self.sun, i, t));
@@ -754,11 +763,11 @@ impl<F: Frame, R: Real> ForceTerm<F, R> for GrPotential<R> {
     }
     fn potential_over_g(&self, view: &View<'_, R>) -> Option<R> {
         let layout = view.layout();
-        let ps = view.position(self.sun);
+        let ps = view.position(self.sun).ok()?;
         let mut u = R::ZERO;
         for &i in layout.indices(Tier::Major) {
             if i != self.sun {
-                u -= layout.gm(i) * self.k / r2_of(sub(view.position(i), ps));
+                u -= layout.gm(i) * self.k / r2_of(sub(view.position(i).ok()?, ps));
             }
         }
         Some(u)
@@ -769,13 +778,15 @@ impl<F: Frame, R: Real> ForceTerm<F, R> for GrPotential<R> {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum LtReaction {
     /// The Sun receives `−(GMᵢ/GM☉) aᵢ` for every body `i`, as for J2: total linear momentum is
-    /// conserved (NUM-019 acceptance; WP20 default, NEEDS HUMAN REVIEW).
+    /// conserved (NUM-019 acceptance; the default, confirmed by the OI-35 decision of
+    /// 2026-10-21, "Sun reaction on").
     On,
     /// The literal DE440 §3.4 reading: only the bodies other than the Sun are accelerated.
     Off,
 }
 
-/// Solar Lense–Thirring acceleration on every Major body other than the Sun (NUM-019, PHY-011),
+/// Solar Lense–Thirring acceleration on every moving body other than the Sun, Major and Minor
+/// (NUM-019, PHY-011; OI-35 decision of 2026-10-21; Ring bodies are fixed),
 /// DE440 (Park et al. 2021) Eqs. 37–39, evaluated as written:
 ///
 /// `aᵢ = 2 Ωᵢ × vᵢ`, `Ωᵢ = (1+γ) G/(2c²rᵢ³) [−J + 3 (J·rᵢ) rᵢ/rᵢ²]`, `J = C☉ M☉ R☉² ω☉ p̂`,
@@ -794,9 +805,11 @@ pub struct SolarLenseThirring<F: Frame, R: Real = f64> {
     gamma: R,
     pole: Pole<F, R>,
     reaction: LtReaction,
+    minor: MinorReaction,
     sun: usize,
     sun_gm: R,
-    bodies: Vec<usize>,
+    /// The bodies accelerated, each with whether it sends the reaction to the Sun.
+    bodies: Vec<(usize, bool)>,
 }
 
 impl<F: Frame, R: Real> SolarLenseThirring<F, R> {
@@ -841,10 +854,20 @@ impl<F: Frame, R: Real> SolarLenseThirring<F, R> {
             gamma,
             pole,
             reaction,
+            minor: MinorReaction::On,
             sun: 0,
             sun_gm: R::ZERO,
             bodies: Vec::new(),
         })
+    }
+
+    /// The same term with the Minor bodies' reaction setting, which must match the model's
+    /// [`MinorFromMajors`] term: with [`MinorReaction::Off`] the Minor bodies are test particles
+    /// and send no Lense–Thirring reaction to the Sun (they still feel the acceleration).
+    #[must_use]
+    pub const fn with_minor_reaction(mut self, minor: MinorReaction) -> Self {
+        self.minor = minor;
+        self
     }
 
     /// The pole.
@@ -930,10 +953,22 @@ impl<F: Frame, R: Real> ForceTerm<F, R> for SolarLenseThirring<F, R> {
                 },
                 unit: "1",
             },
+            TermParameter {
+                name: "reaction from Minor bodies",
+                value: if self.minor == MinorReaction::On {
+                    1.0
+                } else {
+                    0.0
+                },
+                unit: "1",
+            },
         ]
     }
     fn tiers(&self) -> &'static [Tier] {
-        &[Tier::Major]
+        &[Tier::Major, Tier::Minor]
+    }
+    fn minor_reaction(&self) -> Option<MinorReaction> {
+        Some(self.minor)
     }
     fn bind(&mut self, layout: &Layout<R>) -> Result<(), ForceError> {
         let sun = layout
@@ -953,11 +988,15 @@ impl<F: Frame, R: Real> ForceTerm<F, R> for SolarLenseThirring<F, R> {
             });
         }
         self.sun = sun;
-        self.bodies = layout
-            .indices(Tier::Major)
-            .iter()
-            .copied()
-            .filter(|&i| i != sun)
+        // Every moving body other than the Sun, Major and Minor (NUM-019, OI-35 decision of
+        // 2026-10-21: "LT all bodies"); Ring bodies are fixed.
+        let minor_reacts = self.minor == MinorReaction::On;
+        self.bodies = (0..layout.len())
+            .filter(|&i| i != sun && layout.moves(i))
+            .map(|i| {
+                let reacts = layout.tiers().get(i) == Some(&Tier::Major) || minor_reacts;
+                (i, reacts)
+            })
             .collect();
         Ok(())
     }
@@ -967,15 +1006,15 @@ impl<F: Frame, R: Real> ForceTerm<F, R> for SolarLenseThirring<F, R> {
         view: &View<'_, R>,
         acc: &mut Accelerations<'_, R>,
     ) -> Result<(), ForceError> {
-        let (ps, vs) = (view.position(self.sun), view.velocity(self.sun));
-        for &i in &self.bodies {
-            let r = sub(view.position(i), ps);
+        let (ps, vs) = (view.position(self.sun)?, view.velocity(self.sun)?);
+        for &(i, reacts) in &self.bodies {
+            let r = sub(view.position(i)?, ps);
             if r2_of(r) == R::ZERO {
                 return Err(singular(self.sun, i, t));
             }
-            let a = self.acceleration(r, sub(view.velocity(i), vs));
+            let a = self.acceleration(r, sub(view.velocity(i)?, vs));
             acc.add(i, a);
-            if self.reaction == LtReaction::On {
+            if self.reaction == LtReaction::On && reacts {
                 let ratio = view.layout().gm(i) / self.sun_gm;
                 acc.add(self.sun, a.map(|x| -(ratio * x)));
             }

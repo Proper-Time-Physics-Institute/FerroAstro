@@ -124,7 +124,7 @@ impl<F: Frame, R: Real> NBodyPropagator<F, R> {
 
     /// Current momentum / G and its scale (see [`NBodyModel::momentum_over_g`]).
     #[must_use]
-    pub fn momentum_over_g(&self) -> ([R; 3], R) {
+    pub fn momentum_over_g(&self) -> Option<([R; 3], R)> {
         self.model
             .momentum_over_g(self.ias.positions(), self.ias.velocities())
     }

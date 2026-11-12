@@ -39,6 +39,7 @@ parallel = ["dep:rayon"]
 simd = ["ferroastro-forces/simd", "ferroastro-eih/simd"]
 
 [dev-dependencies]
+proptest.workspace = true
 ferroastro-testdata.workspace = true
 ferroastro-vectors.workspace = true
 

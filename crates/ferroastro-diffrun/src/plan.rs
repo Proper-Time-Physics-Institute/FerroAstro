@@ -13,21 +13,21 @@ use std::collections::BTreeSet;
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum Protocol {
     /// `ϖ̇(base + X) − ϖ̇(base)`: switch the body or term on against the minimal system
-    /// (PHY-012 primary protocol, maintainer decision; provisional while OI-38 is open).
+    /// (pre-registered for PHY-012 in WP14; reported as information only since ADR-0014).
     Add,
-    /// `ϖ̇(full) − ϖ̇(full without X)` (informational).
+    /// `ϖ̇(full) − ϖ̇(full without X)` (the protocol PHY-012, NUM-013(b) and PHY-019 assert,
+    /// ADR-0014; OI-38 closed 2026-10-21).
     Remove,
-    /// The interaction of two toggles under [`Protocol::Add`] (reported separately), in Park et
-    /// al. 2017 Table 3's convention: the pair's contribution minus the single contributions,
-    /// `[ϖ̇(base+X+Y) − ϖ̇(base)] − [ϖ̇(base+X) − ϖ̇(base)] − [ϖ̇(base+Y) − ϖ̇(base)]`. Under P-add
-    /// this equals the inclusion–exclusion second difference.
+    /// `ϖ̇(base + X + Y) − ϖ̇(base + X) − ϖ̇(base + Y) + ϖ̇(base)`: the interaction of two
+    /// toggles under [`Protocol::Add`] (reported separately). Like [`Protocol::CrossTermRemove`],
+    /// an inclusion–exclusion second difference, so the NEGATIVE of Park17's pair-row sign
+    /// (ADR-0014); compare it with Park only through [`Protocol::to_park17`].
     CrossTerm,
-    /// The interaction of two toggles under [`Protocol::Remove`] (informational), in Park et
-    /// al. 2017 Table 3's convention: the pair's contribution minus the single contributions,
-    /// `[ϖ̇(full) − ϖ̇(full−X−Y)] − [ϖ̇(full) − ϖ̇(full−X)] − [ϖ̇(full) − ϖ̇(full−Y)]`
-    /// `= −ϖ̇(full) + ϖ̇(full−X) + ϖ̇(full−Y) − ϖ̇(full−X−Y)`, the **negative** of the
-    /// inclusion–exclusion second difference (progress review after WP18, R1; until then this
-    /// row printed the second difference).
+    /// `ϖ̇(full) − ϖ̇(full − X) − ϖ̇(full − Y) + ϖ̇(full − X − Y)`: the interaction of two toggles
+    /// under [`Protocol::Remove`] (asserted against Park17's pair rows at +/- 5e-4 ″/cy since the
+    /// maintainer decisions of 2026-10-21 and 2026-11-08). This inclusion–exclusion second difference is
+    /// the NEGATIVE of Park et al. 2017's pair rows ("pair removal minus single removals",
+    /// ADR-0014); compare it with Park only through [`Protocol::to_park17`].
     CrossTermRemove,
 }
 
@@ -49,32 +49,33 @@ impl Protocol {
         matches!(self, Protocol::CrossTerm | Protocol::CrossTermRemove)
     }
 
-    /// The sign that turns a cross-term row (Park17 convention) into the inclusion–exclusion
-    /// second difference `ϖ̇(XY) − ϖ̇(X) − ϖ̇(Y) + ϖ̇(∅)` of the protocol's configurations
-    /// (`+1` for P-add, `−1` for P-remove); `None` for single-toggle rows.
+    /// The sign convention in which [`Protocol::to_park17`] reports this protocol's rows
+    /// (ADR-0014: every cross-term column carries its convention).
     #[must_use]
-    pub const fn second_difference_sign(self) -> Option<f64> {
+    pub const fn park17_convention(self) -> &'static str {
         match self {
-            Protocol::CrossTerm => Some(1.0),
-            Protocol::CrossTermRemove => Some(-1.0),
-            Protocol::Add | Protocol::Remove => None,
+            Protocol::Add => "P-add contribution",
+            Protocol::Remove => "P-remove contribution",
+            Protocol::CrossTerm => "Park17 sign = −[ϖ̇(base+X+Y) − ϖ̇(base+X) − ϖ̇(base+Y) + ϖ̇(base)]",
+            Protocol::CrossTermRemove => {
+                "Park17 sign: pair removal − single removals = −[ϖ̇(full) − ϖ̇(full−X) − ϖ̇(full−Y) + ϖ̇(full−X−Y)]"
+            }
         }
     }
 
-    /// The convention of the row's value, for tables and the JSON record.
+    /// Maps a row value of this protocol (the harness's signed sum) into Park et al. 2017's
+    /// Table 3 convention, so it can be compared with Park's rows (ADR-0014).
+    ///
+    /// Park's pair rows are "pair removal minus single removals": `[ϖ̇(full) − ϖ̇(full−X−Y)] −
+    /// [ϖ̇(full) − ϖ̇(full−X)] − [ϖ̇(full) − ϖ̇(full−Y)]`, the negative of the inclusion–exclusion
+    /// second difference ADR-0014 names. Both cross-term protocols compute that second difference
+    /// (about the full system for P-remove, about the base for P-add), so both are negated to be
+    /// read against Park's rows. Single-body rows are already contributions and are unchanged.
     #[must_use]
-    pub const fn convention(self) -> &'static str {
+    pub fn to_park17(self, value: f64) -> f64 {
         match self {
-            Protocol::Add => "rate(base + X) - rate(base)",
-            Protocol::Remove => "rate(full) - rate(full - X)",
-            Protocol::CrossTerm => {
-                "Park17 Table 3: pair contribution minus single contributions, P-add \
-                 [= second difference rate(base+X+Y) - rate(base+X) - rate(base+Y) + rate(base)]"
-            }
-            Protocol::CrossTermRemove => {
-                "Park17 Table 3: pair contribution minus single contributions, P-remove \
-                 [= -(second difference rate(full) - rate(full-X) - rate(full-Y) + rate(full-X-Y))]"
-            }
+            Protocol::Add | Protocol::Remove => value,
+            Protocol::CrossTerm | Protocol::CrossTermRemove => -value,
         }
     }
 }
@@ -250,7 +251,8 @@ impl Plan {
     /// `base + X + Y` for every pair; when `full` is not empty also `full`, `full − X` and
     /// `full − X − Y`. Combinations: P-add for every toggle, the P-add cross term of every pair,
     /// and (if `full`) P-remove for every toggle and the P-remove cross term of every pair. Cross
-    /// terms follow Park17's convention ([`Protocol::CrossTermRemove`]). `template` supplies
+    /// terms are inclusion–exclusion second differences; read them against Park17 only through
+    /// [`Protocol::to_park17`] (ADR-0014). `template` supplies
     /// everything but the body list and the span.
     ///
     /// # Errors
@@ -335,12 +337,13 @@ impl Plan {
                     combinations.push(Combination {
                         label: format!("{}+{}", x.label, y.label),
                         protocol: Protocol::CrossTermRemove,
-                        // Park17 convention (see `Protocol::CrossTermRemove`).
+                        // Inclusion–exclusion second difference; Park17's sign is
+                        // `Protocol::to_park17` of it (ADR-0014).
                         terms: vec![
-                            (-1, "full".into()),
-                            (1, format!("full-{}", x.label)),
-                            (1, format!("full-{}", y.label)),
-                            (-1, format!("full-{}-{}", x.label, y.label)),
+                            (1, "full".into()),
+                            (-1, format!("full-{}", x.label)),
+                            (-1, format!("full-{}", y.label)),
+                            (1, format!("full-{}-{}", x.label, y.label)),
                         ],
                     });
                 }
@@ -406,8 +409,9 @@ impl Plan {
     /// toggles that a combination needs, labelled `base` or `base+X+Y…` (toggle order), each
     /// subset run once. Combinations: P-add for every toggle and the P-add cross term of every
     /// pair; P-remove (`all − (all − X)`, where `all` is the template with every toggle applied)
-    /// for every toggle and the P-remove cross term of every pair, both cross terms in Park17's
-    /// convention ([`Protocol::CrossTerm`], [`Protocol::CrossTermRemove`]).
+    /// for every toggle and the P-remove cross term of every pair, both cross terms as inclusion–exclusion second differences
+    /// ([`Protocol::CrossTerm`], [`Protocol::CrossTermRemove`]; Park17's sign through
+    /// [`Protocol::to_park17`]).
     ///
     /// # Errors
     /// `FA-E1400` for repeated labels, a toggle that changes nothing, or a pair index out of
@@ -514,11 +518,13 @@ impl Plan {
             combinations.push(Combination {
                 label: format!("{x}+{y}"),
                 protocol: Protocol::CrossTermRemove,
+                // Inclusion–exclusion second difference, as in `Plan::bodies`; Park17's sign
+                // is `Protocol::to_park17` of it (ADR-0014).
                 terms: vec![
-                    (-1, full.clone()),
-                    (1, need(&without(&[i]))),
-                    (1, need(&without(&[j]))),
-                    (-1, need(&without(&[i, j]))),
+                    (1, full.clone()),
+                    (-1, need(&without(&[i]))),
+                    (-1, need(&without(&[j]))),
+                    (1, need(&without(&[i, j]))),
                 ],
             });
         }

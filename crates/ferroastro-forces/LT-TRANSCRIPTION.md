@@ -31,7 +31,7 @@ Clean room (DEP-008): no REBOUND/REBOUNDx, ASSIST, Swiftest or Mercury6 source w
 | pole | RA 286.13°, Dec 63.87° (Archinal et al. 2018) | IAU pole | given | WGCCRE 2015 (RA 286.13°, Dec 63.87°) or an override |
 | r | body relative to the Sun | planet relative to the Sun | relative to the central body | rᵢ − r☉ |
 | v | not defined in the text | planet relative to the Sun | relative to the central body | vᵢ − v☉ (INPOP21a's definition) |
-| bodies | "each body other than the Sun" | planets | test particle | every Major body except the Sun; Minor and Ring bodies do not feel it |
+| bodies | "each body other than the Sun" | planets | test particle | every moving body except the Sun, Major and Minor (WP22; OI-35 decision of 2026-10-21, "LT all bodies"); the fixed Ring masses do not feel it |
 | reaction on the Sun | not mentioned | not mentioned | — | `LtReaction::On` by default (momentum conserved; NEEDS HUMAN REVIEW), `Off` = the literal reading |
 
 **Algebra.** `2 Ω × v = (1+γ)GS/(c²r³) [−ŝ × v + 3(ŝ·r)(r × v)/r²]`, and `−ŝ × v = v × ŝ =

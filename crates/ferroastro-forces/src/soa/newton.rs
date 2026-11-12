@@ -164,7 +164,7 @@ impl<F: Frame, R: Real> ForceTerm<F, R> for NewtonianMutualSoa {
                 _ => k,
             }
         };
-        let b = SoaBodies::gather(view, major, group);
+        let b = SoaBodies::gather(view, major, group)?;
         let mut out: [Vec<R>; 3] = Default::default();
         newtonian_soa(&b, self.backend, &mut out).map_err(|(k, j)| ForceError::Singular {
             i: major.get(k).copied().unwrap_or(k),

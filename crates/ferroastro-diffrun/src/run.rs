@@ -4,6 +4,7 @@
 //! on-disk store, one estimator for every configuration, and the contribution table.
 
 use crate::DiffrunError;
+use crate::error::plan_error;
 use crate::estimator::{Estimate, Estimator, PassageSource};
 use crate::plan::{Combination, Plan, Protocol};
 use crate::track::Track;
@@ -28,6 +29,59 @@ pub struct RunOptions {
     pub store: Option<PathBuf>,
     /// Worker threads for the legs (scoped threads; sequential on wasm32).
     pub threads: usize,
+}
+
+/// Most checkpoint segments one N-body leg may be split into (`|span| / segment_years`, rounded
+/// up). A bound on work and store writes, far above any real plan (2000 yr in 50-yr segments is
+/// 40); it also keeps the segment counter far from `u32` overflow (PR #13 review R13-CODE-5).
+pub const MAX_SEGMENTS: u32 = 1_000_000;
+
+impl RunOptions {
+    /// Check the options on their own: `segment_years` finite and > 0.
+    ///
+    /// # Errors
+    /// `FA-E1400` otherwise (a zero, negative or NaN segment length never advances a leg).
+    pub fn validate(&self) -> Result<(), DiffrunError> {
+        if self.segment_years.is_finite() && self.segment_years > 0.0 {
+            Ok(())
+        } else {
+            Err(plan_error(
+                "run options",
+                format!(
+                    "segment_years {} is not a finite length > 0 (Julian years)",
+                    self.segment_years
+                ),
+                "use a finite segment length > 0, e.g. the default 50",
+            ))
+        }
+    }
+
+    /// Number of segments of an N-body leg of `spec`, checked against [`MAX_SEGMENTS`].
+    ///
+    /// # Errors
+    /// `FA-E1400` for invalid options or more than [`MAX_SEGMENTS`] segments.
+    pub fn segments(&self, spec: &ScenarioSpec) -> Result<u32, DiffrunError> {
+        self.validate()?;
+        let n = (spec.span.years.abs() / self.segment_years).ceil();
+        if n.is_finite() && n <= f64::from(MAX_SEGMENTS) {
+            // A whole number in [0, MAX_SEGMENTS]: exact.
+            #[expect(
+                clippy::cast_possible_truncation,
+                clippy::cast_sign_loss,
+                reason = "n is a whole number in [0, MAX_SEGMENTS], checked above"
+            )]
+            Ok(n as u32)
+        } else {
+            Err(plan_error(
+                &spec.name,
+                format!(
+                    "{} Julian years in segments of {:e} yr needs more than {MAX_SEGMENTS} segments",
+                    spec.span.years, self.segment_years
+                ),
+                "use a longer segment_years",
+            ))
+        }
+    }
 }
 
 impl Default for RunOptions {
@@ -139,8 +193,8 @@ fn test_particle_leg(
 /// test interruption; requires a store).
 ///
 /// # Errors
-/// `FA-E1402` for store I/O or a foreign store file; `FA-E1302` from the driver; the run's own
-/// errors.
+/// `FA-E1400` for invalid [`RunOptions`] (see [`RunOptions::segments`]); `FA-E1402` for store
+/// I/O or a foreign store file; `FA-E1302` from the driver; the run's own errors.
 pub fn run_leg(
     spec: &ScenarioSpec,
     data: &DataSources<'_>,
@@ -154,6 +208,7 @@ pub fn run_leg(
     if spec.mode == Mode::TestParticle {
         return test_particle_leg(spec, data, initial, epoch, (body, central)).map(Some);
     }
+    opts.segments(spec)?;
     let sign = if spec.span.years < 0.0 { -1.0 } else { 1.0 };
     let path = opts.store.as_deref().map(|d| store_path(d, spec));
     let stored = match &path {
@@ -358,14 +413,6 @@ pub struct Row {
     pub sigma_rss: f64,
     /// Its value from the cross-check estimates, if every term has one.
     pub cross_check: Option<f64>,
-    /// The convention of `value` ([`Protocol::convention`]; cross terms: Park17's).
-    #[serde(default)]
-    pub convention: String,
-    /// Cross-term rows only: the inclusion–exclusion second difference of the same
-    /// configurations (`value` times [`Protocol::second_difference_sign`]), kept as its own
-    /// labelled column.
-    #[serde(default)]
-    pub second_difference: Option<f64>,
 }
 
 /// A plan's result: provenance, per-configuration rates and the table.
@@ -381,6 +428,11 @@ pub struct PlanResult {
     pub shared_ic_hash: String,
     /// Constants version.
     pub constants: String,
+    /// Initial epoch shared by every leg, TDB Julian date (rule 4, PO-5). `None` for a plan with
+    /// no legs and for results written before the field existed (never a sentinel such as NaN,
+    /// which JSON cannot hold, or JD 0).
+    #[serde(default)]
+    pub ic_epoch_jd_tdb: Option<f64>,
     /// Per configuration.
     pub configs: Vec<ConfigResult>,
     /// The table.
@@ -480,8 +532,6 @@ pub fn evaluate(plan: &Plan, configs: &[ConfigResult]) -> Result<Vec<Row>, Diffr
                 value,
                 sigma_rss: var.sqrt(),
                 cross_check: cross,
-                convention: k.protocol.convention().to_owned(),
-                second_difference: k.protocol.second_difference_sign().map(|w| w * value),
             })
         })
         .collect()
@@ -500,7 +550,11 @@ pub fn run_plan(
     opts: &RunOptions,
 ) -> Result<PlanResult, DiffrunError> {
     plan.validate()?;
+    opts.validate()?;
     let specs: Vec<&ScenarioSpec> = plan.configs.iter().flat_map(|c| &c.legs).collect();
+    for s in specs.iter().filter(|s| s.mode != Mode::TestParticle) {
+        opts.segments(s)?;
+    }
     let initial = specs
         .iter()
         .map(|s| Ok((s.name.clone(), initial_conditions(s, data)?)))
@@ -555,6 +609,9 @@ pub fn run_plan(
             .first()
             .map(|(_, i)| i.constants.clone())
             .unwrap_or_default(),
+        ic_epoch_jd_tdb: initial
+            .first()
+            .map(|(_, i)| i.epoch_jd_tdb[0] + i.epoch_jd_tdb[1]),
         configs,
         rows,
     })
@@ -578,6 +635,8 @@ impl PlanResult {
 
     /// A markdown table: the per-configuration rates, then the rows by protocol, with
     /// `reference(label, protocol)` (e.g. Park17 Table 3) printed beside each row when given.
+    /// Row values are printed in Park17's sign convention ([`Protocol::to_park17`], ADR-0014),
+    /// labelled in each table header; [`Row::value`] and the JSON keep the raw signed sums.
     #[must_use]
     pub fn markdown(&self, reference: &dyn Fn(&str, Protocol) -> Option<f64>) -> String {
         use std::fmt::Write as _;
@@ -590,7 +649,13 @@ impl PlanResult {
             "**Shared IC hash (base bodies)** `{}`  ",
             self.shared_ic_hash
         );
-        let _ = writeln!(s, "**Constants** {}\n", self.constants);
+        let _ = writeln!(s, "**Constants** {}  ", self.constants);
+        let _ = writeln!(
+            s,
+            "**IC epoch** {} (shared by every leg)\n",
+            self.ic_epoch_jd_tdb
+                .map_or_else(|| "unknown".into(), |jd| format!("JD {jd:.6} TDB"))
+        );
         let _ = writeln!(
             s,
             "| configuration | bodies (NAIF) | ϖ̇ (″/cy) | jack-knife σ | formal σ | Q (″/cy²) | rms (″) | passages | cross-check ϖ̇ | steps |"
@@ -615,6 +680,15 @@ impl PlanResult {
                 c.steps
             );
         }
+        // Rule 4 (PO-5): every configuration states its force model and gauge.
+        let _ = writeln!(
+            s,
+            "\n| configuration | force model (gauge) and integrator |"
+        );
+        let _ = writeln!(s, "|---|---|");
+        for c in &self.configs {
+            let _ = writeln!(s, "| {} | {} |", c.label, c.model.replace('\n', " "));
+        }
         for p in [
             Protocol::Add,
             Protocol::Remove,
@@ -624,12 +698,16 @@ impl PlanResult {
             if self.rows_of(p).next().is_none() {
                 continue;
             }
-            let _ = writeln!(s, "\n*{} convention: {}*", p.label(), p.convention());
+            // Every value column is in Park17's convention (ADR-0014, `Protocol::to_park17`), so
+            // `value − reference` compares like with like; the JSON keeps the raw signed sums.
+            // Cross terms also print the raw inclusion–exclusion second difference ([`Row::value`])
+            // in its own labelled column (progress review after WP18, R1).
             let cross = p.is_cross_term();
             let _ = writeln!(
                 s,
-                "\n| {} row | value (″/cy) | σ_rss | cross-check | reference | value − reference |{}",
+                "\n| {} row | value (″/cy; {}) | σ_rss | cross-check | reference | value − reference |{}",
                 p.label(),
+                p.park17_convention(),
                 if cross {
                     " second difference (″/cy) |"
                 } else {
@@ -643,19 +721,20 @@ impl PlanResult {
             );
             for r in self.rows_of(p) {
                 let reference = reference(&r.combination.label, p);
+                let value = p.to_park17(r.value);
                 let _ = writeln!(
                     s,
                     "| {} | {:.6} | {:.6} | {} | {} | {} |{}",
                     r.combination.label,
-                    r.value,
+                    value,
                     r.sigma_rss,
                     r.cross_check
+                        .map(|x| p.to_park17(x))
                         .map_or_else(|| "—".into(), |x| format!("{x:.6}")),
                     reference.map_or_else(|| "—".into(), |x| format!("{x}")),
-                    reference.map_or_else(|| "—".into(), |x| format!("{:+.6}", r.value - x)),
+                    reference.map_or_else(|| "—".into(), |x| format!("{:+.6}", value - x)),
                     if cross {
-                        r.second_difference
-                            .map_or_else(|| " — |".into(), |x| format!(" {x:.6} |"))
+                        format!(" {:.6} |", r.value)
                     } else {
                         String::new()
                     }

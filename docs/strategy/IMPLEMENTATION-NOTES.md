@@ -4969,6 +4969,600 @@ Reviewer artefacts are in the session scratchpad `rev21/`, not committed:
 - `py/recompute.py`, `py/stagec.py`, `py/twobody*.py`, `py/lrl.py`;
 - `probe/probe*.py` (black-box REBOUNDx) and `fa2b/` (two-body scenarios).
 
+## PHY-012 provisional P-remove and PHY-019 gating (ADR-0014, PR #19)
+Maintainer decision C of 2026-10-20 (ADR-0014, requirements PR #19, merged to `main` as `8353efc`): "report both".
+PHY-012 and NUM-013(b) assert P-remove = ϖ̇(full) − ϖ̇(full − X) and report P-add = ϖ̇(Sun + Mercury + X) −
+ϖ̇(Sun + Mercury) as information only. The ADR text, the PHY-012/PHY-019/NUM-013 acceptance and the OI-38 update
+live on `main`. (Cherry-picked to `m3-newtonian-nbody` from `m4-eih` `92ca0bb` after `main` was merged in; the
+numbers below were measured on `m4-eih`. The `m3-newtonian-nbody` rerun is in "PR #13 judge fixes" below.) Until the merge of the final
+`m3-newtonian-nbody` into `m4-eih`, that branch had not merged `main`, so its own `docs/requirements` showed the older
+OI-38 text.
+
+**This choice was made after the results were known.** P-add was pre-registered in WP14 and missed 4 of 7 rows
+(WP14: Venus −0.022706, Earth/Moon −0.018997, Jupiter +0.038832, Saturn +0.043049 ″/cy; WP17: P-add Venus −0.029820
+on the forward window, the same for all four tools to 2e-8). The P-remove assertion is therefore **PROVISIONAL**
+until a maintainer confirms OI-38 against the Park 2017 text. **Revert condition:** if that text says P-add, the
+gate asserts P-add again and the P-add misses are physics discrepancies (`type:physics-discrepancy`).
+
+What changed:
+- ADR-0004 schema: new optional vector field `provisional = "OI-NN"` (`tests/vectors/schema.json`,
+  `ferroastro-vectors`). A provisional vector gates like any other. Its id is checked like `blocked_by`, it must be
+  listed in OPEN-ITEMS.md (`Vector::provisional_open_item`, FA-E0102 otherwise), and it cannot be combined with
+  `blocked_by`. Failure messages and reports print PROVISIONAL and point to the revert condition. Schema tests cover
+  blank, truncated and non-string references and the `blocked_by` exclusion. A PR-tier test keeps the seven PHY-012
+  rows provisional while OI-38 is open.
+- `park2017-table3.toml` (golden-change, provenance only; no value or tolerance changed). The seven single-planet
+  rows change from `blocked_by` to `provisional = "OI-38"`. `PARK17-T3-ASTEROIDS` loses `blocked_by`, so PHY-019
+  gates independently of OI-38 (review item R8). The six pair rows keep `blocked_by`, because they are never asserted.
+- `nightly_phy012` asserts P-remove and prints P-add, both cross-term protocols, the P-add misses and the
+  PROVISIONAL/revert lines. `nightly_phy013` asserts N-AST P-remove for PHY-019 and prints P-add.
+  `nightly_oracle_padd_venus` reports P-add Venus vs Park17 and no longer checks it, so it drops its PHY-012 citation.
+  The speed-table note was corrected.
+
+Nightly results (release, local, 32 threads, shared with another build; log `target/m4fix/nightly-phy012-phy013.log`;
+shared IC hash `6d875b67…bada552`):
+
+| row | Park17 | P-remove (asserted) | − Park | margin | P-add (info) | − Park | margin |
+|---|---|---|---|---|---|---|---|
+| Venus | 277.4176 | 277.418142 | +0.000542 | 0.11 | 277.394894 | −0.022706 | **4.54 OUTSIDE** |
+| Earth/Moon | 90.8881 | 90.888795 | +0.000695 | 0.14 | 90.869103 | −0.018997 | **3.80 OUTSIDE** |
+| Mars | 2.4814 | 2.481426 | +0.000026 | 0.01 | 2.479384 | −0.002016 | 0.40 |
+| Jupiter | 153.9899 | 153.990192 | +0.000292 | 0.06 | 154.028732 | +0.038832 | **7.77 OUTSIDE** |
+| Saturn | 7.3227 | 7.322772 | +0.000072 | 0.01 | 7.365749 | +0.043049 | **8.61 OUTSIDE** |
+| Uranus | 0.1425 | 0.142531 | +0.000031 | 0.01 | 0.139602 | −0.002898 | 0.58 |
+| Neptune | 0.0424 | 0.042378 | −0.000022 | 0.00 | 0.042068 | −0.000332 | 0.07 |
+
+- PHY-012/NUM-013(b): **PASS** under P-remove, PROVISIONAL (OI-38), with all 7 rows within ±0.005 ″/cy. 120 s wall.
+  Every value is identical to WP14.
+- Cross terms in Park's convention (P-remove): V+E/M −0.020782, V+J −0.001116, E/M+Ma −0.001570,
+  Ma+J +0.000199, J+S +0.041038, S+U +0.000380. Park's values are −0.0209, −0.0012, −0.0016, +0.0002, +0.0411 and
+  +0.0004. These are information only.
+- PHY-019 N-AST: **PASS**. P-remove is 0.001245 ″/cy (+0.000045, margin 0.15 of ±0.0003). P-add is 0.001242
+  (information only). PHY-013 N-SUM is 532.304907, margin 0.49, PASS. The run took 4067 s wall.
+  - The printed σ_rss of the N-AST P-remove row is 0.0022 ″/cy, 7× the tolerance. It is the RSS of two independent
+    per-configuration jack-knife σ, which ignores that the runs share their ICs. It is not used by the gate.
+    NEEDS HUMAN REVIEW: confirm that this is acceptable for a ±0.0003 rung.
+
+## PR #13 judge fixes (B1-B4, PO-4, minors)
+Response to the ferroastro-58 independent judge review of PR #13 at `5a05b88` (changes requested). Builder agent,
+2026-10-20/21, worktree of `m3-newtonian-nbody`. Every item below is a separate commit on this branch.
+
+**Merge.** `origin/main` (`fd30df7`: #16, #19, #24, #25, #26) merged with `--no-ff` (`5eb8504`). The only conflict was
+`docs/requirements/TRACE.md`; it was regenerated with `tools/trace.py`, never hand-merged. `docs/requirements` and ADRs
+are main's text.
+
+**B1/B2 (cherry-picked from `m4-eih`).** `1d56668`, `cc7e123`, `b4ea6ca` and `92ca0bb` were cherry-picked with `-x`;
+`abffb28` (TRACE regeneration) was not, and TRACE.md was regenerated here. Nothing in them depends on m4-only code.
+- The `provisional` schema change is its own commit, `046a471` (`tests/vectors/schema.json` only).
+  **NEEDS HUMAN REVIEW: ADR-0004 amendment pending in a separate docs PR by ferroastro-2f.** ADR-0004 on `main` does
+  not mention `provisional` yet (ADR-0014 still says the vectors carry `blocked_by`), so the schema runs ahead of the
+  ADR; there was no ADR wording to match.
+- The parser part of `1d56668` is `a6c86f1`. `speed_table.rs` exists on m3, so `b4ea6ca` applied (`f8a7061`).
+- `92ca0bb`'s notes section was taken alone (the m4 file has EIH sections this branch does not); its numbers were
+  measured on `m4-eih` and are re-measured below.
+- B2: `nightly_phy013` now carries `Verifies: PHY-019`, and `PARK17-T3-ASTEROIDS` lists PHY-019 (provenance-only
+  golden-change, `d2e657a`).
+
+**B3 (OI-77).** `num013a_scenario.rs` converts every analytic rate with n = √((GM☉ + GM☿)/a³) (per-orbit advance of
+the GM☉ test particle, as the ladder's `RATE_CONVENTION`). No expected value or tolerance moved
+(`NUM013-ISOLATION-DIFF-SCENARIO` is 0 ± 1e-4); its rationale now states the basis (provenance-only golden-change,
+`e7b3362`). Measured difference, before → after (″/cy): GR-SCHW −1.233e-5 → −1.589e-5 (analytic +3.57e-6, the OI-77
+figure), J2 +3.575e-8 → +3.345e-8, LT −2.747e-9 → −2.580e-9. A workspace grep found no other GM☉-only mean-motion
+conversion.
+
+**B4.** `grid_samples` counts in closed form with a checked conversion and returns FA-E1300 for non-finite input or
+more than `MAX_OUTPUT_SAMPLES` = 2²⁶ samples; `ScenarioSpec::validate` refuses `|span|/cadence` at that cap
+(FA-E1203). Tests: closed form = old loop on every scenario grid; 2³²+ intervals, tiny/subnormal cadences, ∞ and NaN
+are refused at once by `grid_samples` and by `validate`/`run` (test-particle and N-body), in debug and release.
+(The judge cites `ferroastro-propagate/src/passages.rs`; the task text said ferroastro-precession — the code is in
+propagate.)
+
+**PO-4.** `Protocol::to_park17` maps a row into Park's sign: both cross-term protocols compute the
+inclusion–exclusion second difference, which ADR-0014 states is the negative of Park's "pair removal − single
+removals", so both are negated; single-body rows are unchanged. The markdown report and the nightly print values,
+cross-checks and `value − reference` in that convention, with the convention in each header; JSON and `Row::value`
+keep the raw sums. A first commit (`0215956`) negated only P-remove; the PHY-012 run of the negative check showed the
+P-add cross terms opposite in sign to Park in 6/6 pairs, and `28bc7dc` negates both.
+
+**Minors.**
+- F3: the NUM-023 long-ensemble guard and the WP12 1b guard also check their documented failure values
+  (new vectors `NUM023-LONG-ENSEMBLE-KNOWN-FAILURE-ENERGY-SLOPE` 0.629 ± 0.018 and
+  `WP12-1B-KNOWN-FAILURE-ENERGY-SLOPE` 0.050 ± 0.027, the recorded slope and its fit standard error; labelled as
+  guards, never acceptance values). Long ensemble re-run: 0.6288534543, bound check passes (1.47e-4 of 0.018).
+  WP12 1b re-run (release, nightly profile, 4109 s under load): energy slope 0.050 ± 0.027, bound check passes
+  (3.2e-4 of 0.027), still the known failure.
+- F5: new unit test `lense_thirring_out_of_plane_uses_three_r_dot_s` (r·ŝ = 1). Mutating the coefficient 3.0 → 2.0
+  locally made it fail (`[0.0, 0.0, 1.414213562373095] vs [-0.7071067811865476, 0.0, 2.121320343559643]`); reverted,
+  never committed.
+- LIC-2: the `t_erfa_c.c`-copied vectors and the two tests that repeat their arguments carry
+  `Apache-2.0 AND BSD-3-Clause`, the NumFOCUS copyright and the ERFA licence block; `dep009_attribution` checks them.
+- LIC-3: `tools/oracles/nightly.sh` is the oracle job only (no cargo) and writes `oracle-job.done`;
+  `tools/oracles/nightly_ferroastro.sh` is the separate FerroAstro job that reads its files. CI-006's build-evidence
+  text in `docs/requirements/CI.md` still describes the combined script (requirements owner's text).
+- R13-CODE-2: `NewtonianPointMasses::acceleration` and the ephemeris-field acceleration check slice lengths
+  (FA-E0403). R13-CODE-3: `View::position/velocity` return `Result` (FA-E0500 for a bad index);
+  `momentum_over_g` returns `Option`. R13-CODE-4: `compare_states` refuses non-finite differences (FA-E1503).
+  R13-CODE-5: `RunOptions::validate`/`segments` (finite > 0, at most `MAX_SEGMENTS` = 10⁶; FA-E1400).
+  R13-CODE-6: oracle runners refuse scenario names that are not plain file stems. R13-CODE-7: proptest API-002
+  property tests in scenario, propagate, diffrun and oracle.
+
+**Left for the maintainer (not touched):** PO-6 (the 60× `ORACLE-STAGE-A-SWIFTEST-MAX-DR` widening) and B5
+(`pc_b_from_g` / NUM-023 at ≥ 5e7 steps; the long ensemble still fails at 0.629). Also open from the review and not
+addressed here: F6, F7, F8, F9, F10, LIC-1, PO-5.
+
+### Negative check: `provisional` still asserts
+At `d48261a`, `PARK17-T3-VENUS` was set locally from 277.4176 to 277.4276 (+0.01) and `nightly_phy012` was run
+(release, nightly profile). It FAILED; the vector was then restored (never committed):
+
+```
+PHY-012 Venus      P-remove 277.418142 vs Park17 277.4276 : -0.009458 arcsec/cy, margin 1.89 (OUTSIDE), ASSERTED, PROVISIONAL (OI-38)
+PHY-012 rows outside the tolerance under P-remove (asserted): 1
+thread 'nightly_phy012_park17_table3_newtonian_contributions' panicked at crates/ferroastro-diffrun/tests/nightly_phy012.rs:262:5:
+PHY-012 P-remove rows outside tolerance:
+FA-E0105: PARK17-T3-VENUS (...): measured 277.41814163541585 arcsec/cy, expected 277.4276 arcsec/cy, |diff| = 9.45836458413396e-3 > allowed 5e-3 arcsec/cy (abs Some(0.005), rel None); PROVISIONAL assertion (OI-38): it reverts if OI-38 is closed against its protocol (revert condition in OPEN-ITEMS.md OI-38 and the vector's tolerance_rationale)
+        FAIL [ 142.629s] (1/1) ferroastro-diffrun::nightly_phy012 nightly_phy012_park17_table3_newtonian_contributions
+```
+
+### Nightly PHY-012 and PHY-013 at the code tip
+Code tip `28bc7dcfc97c0e7a370d22640e319ded2f8694d8` (the only later commit is this docs-only one).
+`cargo nextest run --workspace --cargo-profile release --profile nightly --run-ignored only -E 'test(nightly_phy012) | test(nightly_phy013)'`,
+local, 32 threads, machine shared with other builds (load ≈ 45): **2/2 PASS**, 6320 s wall (PHY-012 194 s,
+PHY-013 6126 s). Shared IC hash `6d875b67…bada552`, 56 legs, 23 371 502 IAS15 steps for PHY-012.
+
+PHY-012 / NUM-013(b), Park17 Table 3, ″/cy:
+
+| row | Park17 | P-remove (ASSERTED, PROVISIONAL OI-38) | − Park | margin | P-add (information) | − Park | margin |
+|---|---|---|---|---|---|---|---|
+| Venus | 277.4176 | 277.418142 | +0.000542 | 0.11 | 277.394894 | −0.022706 | **4.54 OUTSIDE** |
+| Earth/Moon | 90.8881 | 90.888795 | +0.000695 | 0.14 | 90.869103 | −0.018997 | **3.80 OUTSIDE** |
+| Mars | 2.4814 | 2.481426 | +0.000026 | 0.01 | 2.479384 | −0.002016 | 0.40 |
+| Jupiter | 153.9899 | 153.990192 | +0.000292 | 0.06 | 154.028732 | +0.038832 | **7.77 OUTSIDE** |
+| Saturn | 7.3227 | 7.322772 | +0.000072 | 0.01 | 7.365749 | +0.043049 | **8.61 OUTSIDE** |
+| Uranus | 0.1425 | 0.142531 | +0.000031 | 0.01 | 0.139602 | −0.002898 | 0.58 |
+| Neptune | 0.0424 | 0.042378 | −0.000022 | 0.00 | 0.042068 | −0.000332 | 0.07 |
+
+P-remove: 0 of 7 rows outside ±0.005 (asserted, PASS). P-add: 4 of 7 outside (information only, ADR-0014).
+
+Cross terms in Park's sign (`Protocol::to_park17`: −(inclusion–exclusion second difference)), information only, ″/cy:
+
+| pair | Park17 | P-remove | − Park | P-add | − Park |
+|---|---|---|---|---|---|
+| Venus+Earth/Moon | −0.0209 | −0.020782 | +0.000118 | −0.022316 | −0.001416 |
+| Venus+Jupiter | −0.0012 | −0.001116 | +0.000084 | −0.000743 | +0.000457 |
+| Earth/Moon+Mars | −0.0016 | −0.001570 | +0.000030 | −0.001744 | −0.000144 |
+| Mars+Jupiter | +0.0002 | +0.000199 | −0.000001 | +0.000351 | +0.000151 |
+| Jupiter+Saturn | +0.0411 | +0.041038 | −0.000062 | +0.040937 | −0.000163 |
+| Saturn+Uranus | +0.0004 | +0.000380 | −0.000020 | +0.000298 | −0.000102 |
+
+Both protocols now agree in sign with Park in 6/6 pairs.
+
+PHY-013 / PHY-019 (Park17 mean orbit, epoch JDEPOC 2440400.5, J2000 ± 1000 Julian yr, quadratic + 14 Table-2 terms):
+- PHY-019 N-AST P-remove **0.001245** vs 0.0012 ± 0.0003: +0.000045, margin 0.15, ASSERTED, **PASS**. P-add 0.001242
+  (information only). The σ_rss caveat of the section above (0.0022, NEEDS HUMAN REVIEW) still applies.
+- PHY-013 N-SUM **532.304907** vs 532.30 ± 0.01: +0.004907, margin 0.491, **PASS**. Planets only 532.303644 (= WP14);
+  KBOs + ring +0.000019 (reported).
+
+### Gates
+At `28bc7dc` (all pass): `cargo fmt --check`; clippy `-D warnings`; nextest 270 passed, 41 skipped (every skip a
+`data_*`/`nightly_*` test); doctests 17 passed; `cargo deny check`; `cargo doc -D warnings`; ruff, ruff format, mypy
+strict; `reuse lint` (compliant); `trace.py --check` 0 errors; pytest 64 passed, 4 skipped (pyerfa not installed).
+
+### Adversarial review of the judge fixes (2026-10-21)
+Reviewer agent, on the builder tip `1fafeea`. Every judge item was checked against the ferroastro-58 review text on
+PR #13.
+- **Main had moved.** After the builder's merge (`5eb8504`, at `fd30df7`), `main` gained #28 (the ADR-0004 revision
+  defining `provisional`), #27 (PR-title and lint-canary CI) and #29 (the maintainer sign-offs of 2026-10-21). They
+  were merged with `--no-ff` (`1a2b4b3`), with TRACE.md regenerated by `tools/trace.py`.
+- **ADR-0004 alignment.** The "NEEDS HUMAN REVIEW: ADR-0004 amendment pending" note above is superseded: ADR-0004's
+  2026-10-21 revision is on `main` and accepted. Its contract requires `^OI-\d{2,}$`, but the schema and parser
+  accepted `^OI-\d+$`. Fixed in `a5dc213` (schema.json only, its own commit; the description now cites ADR-0004) and
+  `2b954ff` (parser, plus a test rejecting `provisional = "OI-7"`; setting the minimum back to one digit locally made
+  it fail, then it was reverted).
+- **Mutation checks (local, reverted, never committed):**
+  - B4: with the `validate` cap disabled, `output_grid_past_the_cap_is_refused_without_panic_or_hang` and the
+    scenario API-002 proptest fail.
+  - B4: with both `grid_samples` caps disabled, `grid_samples_closed_form_and_refusals` and the propagate API-002
+    proptest fail.
+  - F5: with LT `3.0 → 2.0` (`relativity.rs:412`), `lense_thirring_out_of_plane_uses_three_r_dot_s` fails.
+- **PO-4 sign.** Checked by algebra. If the rate carries a bilinear interaction term b_XY, both inclusion–exclusion
+  second differences (about `full` for P-remove, about `base` for P-add) equal +b_XY. Park's "pair removal − single
+  removals" equals −b_XY. Negating both protocols is therefore correct and independent of the measured signs.
+- **Negative check reproduced** at `2b954ff`. Venus was set locally to 277.4276, and `nightly_phy012` FAILED:
+  `FA-E0105: PARK17-T3-VENUS … |diff| = 9.45836458413396e-3 > allowed 5e-3 … PROVISIONAL assertion (OI-38)`. The
+  vector was reverted and never committed.
+- **Maintainer rulings since the builder's report** (PR #13 comment, 2026-10-21, and `main` #29) change the "left for
+  the maintainer" items above. They are now decided and block the merge:
+  - **B5 / NUM-023 blocks #13.** It must pass with an asserting test at ≥ 5e7 steps; a known-failure guard is not
+    enough.
+  - **PO-6 is rejected.** `ORACLE-STAGE-A-SWIFTEST-MAX-DR` must go back to 1 km, with the Swiftest gap explained or
+    fixed.
+  - **OI-38 is confirmed as P-remove.** Under ADR-0004 the OI-38 tick and the removal of `provisional` from the seven
+    Park rows land together, in #13. This pass touched neither: OPEN-ITEMS.md belongs to ferroastro-2f.
+- **Nightly re-run at code tip `2b954ff`** (release, nightly profile, local, load ≈ 38):
+  `-E 'test(nightly_phy012) | test(nightly_phy013)'` gave **2/2 PASS** in 4808 s (PHY-012 135 s, PHY-013 4673 s).
+  Every number is identical to the `28bc7dc` table above.
+  - P-remove: 0 of 7 rows outside ±0.005 (largest margin 0.14, Earth/Moon).
+  - P-add: 4 of 7 rows outside (information only).
+  - Cross terms in Park's sign agree with Park in 6/6 pairs for both protocols.
+  - N-AST P-remove: 0.001245 (margin 0.15, PHY-019 asserted).
+  - N-SUM: 532.304907 (margin 0.491).
+- **Gates at `2b954ff`:** all pass.
+  - fmt, clippy `-D warnings`, deny, `cargo doc -D warnings`, ruff, ruff format and mypy, reuse, `trace.py --check`
+    (0 errors).
+  - nextest: 270 passed, 41 skipped (`data_*` and `nightly_*` only).
+  - doctests: 17 passed.
+  - pytest: 78 passed, 4 skipped (pyerfa not installed).
+
+## Merge of the final `m3-newtonian-nbody` into `m4-eih` (cross-term API)
+M3 (PO-4) and M4 (progress review after WP18, R1) fixed the cross-term sign independently. The merge keeps M3's API:
+`Row::value` (and the JSON) is the raw inclusion–exclusion second difference for both cross-term protocols, and
+`Protocol::to_park17` negates it into Park17's sign ("pair removal minus single removals"); `park17_convention`
+labels it. M4's `Protocol::convention`, `Protocol::second_difference_sign` and the `Row::convention` and
+`Row::second_difference` fields described in WP19 above are gone; `Protocol::is_cross_term`, `Plan::switches_both`
+and the markdown's separate second-difference column are kept. M4's sign-flipped `CrossTermRemove` coefficients in
+`Plan::bodies` and `Plan::switches_both` are reverted to the second difference, so that `to_park17` is not applied
+twice. P-remove cross terms print the same Park17-sign values as before. The P-add cross term now prints
+−(second difference), M3's convention, where M4 printed +(second difference); P-add cross terms are information only.
+M4 JSON evidence written before this merge holds the opposite sign for `CrossTermRemove` rows.
+
+## WP22 — [M4] EIH for all bodies (D1), Lense–Thirring on Minor bodies, dμ*/dt barycentre (NUM-018)
+Branch `wp22-eih-all-bodies`, based on `origin/m4-eih` at `dbbc701`. Implements the maintainer decisions of
+2026-10-21 (Journal #12; NUM-020, NUM-009, PHY-014, NUM-019 and NUM-018 notes): D1 "Match DE440: all bodies",
+OI-35 "Sun reaction on; LT all bodies", OI-75 "Include dμ*/dt; scope to ephemeris mode".
+
+### Clean-room record (DEP-008, AGENTS.md rule 7)
+No REBOUND, REBOUNDx, ASSIST, Swiftest or Mercury6 source is opened. The EIH coefficients are the signed-off WP19
+transcription (NUM-020); nothing in Eq. 27's terms changes, only the sets the sums run over. The μ̇* expression is the
+time derivative of DE440 Eq. 2 (differentiated by hand); the velocity condition is DE430 Eq. 3 / Subbotin et al. 2023
+Eq. 5 as quoted in the NUM-018 sign-off. `mu_star_rate` and `relativistic_barycentre_with_rate` already exist on
+`m5-performance` (WP25, FerroAstro's own code); they are taken over textually so that the later merge is trivial,
+and they are re-verified here by checks of this WP's own.
+
+### Plan and pre-registered checks (written 2026-11-12 01:36 UTC, before any WP22 code or run)
+**Model.**
+- **Interaction graph.** The 1PN correction is applied to every interaction the Newtonian model contains. Define the
+  symmetric graph E of the tiered model (NUM-009): Major–Major, Major–Minor, Major–Ring and Minor–Ring; no
+  Minor–Minor and no Ring–Ring pairs. With `MinorReaction::Off` the Minor bodies are test particles: their GM is 0
+  as a source of anything.
+- **Eq. 27 over E.** For every **moving** body i (Major and Minor; the Moon is a Major body in every scenario, so it
+  already feels and sources EIH since WP19), the sources j and the potential U_i run over E(i); U_j runs over
+  E(j). The right-hand-side a_j is the Newtonian point-mass acceleration of j in the tiered model (over E(j)); a Ring
+  body has v_j = a_j = 0 (its frozen state). Ring bodies receive nothing (frozen). `RhsAcceleration::Iterated`
+  iterates every moving body. The coefficients (S1, S2, S3, B_ij) are the signed lines, unchanged.
+- **Why this is consistent.** Restricting every sum of the EIH Lagrangian to the pairs of a symmetric graph gives
+  a Lagrangian whose Euler–Lagrange equations are Eq. 27 with every sum restricted to the graph neighbours (the
+  three-body terms G²mᵢmⱼmₖ/(rᵢⱼrᵢₖ) need both edges; the a_j substitution uses the restricted Newtonian a_j). Its
+  boost invariance is pairwise, so the 1PN centre of mass with μᵢ* = GMᵢ(1 + vᵢ²/2c² − U_i^E/2c²), U^E over E(i),
+  is conserved to O(c⁻⁴). Check E3 tests this claim; if it fails, the claim is wrong and that is a finding.
+- **The two items NUM-009 left open** (to be decided by a human; NEEDS HUMAN REVIEW): (a) a Minor receiver's 1PN
+  sums do **not** include other Minor sources, because the tiered model omits their Newtonian pull and a 1PN
+  correction to an omitted force would be inconsistent; (b) the fixed Ring masses **are** sources in the 1PN sums
+  and in the potentials (their state: fixed position, zero velocity and acceleration), but receive nothing.
+- **Lense–Thirring** (`SolarLenseThirring`): every non-Sun **moving** body, Major and Minor (NUM-019, OI-35); the
+  Sun's reaction (default On) includes the Minor bodies. Ring bodies are frozen. Solar J2 stays Major-only (OI-76
+  open; not part of this WP).
+- **NUM-018.** `mu_star_rate` (μ̇*ᵢ = (GMᵢ/c²)[vᵢ·aᵢ + ½ Σⱼ GMⱼ (rᵢⱼ·vᵢⱼ)/rᵢⱼ³], Newtonian aᵢ) and
+  `relativistic_barycentre_with_rate` (Σμ*r = 0, Σ(μ̇*r + μ*v) = 0) in `ferroastro-eih`. Scenario key
+  `initial_conditions.barycentre = "relativistic"` (n-body only, opt-in; absent = header ICs unchanged, so every
+  existing IC hash and differential run is untouched), spelled as on `m5-performance`. This branch has no separate
+  "ephemeris mode"; the opt-in key is that scope. Ring bodies are translated in position only (they stay at rest).
+- **PHY-014 run (WP23)** keeps the header.440 ICs unchanged (the heliocentric rate does not depend on a uniform
+  metre-level shift; NUM-018's notes keep differential runs on the header ICs as well).
+
+**Checks.** Every bound is fixed here, before any run. A failure is a finding, not a reason to tune.
+
+| # | check | tier | pre-registered bound (vector) | rationale |
+|---|---|---|---|---|
+| E1 | **single-Minor equivalence**: Sun + 8 planets + geocentric Moon (header.440) + Ceres (REF-003 state); Ceres Minor vs Ceres Major. With one Minor body there is no Minor–Minor pair, so E is the complete graph in both cases and the 1PN corrections must agree; β = γ = 1 and (1.1, 0.9) | PR | max over bodies \|δa_Minor − δa_Major\| / \|δa_Major\| ≤ **1e-13** (`EIH-TIER-SINGLE-MINOR-REL`, new) | round-off of two summation orders, as `EIH-R3-LIMIT-CORRECTION-REL`; any graph error is O(1) for Ceres |
+| E2 | **independent reference evaluator** (in the test: Eq. 27 written again with an explicit edge predicate and freshly computed U_i, U_j, a_j per pair, O(N³)): synthetic Sun + 3 planets + 4 heavy Minor bodies (GM 1e-4 GM☉) + 2 Ring masses, reaction On and Off, β = γ = 1 and (1.1, 0.9) | PR | per moving body \|δa − δa_ref\| / \|δa_ref\| ≤ **1e-13** (same vector as E1); Ring bodies get exactly 0; **negative control**: the reference with Minor–Minor edges differs from the production value by > 1e-10 for some Minor body | the reference is a second transcription of the set rules; the control proves the comparison sees the graph |
+| E3 | **1PN centre of mass with tiering**: header.440 Sun, Mercury, Venus, Earth, Moon (geocentric), Mars Major; Jupiter, Saturn, Uranus, Neptune **Minor** (so the giant–giant pairs are omitted at both orders); EIH (β = γ = 1); 10 yr, every 10 d; R*_E = Σμ*r/Σμ* with U over E | PR | deviation from its least-squares line ≤ **1e-5 km** (`EIH-REL-SSB-DEVIATION-KM`, existing, C6's bound); the Newtonian barycentre's deviation ≥ **10×** larger (`EIH-NEWTON-SSB-RATIO-MIN`, existing) | the restricted-Lagrangian argument above. Heavy Minor bodies make it discriminating: a Minor body without 1PN terms (the WP19 behaviour) would move R* by ~1e-3–1e-2 km (Jupiter's 1PN acceleration × m_J/M over its period) |
+| E4 | **LT on a Minor body**: the WP20 synthetic fixture plus one Minor body; the Minor body's LT acceleration vs the single-body R3b form, γ = 1 and 0.999; momentum with the reaction | PR | ≤ 1e-13 relative (`LT-DE440-VS-R3B-REL`, existing); ≤ 8 ε (`NBODY-LT-REACTION-MOMENTUM-ULPS`, existing); the Minor body's acceleration ≠ 0 | as WP20 L1a/L1b |
+| E5 | **μ̇***: `mu_star_rate` vs a central difference of `mu_star` along the second-order Taylor flow, double-double, header.440 Sun + 8 planets + Moon (barycentric), half-width 60 s | PR | max_i \|μ̇*ᵢ − FD\| / max_i \|μ̇*ᵢ\| ≤ **1e-6** (`EIH-MUSTAR-RATE-FD-REL`, new) | truncation O((ωδ)²) ≈ 1e-9 for the Moon at δ = 60 s (WP25 measured 3.9e-6 at δ = 1 h; ×(60/3600)² = 1.1e-9); a wrong coefficient is O(1) |
+| E6 | **the dμ*/dt term matters**: EIH Sun + 8 planets + Moon (all Major, barycentric Moon), header.440, re-barycentred (i) with Σ(μ̇*r + μ*v) = 0 and (ii) with Σμ*v = 0 only; 10 yr, every 10 d | PR | (i) max_t \|R*(t) − R*(0)\| ≤ **5e-6 km** (`EIH-REL-SSB-DRIFT-10YR-KM`, new); (ii)/(i) ≥ **5** (`EIH-MUSTAR-RATE-DRIFT-RATIO-MIN`, new) | (i): IC round-off ~1e-15 km/s × 3e8 s ≈ 3e-7 km; (ii): DE430 pp. 5–6 report ~0.5 m/century for DE405's neglect, ≈ 5e-5 km per 10 yr |
+| E7 | **scenario key**: an n-body EIH scenario with `initial_conditions.barycentre = "relativistic"`; the key refused in test-particle mode; absent = ICs bitwise unchanged | PR | after re-barycentring \|Σμ*r\|/Σμ* ≤ **1e-6 km** and \|Σ(μ̇*r + μ*v)\|/Σμ* ≤ **1e-12 km/s** (`EIH-REBARY-RESIDUAL-KM`, `EIH-REBARY-RESIDUAL-KMS`, new); the IC source string names it; refusal is a stable FA code | f64 round-off of a 1e9 km-scale weighted sum after two passes (WP15 measured 7.5e-12 km with μ*) is far below; the bounds catch a missing pass or a wrong sign |
+| E8 | **cost (NUM-009)**: 10 yr from JDEPOC, IAS15 default, median of 5, one process: A = 16 Major (11 DE440 + 5 largest asteroids) Newtonian + EIH; B = A + 338 Minor with all-body EIH; C = B without EIH | nightly (run once locally) | reported only: B/A against NUM-009's < 2× (`NUM009-TIER-COST-RATIO`, `blocked_by = "OI-42"`), B/C (the EIH overhead). Prediction: B/A ≈ 30–150 (pair counts), B/C ≈ 2–5 | NUM-009 notes: "with EIH evaluated for all bodies the ratio MUST be re-measured. The bound is not changed here." |
+| E9 | **PHY-014 rung (WP23)**: PHY-012 full system + `gr_eih` + `sun_j2` (DE440 J2 2.19614e-7, WGCCRE pole) + `lense_thirring` (DE440 spin, reaction on) + 343 asteroids + 3 identified KBOs + 36-point ring, header.440, legs to J2000 ± 1000 yr (+30 d), Park2017 estimator (daily samples, Park17 mean-orbit plane, quadratic + 14 Table-2 terms) | nightly (long; left to the reviewer) | rate within **575.3093 ± 0.005** ″/cy (`PHY014-EIH-FULL-RATE`, new, PHY-014 acceptance) | prediction: N3's 575.308579 (planets, J2 Park, LT) − 0.000684 (J2 DE440 vs Park, PHY-010) + 0.001245 (N-AST P-remove, WP15) + 0.000019 (KBOs + ring) ≈ **575.30916**, i.e. Δ ≈ −0.0001 |
+| E10 | **real data**: Sun + 8 planets + geocentric Moon + 343 asteroids + 3 KBOs + ring from header.440/REF-003, all-body EIH + J2 (DE440) + LT, 10 yr every 10 d vs de440.bsp; the same without the small bodies | data | asserted (PROVISIONAL sanity): the Sun's max barycentric residual improves by ≥ **2×** (`EIH-ALLBODY-SUN-IMPROVEMENT-MIN`, new); every residual is published | WP19/WP20: the Sun's 1.40 km residual comes from the omitted asteroids, KBOs and ring moving the SSB |
+| E11 | **PHY-014 model smoke**: the E9 scenario built through the scenario API and run for 30 d | PR | completes; the model description lists the EIH and LT terms on Major and Minor tiers; the run's step cost is printed | wiring check (no tolerance) |
+
+**Mutation probes (planned):** Minor receivers skipped in `Eih`; Ring sources skipped; Minor sources omitted for
+Major receivers; U_j over all bodies instead of E(j); LT skipping Minor bodies; μ̇* with the ½ dropped; the velocity
+condition without μ̇*.
+
+### What was built (WP22, commits `04d7c39`…)
+- **`ferroastro-eih`**
+  - `Eih` evaluates the c⁻² part of Eq. 27 for every moving body (Major and Minor) over the tiered interaction
+    graph (`Graph::for_each_edge`: Major–Major, Major–Minor, Major–Ring, Minor–Ring). One pass computes U and the
+    Newtonian a over the graph and caches each edge's (r, 1/r³); a second pass adds both directions of every edge.
+    The coefficient lines (B_ij, S1–S3) are the signed ones, moved into `term()` unchanged. `Eih::with_minor_reaction`
+    mirrors `MinorFromMajors` (Off: Minor GM 0 as a source). `tiers()` is now [Major, Minor]; `corrections()` returns
+    storage order; two new `TermParameter`s record the scope.
+  - `mu_star_rate` and `relativistic_barycentre_with_rate`, textually those of `m5-performance` (WP25): the new
+    `barycentre.rs` blob `dcaa4bbf…` equals m5's.
+  - `TRANSCRIPTION.md` T12/T13 updated for D1 and D2 (DE430 p. 12 as the citation of the Newtonian a_j).
+- **`ferroastro-forces`**: `SolarLenseThirring` acts on every moving non-Sun body (Minor included); the Sun's reaction
+  includes them. `LT-TRANSCRIPTION.md` body row updated.
+- **`ferroastro-scenario`**: optional `initial_conditions.barycentre = "relativistic"` (`IcBarycentre`), refused
+  outside n-body mode (FA-E1203); schema regenerated. Spelling and doc text follow `m5-performance`.
+- **`ferroastro-propagate`**: `rebarycentre` (two passes, geocentric pair reconstructed for μ*, Moon − Earth slot
+  untouched, Ring masses moved in position only); the IC source string records it and the residuals.
+- **`ci/scenarios/phy014-eih-full-header440.toml`**: the PHY-014 template.
+- **Tests**: `eih_all_bodies.rs` (E1–E3), `wp22_barycentre.rs` (E5, E6), forces unit test E4,
+  `wp22_rebarycentre.rs` (E7), `wp22_phy014_model.rs` (E11), `nightly_num009_eih_tier_cost.rs` (E8),
+  `data_wp22_all_bodies_de440.rs` (E10), `nightly_phy014.rs` (E9, WP23). `.config/nextest.toml`: a long
+  slow-timeout for the PHY-014 nightly (scheduling only).
+- **Vectors** (`tests/vectors/eih.toml`, all written before their first run): `EIH-TIER-SINGLE-MINOR-REL`,
+  `EIH-MUSTAR-RATE-FD-REL`, `EIH-REL-SSB-DRIFT-10YR-KM`, `EIH-MUSTAR-RATE-DRIFT-RATIO-MIN`, `EIH-REBARY-RESIDUAL-KM`,
+  `EIH-REBARY-RESIDUAL-KMS`, `EIH-ALLBODY-SUN-IMPROVEMENT-MIN`, `PHY014-EIH-FULL-RATE`.
+
+### WP22 results (PR tier, pinned header.440, toolchain 1.95.0, 2026-11-12; loaded machine, load 30–45 on 32 cores)
+Every PR-tier check passed on its first run. No bound or expected value was changed after a run.
+
+| # | measured | bound | margin |
+|---|---|---|---|
+| E1 single-Minor equivalence (Ceres), β = γ = 1 / (1.1, 0.9) | **exactly 0** (bitwise) for all 11 bodies; Ceres \|δa\| = 7.04e-15 km/s² | 1e-13 | 0 |
+| E2 production vs independent reference, reaction On / Off, two PPN points | max 1.05e-15 | 1e-13 | 0.01 |
+| E2 negative control (Minor–Minor edges added) | 2.5e-2 on the Minor bodies | > 1e-10 | detected |
+| E2 Ring bodies | exactly 0 | exact | — |
+| E3 1PN centre of mass with the four giants Minor, 10 yr | **4.31e-10 km** (U over the graph); Newtonian barycentre 1.97e-5 km, ratio 4.6e4 | 1e-5 km; ratio ≥ 10 | 4e-5; pass |
+| E4 LT on a Minor body vs R3b (γ = 1 / 0.999) | 1.72e-16 / 5.99e-17; momentum 0.160 / 0.128 ε; Ring body exactly 0 | 1e-13; 8 ε | 0.002; 0.02 |
+| E5 μ̇* vs central difference (δ = 60 s, DD) | **1.091e-9** (Sun and Mercury; predicted 1.1e-9) | 1e-6 | 1e-3 |
+| E6 R* drift over 10 yr, full condition / Σμ*v only | **5.40e-10 km / 4.16e-5 km**, ratio 7.7e4 | 5e-6 km; ratio ≥ 5 | 1e-4; pass |
+| E7 re-barycentred residual, EMB system / geocentric + Pluto + ring | 0 km, 1.2e-18 km/s / 3.7e-11 km, 2.3e-18 km/s; ring masses at rest; Moon − Earth slot unchanged; key absent: records bitwise unchanged; test-particle mode refused FA-E1203 | 1e-6 km; 1e-12 km/s | 4e-5; 2e-6 |
+| E11 PHY-014 model smoke, 30 d | runs; EIH and LT act on [Major, Minor]; 46 steps, 1061 force evaluations, 1.9 s (42 ms/step) | structural | — |
+
+**Existing checks after the refactor.** All WP19–WP21 checks pass. The summation order changed, so some round-off
+numbers moved, all inside their unchanged bounds: C2b correction 1.288e-16 → 5.8e-17; C6 3.20e-10 → 3.50e-10 km;
+C5c 1.50e-5 → 4.07e-5 km (bound 1e-3; round-off divergence of two 10-yr runs); C5a/C5b, the binaries and the
+sympy checks are unchanged.
+
+**E6 matches DE430's statement.** Without μ̇* the barycentre drifts 4.2e-5 km in 10 yr, i.e. 0.42 m/century,
+against DE430's "about 0.5 m/century" for DE405.
+
+### Mutation probes (WP22; each applied to a backed-up file, the named tests run, the file restored; tree clean afterwards; script and log in the session scratchpad `mut/`)
+| # | mutant | killed by |
+|---|---|---|
+| M1 | Minor bodies do not receive the 1PN correction (the WP19 behaviour) | E1, E2, **E3** |
+| M2 | Ring masses are not sources | E2 |
+| M3 | Minor sources omitted for Major receivers | E1, E2, E3 |
+| M4 | U includes the Minor–Minor pairs | E2 |
+| M5 | LT skips Minor bodies | E4 |
+| M6 | μ̇* without the ½ | E5, E6 |
+| M7 | velocity condition without μ̇* | E6 |
+
+E3 kills M1, as the plan predicted: the 1PN centre-of-mass check sees a Minor body without its own 1PN terms.
+
+### WP22 cost (E8, NUM-009; nightly test run once locally, release, 2026-11-12, load 40–46 on 32 cores, so absolute times are pessimistic; ratios are from the same process)
+10 yr from JDEPOC, 5172 IAS15 steps in every configuration, median of 5:
+
+| configuration | bodies | median wall | per step |
+|---|---|---|---|
+| A: 16 Major, Newtonian + EIH | 16 | 3.55 s | 0.69 ms |
+| B: A + 338 Minor, EIH for every moving body | 354 | 111.5 s | 21.6 ms |
+| C: B without EIH (tiered Newtonian) | 354 | 33.1 s | 6.4 ms |
+
+- **B/A = 31.4** (NUM-009 bound < 2; prediction 30–150; reported only, `NUM009-TIER-COST-RATIO` is
+  `blocked_by = "OI-42"`). **The < 2× bound cannot be met by any model that integrates the asteroids**: the tiered
+  Newtonian run alone (C) costs 9.3× A, as WP15 found (28× with Newtonian Majors).
+- **EIH overhead B/C = 3.37** (prediction 2–5): evaluating the 1PN terms for all 354 bodies over the tiered graph
+  costs 2.4× the tiered Newtonian forces on top of them.
+- PHY-014 estimate (E11, debug-optimised test profile under load: 42 ms/step for 393 moving bodies + ring + J2 + LT;
+  a scratch run of the E9 plumbing, 2 × 3.1 yr in 70 s): about 21 s per simulated year per leg, i.e. **≈ 6 h per
+  1000-yr leg** on this machine under this load (the two legs run in parallel).
+
+### WP22 real-data result (E10, data tier; header.440 and de440.bsp from the pinned cache, SHA re-verified) — **FAILED its pre-registered assertion**
+All-body EIH + J2 (DE440) + LT, Sun + 8 planets + geocentric Moon, 10 yr every 10 d, 5172 steps each; maximum
+residual against de440.bsp, km:
+
+| body | planets only, bary | + small bodies, bary | planets only, helio | + small bodies, helio |
+|---|---|---|---|---|
+| Sun | 1.399 | **2.440** | – | – |
+| Mercury | 1.401 | 2.494 | 0.0163 | **0.0869** |
+| Venus | 1.483 | 2.480 | 0.115 | 0.050 |
+| Earth | 3.909 | 4.825 | 2.707 | 2.745 |
+| Moon | 219.98 | 220.15 | 218.87 | 218.89 |
+| Mars system | 10.23 | 2.446 | 11.25 | **0.020** |
+| Jupiter system | 11.51 | 2.743 | 12.22 | 0.475 |
+| Saturn system | 7.553 | 2.107 | 8.793 | 0.982 |
+| Uranus system | 10.27 | 8.947 | 9.744 | 6.720 |
+| Neptune system | 6.091 | 2.548 | 6.845 | 2.057 |
+
+- **The pre-registered check fails**: the Sun's barycentric residual gets worse, 1.399 → 2.440 km (factor 0.573,
+  bound ≥ 2). The bound and the test are unchanged; the test fails in the data tier.
+- **Reading.** With the small bodies every body carries a common barycentric offset of ≈ 2.4 km, while the
+  heliocentric residuals improve strongly: Mars 11.25 km → 20 m (560×), Jupiter 26×, Saturn 9×, Neptune 3.3×,
+  Venus 2.3×. A common offset is a drift of the model's barycentre relative to DE440's, i.e. a total-momentum
+  mismatch: the asteroids' momentum (Σ GM v / Σ GM up to ~1e-8 km/s, ~km per 10 yr) is now included, but DE440's SSB
+  also contains the 27 KBO masses FerroAstro does not integrate (only the 3 identified KBOs; OI-24) and the ring as
+  DE440 models it. My choice of the Sun's barycentric residual as the metric was wrong: it measures the SSB
+  definition, not the dynamics. The heliocentric residuals are the meaningful comparison.
+- **Mercury heliocentric gets worse, 16.3 m → 86.9 m.** Diagnostics (scratch runs, not committed): asteroids only
+  85.8 m; asteroids + KBOs 85.8 m; the full set with the **Minor bodies' 1PN terms switched off** (mutant M1) 86.9 m.
+  So the change comes from the asteroids' Newtonian pull, present since WP15, and **not from D1**; the 16 m without
+  asteroids was probably a partial cancellation (as the Moon in WP19). Its cause is not established (candidates:
+  the solar J2 pole, OI-76; the REF-003 asteroid states; DE440 vs this model's asteroid treatment, OI-78).
+  NEEDS HUMAN REVIEW.
+- The ring improves the outer planets' heliocentric residuals (Neptune 5.30 km with asteroids + KBOs → 2.06 km with
+  the ring).
+
+### WP23 (PHY-014 rung): written, not run
+`crates/ferroastro-diffrun/tests/nightly_phy014.rs::nightly_phy014_eih_full_rate_with_de440_constants` (nightly,
+`#[ignore]`) runs `ci/scenarios/phy014-eih-full-header440.toml` back and forward over 1000–3000 CE with the
+Park2017 estimator and asserts `PHY014-EIH-FULL-RATE` = 575.3093 ± 0.005 ″/cy. Expected ≈ 6 h per leg here, so the
+long run is left to the reviewer:
+`cargo nextest run -p ferroastro-diffrun --cargo-profile release --profile nightly --run-ignored only -E 'test(nightly_phy014_eih_full_rate_with_de440_constants)'`
+(checkpoints every 50 yr in `target/diffrun/store-wp23`; an interrupted run resumes). Its plumbing (scenario, two
+legs, store, estimator call) was exercised with a scratch copy over ±3 yr around JDEPOC: the legs ran (70 s) and the
+estimator refused the 6-yr window as ill-posed (25 samples for 31 parameters), as expected; the scratch file was
+deleted. Prediction: 575.30916 (Δ ≈ −0.0001).
+
+### Deviations and NEEDS HUMAN REVIEW (WP22)
+1. **The two set rules NUM-009 left open** (NEEDS HUMAN REVIEW): (a) a Minor receiver's 1PN sums exclude other Minor
+   sources (consistent with the tiered Newtonian model); (b) the fixed Ring masses are 1PN sources (v = a = 0) and
+   receive nothing. E3 shows the resulting model conserves its 1PN centre of mass to 4e-10 km.
+2. **NUM-020 re-check of the changed blobs** (NEEDS HUMAN REVIEW; required by the NUM-020 notes): `eih.rs`
+   `9f8a3fb8…` → `deefc428…` (summation sets and order, `term()` holds the signed coefficient lines unchanged);
+   `barycentre.rs` `9b43722d…` → `dcaa4bbf…` (additive: `mu_star_rate`, `relativistic_barycentre_with_rate`,
+   identical to m5-performance); `terms.rs` → `76e3a354…` after `15615ca` (LT body list and Minor reaction; this item first said `62ec6f6d…`, a stale id; review correction) and `7047ae8f…` after `c86d328` (`ForceTerm::minor_reaction`); `eih.rs` → `362a7603…` after `c86d328` (Ring v = 0, `minor_reaction`). E2 is an independent second evaluation of
+   Eq. 27 with the new set rules, not a human check.
+3. **E10 failed its pre-registered bound** (Sun barycentric improvement ≥ 2×; measured 0.573). Bound and test
+   unchanged; the data tier now has a failing test. The metric was ill-chosen (see above); a replacement check
+   (heliocentric residuals, e.g. Mars) would be post hoc and is not added. NEEDS HUMAN REVIEW: keep the failing
+   assertion as the record, or retire the vector with this explanation.
+4. **Mercury heliocentric residual vs de440.bsp worsens with the asteroids** (16.3 → 86.9 m), independent of D1.
+   NEEDS HUMAN REVIEW (with OI-76, OI-78).
+5. **NUM-009 cost bound**: B/A = 31.4 against < 2×; the asteroids alone (Newtonian) cost 9.3×. Proposed requirement
+   text below.
+6. **E1 deviation from the plan text**: E1 used barycentric Moon variables, not the geocentric pair, because it
+   compares the `Eih` term's own output and `NBodyModel` requires the `GeocentricMoon` term with the pair. The
+   geocentric path is covered by E3 and E11.
+7. **μ̇* in the re-barycentring uses the Newtonian accelerations by every body** (all pairs, Minor–Minor included),
+   not the tiered ones; the difference is O(GM_asteroid²) and far below the residual bounds.
+8. ~~**LT reaction with `MinorReaction::Off`**: the Sun still receives the LT reaction of Minor bodies in proportion to
+   their GM. Propagate always uses `On`.~~ **Superseded by `15615ca`**: with `Off` the Minor bodies send no LT
+   reaction; since `c86d328` `NBodyModel::new` also refuses terms whose Minor reaction settings differ.
+9. **Solar J2 remains Major-only** (OI-76 open; not in this WP's decisions).
+10. **Merge with m5-performance**: the barycentre functions and the scenario key are textually m5's; `nbody.rs`
+    (`rebarycentre`) is written independently and will conflict with m5's version, which moves every body
+    (Ring velocities included). Keep this branch's Ring handling or m5's, deliberately.
+
+### Proposed requirement text (for the requirement owners; requirement files not edited)
+- **NUM-009 acceptance**, replace "the run costs < 2× the 16-Major-body run" with: "With the DE440 asteroid set as
+  Minor bodies and EIH evaluated for every moving body, the run costs < 5× the same tiered run without EIH, and the
+  tiered run costs < 1× the all-mutual run. The ratio to the 16-Major-body run is measured and reported." (WP22
+  measured 3.37× and WP15 0.117×.) Notes: record decisions (a) and (b) above once confirmed.
+- **NUM-019 notes**: replace "The build branch's SolarLenseThirring … applies LT to Major bodies only, so the
+  Minor-body part is not yet met" with "Build evidence (wp22-eih-all-bodies): SolarLenseThirring acts on every moving
+  non-Sun body, Minor included, with the Sun's reaction including them
+  (crates/ferroastro-forces/src/nbody/tests.rs::solar_lense_thirring_acts_on_minor_bodies)."
+- **NUM-018 notes**: add "Build evidence on the m4 line (wp22-eih-all-bodies): mu_star_rate and
+  relativistic_barycentre_with_rate, the opt-in key initial_conditions.barycentre = "relativistic"; E5 1.09e-9,
+  E6 drift 5.4e-10 km per 10 yr with the full condition and 4.2e-5 km without μ̇* (0.42 m/century)."
+
+### WP22 gate results (local, toolchain 1.95.0, at code tip `14c6353`, `FA_DATA_DIR` = the pinned cache)
+All exit 0: `cargo fmt --all --check`; `cargo clippy --workspace --all-targets --all-features -- -D warnings`;
+`cargo nextest run --workspace` (**298 passed, 48 skipped**: `data_*` and `nightly_*`); `cargo test --doc
+--workspace` (17 passed); `cargo deny check`; `RUSTDOCFLAGS="-D warnings" cargo doc --no-deps --workspace`; ruff,
+ruff format, mypy (45 files), pytest (86 passed, 4 skipped); `reuse lint`; `trace.py --check` (121 requirements,
+700 citing tests, 0 errors). MSRV `cargo +1.85.0 check --workspace --all-targets`: clean. Data tier: only E10 was
+run (fails, above). Nightly: only E8 was run (pass, reported only).
+
+### WP22 review follow-up (maintainer rulings of 2026-11-11, relayed by the reviewer)
+Short diagnostic runs (scratch harness on the `ferroastro-forces` API, release, ≤ 4 min each, not committed; source
+and logs in the session scratchpad `merc/`): Sun + 8 planets + geocentric Moon from header.440 (no Pluto, as E10),
+all-body EIH + DE440 J2 + LT unless stated, 10 yr every 10 d against de440.bsp. "Along" is Mercury's along-track
+heliocentric residual at 10 yr; "max" its maximum heliocentric residual.
+
+**1. Mercury regression: what changes it.**
+
+| configuration | Mercury max (m) | Mercury along at 10 yr (m) | Mars helio max (km) | Sun bary max (km) |
+|---|---|---|---|---|
+| planets only | 16.3 | −7.0 | 11.25 | 1.40 |
+| + Ceres | 25.8 | −23.0 | 6.92 | 2.50 |
+| + Pallas | 20.4 | −11.0 | 12.78 | 1.53 |
+| + Vesta | 31.8 | −28.0 | 6.85 | 1.55 |
+| + top 3 by GM | 53.9 | −48.1 | 3.97 | 2.17 |
+| + top 16 | 59.9 | −50.7 | 1.56 | 2.04 |
+| + top 50 | 73.0 | −58.9 | 0.96 | 2.11 |
+| + all 343 | 85.8 | −65.7 | 0.015 | 2.20 |
+| + all 343 + 3 KBOs | 85.8 | — | 0.014 | 2.44 |
+| + all 343 + 3 KBOs + ring (= E10) | 86.9 | −66.0 | 0.020 | 2.44 |
+| same + Pluto | 86.5 | −66.0 | 0.035 | **0.238** |
+| top 16, asteroids do not pull Mercury | 299 | −198 | 1.56 | 2.04 |
+| top 16, asteroids do not pull the Sun | 250 | +140 | 2.07 | 1.39 |
+| top 16, asteroids pull neither | 16.4 | −7.1 | 2.07 | 1.39 |
+| planets only, **no LT** | 54.9 | +53.8 | 11.25 | 1.40 |
+| top 16, no LT | 20.3 | +10.2 | 1.56 | 2.04 |
+| all 343, **no LT** | 41.3 | **−4.9** | 0.018 | 2.20 |
+
+- **What the bisection shows (reworded after the independent review, S3):** the 16 → 87 m change is **attributable
+  to the asteroids' tidal (direct minus indirect) Newtonian pull on Mercury**. That the model computes this pull
+  *correctly* is **not shown**: the full model (asteroids + LT) disagrees with de440.bsp by 66 m along-track at
+  10 yr, while either effect alone agrees to ≲ 10 m, so at least one of them, or a third term, differs from DE440.
+  Followed up in issue #42; the harness is committed as
+  `crates/ferroastro-propagate/tests/data_wp22_mercury_diagnostics.rs` (`#[ignore]`d data test, configured by
+  `FA_WP22_DIAG`, asserts nothing). What is shown: it is a linear along-track drift (a mean-motion change), it grows with the asteroid
+  mass included (Ceres −16 m, Vesta −21 m, all 343 −59 m relative to the planets-only run), and it is the small
+  difference of two large terms (top 16: direct pull on Mercury +147 m, pull on the Sun −191 m). The analytic estimate
+  for Ceres, with ε = GM r³/(2R³ GM☉) = 6.7e-13 and δn/n ≈ −2ε over 41.5 orbits, is −20 m; the measurement is −16 m.
+- **Ruled out:** D1 (Minor 1PN terms off: 86.9 m, unchanged); KBOs and ring (≤ 1 m on Mercury); the asteroid ICs (Ceres
+  from REF-003 agrees with DE430 Table 13 to 43 km and 1.3e-6 km/s, and the tidal drift depends only on the masses and
+  orbit sizes); the 66 unidentified header masses (GM 11 232 km³/s² = 8.46e-8 GMS, ring included; estimated tidal
+  effect on Mercury ≈ 1 m over 10 yr); solar J2 acting on Majors only (the asteroids' J2 terms do not reach Mercury at
+  this level). **No code bug was found, so nothing was changed**; the size of the drift agrees with the analytic
+  estimate above, which is a consistency check of the pull's magnitude, not a proof against DE440.
+- **Why it looks like a regression: two ~60 m drifts.** The solar LT term also changes Mercury's mean motion at fixed
+  ICs (its in-plane part is radial): planets-only with and without LT give −7.0 and +53.8 m at 10 yr, so LT contributes
+  **−61 m**, as large as the asteroids' −59 m. de440.bsp agrees with this model to ≲ 10 m (no trend) with either
+  effect alone (planets + LT: −7 m; all asteroids without LT: −5 m), but not with both (−66 m). Venus behaves the same
+  way: all asteroids 46.6 m with LT, 31.6 m without; LT shifts it by −15 m, the expected r⁻² scaling of Mercury's −61 m.
+  The WP20 D1 conclusion "LT brings Mercury 3.4× closer to de440.bsp" was therefore made in a model without asteroids
+  and does not hold once they are included.
+- **100-yr check (top 50 asteroids):** Mercury along +742 m with LT, +1202 m without (planets only: +1579 and
+  +2038 m). Over 100 yr LT moves Mercury toward de440.bsp, and the residual is dominated by another drift that grows
+  roughly as t² (≈ 0.15 m/yr² if fitted as −7.4 m/yr · t + 0.15 m/yr² · t² through the 10- and 100-yr points); its cause
+  is not identified (Pluto and the 27 KBOs are omitted in these runs; the Earth–Moon figure, tides and librations are
+  omitted in all of them). So "de440.bsp has no LT mean-motion effect" is **not established**: the 10-yr
+  coincidence is suggestive, the 100-yr runs do not support it. NEEDS HUMAN REVIEW.
+- **Consequence for WP23.** The residual model difference is a mean-motion offset of δn/n ≈ 4e-12 on Mercury. That is
+  an along-track effect, not a perihelion-rate effect at the ±0.005 ″/cy level of PHY-014 (LT's whole rate
+  contribution is −0.0020 ″/cy). I see no reason in this diagnosis to hold WP23; the decision is the reviewer's.
+
+**E10's uniform ≈ 2.4 km barycentric offset: a different cause.** E10's template (`sun-planets-moon-newton-j2-10yr`)
+has **no Pluto**. The missing pull of Pluto (and of the 27 unmodelled KBOs, whose momentum is part of DE440's SSBC,
+Park et al. 2021 §2.2) moves the modelled bodies together against de440.bsp's barycentre. Adding Pluto to the full set
+lowers the Sun's barycentric residual from 2.44 km to **0.238 km**; with top 16 asteroids, from 2.04 to 0.224 km. The
+asteroids changed the offset (1.40 → 2.2 km) only because they removed a partial cancellation. Not a code bug; the E10
+check stays as the recorded failure (item 2). Initial Newtonian Σ GM v / Σ GM is 3.6e-8 km/s for the planets-only set
+(Pluto's momentum dominates), but it is not the drift: in DE440 the same subset moves with that velocity too.
+
+**2. E10b (post hoc, disclosed).** `data_eih_all_bodies_mars_heliocentric_residual_improves_with_the_asteroids`
+asserts that the Mars system's heliocentric residual improves ≥ 10× with the small bodies
+(`EIH-ALLBODY-MARS-HELIO-IMPROVEMENT-MIN`). **It was written after the E10 result**, which already showed 560×; the
+bound comes from physics, not from the measurement: DE430 chose the 343 asteroids for their perturbation of Mars, so the
+planets-only Mars residual is the asteroid signal, and with DE440's masses and ICs from the same ephemeris family at
+least 90% of it must go. Heliocentric residuals do not depend on the barycentre definition. **Measured: 11.25 km →
+0.0202 km (557×), pass.** The failed E10 assertion is kept unchanged as the record, with a doc note.
+
+**3. `MinorReaction::Off` and LT.** `SolarLenseThirring::with_minor_reaction` (default On, set explicitly in
+propagate): with Off, Minor bodies still feel LT but send no reaction to the Sun. Test
+`minor_reaction_off_switches_off_the_lt_reaction_of_minor_bodies`: every non-Sun body is bitwise unchanged; the Sun's
+difference equals −(GM_m/GM☉)a_m (6.2e-11 relative, cancellation-limited); the Major bodies alone balance momentum
+(0.245 ε, bound 8 ε). A new `TermParameter` records the setting.
+
+**4. Gates** (at `75b37f5`): all exit 0. fmt; clippy `-D warnings`; nextest **299 passed, 49 skipped**; doctests;
+deny; doc `-D warnings`; ruff, ruff format, mypy, pytest (86 passed, 4 skipped); reuse; trace (121 requirements,
+705 citing tests, 0 errors). Data tier: E10b pass (557×); E10 still fails as recorded.
+
+### WP22 independent-review fixes (2026-11-12; branch rebased on `origin/m4-eih` `bdcec8b`)
+- **S2, E10 as a bounded known-failure guard.** E10 and E10b now share one pair of 10-yr runs in a single test,
+  `data_eih_all_bodies_with_small_bodies_ten_years_vs_de440_bsp` (187 s, well inside the 600 s terminate; E10b is no
+  longer a separate test). The pre-registered `EIH-ALLBODY-SUN-IMPROVEMENT-MIN` (≥ 2) is printed ("FAILS as recorded"),
+  not asserted. The guard `E10-KNOWN-FAILURE-SUN-BARY-FACTOR` = 0.573 ± 0.05 passes while the documented failure
+  reproduces in [0.523, 0.623] and fails if it changes, worsens or stops reproducing (provenance and band in the
+  vector). Data-tier run: factor 0.573 (guard pass), Mars 557× (E10b pass).
+- **S3, wording and reproducibility.** The follow-up's "computes correctly" is withdrawn: the bisection attributes the
+  change to the asteroids' pull; correctness against DE440 is not shown (full model 66 m off, either effect alone
+  ≲ 10 m), issue #42. The harness is committed as
+  `crates/ferroastro-propagate/tests/data_wp22_mercury_diagnostics.rs` (`#[ignore]`d, `FA_WP22_DIAG`); a re-run of
+  `ids:2000001` reproduces the table's Ceres row exactly (25.78 m, −22.97 m).
+- **S4, NUM-009 cost bounds asserted.** `NUM009-TIER-COST-RATIO` now holds the revised acceptance (EIH for every body
+  / the same tiered run without EIH < 5; golden-change, blocked_by OI-42 removed); `NUM009-TIER-VS-ALL-MUTUAL` (< 1)
+  is asserted too. The E8 nightly adds configuration D (the same 354 bodies all Major, Newtonian), runs A, B, C, D
+  interleaved, records the 1-minute load and asserts both bounds; the WP15 Newtonian nightly reports B/A only.
+- **NITs.** `eih.rs` sets v = 0 (and a = 0, as before) for bodies that do not move, whatever is stored (test
+  `ring_bodies_enter_eih_with_zero_velocity_whatever_is_stored`, killed by the mutant that reads the stored velocity).
+  `ForceTerm::minor_reaction` (reported by `MinorFromMajors`, `SolarLenseThirring`, `Eih`) lets `NBodyModel::new`
+  refuse terms whose Minor reaction settings differ (FA-E0500; tests in forces and eih). The stale `terms.rs` blob id
+  and deviation item 8 are corrected above. E10b's `Verifies:` is NUM-009, NUM-019, REF-003 (no PHY-014); the Mars
+  vector's requirement list is NUM-009, REF-003.
+- **E8 re-measured, interleaved** (release, nightly test with `FA_COST_YEARS=5 FA_COST_ROUNDS=3` to stay inside the
+  20-min limit of a local run; the nightly default stays 10 yr × 5 rounds; 2026-11-12, 1-minute load 17.8–30.0, median
+  22.2, on 32 cores; 2586 steps per run): medians A 1.153 s, B 54.27 s, C 15.23 s, D 63.97 s. **B/C = 3.56 (< 5,
+  pass)**, **C/D = 0.238 (< 1, pass)**, B/A = 47.1 (reported). Round-to-round scatter is ±20% (B 46.8–65.4 s), which
+  is why the median of interleaved rounds is used. The earlier block measurement gave B/C = 3.37.
+- **Gates** (at `766e60b` + this notes commit): all exit 0. fmt, clippy `-D warnings`, nextest **302 passed, 49 skipped**, doctests, deny, doc `-D warnings`, ruff, ruff format, mypy, pytest (86 passed, 4 skipped), reuse, trace (121 requirements, 709 citing tests, 0 errors). Data tier: the combined E10 guard + E10b test passes (187 s); the diagnostic harness runs (Ceres row reproduced).
+
 ## WP24 — [M5] `ferroastro-abm`: ABM PECE/PECEC order 8–14 with DP8 start-up
 Branch `m5-performance` (stacked on `m4-eih` at `78d5a4c`), draft PR (opened with the first push).
 

@@ -211,13 +211,16 @@ fn model<R: Real>(
         let gamma = spec.forces.ppn.map_or(de.ppn_gamma(), |p| p.gamma);
         let c = Velocity::from_km_per_s(R::from_f64(de.speed_of_light().km_per_s()))
             .map_err(|e| setup(&spec.name, e.to_string(), "check the DE440 table"))?;
-        terms.push(Box::new(SolarLenseThirring::new(
-            solar_spin(de, data, &spec.name)?.cast(),
-            c,
-            R::from_f64(gamma),
-            solar_pole::<R>(data)?,
-            LtReaction::On,
-        )?));
+        terms.push(Box::new(
+            SolarLenseThirring::new(
+                solar_spin(de, data, &spec.name)?.cast(),
+                c,
+                R::from_f64(gamma),
+                solar_pole::<R>(data)?,
+                LtReaction::On,
+            )?
+            .with_minor_reaction(MinorReaction::On),
+        ));
     }
     Ok((NBodyModel::new(&bodies, vars, terms)?, gms))
 }
@@ -371,44 +374,67 @@ fn major_asteroid_filter(
     })
 }
 
-/// Fixed-point passes of [`rebarycentre`] (μ* depends on the velocities; translation leaves
-/// every rᵢⱼ unchanged).
+/// Fixed-point passes of [`rebarycentre`] (μ* depends on the velocities being corrected;
+/// translation leaves every rᵢⱼ unchanged). Three, as recorded in `EPH-REBARY-DD-RESIDUAL-KM`.
 const REBARYCENTRE_PASSES: usize = 3;
 
-/// Translate the packed initial conditions to the relativistic SSB (NUM-018; Subbotin et al.
-/// 2023 Eq. 5), in `R`. Every slot moves by the same position and velocity except the geocentric
-/// Moon slot (Moon − Earth). Returns the offset left after the last pass (km, km/s).
+/// Move the packed initial conditions to the relativistic SSB (`initial_conditions.barycentre =
+/// "relativistic"`, NUM-018, OI-75 decision of 2026-10-21): Σ μᵢ* rᵢ = 0 and
+/// Σ (μ̇ᵢ* rᵢ + μᵢ* vᵢ) = 0 over every body with mass (Park et al. 2021 Eqs. 1–2; DE430 Eq. 3,
+/// Subbotin et al. 2023 Eq. 5), μ* and μ̇* from the physical barycentric states (a geocentric
+/// Earth–Moon pair is reconstructed; μ̇* uses the Newtonian accelerations by every body). Every
+/// moving body is translated by the same position and velocity (the Moon − Earth slot is a
+/// difference and stays), fixed Ring masses by the position only. Computed in `R`
+/// (double-double in the ephemeris mode, WP25). Returns the residual |Σμ*r|/Σμ* (km) and
+/// |Σ(μ̇*r + μ*v)|/Σμ* (km/s) after the last pass.
 fn rebarycentre<R: Real>(
     model: &NBodyModel<Icrf, R>,
-    gms: &[IcRecordGm],
     de: &De440,
     x: &mut [R],
     v: &mut [R],
 ) -> Result<(f64, f64), PropagateError> {
-    let n = model.layout().len();
-    let moon = model.layout().moon_pair().map(|p| p.moon);
+    let layout = model.layout();
+    let n = layout.len();
     let c = Velocity::from_km_per_s(R::from_f64(de.speed_of_light().km_per_s()))
         .map_err(|e| setup("rebarycentre", e.to_string(), "check the DE440 table"))?;
+    let pair = layout.moon_pair().copied();
     let offset = |x: &[R], v: &[R]| -> Result<([R; 3], [R; 3]), PropagateError> {
-        let s = model.unpack(x, v)?;
-        let bodies = s
-            .states()?
-            .iter()
-            .zip(gms)
-            .map(|(b, &(_, gm))| {
-                let (p, w) = crate::setup::raw(&b.1);
+        let along = |b: [R; 3], r: [R; 3], f: R| {
+            let ([b0, b1, b2], [r0, r1, r2]) = (b, r);
+            [r0.mul_add(f, b0), r1.mul_add(f, b1), r2.mul_add(f, b2)]
+        };
+        let bodies: Vec<BarycentreBody<R>> = (0..n)
+            .map(|i| {
+                let (mut p, mut w) = (slot(x, n, i), slot(v, n, i));
+                if let Some(q) = pair {
+                    let (bp, bv) = (slot(x, n, q.earth), slot(v, n, q.earth));
+                    let (rp, rv) = (slot(x, n, q.moon), slot(v, n, q.moon));
+                    if i == q.earth {
+                        (p, w) = (
+                            along(bp, rp, -q.moon_fraction),
+                            along(bv, rv, -q.moon_fraction),
+                        );
+                    } else if i == q.moon {
+                        (p, w) = (
+                            along(bp, rp, q.earth_fraction),
+                            along(bv, rv, q.earth_fraction),
+                        );
+                    }
+                }
                 BarycentreBody {
-                    gm: R::from_f64(gm),
+                    gm: layout.gm(i),
                     position: p,
                     velocity: w,
                 }
             })
-            .collect::<Vec<_>>();
+            .collect();
         Ok(relativistic_barycentre_with_rate(&bodies, c)?)
     };
+    let moon = pair.map(|q| q.moon);
     for _ in 0..REBARYCENTRE_PASSES {
         let (r, w) = offset(x, v)?;
         for i in (0..n).filter(|&i| Some(i) != moon) {
+            let moves = layout.moves(i);
             for k in 0..3 {
                 if let (Some(xs), Some(vs), Some(&rk), Some(&wk)) = (
                     x.get_mut(k * n + i),
@@ -417,7 +443,9 @@ fn rebarycentre<R: Real>(
                     w.get(k),
                 ) {
                     *xs -= rk;
-                    *vs -= wk;
+                    if moves {
+                        *vs -= wk;
+                    }
                 }
             }
         }
@@ -513,13 +541,12 @@ impl<R: Real> NBodyRun<R> {
         let (mut x0, mut v0) = model.pack(&states, pair.as_ref())?;
         let n = model.layout().len();
         if spec.initial_conditions.barycentre == Some(IcBarycentre::Relativistic) {
-            let residual = rebarycentre(&model, &gms, &de, &mut x0, &mut v0)?;
+            let (dr, dv) = rebarycentre(&model, &de, &mut x0, &mut v0)?;
             source = format!(
-                "{source}; re-barycentred to the relativistic SSB (Park et al. 2021 Eqs. 1-2, \
-                 Subbotin et al. 2023 Eq. 5) in {}, residual {:.3e} km, {:.3e} km/s",
-                R::NAME,
-                residual.0,
-                residual.1
+                "{source}; re-barycentred to the relativistic SSB with dmu*/dt (Park et al. 2021 \
+                 Eqs. 1-2, DE430 Eq. 3, Subbotin et al. 2023 Eq. 5) in {}, residual {dr:.3e} km, \
+                 {dv:.3e} km/s",
+                R::NAME
             );
         }
         let records: Vec<IcRecord> = gms

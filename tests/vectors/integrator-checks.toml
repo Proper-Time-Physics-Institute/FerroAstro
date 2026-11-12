@@ -86,7 +86,7 @@ retrieved = "2026-10-15"
 tolerance = { abs = 0.05 }
 tolerance_rationale = "Not blind: chosen after a WP6 probe measured +0.0112 (k = 1/7) and -0.150 (mutant k = 1/6). Justification independent of that number: b7 is not exactly proportional to dt^7 (the Radau fit mixes in O(dt^8) terms, a relative O(omega dt) ~ 1e-2 effect at ~70 steps per orbit), and the band must exclude the nearest plausible wrong exponents, |1 - 7k| = 0.167 (1/6) and 0.125 (1/8). 0.05 is below half of the smaller of these and above the O(1e-2) contamination."
 verified_by = "WP6 builder agent, 2026-10-15: derived from R&S Eq. 11; values measured on the m0-foundation branch, see IMPLEMENTATION-NOTES WP6."
-notes = "NEEDS HUMAN REVIEW (WP6 progress review, tagged in WP7): non-blind tolerance. The 0.05 band was fixed after the probe values were seen; a maintainer should confirm the band from the rationale alone. Value and tolerance unchanged since WP6."
+notes = "REVIEWED, accepted by the maintainer 2026-11-08 (#13 questionnaire, Journal #14) (WP6 progress review, tagged in WP7): non-blind tolerance. The 0.05 band was fixed after the probe values were seen; a maintainer should confirm the band from the rationale alone. Value and tolerance unchanged since WP6."
 
 [[vector]]
 id = "NUM006-F64-BENCH-RATIO"
@@ -99,7 +99,7 @@ source = "NUM-006 acceptance: the f64-path benchmark is unchanged relative to a 
 citation = "FerroAstro docs/requirements/NUM.md NUM-006; ADR-0002 Confirmation"
 retrieved = "2026-10-15"
 tolerance = { rel = 0.02 }
-tolerance_rationale = "PROVISIONAL (WP7 brief): 2 % on the median of 5 alternated runs. NUM-006 says 'unchanged' without a number; 2 % is above the run-to-run scatter of a median on a shared 32-thread machine and below the 10-30 % that a missed inlining or a boxed scalar would cost. NEEDS HUMAN REVIEW: confirm the band."
+tolerance_rationale = "PROVISIONAL (WP7 brief): 2 % on the median of 5 alternated runs. NUM-006 says 'unchanged' without a number; 2 % is above the run-to-run scatter of a median on a shared 32-thread machine and below the 10-30 % that a missed inlining or a boxed scalar would cost. REVIEWED, accepted by the maintainer 2026-11-08 (#13 questionnaire, Journal #14): confirm the band."
 verified_by = "WP7 builder agent, 2026-10-15: written before the first comparison run; tools/bench_num006.py reads the band from this vector."
 
 [[vector]]
@@ -129,3 +129,17 @@ retrieved = "2026-10-15"
 tolerance = { abs = 1.0e-6 }
 tolerance_rationale = "NUM-010's location bound applied to the double-double run, which removes round-off as an explanation. The f64 run is reported, not asserted against the analytic times: after ~7000 steps its along-track round-off (Brouwer t^(3/2), ~1e-11 rad) amounts to ~1e-5 s, which is round-off by NUM-010's own wording. Written in WP7 before the first run."
 verified_by = "WP7 builder agent, 2026-10-15: analytic (Kepler's third law); measured values in IMPLEMENTATION-NOTES WP7."
+
+[[vector]]
+id = "WP12-1B-KNOWN-FAILURE-ENERGY-SLOPE"
+requirement = ["NUM-023"]
+quantity = "KNOWN-FAILURE GUARD, not an acceptance value: fitted energy-error exponent of the pre-registered WP12 check 1b N-body ensemble (32 x 100 000 yr, Sun + planets + solar J2 with reaction, IAS15 f64), as documented when the failure was recorded; it reproduces under both IAS15 predictors (B-increment accumulation before 2026-11-08, pc_b_from_g since)"
+value = 0.050
+unit = "1"
+kind = "measured"
+source = "FerroAstro nightly_nbody_brouwer_energy_slope_with_solar_j2, first run 2026-10-15: energy slope 0.050 +/- 0.027 (fit standard error) over 1.01e9 steps; NUM-023 asks 0.5 +/- 0.1, so this is a FAILURE (known failure accepted for #13 by the maintainer 2026-11-08; redesign at M5 in issue #34). Re-run 2026-11-08 after pc_b_from_g became the IAS15 default (#13, B5): energy slope 0.065 +/- 0.025, inside this guard's band, run solo in 7200 s. The test's own diagnostic says the f64-evaluated energy error stays on its ~1e-15 evaluation floor for 1e5 yr, so the fitted slope does not measure Brouwer growth under either predictor. Value and tolerance unchanged."
+citation = "FerroAstro docs/strategy/IMPLEMENTATION-NOTES.md WP12 (check 1b result table, '0.050 +/- 0.027')"
+retrieved = "2026-10-20"
+tolerance = { abs = 0.027 }
+tolerance_rationale = "The fitted slope's own standard error as recorded with the failure. The run is deterministic; the band lets the guard notice when the failure worsens or changes instead of passing for any failing slope (PR #13 judge review F3). Never an acceptance tolerance. Set after the value was measured; it widens nothing."
+verified_by = "PR #13 judge-fix builder agent, 2026-10-20: value and standard error copied from IMPLEMENTATION-NOTES WP12."

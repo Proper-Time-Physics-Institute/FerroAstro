@@ -128,12 +128,12 @@ impl<F: Frame, R: Real> ForceTerm<F, R> for HeliocentricSchwarzschild<R> {
         };
         let layout = view.layout();
         let mu = layout.gm(sun);
-        let (ps, ws) = (view.position(sun), view.velocity(sun));
+        let (ps, ws) = (view.position(sun)?, view.velocity(sun)?);
         for &i in layout.indices(Tier::Major) {
             if i == sun {
                 continue;
             }
-            let (pi, wi) = (view.position(i), view.velocity(i));
+            let (pi, wi) = (view.position(i)?, view.velocity(i)?);
             let r = [pi[0] - ps[0], pi[1] - ps[1], pi[2] - ps[2]];
             let v = [wi[0] - ws[0], wi[1] - ws[1], wi[2] - ws[2]];
             let r2 = dot(r, r);

@@ -72,8 +72,9 @@ fn sub(a: [f64; 3], b: [f64; 3]) -> [f64; 3] {
 /// which also removes the uniform drift of a body subset's barycentre.
 ///
 /// # Errors
-/// `FA-E1503` if the epochs differ or a golden time or body (or the centre) has no FerroAstro
-/// counterpart, `FA-E1502` if the golden lacks its epoch or has an invalid centre.
+/// `FA-E1503` if the epochs differ, a golden time or body (or the centre) has no FerroAstro
+/// counterpart, or a difference is not finite (a NaN or infinite run state); `FA-E1502` if the
+/// golden lacks its epoch or has an invalid centre.
 pub fn compare_states(
     golden: &GoldenStates,
     run: &RunOutput,
@@ -120,6 +121,17 @@ pub fn compare_states(
         }
         let dr = norm(p, g.position_km);
         let dv = norm(v, g.velocity_km_s);
+        // A NaN would fail every `>` and be dropped by `max`, so a non-finite run state could
+        // pass as "no difference" (PR #13 review R13-CODE-4); refuse it.
+        if !(dr.is_finite() && dv.is_finite()) {
+            return Err(OracleError::Comparison {
+                what: what(),
+                problem: format!(
+                    "non-finite difference for NAIF {} at t = {} d (|dr| {dr}, |dv| {dv}): the run state is not finite",
+                    g.naif, g.t_days
+                ),
+            });
+        }
         match bodies.iter_mut().find(|b| b.naif == g.naif) {
             Some(b) => {
                 if dr > b.max_dr_km {
@@ -141,4 +153,80 @@ pub fn compare_states(
         times: golden.times().len(),
         bodies,
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use ferroastro_core::ErrorCode;
+
+    fn golden() -> GoldenStates {
+        let text = format!(
+            "# epoch_jd_tdb: 2451545\n{}\n0,199,1,2,3,4,5,6\n1,199,1,2,3,4,5,6\n",
+            crate::STATE_COLUMNS
+        );
+        GoldenStates::parse("g.csv", &text).unwrap()
+    }
+
+    fn record(t_days: f64, p: [f64; 3]) -> StateRecord {
+        let parts = |z: [f64; 3]| z.map(|c| [c, 0.0]);
+        StateRecord {
+            t: [t_days * SECONDS_PER_DAY, 0.0],
+            bodies: vec![199],
+            positions: vec![parts(p)],
+            velocities: vec![parts([4.0, 5.0, 6.0])],
+        }
+    }
+
+    #[expect(
+        clippy::default_trait_access,
+        reason = "the counter type lives in ferroastro-integrators, not a dependency of this crate"
+    )]
+    fn run(states: Vec<StateRecord>) -> RunOutput {
+        RunOutput {
+            scenario: "s".into(),
+            scenario_digest: String::new(),
+            ic_hash: String::new(),
+            precision: "f64".into(),
+            constants: String::new(),
+            ic_source: String::new(),
+            epoch_jd_tdb: [2_451_545.0, 0.0], // lint: allow-literal(the fixture's epoch, J2000 JD)
+            model: String::new(),
+            states,
+            passages: Vec::new(),
+            final_state: None,
+            stats: Default::default(),
+            finished: true,
+        }
+    }
+
+    /// R13-CODE-4: a NaN or infinite run state is a coded error, not a zero difference.
+    ///
+    /// Verifies: API-002
+    #[test]
+    fn non_finite_run_states_are_refused() {
+        let g = golden();
+        let ok = compare_states(
+            &g,
+            &run(vec![
+                record(0.0, [1.0, 2.0, 3.0]),
+                record(1.0, [1.0, 2.0, 4.0]),
+            ]),
+        )
+        .unwrap();
+        assert_eq!(ok.max_dr_km().to_bits(), 1.0_f64.to_bits());
+        for bad in [f64::NAN, f64::INFINITY] {
+            // NaN first, then a finite larger difference: the NaN must not be dropped.
+            let e = compare_states(
+                &g,
+                &run(vec![
+                    record(0.0, [bad, 2.0, 3.0]),
+                    record(1.0, [1.0, 2.0, 4.0]),
+                ]),
+            )
+            .unwrap_err();
+            assert_eq!(e.code(), ErrorCode::OracleComparison, "{e}");
+            assert!(e.to_string().contains("non-finite"), "{e}");
+        }
+    }
 }
