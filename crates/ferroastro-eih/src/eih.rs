@@ -187,10 +187,13 @@ impl<R: Real> Eih<R> {
             k_s3: (R::from_f64(3.0) + R::from_f64(4.0) * gamma) * R::HALF,
         };
         let mut out = vec![[R::ZERO; 3]; g.len()];
+        let mut e = 0;
         g.for_each_edge(|i, j| {
+            let (rij, inv_r3) = g.edge[e];
+            e += 1;
             for (rec, src) in [(i, j), (j, i)] {
                 if g.moves[rec] && g.gm[src] != R::ZERO {
-                    let s = term(&k, g, rec, src, acc[src]);
+                    let s = term(&k, g, rec, src, acc[src], rij, inv_r3);
                     for c in 0..3 {
                         out[rec][c] += s[c];
                     }
@@ -218,8 +221,17 @@ struct Coefficients<R: Real> {
     k_s3: R,
 }
 
-/// The c⁻² contribution (times c²) of source `j` to receiver `i`: S1 + S2 + S3 of the module docs.
-fn term<R: Real>(k: &Coefficients<R>, p: &Graph<R>, i: usize, j: usize, aj: [R; 3]) -> [R; 3] {
+/// The c⁻² contribution (times c²) of source `j` to receiver `i`: S1 + S2 + S3 of the module docs,
+/// with the pair distance `rij` and `inv_r3 = 1/rij³`.
+fn term<R: Real>(
+    k: &Coefficients<R>,
+    p: &Graph<R>,
+    i: usize,
+    j: usize,
+    aj: [R; 3],
+    rij: R,
+    inv_r3: R,
+) -> [R; 3] {
     let Coefficients {
         gamma,
         three_halves,
@@ -237,8 +249,6 @@ fn term<R: Real>(k: &Coefficients<R>, p: &Graph<R>, i: usize, j: usize, aj: [R; 
     let (rj, vj) = (p.pos[j], p.vel[j]);
     let d_ji = sub(rj, ri); // r_j − r_i
     let d_ij = sub(ri, rj); // r_i − r_j
-    let rij = dot(d_ij, d_ij).sqrt();
-    let inv_r3 = R::ONE / (rij * rij * rij);
     let proj = dot(d_ij, vj) / rij;
     let b =
         k_ui * p.u[i] + k_uj * p.u[j] + gamma * vi2 + k_vj2 * dot(vj, vj) + k_vivj * dot(vi, vj)
@@ -273,6 +283,8 @@ struct Graph<R: Real> {
     u: Vec<R>,
     /// `Σ_{k ∈ E(i)} GM_k (r_k − r_i) / r_ik³` for moving bodies, 0 for Ring bodies.
     newton: Vec<[R; 3]>,
+    /// `(r_ij, 1/r_ij³)` of every edge, in [`Graph::for_each_edge`] order.
+    edge: Vec<(R, R)>,
     major: Vec<usize>,
     minor: Vec<usize>,
     ring: Vec<usize>,
@@ -302,23 +314,27 @@ impl<R: Real> Graph<R> {
             moves,
             u: vec![R::ZERO; n],
             newton: vec![[R::ZERO; 3]; n],
+            edge: Vec::new(),
             major: layout.indices(Tier::Major).to_vec(),
             minor: layout.indices(Tier::Minor).to_vec(),
             ring: layout.indices(Tier::Ring).to_vec(),
         };
         let mut singular = None;
         let (mut u, mut newton) = (vec![R::ZERO; n], vec![[R::ZERO; 3]; n]);
+        let mut edge = Vec::new();
         g.for_each_edge(|i, j| {
             let d = sub(g.pos[j], g.pos[i]); // r_j − r_i
             let r2 = dot(d, d);
             if r2 == R::ZERO {
                 singular.get_or_insert((i, j));
+                edge.push((R::ZERO, R::ZERO));
                 return;
             }
             let r = r2.sqrt();
             u[i] += g.gm[j] / r;
             u[j] += g.gm[i] / r;
             let inv_r3 = R::ONE / (r2 * r);
+            edge.push((r, inv_r3));
             if g.moves[i] {
                 let s = g.gm[j] * inv_r3;
                 for c in 0..3 {
@@ -341,6 +357,7 @@ impl<R: Real> Graph<R> {
         }
         g.u = u;
         g.newton = newton;
+        g.edge = edge;
         Ok(g)
     }
 

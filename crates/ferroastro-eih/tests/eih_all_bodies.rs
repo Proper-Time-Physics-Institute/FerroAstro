@@ -15,7 +15,10 @@
     clippy::unwrap_used,
     clippy::indexing_slicing,
     clippy::cast_precision_loss,
-    reason = "test: a failed unwrap is a test failure; indices are in range by construction"
+    clippy::suboptimal_flops,
+    clippy::too_many_lines,
+    reason = "test: a failed unwrap is a test failure; indices are in range by construction; the \
+              reference formulas are written as typeset"
 )]
 
 mod common;
@@ -316,7 +319,10 @@ fn eih_over_the_tiered_graph_matches_an_independent_evaluation() {
             let mut worst = 0.0_f64;
             for i in 0..n {
                 if b[i].tier == Tier::Ring {
-                    assert_eq!(got[i], [0.0; 3], "Ring body {i} must get nothing");
+                    assert!(
+                        got[i].iter().all(|&z| z.to_bits() == 0),
+                        "Ring body {i} must get nothing"
+                    );
                 } else {
                     worst = worst.max(rel_diff(got[i], want[i]));
                 }

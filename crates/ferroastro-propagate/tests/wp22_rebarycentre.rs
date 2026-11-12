@@ -5,16 +5,18 @@
 //! relativistic SSB with the velocity condition Σ(μ̇*r + μ*v) = 0; absent, the header.440 ICs are
 //! used unchanged; the key is refused outside n-body mode. Bounds pre-registered in the WP22 plan.
 
-#![expect(
+#![allow(
     clippy::unwrap_used,
     clippy::expect_used,
     clippy::indexing_slicing,
-    reason = "test: a failed unwrap is a test failure; indices are in range by construction"
+    clippy::suboptimal_flops,
+    clippy::float_cmp,
+    reason = "test: a failed unwrap is a test failure; indices are in range by construction; \
+              exact comparisons are intended (bitwise-unchanged records, rest velocities)"
 )]
 
 use ferroastro_constants::De440;
 use ferroastro_constants::header440::Header;
-use ferroastro_core::ErrorCode;
 use ferroastro_core::units::Velocity;
 use ferroastro_eih::{BarycentreBody, mu_star, mu_star_rate};
 use ferroastro_propagate::{DataSources, InitialRecords, initial_conditions};

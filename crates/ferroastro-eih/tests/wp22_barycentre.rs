@@ -8,7 +8,9 @@
     clippy::unwrap_used,
     clippy::indexing_slicing,
     clippy::cast_precision_loss,
-    reason = "test: a failed unwrap is a test failure; indices are in range by construction"
+    clippy::suboptimal_flops,
+    reason = "test: a failed unwrap is a test failure; indices are in range by construction; the \
+              reference formulas are written as typeset"
 )]
 
 mod common;
@@ -171,7 +173,7 @@ fn rebarycentred(with_rate: bool) -> (Vec<f64>, SystemState<Icrf, Barycentric>) 
     (gm, states)
 }
 
-/// max_t |R*(t) − R*(0)| over a 10-yr EIH run (Sun + 8 planets + Moon, all Major, barycentric
+/// `max_t |R*(t) − R*(0)|` over a 10-yr EIH run (Sun + 8 planets + Moon, all Major, barycentric
 /// Moon) from the re-barycentred header.440 states.
 fn drift(with_rate: bool) -> f64 {
     let de = De440::load().unwrap();
