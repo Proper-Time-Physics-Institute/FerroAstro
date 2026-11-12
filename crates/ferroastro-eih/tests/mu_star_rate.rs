@@ -155,7 +155,7 @@ fn nightly_mu_star_rate_pre_registered_bound() {
 
 /// C3b with the corrected bound (M5 review #18, WP25-3, maintainer decision 2026-11-12): the
 /// WP25 truncation estimate omitted the (2π)² of an orbital frequency, so
-/// `EPH-MUSTAR-RATE-REL-CORRECTED` restates it as 5 × (2π d / P_Mercury)² at d = 1 h. The
+/// `EPH-MUSTAR-RATE-REL-CORRECTED` restates it as 5 × (2π d / P)² with P Mercury's period, at d = 1 h. The
 /// original `EPH-MUSTAR-RATE-REL` and its nightly test stay as the recorded known failure. The
 /// correction was made after the 3.9e-6 result was known and is disclosed as such.
 ///
