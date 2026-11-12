@@ -871,3 +871,28 @@ fn minor_reaction_off_switches_off_the_lt_reaction_of_minor_bodies() {
         .check(ulps)
         .unwrap();
 }
+
+/// WP22 review: terms that depend on the Minor bodies' reaction setting must agree; a model with
+/// `MinorFromMajors(Off)` and a Lense–Thirring term left at `On` is refused (FA-E0500).
+///
+/// Verifies: NUM-009, NUM-019
+#[test]
+fn terms_with_different_minor_reaction_settings_are_refused() {
+    let (mut bodies, _, _) = fixture();
+    bodies.push(body(NaifId(2_000_001), 62.6, Tier::Minor)); // lint: allow-literal(structural fixture: Ceres-like GM)
+    let build = |minor: MinorReaction, lt: MinorReaction| {
+        let terms: Vec<Box<dyn ForceTerm<Icrf>>> = vec![
+            Box::new(NewtonianMutual),
+            Box::new(MinorFromMajors::new(minor)),
+            Box::new(lt_term(1.0, LtReaction::On).with_minor_reaction(lt)),
+        ];
+        Model::new(&bodies, MoonVariables::Barycentric, terms)
+    };
+    for r in [MinorReaction::On, MinorReaction::Off] {
+        assert!(build(r, r).is_ok());
+    }
+    let e = build(MinorReaction::Off, MinorReaction::On).unwrap_err();
+    println!("{e}");
+    assert_eq!(e.code().to_string(), "FA-E0500");
+    assert!(e.to_string().contains("Minor-body reaction"), "{e}");
+}

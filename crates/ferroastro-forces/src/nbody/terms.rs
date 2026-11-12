@@ -47,6 +47,12 @@ pub trait ForceTerm<F: Frame, R: Real = f64>: fmt::Debug + Send + Sync {
     fn supplies_moon_relative(&self) -> bool {
         false
     }
+    /// The Minor bodies' reaction setting this term assumes, if it depends on it
+    /// ([`MinorFromMajors`], [`SolarLenseThirring`], `ferroastro_eih::Eih`). Every term of a model
+    /// that returns `Some` must agree; [`crate::NBodyModel::new`] refuses a model where they differ.
+    fn minor_reaction(&self) -> Option<MinorReaction> {
+        None
+    }
     /// Resolve body indices against the model's layout (called once, when the model is built).
     ///
     /// # Errors
@@ -222,6 +228,9 @@ impl<F: Frame, R: Real> ForceTerm<F, R> for MinorFromMajors {
             MinorReaction::On => &[Tier::Minor, Tier::Major],
             MinorReaction::Off => &[Tier::Minor],
         }
+    }
+    fn minor_reaction(&self) -> Option<MinorReaction> {
+        Some(self.reaction)
     }
     fn bind(&mut self, _layout: &Layout<R>) -> Result<(), ForceError> {
         Ok(())
@@ -833,6 +842,9 @@ impl<F: Frame, R: Real> ForceTerm<F, R> for SolarLenseThirring<F, R> {
     }
     fn tiers(&self) -> &'static [Tier] {
         &[Tier::Major, Tier::Minor]
+    }
+    fn minor_reaction(&self) -> Option<MinorReaction> {
+        Some(self.minor)
     }
     fn bind(&mut self, layout: &Layout<R>) -> Result<(), ForceError> {
         let sun = layout

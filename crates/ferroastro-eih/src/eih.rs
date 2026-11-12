@@ -126,8 +126,9 @@ impl<R: Real> Eih<R> {
     }
 
     /// The same term with the Minor bodies' reaction setting, which must match the model's
-    /// `MinorFromMajors` term: with [`MinorReaction::Off`] the Minor bodies are test particles
-    /// (GM 0 as a 1PN source of anything).
+    /// `MinorFromMajors` term (and `SolarLenseThirring`'s): with [`MinorReaction::Off`] the Minor
+    /// bodies are test particles (GM 0 as a 1PN source of anything). `NBodyModel::new` refuses a
+    /// model whose terms disagree (FA-E0500).
     #[must_use]
     pub const fn with_minor_reaction(mut self, minor: MinorReaction) -> Self {
         self.minor = minor;
@@ -297,8 +298,16 @@ impl<R: Real> Graph<R> {
         let pos = (0..n)
             .map(|i| view.position(i))
             .collect::<Result<Vec<[R; 3]>, _>>()?;
+        // Bodies that do not move (Ring) have v = a = 0 by definition, whatever their stored
+        // velocity (WP22 review).
         let vel = (0..n)
-            .map(|i| view.velocity(i))
+            .map(|i| {
+                if layout.moves(i) {
+                    view.velocity(i)
+                } else {
+                    Ok([R::ZERO; 3])
+                }
+            })
             .collect::<Result<Vec<[R; 3]>, _>>()?;
         let gm: Vec<R> = (0..n)
             .map(|i| match layout.tiers()[i] {
@@ -451,6 +460,9 @@ impl<F: Frame, R: Real> ForceTerm<F, R> for Eih<R> {
     }
     fn tiers(&self) -> &'static [Tier] {
         &[Tier::Major, Tier::Minor]
+    }
+    fn minor_reaction(&self) -> Option<MinorReaction> {
+        Some(self.minor)
     }
     fn bind(&mut self, _layout: &Layout<R>) -> Result<(), ForceError> {
         Ok(())

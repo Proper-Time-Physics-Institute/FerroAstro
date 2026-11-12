@@ -485,3 +485,86 @@ fn the_tiered_eih_model_conserves_its_relativistic_centre_of_mass() {
         .unwrap();
     assert!(d_newt / d_rel >= min_ratio, "ratio {}", d_newt / d_rel);
 }
+
+/// WP22 review: `Eih::with_minor_reaction` must match `MinorFromMajors`; `NBodyModel::new`
+/// refuses a model whose terms disagree (FA-E0500), and accepts matching settings.
+///
+/// Verifies: NUM-009
+#[test]
+fn eih_minor_reaction_must_match_minor_from_majors() {
+    use ferroastro_core::ErrorCode;
+    let de = De440::load().unwrap();
+    let b = synthetic();
+    let bodies: Vec<NBody> = b
+        .iter()
+        .enumerate()
+        .map(|(i, x)| NBody {
+            id: NaifId(3_000_000 + i32::try_from(i).unwrap()), // lint: allow-literal(synthetic NAIF ids)
+            gm: x.gm,
+            tier: x.tier,
+        })
+        .collect();
+    let build = |minor: MinorReaction, eih: MinorReaction| {
+        let terms: Vec<Box<dyn ForceTerm<Icrf>>> = vec![
+            Box::new(NewtonianMutual),
+            Box::new(MinorFromMajors::new(minor)),
+            Box::new(
+                Eih::new(de.speed_of_light(), 1.0, 1.0, RhsAcceleration::Newtonian)
+                    .unwrap()
+                    .with_minor_reaction(eih),
+            ),
+        ];
+        NBodyModel::<Icrf>::new(&bodies, MoonVariables::Barycentric, terms)
+    };
+    for r in [MinorReaction::On, MinorReaction::Off] {
+        assert!(build(r, r).is_ok());
+    }
+    for (m, e) in [
+        (MinorReaction::On, MinorReaction::Off),
+        (MinorReaction::Off, MinorReaction::On),
+    ] {
+        let err = build(m, e).unwrap_err();
+        println!("{err}");
+        assert_eq!(err.code().to_string(), "FA-E0500");
+    }
+}
+
+/// WP22 review: bodies that do not move (Ring) enter Eq. 27 with v = a = 0 whatever velocity is
+/// stored for them; a non-zero stored Ring velocity changes nothing, bit for bit.
+///
+/// Verifies: NUM-009, NUM-020
+#[test]
+fn ring_bodies_enter_eih_with_zero_velocity_whatever_is_stored() {
+    let de = De440::load().unwrap();
+    let b = synthetic();
+    let bodies: Vec<NBody> = b
+        .iter()
+        .enumerate()
+        .map(|(i, x)| NBody {
+            id: NaifId(3_000_000 + i32::try_from(i).unwrap()), // lint: allow-literal(synthetic NAIF ids)
+            gm: x.gm,
+            tier: x.tier,
+        })
+        .collect();
+    let x: Vec<f64> = (0..3).flat_map(|k| b.iter().map(move |q| q.r[k])).collect();
+    let v0: Vec<f64> = (0..3).flat_map(|k| b.iter().map(move |q| q.v[k])).collect();
+    let mut v1 = v0.clone();
+    let n = b.len();
+    for (i, q) in b.iter().enumerate() {
+        if q.tier == Tier::Ring {
+            for k in 0..3 {
+                v1[k * n + i] = 5.0; // lint: allow-literal(arbitrary non-zero stored ring velocity, km/s)
+            }
+        }
+    }
+    for rhs in [RhsAcceleration::Newtonian, RhsAcceleration::Iterated] {
+        let term = Eih::new(de.speed_of_light(), 1.0, 1.0, rhs).unwrap();
+        let a0 = eih_only(&bodies, term, &x, &v0);
+        let a1 = eih_only(&bodies, term, &x, &v1);
+        for (p, q) in a0.iter().zip(&a1) {
+            for k in 0..3 {
+                assert_eq!(p[k].to_bits(), q[k].to_bits());
+            }
+        }
+    }
+}
