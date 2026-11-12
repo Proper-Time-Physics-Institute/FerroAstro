@@ -700,19 +700,31 @@ impl PlanResult {
             }
             // Every value column is in Park17's convention (ADR-0014, `Protocol::to_park17`), so
             // `value − reference` compares like with like; the JSON keeps the raw signed sums.
+            // Cross terms also print the raw inclusion–exclusion second difference ([`Row::value`])
+            // in its own labelled column (progress review after WP18, R1).
+            let cross = p.is_cross_term();
             let _ = writeln!(
                 s,
-                "\n| {} row | value (″/cy; {}) | σ_rss | cross-check | reference | value − reference |",
+                "\n| {} row | value (″/cy; {}) | σ_rss | cross-check | reference | value − reference |{}",
                 p.label(),
-                p.park17_convention()
+                p.park17_convention(),
+                if cross {
+                    " second difference (″/cy) |"
+                } else {
+                    ""
+                }
             );
-            let _ = writeln!(s, "|---|---|---|---|---|---|");
+            let _ = writeln!(
+                s,
+                "|---|---|---|---|---|---|{}",
+                if cross { "---|" } else { "" }
+            );
             for r in self.rows_of(p) {
                 let reference = reference(&r.combination.label, p);
                 let value = p.to_park17(r.value);
                 let _ = writeln!(
                     s,
-                    "| {} | {:.6} | {:.6} | {} | {} | {} |",
+                    "| {} | {:.6} | {:.6} | {} | {} | {} |{}",
                     r.combination.label,
                     value,
                     r.sigma_rss,
@@ -720,7 +732,12 @@ impl PlanResult {
                         .map(|x| p.to_park17(x))
                         .map_or_else(|| "—".into(), |x| format!("{x:.6}")),
                     reference.map_or_else(|| "—".into(), |x| format!("{x}")),
-                    reference.map_or_else(|| "—".into(), |x| format!("{:+.6}", value - x))
+                    reference.map_or_else(|| "—".into(), |x| format!("{:+.6}", value - x)),
+                    if cross {
+                        format!(" {:.6} |", r.value)
+                    } else {
+                        String::new()
+                    }
                 );
             }
         }

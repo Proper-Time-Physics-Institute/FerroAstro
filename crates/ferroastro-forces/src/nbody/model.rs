@@ -50,7 +50,8 @@ impl<F: Frame, R: Real> NBodyModel<F, R> {
     ///
     /// # Errors
     /// `FA-E0500` for an invalid layout, a term that cannot bind, or a geocentric pair without
-    /// exactly one term that supplies Moon − Earth (or such a term without the pair);
+    /// exactly one term that supplies Moon − Earth (or such a term without the pair), or terms
+    /// that disagree on the Minor bodies' reaction setting;
     /// `FA-E0502` if two terms declare different relativistic gauges.
     pub fn new(
         bodies: &[NBody<R>],
@@ -65,6 +66,14 @@ impl<F: Frame, R: Real> NBodyModel<F, R> {
                 "terms supplying the geocentric Moon acceleration",
                 f64::from(u32::try_from(suppliers).unwrap_or(u32::MAX)),
                 "exactly 1 with MoonVariables::Geocentric, 0 otherwise",
+            ));
+        }
+        let reactions: Vec<_> = terms.iter().filter_map(|t| t.minor_reaction()).collect();
+        if reactions.windows(2).any(|w| w.first() != w.get(1)) {
+            return Err(invalid(
+                "terms with different Minor-body reaction settings (MinorReaction)",
+                f64::from(u32::try_from(reactions.len()).unwrap_or(u32::MAX)),
+                "the same setting in MinorFromMajors, SolarLenseThirring and Eih",
             ));
         }
         let mut gauge = Gauge::Newtonian;

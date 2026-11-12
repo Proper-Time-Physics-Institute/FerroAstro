@@ -14,6 +14,7 @@ repository.workspace = true
 ferroastro-analytic.workspace = true
 ferroastro-constants.workspace = true
 ferroastro-core.workspace = true
+ferroastro-eih.workspace = true
 ferroastro-ephem.workspace = true
 ferroastro-forces.workspace = true
 ferroastro-frames.workspace = true

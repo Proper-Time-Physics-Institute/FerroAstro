@@ -30,6 +30,7 @@ ferroastro-system = { path = "crates/ferroastro-system", version = "0.0.0" }
 ferroastro-analytic = { path = "crates/ferroastro-analytic", version = "0.0.0" }
 ferroastro-integrators = { path = "crates/ferroastro-integrators", version = "0.0.0" }
 ferroastro-forces = { path = "crates/ferroastro-forces", version = "0.0.0" }
+ferroastro-eih = { path = "crates/ferroastro-eih", version = "0.0.0" }
 ferroastro-precession = { path = "crates/ferroastro-precession", version = "0.0.0" }
 ferroastro-scenario = { path = "crates/ferroastro-scenario", version = "0.0.0" }
 ferroastro-propagate = { path = "crates/ferroastro-propagate", version = "0.0.0" }

@@ -7,7 +7,8 @@
 use crate::output::{PassageRecord, RunOutput, StateRecord, parts, parts3};
 use crate::passages::{grid_samples, perihelia_until, sample_uniform};
 use crate::setup::{
-    DataSources, constants_version, de440_solar_spin, epoch, relative_state, setup,
+    DataSources, constants_version, epoch, relative_state, setup, solar_j2, solar_pole, solar_spin,
+    tag_overrides,
 };
 use crate::{PropagateError, ias15_config};
 use ferroastro_constants::De440;
@@ -22,9 +23,10 @@ use ferroastro_system::Catalogue;
 
 /// The test particle's force model in backend `R`: Newtonian `−μr/r³` plus the requested
 /// central terms, in the order 1PN, J2, Lense–Thirring. The constants are the binary64 DE440
-/// values converted exactly (as `SingleBody::model_in`).
+/// values converted exactly (as `SingleBody::model_in`), or the [`crate::SolarOverrides`] of `data`.
 fn model<R: Real>(
     spec: &ScenarioSpec,
+    data: &DataSources<'_>,
     de: &De440,
     mu: GravParam,
 ) -> Result<TestParticle<Icrf, R>, PropagateError> {
@@ -46,10 +48,7 @@ fn model<R: Real>(
             .into())
         }
     };
-    let pole = || -> Result<Pole<Icrf, R>, PropagateError> {
-        let k = ferroastro_frames::Pole::<R>::sun_wgccre2015()?.unit_vector();
-        Ok(Pole::from_components(k)?)
-    };
+    let pole = || -> Result<Pole<Icrf, R>, PropagateError> { solar_pole::<R>(data) };
     let mut terms: Vec<Box<dyn CentralTerm<Icrf, R>>> = Vec::new();
     if f.gr_1pn_central {
         terms.push(Box::new(SchwarzschildPpn::new(
@@ -63,7 +62,7 @@ fn model<R: Real>(
         sun_only("forces.sun_j2")?;
         terms.push(Box::new(SolarJ2::new(
             mu_r,
-            R::from_f64(de.sun_j2()),
+            R::from_f64(solar_j2(de, data)),
             de.sun_radius().cast(),
             pole()?,
         )?));
@@ -71,7 +70,7 @@ fn model<R: Real>(
     if f.lense_thirring {
         sun_only("forces.lense_thirring")?;
         terms.push(Box::new(LenseThirring::new(
-            de440_solar_spin(de, &spec.name)?.cast(),
+            solar_spin(de, data, &spec.name)?.cast(),
             c,
             R::from_f64(gamma),
             pole()?,
@@ -214,7 +213,7 @@ pub(crate) fn run<R: Real>(
         records,
         constants,
     } = assemble(spec, data)?;
-    let model = model::<R>(spec, &de, mu)?;
+    let model = model::<R>(spec, data, &de, mu)?;
     let cfg = ias15_config(spec, false);
     let wanted = spec
         .span
@@ -251,14 +250,17 @@ pub(crate) fn run<R: Real>(
         constants,
         ic_source: source,
         epoch_jd_tdb: parts(jd),
-        model: format!(
-            "{} [{}]; IAS15 epsilon = {:e}, safety = {}, PC tolerance = {:e}, {}",
-            model.describe(),
-            model.gauge().label(),
-            cfg.epsilon,
-            cfg.safety,
-            cfg.pc_tolerance,
-            R::NAME
+        model: tag_overrides(
+            format!(
+                "{} [{}]; IAS15 epsilon = {:e}, safety = {}, PC tolerance = {:e}, {}",
+                model.describe(),
+                model.gauge().label(),
+                cfg.epsilon,
+                cfg.safety,
+                cfg.pc_tolerance,
+                R::NAME
+            ),
+            data,
         ),
         states: vec![StateRecord {
             t: [0.0, 0.0],
@@ -300,7 +302,7 @@ fn run_sampled(spec: &ScenarioSpec, data: &DataSources<'_>) -> Result<RunOutput,
         records,
         constants,
     } = assemble(spec, data)?;
-    let model = model::<f64>(spec, &de, mu)?;
+    let model = model::<f64>(spec, data, &de, mu)?;
     let cfg = ias15_config(spec, false);
     let cadence_s = spec
         .output
@@ -329,15 +331,18 @@ fn run_sampled(spec: &ScenarioSpec, data: &DataSources<'_>) -> Result<RunOutput,
         constants,
         ic_source: source,
         epoch_jd_tdb: parts(jd),
-        model: format!(
-            "{} [{}]; IAS15 epsilon = {:e}, safety = {}, PC tolerance = {:e}, f64, samples every \
-             {} d on an exact grid",
-            model.describe(),
-            model.gauge().label(),
-            cfg.epsilon,
-            cfg.safety,
-            cfg.pc_tolerance,
-            spec.output.cadence_days.unwrap_or(0.0)
+        model: tag_overrides(
+            format!(
+                "{} [{}]; IAS15 epsilon = {:e}, safety = {}, PC tolerance = {:e}, f64, samples \
+                 every {} d on an exact grid",
+                model.describe(),
+                model.gauge().label(),
+                cfg.epsilon,
+                cfg.safety,
+                cfg.pc_tolerance,
+                spec.output.cadence_days.unwrap_or(0.0)
+            ),
+            data,
         ),
         states,
         passages: Vec::new(),

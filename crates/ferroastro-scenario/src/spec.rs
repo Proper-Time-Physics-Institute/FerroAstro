@@ -151,6 +151,32 @@ pub struct InitialConditionsSpec {
     /// absent or equal to the header's `JDEPOC`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub epoch_jd_tdb: Option<f64>,
+    /// Re-barycentre the assembled initial conditions (n-body mode; absent: use the source's
+    /// states as given). `relativistic` moves the origin to the relativistic SSB with the μᵢ* of
+    /// Park et al. 2021 Eqs. 1–2 and the velocity condition with dμ*/dt (NUM-018, OI-75; WP22).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub barycentre: Option<IcBarycentre>,
+}
+
+/// How the initial conditions are re-barycentred (`initial_conditions.barycentre`, NUM-018).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "kebab-case")]
+pub enum IcBarycentre {
+    /// Σ μᵢ* rᵢ = 0 and Σ (μ̇ᵢ* rᵢ + μᵢ* vᵢ) = 0 (Subbotin et al. 2023 Eq. 5), with
+    /// μᵢ* = μᵢ [1 + vᵢ²/(2c²) − Σⱼ μⱼ/(2c² rᵢⱼ)] (Park et al. 2021 Eq. 2) and μ̇ᵢ* from the
+    /// Newtonian accelerations. Every moving body is translated by the same position and
+    /// velocity; fixed Ring masses by the position only.
+    Relativistic,
+}
+
+impl IcBarycentre {
+    /// The spelling in scenario files.
+    #[must_use]
+    pub const fn label(self) -> &'static str {
+        match self {
+            IcBarycentre::Relativistic => "relativistic",
+        }
+    }
 }
 
 /// The GM set (CI-002).
@@ -513,6 +539,15 @@ impl ScenarioSpec {
             }
         }
         let ic = self.initial_conditions;
+        if self.mode != Mode::NBody {
+            if let Some(b) = ic.barycentre {
+                return err(
+                    "initial_conditions.barycentre",
+                    &b.label(),
+                    "re-barycentring applies to n-body initial conditions only",
+                );
+            }
+        }
         match (ic.source, ic.epoch_jd_tdb) {
             (IcSource::De440Bsp | IcSource::Horizons, None) => {
                 return err(

@@ -71,7 +71,8 @@ run_container() {
   local digest
   digest="$(build "$tool")"
   echo "## image $(image_tag "$tool") ${digest}" >&2
-  docker run --rm --user "$(id -u):$(id -g)" \
+  # The run label lets tools/oracles/nightly.sh stop its own containers when it is interrupted.
+  docker run --rm --user "$(id -u):$(id -g)" --label "fa.oracle.run=${FA_ORACLE_RUN_ID:-none}" \
     -e FA_ORACLE_IMAGE_DIGEST="$digest" -e FA_ORACLE_RUNNER_SHA="$(runner_sha)" \
     "$@"
 }

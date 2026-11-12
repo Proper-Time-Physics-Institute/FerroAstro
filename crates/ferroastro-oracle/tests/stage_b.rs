@@ -5,6 +5,8 @@
 //! Orekit 13.1.9 golden (`DormandPrince853`, positions from the JPL binary `linux_p1550p2650.440`:
 //! the same DE440 Chebyshev data). No container is started here (CI-005).
 
+mod common;
+
 use ferroastro_constants::De440;
 use ferroastro_ephem::Spk;
 use ferroastro_oracle::{GoldenStates, Manifest, compare_states, sha256_hex};
@@ -96,6 +98,8 @@ fn stage_b_ferroastro_matches_the_orekit_golden_in_the_de440_field() {
     let golden =
         GoldenStates::parse(&csv, &std::fs::read_to_string(dir.join(&csv)).unwrap()).unwrap();
     let cmp = compare_states(&golden, &out).unwrap();
+    // Review R2: the reported maxima are the brute-force maxima over every golden row.
+    common::check_against_brute_force(&golden, &out, &cmp);
     let worst = cmp.worst().unwrap();
     println!(
         "stage B orekit: {} rows at {} times; max |dr| = {:.6e} km at t = {} d; max |dv| = {:.3e} km/s",

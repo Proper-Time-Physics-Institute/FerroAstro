@@ -10,21 +10,29 @@
 //! uninterrupted runs therefore take the same steps, and a resumed run continues bit for bit.
 
 use crate::output::{PassageRecord, RunOutput, StateRecord, parts, parts3};
-use crate::setup::{DataSources, constants_version, epoch, nbody_ics, setup};
+use crate::setup::{
+    DataSources, constants_version, epoch, nbody_ics, setup, solar_j2, solar_pole, solar_spin,
+    tag_overrides,
+};
 use crate::{PropagateError, ias15_config};
 use ferroastro_constants::{Body, De440};
 use ferroastro_core::frames::Barycentric;
 use ferroastro_core::frames::Icrf;
 use ferroastro_core::time::SECONDS_PER_DAY;
-use ferroastro_core::units::Length;
+use ferroastro_core::units::{Length, Velocity};
+use ferroastro_eih::{
+    BarycentreBody, Eih, HeliocentricSchwarzschild, RhsAcceleration,
+    relativistic_barycentre_with_rate,
+};
 use ferroastro_ephem::NaifId;
 use ferroastro_forces::{
-    ForceTerm, GeocentricMoon, MOON_TAYLOR_TERMS_DEFAULT, MinorFromMajors, MinorReaction,
-    MoonVariables, NBody, NBodyModel, NewtonianMutual, Pole, RingMasses, SolarJ2WithReaction,
+    ForceTerm, GeocentricMoon, LtReaction, MOON_TAYLOR_TERMS_DEFAULT, MinorFromMajors,
+    MinorReaction, MoonVariables, NBody, NBodyModel, NewtonianMutual, RingMasses,
+    SolarJ2WithReaction, SolarLenseThirring,
 };
 use ferroastro_integrators::{Ias15, Ias15Snapshot};
 use ferroastro_real::Real;
-use ferroastro_scenario::{BodyName, IcRecord, ScenarioError, ScenarioSpec, ic_hash};
+use ferroastro_scenario::{BodyName, IcBarycentre, IcRecord, ScenarioError, ScenarioSpec, ic_hash};
 use ferroastro_system::{
     Catalogue, KBO_IDENTIFICATION, KBO_RING, SystemState, Tier, kbo_ring_states, place_small_bodies,
 };
@@ -39,10 +47,65 @@ pub(crate) struct DriverState {
     pub(crate) passages: u64,
 }
 
-/// The model of an N-body scenario (term order: Newtonian mutual, geocentric Moon, solar J2 with
-/// reaction, as WP12) and the body order.
+/// The relativistic term of an N-body scenario (WP19): `gr_eih` gives the EIH term (Park et al.
+/// 2021 Eq. 27, Newtonian right-hand-side accelerations), `gr_1pn_central` the heliocentric
+/// Sun-only 1PN rung; PPN β, γ from `forces.ppn`, else the DE440 values; c from DE440.
+fn relativity<R: Real>(
+    spec: &ScenarioSpec,
+    de: &De440,
+    has_sun: bool,
+) -> Result<Vec<Box<dyn ForceTerm<Icrf, R>>>, PropagateError> {
+    let f = &spec.forces;
+    let value_err = |field: &'static str, problem: &str| -> PropagateError {
+        ScenarioError::Value {
+            name: spec.name.clone(),
+            field,
+            value: "true".into(),
+            problem: problem.into(),
+        }
+        .into()
+    };
+    if f.gr_eih && f.gr_1pn_central {
+        return Err(value_err(
+            "forces.gr_1pn_central",
+            "gr_eih already contains the Sun's 1PN field; gr_1pn_central (the Sun-only rung) is \
+             an alternative to it",
+        ));
+    }
+    let (beta, gamma) = f
+        .ppn
+        .map_or((de.ppn_beta(), de.ppn_gamma()), |p| (p.beta, p.gamma));
+    let c = Velocity::from_km_per_s(R::from_f64(de.speed_of_light().km_per_s()))
+        .map_err(|e| setup(&spec.name, e.to_string(), "check the DE440 table"))?;
+    let (beta, gamma) = (R::from_f64(beta), R::from_f64(gamma));
+    let mut terms: Vec<Box<dyn ForceTerm<Icrf, R>>> = Vec::new();
+    if f.gr_eih {
+        terms.push(Box::new(Eih::new(
+            c,
+            beta,
+            gamma,
+            RhsAcceleration::Newtonian,
+        )?));
+    }
+    if f.gr_1pn_central {
+        if !has_sun {
+            return Err(value_err(
+                "forces.gr_1pn_central",
+                "the Sun-only 1PN rung needs the Sun among the bodies",
+            ));
+        }
+        terms.push(Box::new(HeliocentricSchwarzschild::new(c, beta, gamma)?));
+    }
+    Ok(terms)
+}
+
+/// The model of an N-body scenario (term order: Newtonian mutual, Minor, Ring, geocentric Moon,
+/// the relativistic term (WP19), solar J2 with reaction, solar Lense–Thirring with reaction
+/// (WP20)) and the body order. The solar J2, pole and spin are DE440's unless `data` carries
+/// [`crate::SolarOverrides`].
 fn model<R: Real>(
     spec: &ScenarioSpec,
+    data: &DataSources<'_>,
     de: &De440,
     small: &[(NaifId, f64, Tier)],
 ) -> Result<(NBodyModel<Icrf, R>, Vec<IcRecordGm>), PropagateError> {
@@ -89,6 +152,7 @@ fn model<R: Real>(
     } else {
         MoonVariables::Barycentric
     };
+    terms.extend(relativity::<R>(spec, de, has(BodyName::Sun))?);
     if spec.forces.sun_j2 {
         if !has(BodyName::Sun) {
             return Err(ScenarioError::Value {
@@ -99,13 +163,36 @@ fn model<R: Real>(
             }
             .into());
         }
-        let k = ferroastro_frames::Pole::<R>::sun_wgccre2015()?.unit_vector();
         terms.push(Box::new(SolarJ2WithReaction::new(
-            R::from_f64(de.sun_j2()),
+            R::from_f64(solar_j2(de, data)),
             Length::from_km(R::from_f64(de.sun_radius().km()))
                 .map_err(|e| setup(&spec.name, e.to_string(), "check the DE440 table"))?,
-            Pole::from_components(k)?,
+            solar_pole::<R>(data)?,
         )?));
+    }
+    if spec.forces.lense_thirring {
+        if !has(BodyName::Sun) {
+            return Err(ScenarioError::Value {
+                name: spec.name.clone(),
+                field: "forces.lense_thirring",
+                value: "true".into(),
+                problem: "solar Lense-Thirring needs the Sun among the bodies".into(),
+            }
+            .into());
+        }
+        let gamma = spec.forces.ppn.map_or(de.ppn_gamma(), |p| p.gamma);
+        let c = Velocity::from_km_per_s(R::from_f64(de.speed_of_light().km_per_s()))
+            .map_err(|e| setup(&spec.name, e.to_string(), "check the DE440 table"))?;
+        terms.push(Box::new(
+            SolarLenseThirring::new(
+                solar_spin(de, data, &spec.name)?.cast(),
+                c,
+                R::from_f64(gamma),
+                solar_pole::<R>(data)?,
+                LtReaction::On,
+            )?
+            .with_minor_reaction(MinorReaction::On),
+        ));
     }
     Ok((NBodyModel::new(&bodies, vars, terms)?, gms))
 }
@@ -213,6 +300,88 @@ fn small_bodies<R: Real>(
     Ok((list, states, prov.join("; ")))
 }
 
+/// Passes of the relativistic re-barycentring (μ* depends on the velocities being corrected).
+const REBARYCENTRE_PASSES: usize = 2;
+
+/// Move the packed initial conditions to the relativistic SSB (`initial_conditions.barycentre =
+/// "relativistic"`, NUM-018, OI-75 decision of 2026-10-21): Σ μᵢ* rᵢ = 0 and
+/// Σ (μ̇ᵢ* rᵢ + μᵢ* vᵢ) = 0 over every body with mass (Park et al. 2021 Eqs. 1–2; DE430 Eq. 3,
+/// Subbotin et al. 2023 Eq. 5), μ* and μ̇* from the physical barycentric states (a geocentric
+/// Earth–Moon pair is reconstructed; μ̇* uses the Newtonian accelerations by every body). Every
+/// moving body is translated by the same position and velocity (the Moon − Earth slot is a
+/// difference and stays), fixed Ring masses by the position only. Returns the residual
+/// |Σμ*r|/Σμ* (km) and |Σ(μ̇*r + μ*v)|/Σμ* (km/s) after the last pass.
+fn rebarycentre<R: Real>(
+    model: &NBodyModel<Icrf, R>,
+    de: &De440,
+    x: &mut [R],
+    v: &mut [R],
+) -> Result<(f64, f64), PropagateError> {
+    let layout = model.layout();
+    let n = layout.len();
+    let c = Velocity::from_km_per_s(R::from_f64(de.speed_of_light().km_per_s()))
+        .map_err(|e| setup("rebarycentre", e.to_string(), "check the DE440 table"))?;
+    let pair = layout.moon_pair().copied();
+    let offset = |x: &[R], v: &[R]| -> Result<([R; 3], [R; 3]), PropagateError> {
+        let along = |b: [R; 3], r: [R; 3], f: R| {
+            let ([b0, b1, b2], [r0, r1, r2]) = (b, r);
+            [r0.mul_add(f, b0), r1.mul_add(f, b1), r2.mul_add(f, b2)]
+        };
+        let bodies: Vec<BarycentreBody<R>> = (0..n)
+            .map(|i| {
+                let (mut p, mut w) = (slot(x, n, i), slot(v, n, i));
+                if let Some(q) = pair {
+                    let (bp, bv) = (slot(x, n, q.earth), slot(v, n, q.earth));
+                    let (rp, rv) = (slot(x, n, q.moon), slot(v, n, q.moon));
+                    if i == q.earth {
+                        (p, w) = (
+                            along(bp, rp, -q.moon_fraction),
+                            along(bv, rv, -q.moon_fraction),
+                        );
+                    } else if i == q.moon {
+                        (p, w) = (
+                            along(bp, rp, q.earth_fraction),
+                            along(bv, rv, q.earth_fraction),
+                        );
+                    }
+                }
+                BarycentreBody {
+                    gm: layout.gm(i),
+                    position: p,
+                    velocity: w,
+                }
+            })
+            .collect();
+        Ok(relativistic_barycentre_with_rate(&bodies, c)?)
+    };
+    let moon = pair.map(|q| q.moon);
+    for _ in 0..REBARYCENTRE_PASSES {
+        let (r, w) = offset(x, v)?;
+        for i in (0..n).filter(|&i| Some(i) != moon) {
+            let moves = layout.moves(i);
+            for k in 0..3 {
+                if let (Some(xs), Some(vs), Some(&rk), Some(&wk)) = (
+                    x.get_mut(k * n + i),
+                    v.get_mut(k * n + i),
+                    r.get(k),
+                    w.get(k),
+                ) {
+                    *xs -= rk;
+                    if moves {
+                        *vs -= wk;
+                    }
+                }
+            }
+        }
+    }
+    let (r, w) = offset(x, v)?;
+    let norm = |a: [R; 3]| {
+        let [p, q, z] = a.map(R::to_f64);
+        p.hypot(q).hypot(z)
+    };
+    Ok((norm(r), norm(w)))
+}
+
 /// Position and velocity of storage slot `i` in component-major flat vectors.
 fn slot<R: Real>(x: &[R], n: usize, i: usize) -> [R; 3] {
     [0, 1, 2].map(|k| x.get(k * n + i).copied().unwrap_or(R::ZERO))
@@ -285,9 +454,18 @@ impl<R: Real> NBodyRun<R> {
         if !small_source.is_empty() {
             source = format!("{source}; {small_source}");
         }
-        let (model, gms) = model::<R>(spec, &de, &small)?;
-        let (x0, v0) = model.pack(&states, pair.as_ref())?;
+        let (model, gms) = model::<R>(spec, data, &de, &small)?;
+        let (mut x0, mut v0) = model.pack(&states, pair.as_ref())?;
         let n = model.layout().len();
+        if spec.initial_conditions.barycentre == Some(IcBarycentre::Relativistic) {
+            let (dr, dv) = rebarycentre(&model, &de, &mut x0, &mut v0)?;
+            source = format!(
+                "{source}; re-barycentred to the relativistic SSB with dmu*/dt (Park et al. 2021 \
+                 Eqs. 1-2, DE430 Eq. 3, Subbotin et al. 2023 Eq. 5) in {}, residual {dr:.3e} km, \
+                 {dv:.3e} km/s",
+                R::NAME
+            );
+        }
         let records: Vec<IcRecord> = gms
             .iter()
             .enumerate()
@@ -376,13 +554,16 @@ impl<R: Real> NBodyRun<R> {
             constants,
             ic_source: source,
             epoch_jd_tdb: parts(R::from_f64(jd)),
-            model: format!(
-                "{}; IAS15 epsilon = {:e}, safety = {}, PC tolerance = {:e}, dense output, {}",
-                model.describe(),
-                cfg.epsilon,
-                cfg.safety,
-                cfg.pc_tolerance,
-                R::NAME
+            model: tag_overrides(
+                format!(
+                    "{}; IAS15 epsilon = {:e}, safety = {}, PC tolerance = {:e}, dense output, {}",
+                    model.describe(),
+                    cfg.epsilon,
+                    cfg.safety,
+                    cfg.pc_tolerance,
+                    R::NAME
+                ),
+                data,
             ),
             states: Vec::new(),
             passages: Vec::new(),

@@ -204,17 +204,16 @@ verified_by = "WP15 builder agent, 2026-10-15: Park17 Table 3 re-read in the PDF
 [[vector]]
 id = "NUM009-TIER-COST-RATIO"
 requirement = ["NUM-009"]
-quantity = "wall time of an IAS15 run with 16 Major + 338 Minor bodies divided by the same run with the 16 Major bodies alone (same machine, same process, median of 5)"
+quantity = "wall time of an IAS15 run with 16 Major + 338 Minor bodies and the 1PN EIH terms evaluated for every moving body, divided by the same tiered run without EIH (same machine, same process, configurations interleaved, median of 5 rounds)"
 value = 0.0
 unit = "1"
 kind = "defined"
-source = "NUM-009 acceptance: the run with the DE440 asteroid set as Minor bodies costs < 2x the 16-Major-body run (the ratio must lie in [0, 2])."
-citation = "FerroAstro NUM-009 (docs/requirements/NUM.md); Subbotin et al. 2023"
-retrieved = "2026-10-15"
-tolerance = { abs = 2.0 }
-tolerance_rationale = "NUM-009's bound, copied. NUM-009 states the Majors interact under EIH; its notes give EIH ~3-5x Newtonian per pair (UNVERIFIED, OI-42). With Newtonian Majors (the only model before WP19) the pair count alone predicts ~46x for the forces, so this check is reported, not asserted, while OI-42 is open."
-verified_by = "WP15 builder agent, 2026-10-15: pre-registered in IMPLEMENTATION-NOTES WP15 (check 2a) before any timing."
-blocked_by = "OI-42"
+source = "NUM-009 acceptance (maintainer decision 2026-11-11): 'With the DE440 asteroid set as Minor bodies and EIH evaluated for every moving body, the run costs < 5x the same tiered run without EIH' (the ratio must lie in [0, 5]). It replaces '< 2x the 16-Major-body run', which no run with asteroids can meet; the ratio to the 16-Major run is now reported only."
+citation = "FerroAstro NUM-009 (docs/requirements/NUM.md, acceptance revised 2026-11-11, commit df4cb6a); IMPLEMENTATION-NOTES WP22 (E8: 3.37 measured in blocks before the revision)"
+retrieved = "2026-11-12"
+tolerance = { abs = 5.0 }
+tolerance_rationale = "NUM-009's revised bound, copied. golden-change: until 2026-11-11 this vector held the old '< 2x the 16-Major run' ratio with blocked_by = OI-42; the maintainer's revision of the acceptance replaces both the quantity and the bound and removes the block. The old ratio is printed by both cost nightlies as information."
+verified_by = "WP22 builder agent, 2026-11-12: bound copied from the revised NUM-009 acceptance."
 
 [[vector]]
 id = "NUM009-TIER-VS-ALL-MUTUAL"
@@ -223,11 +222,11 @@ quantity = "wall time of the tiered run (16 Major + 338 Minor) divided by the sa
 value = 0.0
 unit = "1"
 kind = "defined"
-source = "The purpose of tiering (NUM-009 notes: 16 x 343 + 120 interactions versus ~6.4e4): tiering must cost less than the all-mutual run (ratio in [0, 1])."
+source = "NUM-009 acceptance (maintainer decision 2026-11-11): the tiered run costs < 1x the all-mutual run (ratio in [0, 1]); the purpose of tiering (NUM-009 notes: 16 x 343 + 120 interactions versus ~6.4e4)."
 citation = "FerroAstro NUM-009 notes (docs/requirements/NUM.md)"
 retrieved = "2026-10-15"
 tolerance = { abs = 1.0 }
-tolerance_rationale = "Agent-set (WP15 plan, check 2b): a one-sided structural bound, ratio < 1. PROVISIONAL."
+tolerance_rationale = "Set in the WP15 plan (check 2b) as a one-sided structural bound, ratio < 1; adopted as NUM-009 acceptance on 2026-11-11, so no longer provisional. Value and tolerance unchanged. Asserted by the Newtonian WP15 nightly and the WP22 E8 nightly (tiered Newtonian vs all-mutual Newtonian)."
 verified_by = "WP15 builder agent, 2026-10-15: pre-registered in IMPLEMENTATION-NOTES WP15 before any timing."
 
 [[vector]]

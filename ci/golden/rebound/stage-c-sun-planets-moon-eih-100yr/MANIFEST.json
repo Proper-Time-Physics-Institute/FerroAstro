@@ -1,0 +1,39 @@
+{
+  "entries": [
+    {
+      "command": "python -m oracles.rebound_runner --scenario /in/stage-c-sun-planets-moon-eih-100yr.toml --header /in/header.440 --out-dir /out",
+      "cpu": "13th Gen Intel(R) Core(TM) i9-13900 (32 logical CPUs)",
+      "extra": {
+        "c_au_per_day": "173.1446326742403",
+        "force_is_velocity_dependent": "1",
+        "gravity": "basic",
+        "ias15_adaptive_mode": "PRS23",
+        "ias15_epsilon": "1e-09",
+        "ias15_min_dt": "0.0",
+        "rebound_version": "5.2.2",
+        "reboundx_effect": "gr_full",
+        "reboundx_version": "5.1.0",
+        "relative_energy_change": "-2.0923700846413284e-09",
+        "steps_done": "28675"
+      },
+      "file": "stage-c-sun-planets-moon-eih-100yr.rebound.states.csv",
+      "frame": "ICRF axes, solar-system-barycentric (DE440 header.440 frame)",
+      "generated_utc": "2026-10-20T10:44:40Z",
+      "image_digest": "sha256:dedf4e06cb86597d26b1c051b85ff2bf635e0c790313f1e489029fe4794cc75e",
+      "input_sha256": {
+        "header.440": "0f4636b663e6f00af9efa2b605ef23635489f56b23dd1a5e3821d3acc6ac3359",
+        "stage-c-sun-planets-moon-eih-100yr.toml": "c1055be18727b7560443a12fdcb537ff8ceb31fdd4d755f4c8e2b770aa72fbe3"
+      },
+      "output_sha256": "0f82a9f155ed8867cb8b2ec70ec6026c2da5d4c7c3602c7424d78b3579ae04af",
+      "runner_sha": "ffa503bff4b6150cec767e04bfff678545c6ddf1",
+      "runner_sha256": "e93783c0b461408624669bda2ce1a877ddf7f9881d1e5611b89d4ca4587a6798",
+      "scenario": "stage-c-sun-planets-moon-eih-100yr",
+      "time_scale": "TDB",
+      "tool": "rebound",
+      "units": "t_days: TDB days since epoch_jd_tdb; position: km; velocity: km/s",
+      "version": "rebound 5.2.2, reboundx 5.1.0",
+      "wall_clock_s": 5.841
+    }
+  ],
+  "schema_version": 1
+}

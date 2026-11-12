@@ -43,6 +43,12 @@ impl Protocol {
         }
     }
 
+    /// True for the two cross-term protocols.
+    #[must_use]
+    pub const fn is_cross_term(self) -> bool {
+        matches!(self, Protocol::CrossTerm | Protocol::CrossTermRemove)
+    }
+
     /// The sign convention in which [`Protocol::to_park17`] reports this protocol's rows
     /// (ADR-0014: every cross-term column carries its convention).
     #[must_use]
@@ -244,7 +250,10 @@ impl Plan {
     /// Body toggles (PHY-012): configurations `base`, `base + X` for every toggle and
     /// `base + X + Y` for every pair; when `full` is not empty also `full`, `full − X` and
     /// `full − X − Y`. Combinations: P-add for every toggle, the P-add cross term of every pair,
-    /// and (if `full`) P-remove for every toggle and the P-remove cross term of every pair. `template` supplies everything but the body list and the span.
+    /// and (if `full`) P-remove for every toggle and the P-remove cross term of every pair. Cross
+    /// terms are inclusion–exclusion second differences; read them against Park17 only through
+    /// [`Protocol::to_park17`] (ADR-0014). `template` supplies
+    /// everything but the body list and the span.
     ///
     /// # Errors
     /// `FA-E1400` if a toggle is empty, repeats a base body, is missing from `full`, labels
@@ -328,6 +337,8 @@ impl Plan {
                     combinations.push(Combination {
                         label: format!("{}+{}", x.label, y.label),
                         protocol: Protocol::CrossTermRemove,
+                        // Inclusion–exclusion second difference; Park17's sign is
+                        // `Protocol::to_park17` of it (ADR-0014).
                         terms: vec![
                             (1, "full".into()),
                             (-1, format!("full-{}", x.label)),
@@ -382,6 +393,139 @@ impl Plan {
                 label: t.label.clone(),
                 protocol: Protocol::Add,
                 terms: vec![(1, t.label.clone()), (-1, "base".into())],
+            });
+        }
+        let plan = Self {
+            name: name.to_owned(),
+            base: template.bodies.iter().map(|b| b.naif()).collect(),
+            configs,
+            combinations,
+        };
+        plan.validate()?;
+        Ok(plan)
+    }
+
+    /// Force-switch toggles with both protocols (WP20, NUM-019): one configuration per subset of
+    /// toggles that a combination needs, labelled `base` or `base+X+Y…` (toggle order), each
+    /// subset run once. Combinations: P-add for every toggle and the P-add cross term of every
+    /// pair; P-remove (`all − (all − X)`, where `all` is the template with every toggle applied)
+    /// for every toggle and the P-remove cross term of every pair, both cross terms as inclusion–exclusion second differences
+    /// ([`Protocol::CrossTerm`], [`Protocol::CrossTermRemove`]; Park17's sign through
+    /// [`Protocol::to_park17`]).
+    ///
+    /// # Errors
+    /// `FA-E1400` for repeated labels, a toggle that changes nothing, or a pair index out of
+    /// range.
+    #[expect(
+        clippy::too_many_lines,
+        reason = "one plan: the subsets of both protocols and their combinations, read top to bottom"
+    )]
+    pub fn switches_both(
+        name: &str,
+        template: &ScenarioSpec,
+        toggles: &[SwitchToggle],
+        pairs: &[(usize, usize)],
+        years: LegYears<'_>,
+    ) -> Result<Self, DiffrunError> {
+        for t in toggles {
+            let mut s = template.clone();
+            (t.apply)(&mut s.forces);
+            if s.forces == template.forces {
+                return Err(plan_error(
+                    name,
+                    format!("toggle {} changes no switch", t.label),
+                    "make the toggle change the template's forces",
+                ));
+            }
+        }
+        for &(i, j) in pairs {
+            if i >= toggles.len() || j >= toggles.len() || i == j {
+                return Err(plan_error(
+                    name,
+                    format!("pair ({i}, {j}) is out of range"),
+                    "index two different toggles",
+                ));
+            }
+        }
+        let label_of = |set: &BTreeSet<usize>| -> String {
+            std::iter::once("base".to_owned())
+                .chain(
+                    set.iter()
+                        .filter_map(|&k| toggles.get(k))
+                        .map(|t| t.label.clone()),
+                )
+                .collect::<Vec<_>>()
+                .join("+")
+        };
+        let mut configs: Vec<Config> = Vec::new();
+        let mut need = |set: &BTreeSet<usize>| -> String {
+            let label = label_of(set);
+            if !configs.iter().any(|c| c.label == label) {
+                let mut s = template.clone();
+                for t in set.iter().filter_map(|&k| toggles.get(k)) {
+                    (t.apply)(&mut s.forces);
+                }
+                configs.push(Config {
+                    legs: legs(name, &label, &s, years),
+                    label: label.clone(),
+                });
+            }
+            label
+        };
+        let one = |k: usize| -> BTreeSet<usize> { std::iter::once(k).collect() };
+        let all: BTreeSet<usize> = (0..toggles.len()).collect();
+        let without = |drop: &[usize]| -> BTreeSet<usize> {
+            all.iter().copied().filter(|k| !drop.contains(k)).collect()
+        };
+        let empty = need(&BTreeSet::new());
+        let mut combinations = Vec::new();
+        for (k, t) in toggles.iter().enumerate() {
+            let on = need(&one(k));
+            combinations.push(Combination {
+                label: t.label.clone(),
+                protocol: Protocol::Add,
+                terms: vec![(1, on), (-1, empty.clone())],
+            });
+        }
+        let pair_labels = |i: usize, j: usize| -> (String, String) {
+            let l = |k: usize| toggles.get(k).map_or_else(String::new, |t| t.label.clone());
+            (l(i), l(j))
+        };
+        for &(i, j) in pairs {
+            let (x, y) = pair_labels(i, j);
+            let xy = need(&[i, j].into_iter().collect());
+            combinations.push(Combination {
+                label: format!("{x}+{y}"),
+                protocol: Protocol::CrossTerm,
+                terms: vec![
+                    (1, xy),
+                    (-1, need(&one(i))),
+                    (-1, need(&one(j))),
+                    (1, empty.clone()),
+                ],
+            });
+        }
+        let full = need(&all);
+        for (k, t) in toggles.iter().enumerate() {
+            combinations.push(Combination {
+                label: t.label.clone(),
+                protocol: Protocol::Remove,
+                terms: vec![(1, full.clone()), (-1, need(&without(&[k])))],
+            });
+        }
+        for &(i, j) in pairs {
+            let (x, y) = pair_labels(i, j);
+            combinations.push(Combination {
+                label: format!("{x}+{y}"),
+                protocol: Protocol::CrossTermRemove,
+                // Inclusion–exclusion second difference, as in `Plan::bodies`; Park17's sign
+                // is `Protocol::to_park17` of it (ADR-0014).
+                terms: vec![
+                    (1, full.clone()),
+                    (-1, need(&without(&[i]))),
+                    (-1, need(&without(&[j]))),
+                    (1, need(&without(&[i, j]))),
+                ],
             });
         }
         let plan = Self {

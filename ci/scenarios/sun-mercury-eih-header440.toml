@@ -1,0 +1,34 @@
+# SPDX-FileCopyrightText: 2026 Proper-Time Physics Institute
+# SPDX-License-Identifier: Apache-2.0
+# Rung GR-SCHW through the EIH N-body equations (PHY-005 via gr_eih, WP19 check C3): Sun + Mercury
+# as two bodies with their DE440 GMs, EIH 1PN (Park et al. 2021 Eq. 27, beta = gamma = 1, DE440),
+# from the DE440 initial conditions in header.440, 1001 perihelion passages of Mercury relative to
+# the Sun = 1000 orbits, as the test-particle rung sun-mercury-gr1pn-header440. Schema:
+# scenario.schema.json (CI-002).
+schema_version = 1
+name = "sun-mercury-eih-header440"
+description = "Sun + Mercury N-body, EIH 1PN (gr_eih), header.440 ICs, 1000 orbits (PHY-005 via EIH)"
+mode = "n-body"
+bodies = ["Sun", "Mercury"]
+central_body = "Sun"
+
+[initial_conditions]
+source = "de440-header"
+
+[constants]
+gm_set = "de440"
+
+[forces]
+newton = true
+gr_eih = true
+
+[integrator]
+name = "ias15"
+precision = "f64"
+
+[span]
+years = 250.0
+stop_after_passages = 1001
+
+[output]
+perihelion = ["Mercury"]

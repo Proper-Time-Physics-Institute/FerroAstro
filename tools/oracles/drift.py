@@ -42,7 +42,12 @@ ROOT = Path(__file__).resolve().parents[2]
 ERFA_GOLDENS = ("erfa-time-pyerfa.csv", "erfa-dat-pyerfa.csv", "erfa-frames-pyerfa.csv")
 ISSUE_LABELS = ("golden-drift", "blocking")
 #: Keys of JSON goldens that record when or how a run happened, not what it found.
-VOLATILE_JSON_KEYS = frozenset({"date_utc", "retrieved_utc", "fetched", "generated_utc"})
+#: ``last_modified`` is the HTTP header of a fresh download: the JPL runner records it only when
+#: its cache is cold (``fetched``), so a warm-cache run lacks it (first full nightly, WP19). The
+#: product itself is still compared through its ``sha256`` and ``pin_ok``.
+VOLATILE_JSON_KEYS = frozenset(
+    {"date_utc", "retrieved_utc", "fetched", "generated_utc", "last_modified"}
+)
 
 
 def stable_json(path: Path) -> object:

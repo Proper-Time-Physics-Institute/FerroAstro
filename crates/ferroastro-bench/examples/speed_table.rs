@@ -66,6 +66,9 @@ enum Kind {
     FullSmallBodies,
     /// Mercury in the DE440 field: Mercury vs FerroAstro.
     EphemerisField,
+    /// Sun + 8 planets under EIH 1PN (WP21): Mercury vs REBOUND(x `gr_full`); no conserved
+    /// Newtonian energy.
+    PlanetsEih,
 }
 
 struct Planned {
@@ -75,7 +78,7 @@ struct Planned {
     kind: Kind,
 }
 
-const PLAN: [Planned; 4] = [
+const PLAN: [Planned; 5] = [
     Planned {
         name: "bench-a-sun-8planets-newton-1000yr",
         label: "(a) Sun + 8 planets, Newtonian, 1000 yr",
@@ -99,6 +102,12 @@ const PLAN: [Planned; 4] = [
         label: "(d) Mercury in the DE440-driven field (stage B), 100 yr",
         daily: None,
         kind: Kind::EphemerisField,
+    },
+    Planned {
+        name: "bench-e-sun-8planets-eih-1000yr",
+        label: "(e) Sun + 8 planets, EIH 1PN (gr_eih; REBOUNDx gr_full), 1000 yr",
+        daily: None,
+        kind: Kind::PlanetsEih,
     },
 ];
 
@@ -480,13 +489,13 @@ fn park_reference(vs: &VectorSet, kind: Kind) -> Option<(f64, String)> {
                 ),
             ))
         }
-        Kind::FullSmallBodies | Kind::EphemerisField => None,
+        Kind::FullSmallBodies | Kind::EphemerisField | Kind::PlanetsEih => None,
     }
 }
 
 fn reference_tool(kind: Kind) -> Option<&'static str> {
     match kind {
-        Kind::PlanetsNewton => Some("rebound"),
+        Kind::PlanetsNewton | Kind::PlanetsEih => Some("rebound"),
         Kind::MercuryGr | Kind::EphemerisField => Some("ferroastro"),
         Kind::FullSmallBodies => None,
     }
@@ -508,10 +517,19 @@ fn cmd_assemble(args: &[String]) -> ExitCode {
     let mut notes = vec![
         format!("header.440: {}", data.header_prov),
         "Accuracy columns are computed by ferroastro-bench from each tool's own output files, identically for every tool; a '–' always carries its reason in the notes under the table.".to_owned(),
-        "Mercury |Δr|: heliocentric, max over the common output times, against the scenario's reference run in this same harness invocation (REBOUND for (a); FerroAstro for (b) and (d)).".to_owned(),
+        "Mercury |Δr|: heliocentric, max over the common output times, against the scenario's reference run in this same harness invocation (REBOUND for (a) and (e); FerroAstro for (b) and (d)).".to_owned(),
         "Perihelion rates: the WP14/WP17 Park2017 estimator (sampled-state passages, Park17 mean-orbit plane, quadratic + 14 Table-2 terms with SW92 T2A mean motions, 20 jack-knife blocks), window epoch + 30 d to end − 30 d, applied to each tool's daily twin (CI-009).".to_owned(),
     ];
     for p in &PLAN {
+        // A harness invocation restricted with --only (WP21) has no directory for the other
+        // scenarios: they are left out of the table, with a note, rather than listed as failed.
+        if TOOLS.iter().all(|t| !run_dir.join(t).join(p.name).exists()) {
+            notes.push(format!(
+                "{}: not run in this invocation (harness --only)",
+                p.label
+            ));
+            continue;
+        }
         let text = std::fs::read_to_string(scenario_path(p.name)).unwrap();
         let spec = ScenarioSpec::parse(&text).unwrap();
         scenarios.push(ScenarioInfo {
@@ -619,6 +637,10 @@ fn cmd_assemble(args: &[String]) -> ExitCode {
                     Kind::EphemerisField => {
                         Measure::none("", "test particle in a time-dependent field: no conserved energy")
                     }
+                    Kind::PlanetsEih => Measure::none(
+                        "",
+                        "EIH 1PN: the Newtonian energy is not a conserved quantity of the model (the 1PN energy is checked in ferroastro-eih)",
+                    ),
                 };
                 a.mercury_dr_km = match (&reference, &series) {
                     (Some((rt, _)), _) if *rt == tool => {

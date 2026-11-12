@@ -27,6 +27,6 @@ echo "oracle job finished: $(cut -f1 "$out/oracle-job.done") (status $(cut -f2 "
 fail=0
 cargo nextest run -p ferroastro-oracle --cargo-profile release --profile nightly \
   --run-ignored only --no-capture > "$out/ferroastro-nightly.log" 2>&1 || fail=1
-grep -E 'P-add Venus|GR contribution|PASS|FAIL' "$out/ferroastro-nightly.log" | tail -n 40
+grep -E 'P-add Venus|GR contribution|PRECONDITION|PASS|FAIL' "$out/ferroastro-nightly.log" | tail -n 40
 echo "nightly FerroAstro oracle differentials: $([[ $fail == 0 ]] && echo PASS || echo FAIL); log $out/ferroastro-nightly.log"
 exit "$fail"
