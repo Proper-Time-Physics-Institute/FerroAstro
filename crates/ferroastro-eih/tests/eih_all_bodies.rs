@@ -43,7 +43,7 @@ use std::path::PathBuf;
 /// PPN test points: GR and the WP19 review's general point.
 const PPN_POINTS: [(f64, f64); 2] = [(1.0, 1.0), (1.1, 0.9)]; // lint: allow-literal(PPN test points, WP19 review)
 /// Ceres (NAIF 2 000 001).
-const CERES: NaifId = NaifId(2_000_001);
+const CERES: NaifId = NaifId(2_000_001); // lint: allow-literal(NAIF id of (1) Ceres)
 /// Samples of the E3 run: every 10 d over 10 yr.
 const SAMPLES: u32 = 365; // lint: allow-literal(10-d sampling over 10 yr)
 const STEP_DAYS: f64 = 10.0; // lint: allow-literal(output cadence, days)
@@ -192,11 +192,12 @@ fn reference(
                 let r = dist(i, j);
                 let rji = sub(rj, ri);
                 let rij = sub(ri, rj);
+                let proj2 = (dot(rij, vj) / r).powi(2);
                 let brace = -2.0 * (beta + gamma) / c2 * pot(i) - (2.0 * beta - 1.0) / c2 * pot(j)
                     + gamma * dot(vi, vi) / c2
                     + (1.0 + gamma) * dot(vj, vj) / c2
                     - 2.0 * (1.0 + gamma) / c2 * dot(vi, vj)
-                    - 1.5 / c2 * (dot(rij, vj) / r).powi(2)
+                    - 3.0 / (2.0 * c2) * proj2
                     + 0.5 / c2 * dot(rji, aj);
                 let w: [f64; 3] =
                     [0, 1, 2].map(|k| (2.0 + 2.0 * gamma) * vi[k] - (1.0 + 2.0 * gamma) * vj[k]);
@@ -223,48 +224,23 @@ fn synthetic() -> Vec<Body> {
         r: r.map(|x| x * au),
         v,
     };
-    vec![
-        mk(
-            Tier::Major,
-            gs,
-            [0.003, -0.001, 0.0002],
-            [0.01, -0.012, 0.0003],
-        ), // lint: allow-literal(structural fixture)
-        mk(
-            Tier::Major,
-            gs * 1.7e-7,
-            [0.35, -0.12, 0.03],
-            [20.0, 41.0, 3.0],
-        ), // lint: allow-literal(structural fixture)
-        mk(
-            Tier::Major,
-            gs * 3.0e-6,
-            [-0.6, 0.8, -0.01],
-            [-24.0, -18.0, 1.0],
-        ), // lint: allow-literal(structural fixture)
-        mk(
-            Tier::Major,
-            gs * 9.5e-4,
-            [3.4, -3.7, -0.1],
-            [9.0, 8.0, -0.3],
-        ), // lint: allow-literal(structural fixture)
-        mk(Tier::Minor, gs * 1e-4, [1.0, 0.2, 0.05], [-5.0, 29.0, 0.5]), // lint: allow-literal(structural fixture)
-        mk(
-            Tier::Minor,
-            gs * 1e-4,
-            [1.08, 0.26, 0.04],
-            [-7.0, 27.0, 0.2],
-        ), // lint: allow-literal(structural fixture)
-        mk(
-            Tier::Minor,
-            gs * 1e-4,
-            [-2.1, -1.4, 0.3],
-            [11.0, -15.0, 1.5],
-        ), // lint: allow-literal(structural fixture)
-        mk(Tier::Minor, gs * 1e-4, [0.1, 2.6, -0.4], [-18.0, 1.0, 2.0]), // lint: allow-literal(structural fixture)
-        mk(Tier::Ring, gs * 1e-8, [40.0, 0.0, 0.0], [0.0; 3]), // lint: allow-literal(structural fixture)
-        mk(Tier::Ring, gs * 1e-8, [0.0, -40.0, 0.0], [0.0; 3]), // lint: allow-literal(structural fixture)
-    ]
+    // Rows: tier, GM / GM_sun, position (au), velocity (km/s).
+    #[rustfmt::skip]
+    let rows: [(Tier, f64, [f64; 3], [f64; 3]); 10] = [
+        (Tier::Major, 1.0, [0.003, -0.001, 0.0002], [0.01, -0.012, 0.0003]), // lint: allow-literal(structural fixture)
+        (Tier::Major, 1.7e-7, [0.35, -0.12, 0.03], [20.0, 41.0, 3.0]), // lint: allow-literal(structural fixture)
+        (Tier::Major, 3.0e-6, [-0.6, 0.8, -0.01], [-24.0, -18.0, 1.0]), // lint: allow-literal(structural fixture)
+        (Tier::Major, 9.5e-4, [3.4, -3.7, -0.1], [9.0, 8.0, -0.3]), // lint: allow-literal(structural fixture)
+        (Tier::Minor, 1e-4, [1.0, 0.2, 0.05], [-5.0, 29.0, 0.5]), // lint: allow-literal(structural fixture)
+        (Tier::Minor, 1e-4, [1.08, 0.26, 0.04], [-7.0, 27.0, 0.2]), // lint: allow-literal(structural fixture)
+        (Tier::Minor, 1e-4, [-2.1, -1.4, 0.3], [11.0, -15.0, 1.5]), // lint: allow-literal(structural fixture)
+        (Tier::Minor, 1e-4, [0.1, 2.6, -0.4], [-18.0, 1.0, 2.0]), // lint: allow-literal(structural fixture)
+        (Tier::Ring, 1e-8, [40.0, 0.0, 0.0], [0.0; 3]), // lint: allow-literal(structural fixture)
+        (Tier::Ring, 1e-8, [0.0, -40.0, 0.0], [0.0; 3]), // lint: allow-literal(structural fixture)
+    ];
+    rows.iter()
+        .map(|&(tier, f, r, v)| mk(tier, gs * f, r, v))
+        .collect()
 }
 
 /// The tiered graph: no Minor–Minor and no Ring–Ring edge.
