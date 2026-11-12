@@ -205,3 +205,45 @@ retrieved = "2026-11-12"
 tolerance = { abs = 1.0e-13 }
 tolerance_rationale = "About 450 ulp, as EIH-R3-LIMIT-CORRECTION-REL: round-off of different summation orders. A wrong set rule (a missing source, potential or acceleration term) changes a body's correction at O(GM_source/GM_dominant) or more, which is >= 1e-10 for Ceres' own correction and O(1e-2) for the heavy synthetic Minor bodies."
 verified_by = "WP22 builder agent, 2026-11-12: fixed in the WP22 plan before the first run."
+
+[[vector]]
+id = "EIH-MUSTAR-RATE-FD-REL"
+requirement = ["NUM-018"]
+quantity = "max_i |mu*'_i - [mu*_i(t+d) - mu*_i(t-d)]/(2d)| / max_i |mu*'_i|, d = 60 s, mu*' from mu_star_rate, the shifted states from the second-order Taylor flow under the Newtonian accelerations, double-double, header.440 Sun + 8 planets + Moon (barycentric)"
+value = 0.0
+unit = "1"
+kind = "analytic"
+source = "mu*'_i = (GM_i/c^2)[v_i.a_i + (1/2) sum_j GM_j (r_ij.v_ij)/r_ij^3] is the time derivative of Park et al. 2021 Eq. 2 (DE430 Eq. 2). A central difference converges to it as d^2 (the Taylor-flow errors are odd in d and enter at the same order)."
+citation = "Park et al. 2021, AJ 161, 105, Eq. 2; Folkner et al. 2014, IPN PR 42-196, Eqs. 2-3; Subbotin et al. 2023, arXiv:2304.04458v1, Eq. 5; NUM-018 sign-off (OI-75); WP22 plan check E5"
+retrieved = "2026-11-12"
+tolerance = { abs = 1.0e-6 }
+tolerance_rationale = "Truncation O((omega d)^2): the Moon is fastest, (2.7e-6 rad/s x 60 s)^2/6 ~ 4e-9; the m5-performance WP25 run measured 3.9e-6 at d = 1 h, which scales by (60/3600)^2 to 1.1e-9. The bound leaves ~1000x for higher-order terms; a wrong coefficient (the 1/2, a sign, a missing v.a) is O(1)."
+verified_by = "WP22 builder agent, 2026-11-12: fixed in the WP22 plan before the first run."
+
+[[vector]]
+id = "EIH-REL-SSB-DRIFT-10YR-KM"
+requirement = ["NUM-018"]
+quantity = "max over 10 yr (every 10 d) of |R*(t) - R*(0)|, R* = sum mu* r / sum mu* (Park et al. 2021 Eqs. 1-2), EIH (beta = gamma = 1) Sun + 8 planets + Moon (all Major, barycentric Moon), f64 IAS15 default, from the header.440 states re-barycentred with sum mu* r = 0 and sum (mu*' r + mu* v) = 0 (two passes)"
+value = 0.0
+unit = "km"
+kind = "analytic"
+source = "EIH conserves the 1PN centre of mass to O(c^-4): sum mu* r = P t + const with P = sum (mu*' r + mu* v). The velocity condition sets P = 0, so R* stays at its initial value up to round-off."
+citation = "Folkner et al. 2014, IPN PR 42-196, Eq. 3 and pp. 5-6; Subbotin et al. 2023 Eq. 5; NUM-018 sign-off (OI-75); WP22 plan check E6"
+retrieved = "2026-11-12"
+tolerance = { abs = 5.0e-6 }
+tolerance_rationale = "f64 round-off of the velocity condition (~1e-15 km/s x 3e8 s ~ 3e-7 km) plus the WP19 C6 integration floor (3.2e-10 km); about 15x the larger estimate."
+verified_by = "WP22 builder agent, 2026-11-12: fixed in the WP22 plan before the first run."
+
+[[vector]]
+id = "EIH-MUSTAR-RATE-DRIFT-RATIO-MIN"
+requirement = ["NUM-018"]
+quantity = "lower bound on (the EIH-REL-SSB-DRIFT-10YR-KM drift with the velocity condition sum mu* v = 0, i.e. without the mu*' term) / (the same drift with the full condition)"
+value = 5.0
+unit = "1"
+kind = "defined"
+source = "DE430 pp. 5-6: DE405 neglected the rate of change of mu* for the Sun's initial velocity and its barycentre moved by about 0.5 m/century, i.e. ~5e-5 km per 10 yr, against the ~3e-7 km round-off estimate with the full condition: the check must tell the two apart."
+citation = "Folkner et al. 2014, IPN PR 42-196, pp. 5-6; WP22 plan check E6"
+retrieved = "2026-11-12"
+tolerance = { abs = 0.0 }
+tolerance_rationale = "One-sided threshold (measured ratio must be >= the value); the tolerance field is unused."
+verified_by = "WP22 builder agent, 2026-11-12: fixed in the WP22 plan before the first run."

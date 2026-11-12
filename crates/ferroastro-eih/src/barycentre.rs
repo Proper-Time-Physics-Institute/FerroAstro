@@ -104,3 +104,91 @@ pub fn relativistic_barycentre<R: Real>(
     }
     Ok((r.map(|x| x / total), v.map(|x| x / total)))
 }
+
+/// `dμ*_i/dt` of every body, in input order, with the Newtonian accelerations
+/// `aᵢ = Σⱼ GMⱼ (rⱼ − rᵢ)/rᵢⱼ³`:
+///
+/// `μ̇*ᵢ = (GMᵢ/c²) [vᵢ·aᵢ + ½ Σ_{j≠i} GMⱼ (rᵢⱼ·vᵢⱼ)/rᵢⱼ³]`, `rᵢⱼ = rᵢ − rⱼ`, `vᵢⱼ = vᵢ − vⱼ`,
+///
+/// the time derivative of Eq. 2 (differentiated here; Subbotin et al. 2023 Eq. 5 uses it in the
+/// momentum condition).
+///
+/// # Errors
+/// As [`mu_star`].
+pub fn mu_star_rate<R: Real>(
+    bodies: &[BarycentreBody<R>],
+    c: Velocity<R>,
+) -> Result<Vec<R>, ForceError> {
+    let cc = speed_of_light(c)?;
+    let c2 = cc * cc;
+    let mut out = Vec::with_capacity(bodies.len());
+    for (i, b) in bodies.iter().enumerate() {
+        let mut a = [R::ZERO; 3];
+        let mut w = R::ZERO;
+        for (j, o) in bodies.iter().enumerate() {
+            if j == i || o.gm == R::ZERO {
+                continue;
+            }
+            let d = [
+                b.position[0] - o.position[0],
+                b.position[1] - o.position[1],
+                b.position[2] - o.position[2],
+            ];
+            let dv = [
+                b.velocity[0] - o.velocity[0],
+                b.velocity[1] - o.velocity[1],
+                b.velocity[2] - o.velocity[2],
+            ];
+            let r2 = dot(d, d);
+            let r = r2.sqrt();
+            if r == R::ZERO {
+                return Err(ForceError::Singular { i, j, t: f64::NAN });
+            }
+            let k = o.gm / (r2 * r);
+            for (ak, dk) in a.iter_mut().zip(d) {
+                *ak -= k * dk;
+            }
+            w += k * dot(d, dv);
+        }
+        out.push(b.gm / c2 * (dot(b.velocity, a) + R::HALF * w));
+    }
+    Ok(out)
+}
+
+/// The relativistic barycentre and its velocity under the full momentum condition of
+/// Subbotin et al. 2023 Eq. 5:
+/// `(Σ μᵢ* rᵢ / Σ μᵢ*, Σ (μ̇ᵢ* rᵢ + μᵢ* vᵢ) / Σ μᵢ*)`.
+///
+/// # Errors
+/// As [`relativistic_barycentre`].
+pub fn relativistic_barycentre_with_rate<R: Real>(
+    bodies: &[BarycentreBody<R>],
+    c: Velocity<R>,
+) -> Result<([R; 3], [R; 3]), ForceError> {
+    let mu = mu_star(bodies, c)?;
+    let rate = mu_star_rate(bodies, c)?;
+    let total = mu.iter().fold(R::ZERO, |s, &m| s + m);
+    if total <= R::ZERO || !total.is_finite() {
+        return Err(ForceError::Invalid {
+            name: "total mu*",
+            value: total.to_f64(),
+            valid: "> 0",
+        });
+    }
+    let mut r = [R::ZERO; 3];
+    let mut v = [R::ZERO; 3];
+    for ((b, &m), &md) in bodies.iter().zip(&mu).zip(&rate) {
+        for k in 0..3 {
+            if let (Some(rk), Some(vk), Some(&pk), Some(&wk)) = (
+                r.get_mut(k),
+                v.get_mut(k),
+                b.position.get(k),
+                b.velocity.get(k),
+            ) {
+                *rk = m.mul_add(pk, *rk);
+                *vk = m.mul_add(wk, md.mul_add(pk, *vk));
+            }
+        }
+    }
+    Ok((r.map(|x| x / total), v.map(|x| x / total)))
+}
