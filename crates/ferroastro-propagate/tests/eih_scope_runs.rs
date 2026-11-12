@@ -12,7 +12,6 @@
 )]
 
 use ferroastro_constants::header440::Header;
-use ferroastro_core::ErrorCode;
 use ferroastro_propagate::{DataSources, run};
 use ferroastro_scenario::{EihScope, ScenarioSpec};
 use std::path::PathBuf;
