@@ -282,9 +282,20 @@ impl<R: Real> Jacobi<R> {
             *x0 = zip3(*x0, *v0, |x, v| tau.mul_add(v, x));
         }
         for ((x, v), &mu) in xj.iter_mut().zip(vj.iter_mut()).zip(&self.kmu).skip(1) {
-            kepler_drift(mu, x, v, tau).map_err(|_| IntegratorError::NonFinite {
-                what: "Kepler drift (no convergence or degenerate orbit)",
-                t: tau.to_f64(),
+            kepler_drift(mu, x, v, tau).map_err(|e| match e {
+                // The universal-anomaly iteration did not converge (M5 review #18 nit).
+                ferroastro_analytic::AnalyticError::Domain { what, .. }
+                    if what.contains("no convergence") =>
+                {
+                    IntegratorError::NoConvergence {
+                        what: "Kepler drift universal-anomaly iteration",
+                        t: tau.to_f64(),
+                    }
+                }
+                _ => IntegratorError::NonFinite {
+                    what: "Kepler drift (degenerate orbit)",
+                    t: tau.to_f64(),
+                },
             })?;
         }
         Ok(())

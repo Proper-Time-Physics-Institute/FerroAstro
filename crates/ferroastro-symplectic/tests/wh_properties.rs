@@ -163,3 +163,45 @@ fn check_model_refuses_what_the_kick_cannot_integrate() {
     println!("{e}");
     assert!(e.to_string().contains("ring-fixed-masses"));
 }
+
+/// Progress review after WP29, X3: Galilean boost. The same system with every velocity shifted
+/// by V gives, after STEPS steps, the unboosted positions plus V·t to round-off. The Jacobi
+/// centre of mass must drift (`x0 += τ v0` in `Jacobi::drift`); a frozen centre of mass misses
+/// V·t (|V t| = 6e-2 here).
+///
+/// Verifies: NUM-004
+#[test]
+fn wh_boosted_system_moves_with_its_centre_of_mass() {
+    let m = model::<f64>([Tier::Major; 3]);
+    let (x0, v0) = state::<f64>();
+    let boost = [1e-3, -2e-3, 5e-4]; // lint: allow-literal(structural fixture: Galilean boost)
+    let mut vb = v0.clone();
+    for k in 0..3 {
+        for i in 0..3 {
+            vb[k * 3 + i] += boost[k];
+        }
+    }
+    let cfg = WhConfig {
+        corrector: CorrectorOrder::None,
+        output_every_step: false,
+    };
+    let run = |v: &[f64]| {
+        let mut wh = Whfast::new(&m, &GM, 0.0, &x0, v, H, cfg).unwrap();
+        for _ in 0..STEPS {
+            wh.step(&m).unwrap();
+        }
+        let (mut x, mut w) = (vec![0.0; 9], vec![0.0; 9]);
+        wh.physical_state(&m, &mut x, &mut w).unwrap();
+        (x, wh.time())
+    };
+    let (xa, t) = run(&v0);
+    let (xb, _) = run(&vb);
+    let mut worst = 0.0_f64;
+    for k in 0..3 {
+        for i in 0..3 {
+            worst = worst.max((xb[k * 3 + i] - boost[k].mul_add(t, xa[k * 3 + i])).abs());
+        }
+    }
+    println!("X3: boosted - (unboosted + V t), max over bodies = {worst:.3e} (t = {t})");
+    assert!(worst < 1e-12, "{worst:e}"); // lint: allow-literal(round-off of 400 steps at |x| ~ 1, as the time-symmetry test)
+}

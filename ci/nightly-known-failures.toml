@@ -94,3 +94,33 @@ unit = "s"
 measured_on = "2026-10-20, WP26 progress review at 6cae36b (tables run1 and run2)"
 value_regex = 'oracle-stage-b-mercury-de440-field-100yr: median [0-9.]+ -> [0-9.]+ s, \|delta\| ([0-9.]+) s'
 rel_change = 1e-3
+
+[[failure]]
+test = "nightly_irk16_i2_pre_registered_f64_order"
+vector = "IRK16-OBSERVED-ORDER"
+review = "IMPLEMENTATION-NOTES WP29 (I2, plan addendum 1) and the progress review after WP29 (X4, X6); restored as a known failure in the M5 review fixes"
+last_value = 0.685
+unit = "1"
+measured_on = "2026-11-12, M5 review fixes (m5-review-fixes)"
+value_regex = 'id: "IRK16-OBSERVED-ORDER".*?measured: ([0-9.eE+-]+)'
+rel_change = 1e-3
+
+[[failure]]
+test = "nightly_irk16_i2b_pre_registered_dd_order"
+vector = "IRK16-OBSERVED-ORDER-DD"
+review = "IMPLEMENTATION-NOTES WP29 (I2b, plan addendum 1) and the progress review after WP29 (X4); restored as a known failure in the M5 review fixes"
+last_value = 11.79131228864861
+unit = "1"
+measured_on = "2026-11-12, M5 review fixes (m5-review-fixes)"
+value_regex = 'id: "IRK16-OBSERVED-ORDER-DD".*?measured: ([0-9.eE+-]+)'
+rel_change = 1e-9
+
+[[failure]]
+test = "nightly_irk16_compensation_gain_pre_registered"
+vector = "IRK16-COMPENSATION-GAIN-MIN"
+review = "IMPLEMENTATION-NOTES M5 review fixes (X2: the pre-registered gain >= 3 failed at 1.98)"
+last_value = 1.9820
+unit = "1"
+measured_on = "2026-11-12, M5 review fixes (m5-review-fixes)"
+value_regex = 'X2 \(pre-registered\):.*ratio ([0-9.eE+-]+)'
+rel_change = 1e-3

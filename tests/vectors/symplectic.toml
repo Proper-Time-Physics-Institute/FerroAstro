@@ -73,7 +73,7 @@ source = "s-stage Gauss collocation has classical order 2s = 16 at the step poin
 citation = "Hairer, Lubich & Wanner 2006, Geometric Numerical Integration, Thm. II.1.5"
 retrieved = "2026-10-21"
 tolerance = { abs = 2.25 }
-tolerance_rationale = "The interval [14, 18.5] around 16 allows pre-asymptotic behaviour at 16 steps per orbit (e = 0.2) and the error constant's step dependence; a method of order <= 12 (e.g. a wrong coefficient breaking B(16)) falls outside."
+tolerance_rationale = "The interval [14, 18.5] around 16 allows pre-asymptotic behaviour at 16 steps per orbit (e = 0.2) and the error constant's step dependence; a method of order <= 12 (e.g. a wrong coefficient breaking B(16)) falls outside. Note (M5 review #18, 2026-11-12, text only): the interval also ACCEPTS order 14, so the check distinguishes order >= 14 from order <= 12, not 16 from 14. Cited by the restored known-failure test nightly_irk16_i2_pre_registered_f64_order (X4/X6)."
 verified_by = "WP29 builder agent, 2026-10-21: fixed in the WP29 plan (check I2) before the code existed."
 notes = "Superseded within WP29 by IRK16-OBSERVED-ORDER-DD: in f64 both errors were at round-off (1.671e-13, 1.039e-13; observed 0.685), so this design cannot measure the order. IMPLEMENTATION-NOTES WP29 plan addendum 1; NEEDS HUMAN REVIEW."
 
@@ -88,7 +88,7 @@ source = "s-stage Gauss collocation has classical order 2s = 16 at the step poin
 citation = "Hairer, Lubich & Wanner 2006, Geometric Numerical Integration, Thm. II.1.5; IMPLEMENTATION-NOTES WP29 plan addendum 1"
 retrieved = "2026-10-21"
 tolerance = { abs = 2.25 }
-tolerance_rationale = "The interval [14, 18.5] of IRK16-OBSERVED-ORDER, unchanged; it allows pre-asymptotic behaviour at 12 steps per orbit."
+tolerance_rationale = "The interval [14, 18.5] of IRK16-OBSERVED-ORDER, unchanged. Written for the I2b pair (12 and 16 steps per orbit), where it was meant to allow pre-asymptotic behaviour; it is now asserted by I2c (least squares over 24, 32, 40 and 48 steps per orbit), and by the restored known-failure test nightly_irk16_i2b_pre_registered_dd_order for the I2b pair (11.79). As for IRK16-OBSERVED-ORDER, the interval accepts order 14. (Rationale corrected 2026-11-12, M5 review #18 X4, text only; it said '12 steps per orbit', which no asserting test uses.)"
 verified_by = "WP29 builder agent, 2026-10-21: value and bound fixed in plan addendum 1 for the I2b design (12/16 steps), before it ran. I2b failed (11.79, pre-asymptotic dip); the asserting test is now I2c (least squares over 24-48 steps), chosen in plan addendum 2 AFTER a diagnostic sweep, so this bound is not a pre-registered confirmation of I2c (NEEDS HUMAN REVIEW). Quantity text corrected by the WP29 reviewer, 2026-10-21; value and tolerance unchanged."
 
 [[vector]]
@@ -230,3 +230,17 @@ retrieved = "2026-10-21"
 tolerance = { abs = 0.0 }
 tolerance_rationale = "An upper bound (asserted <=), ~70x the P1 measurement."
 verified_by = "WP29 builder agent, 2026-10-21: fixed in plan addendum 3 before the test existed."
+
+[[vector]]
+id = "IRK16-COMPENSATION-GAIN-MIN"
+requirement = ["NUM-003"]
+quantity = "lower bound on |r_plain - r_DD| / |r_compensated - r_DD|: IRK16 in f64 with the plain and the Kahan-compensated state update against IRK16 in double-double from identical initial bits, e = 0.2056 Kepler orbit (GM = 1, a = 1), 64 steps per orbit, 100 orbits"
+value = 3.0
+unit = "1"
+kind = "defined"
+source = "Progress review after WP29, X2: the compensated update was unpinned (a mutant disabling it survived). The plain update rounds the state (u |x|) every step; the compensated one leaves the increment's rounding (u |h v|, ~1/10 of u |x| at 64 steps per orbit), so the expected gain is ~10, as for ABM (T1, B3). A compensation that does nothing gives exactly 1."
+citation = "IMPLEMENTATION-NOTES progress review after WP29 (X2); M5 review #18 SF4"
+retrieved = "2026-11-12"
+tolerance = { abs = 0.0 }
+tolerance_rationale = "One-sided threshold, set before the first run: 3 separates a working compensation (expected ~10) from a disabled one (exactly 1) with margin for random-walk scatter. The tolerance field is unused."
+verified_by = "M5 review-fix builder agent, 2026-11-12: written before the check's first run. FIRST RUN FAILED: ratio 1.98 (compensated 1.749e-12, plain 3.467e-12); the bound is unchanged and the test is a nightly known failure (ci/nightly-known-failures.toml). The expected ~10 assumed the state update dominates the compensated error; it does not at 64 steps per orbit."

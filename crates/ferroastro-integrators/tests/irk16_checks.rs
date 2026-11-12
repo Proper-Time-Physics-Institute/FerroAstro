@@ -358,3 +358,147 @@ fn irk16_counts_fixed_point_stalls_above_the_round_off_floor() {
     );
     assert_eq!((good.stalled_steps, good.capped_steps), (0, 0), "{good:?}");
 }
+
+/// The DD position error after `orbits` orbits with `n` steps per orbit (I2b, I2c, X2 helper).
+fn dd_error(orbits: u32, n: u32) -> f64 {
+    type D = DoubleDouble;
+    let e = D::from_f64(E);
+    let x0 = [D::ONE - e, D::ZERO];
+    let v0 = [D::ZERO, ((D::ONE + e) / (D::ONE - e)).sqrt()];
+    let h = D::TAU / D::from_i32(i32::try_from(n).unwrap());
+    let mut irk = Irk16::<D>::new(2, D::ZERO, &x0, &v0, h, Irk16Config::default()).unwrap();
+    for _ in 0..orbits * n {
+        irk.step(&KeplerR).unwrap();
+    }
+    let p = irk.positions();
+    (p[0] - x0[0]).hypot(p[1] - x0[1]).to_f64()
+}
+
+/// Check I2 as pre-registered in the WP29 plan (f64, 16 and 32 steps per orbit, 10 orbits,
+/// order = log2(err16/err32), `IRK16-OBSERVED-ORDER`), restored as a KNOWN FAILURE after the
+/// progress review after WP29 (X4, X6): in f64 both errors sit on the round-off floor, so the
+/// design cannot measure the order (WP29 measured 0.685). Listed in
+/// `ci/nightly-known-failures.toml`; superseded by I2c, not deleted.
+///
+/// Verifies: NUM-003
+#[test]
+#[ignore = "nightly known failure (WP29 I2, superseded by I2c; ci/nightly-known-failures.toml)"]
+fn nightly_irk16_i2_pre_registered_f64_order() {
+    let vs = VectorSet::load_workspace().unwrap();
+    let (x0, _) = pericentre();
+    let e16 = dist(run(I2_ORBITS, 16).positions(), &x0);
+    let e32 = dist(run(I2_ORBITS, 32).positions(), &x0); // lint: allow-literal(I2 design: 32 steps per orbit)
+    let order = (e16 / e32).log2();
+    println!(
+        "I2 (f64, superseded, known failure): err16 {e16:.3e}, err32 {e32:.3e}, order {order:.3}"
+    );
+    vs.get("IRK16-OBSERVED-ORDER")
+        .unwrap()
+        .check(order)
+        .unwrap();
+}
+
+/// Check I2b as pre-registered in WP29 plan addendum 1 (double-double, 12 and 16 steps per
+/// orbit, 10 orbits, `IRK16-OBSERVED-ORDER-DD`), restored as a KNOWN FAILURE (X4): the pair
+/// falls on a pre-asymptotic dip (WP29 measured 11.79). Superseded by I2c, not deleted.
+///
+/// Verifies: NUM-003
+#[test]
+#[ignore = "nightly known failure (WP29 I2b, superseded by I2c; ci/nightly-known-failures.toml)"]
+fn nightly_irk16_i2b_pre_registered_dd_order() {
+    let vs = VectorSet::load_workspace().unwrap();
+    let (e12, e16) = (dd_error(I2_ORBITS, 12), dd_error(I2_ORBITS, 16)); // lint: allow-literal(I2b design: 12 and 16 steps per orbit)
+    let order = (e12 / e16).log(16.0_f64 / 12.0); // lint: allow-literal(I2b design: 12 and 16 steps per orbit)
+    println!(
+        "I2b (DD, superseded, known failure): err12 {e12:.3e}, err16 {e16:.3e}, order {order:.3}"
+    );
+    vs.get("IRK16-OBSERVED-ORDER-DD")
+        .unwrap()
+        .check(order)
+        .unwrap();
+}
+
+/// X2 runs: the f64 end positions with the compensated and the plain update, and the
+/// double-double end position, after `orbits` orbits at `n` steps per orbit from identical
+/// (exactly representable) initial bits.
+fn x2_runs(orbits: u32, n: u32) -> ([f64; 2], [f64; 2], [DoubleDouble; 2]) {
+    type D = DoubleDouble;
+    let (x0, v0) = pericentre();
+    let f64_run = |compensated: bool| {
+        let h = TAU / f64::from(n);
+        let cfg = Irk16Config {
+            compensated,
+            ..Irk16Config::default()
+        };
+        let mut irk = Irk16::new(2, 0.0, &x0, &v0, h, cfg).unwrap();
+        for _ in 0..orbits * n {
+            irk.step(&Kepler).unwrap();
+        }
+        [irk.positions()[0], irk.positions()[1]]
+    };
+    let xd = x0.map(D::from_f64);
+    let vd = v0.map(D::from_f64);
+    let h = D::from_f64(TAU / f64::from(n));
+    let mut irk = Irk16::<D>::new(2, D::ZERO, &xd, &vd, h, Irk16Config::default()).unwrap();
+    for _ in 0..orbits * n {
+        irk.step(&KeplerR).unwrap();
+    }
+    (
+        f64_run(true),
+        f64_run(false),
+        [irk.positions()[0], irk.positions()[1]],
+    )
+}
+
+fn x2_err(p: [f64; 2], truth: [DoubleDouble; 2]) -> f64 {
+    let d = [0, 1].map(|k| (DoubleDouble::from_f64(p[k]) - truth[k]).to_f64());
+    d[0].hypot(d[1])
+}
+
+/// X2 design (100 orbits, 64 steps per orbit).
+const X2_ORBITS: u32 = 100;
+const X2_STEPS: u32 = 64;
+
+/// Progress review after WP29, X2, as pre-registered: the plain update's error against the DD
+/// twin must be at least `IRK16-COMPENSATION-GAIN-MIN` (3) times the compensated one's. **Known
+/// failure** (first run 2026-11-12: 1.98; the compensated error is dominated by the stage and
+/// iteration round-off, not by the state update). Listed in `ci/nightly-known-failures.toml`;
+/// the bound is not moved. The PR-tier pin is
+/// `irk16_compensated_update_changes_and_reduces_the_error`.
+///
+/// Verifies: NUM-003
+#[test]
+#[ignore = "nightly known failure (M5 review X2 pre-registered gain >= 3; ci/nightly-known-failures.toml)"]
+fn nightly_irk16_compensation_gain_pre_registered() {
+    let vs = VectorSet::load_workspace().unwrap();
+    let (c, p, truth) = x2_runs(X2_ORBITS, X2_STEPS);
+    let (ec, ep) = (x2_err(c, truth), x2_err(p, truth));
+    let ratio = ep / ec;
+    println!(
+        "X2 (pre-registered): |r - r_DD| compensated {ec:.3e}, plain {ep:.3e}, ratio {ratio:.4}"
+    );
+    let min = vs
+        .get("IRK16-COMPENSATION-GAIN-MIN")
+        .unwrap()
+        .value()
+        .unwrap();
+    assert!(
+        ratio >= min,
+        "IRK16-COMPENSATION-GAIN-MIN: ratio {ratio} < {min}"
+    );
+}
+
+/// Progress review after WP29, X2, PR-tier pin (structural, no tolerance; written AFTER the
+/// pre-registered gain check failed, disclosed in IMPLEMENTATION-NOTES): the compensated and the
+/// plain update give different end states, and the compensated one is the closer to the DD twin.
+/// A compensation that does nothing makes the two f64 runs bitwise identical and fails this.
+///
+/// Verifies: NUM-003
+#[test]
+fn irk16_compensated_update_changes_and_reduces_the_error() {
+    let (c, p, truth) = x2_runs(X2_ORBITS, X2_STEPS);
+    let (ec, ep) = (x2_err(c, truth), x2_err(p, truth));
+    println!("X2 pin: |r - r_DD| compensated {ec:.3e}, plain {ep:.3e}");
+    assert_ne!(c.map(f64::to_bits), p.map(f64::to_bits));
+    assert!(ec < ep, "compensated {ec:e} >= plain {ep:e}");
+}
