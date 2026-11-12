@@ -6513,10 +6513,16 @@ Provenance: header.440 `0f4636b6…6ac3359` and de440.bsp `a4ce9bf9…fff7c4b5` 
 | (g) ABM13 PECEC f64, same model, 100 yr | 4.338 | 0.132 | 584 400 | 0.0074 | 1.393e-2 | 5.816 |
 | (h) NUM-024 f64 (plain sums), 40 yr | **57.603** | 5.352 | 233 760 | **0.2464** | **3.246e-3** | 6.131 |
 | (i) NUM-024 mixed DD, 40 yr | **203.913** | 64.017 | 233 760 | **0.8723** | **2.038e-5** | 6.128 |
-| (j) DE440-class mixed DD, 40 yr | 233.850 | 75.392 | 233 760 | 1.0004 | 1.226e-5 | **0.1418** |
+| (j) DE440-class mixed DD, 40 yr ‡ | 233.850 | 75.392 | 233 760 | 1.0004 | 1.226e-5 | **0.1418** |
 | truth runs (untimed, parallel, other P-cores) | f-dd 25.5, g-dd 38.0, h-dd 452.6, j-dd 992.5 | | | | | |
 
-NUM-024 against Subbotin et al. 2023 (different machine, OI-44 UNVERIFIED; reported, not gated):
+‡ **M5 review #18, B1 (2026-11-12): row (j), its truth run and the (i) → (j) comparison were measured when
+`bench-j-de440class-*` ran the WP19 Major-only EIH.** Since the D1 merge the same scenario files run the 1PN terms for
+every moving body (`eih_scope = "all"`), so these numbers are **superseded** and must be re-measured; the scenario
+digest now covers the effective EIH scope, so old checkpoints and stores of these scenarios are refused.
+
+NUM-024 against Subbotin et al. 2023 (**not comparable**: different hardware, OI-44 UNVERIFIED; ~338 Minor bodies
+here against ~642 in Subbotin et al.'s model; (i) timed on a contended core; reported, never gated):
 | | Subbotin wall (s) | ms/step | FerroAstro median (s) | ms/step | FerroAstro / Subbotin |
 |---|---|---|---|---|---|
 | f64 | 81 | 0.3465 | 57.603 | 0.2464 | **0.711** |
@@ -6524,7 +6530,11 @@ NUM-024 against Subbotin et al. 2023 (different machine, OI-44 UNVERIFIED; repor
 | full DD | 1920 (32 min) | 8.2136 | 452.6 (one untimed truth run, not CI-008) | 1.936 | (0.236, informational) |
 
 - **Mixed / f64 cost ratio: 3.540** in this invocation, against Subbotin's 3.037. With the two least-loaded mixed runs (168.9 s and 174.8 s) it would be ≈ 3.0, and WP25's shared-machine runs gave ≈ 2.5; the median is the number of record and it is inflated by the load (above).
-- NUM-024's "within 1×" target: met for both rows on this machine (0.71×, 0.83×), but the comparison crosses hardware (OI-44), so it is context only.
+- NUM-024's "within 1×" target is **not assessed** by these numbers (maintainer decision 2026-11-12, M5 review #18:
+  "reword as not comparable"; this line first read "met"). The ratios 0.71× and 0.83× are kept as measurements; the
+  conditions differ in hardware (OI-44), workload (~338 vs ~642 Minor bodies) and load (contended core for (i)).
+- The full-DD 452.6 s is one **untimed** truth run, executed in parallel with the other truth runs; it is not a
+  CI-008 timing and gives no ratio row (the "0.236" above is informational only).
 - Criterion (`taskset -c 6 cargo bench --bench num024`, 0.25 yr = 1461 steps, load 48): f64 768.8 ms, mixed 1.874 s, DE440-class 3.118 s per run. These include IC assembly and the relativistic re-barycentring (a fixed set-up cost that is large at 0.25 yr), so their per-step figures (0.53 / 1.28 / 2.13 ms) are not comparable with the 40-yr ones.
 
 **Pre-registered expectations vs outcome**
@@ -6533,7 +6543,7 @@ NUM-024 against Subbotin et al. 2023 (different machine, OI-44 UNVERIFIED; repor
 | T1 | ratio 30–100, bound ≥ 10 | **10.36: passes, below the expectation** (see NEEDS HUMAN REVIEW 1) |
 | R1 | (h) 50–80 s; (i) 120–170 s; mixed/f64 ≈ 2.5; (h) 0.21–0.34 ms/step | (h) 57.6 s, 0.246 ms/step: met. **(i) 203.9 s and ratio 3.54: outside**, measured under load 12–46 on a contended core (score fell 47 %) |
 | R2 | round-off of (h) and (i) equals WP25 Table 1 to the printed digits | **met**: 3.246088e-3 km (WP25 3.2461 m) and 2.038162e-5 km (WP25 2.0382 cm); bitwise-deterministic reproduction |
-| R3 | de440 at 40 yr km-level for (f)–(i), (j) smaller | **met**: 5.81–6.13 km for (f)–(i); **(j) 0.142 km** (J2, LT, KBOs and ring) |
+| R3 | de440 at 40 yr km-level for (f)–(i), (j) smaller | **met**: 5.81–6.13 km for (f)–(i); **(j) 0.142 km** (J2, LT, KBOs and ring) — (j) under the WP19 Major-only EIH, superseded (M5 review #18, B1) |
 | R4 | (f) REBOUNDx vs FerroAstro ≤ 1 m over 100 yr | **met**: 0.582 m (5.824e-4 km) |
 | N1 | nightly completeness of the committed table | **pass** (all rows, hashes, three published rows equal to the vectors, ratio, score) |
 
@@ -6553,8 +6563,8 @@ Restores with `cp` + `touch`; the tree was clean afterwards.
 4. **"Criterion suite" (deviation):** the 40-yr medians come from the harness (median of 5, CI-008); criterion measures a 0.25-yr span (criterion needs ≥ 10 samples, i.e. ≥ 40 min per 40-yr variant).
 5. **NUM-024 wording (PR #2):** "16 Major + 343 Minor" — FerroAstro runs 16 Majors + 338 Minor (343 asteroids, 5 of them Major, as in WP25). Subbotin's own model differs (277 asteroids, 30 TNOs, annulus, ring).
 6. **Weekly workflow:** the suite runs from `tools/run_long_local.sh --weekly-bench` on this machine (maintainer decision: long runs local). No cron line is installed and no GitHub workflow was added (CI and scheduling are for humans).
-7. **Pinning:** the timed FerroAstro runs are pinned to one P-core thread; the oracle container (REBOUNDx on (f)) is not pinned, and it ran under load 38–41, so the (f) REBOUND vs FerroAstro timing is not a like-for-like comparison.
-8. **The DE440-class row (j)** is the WP26 P7 model in the mixed ABM mode. Its Mercury residual against de440.bsp at 40 yr, 0.142 km, is a model-accuracy figure only; WP27 (stage D) owns the full residual analysis.
+7. **Pinning:** the timed FerroAstro runs are pinned to one P-core thread; the oracle container (REBOUNDx on (f)) is not pinned, and it ran under load 38–41, so the (f) REBOUND vs FerroAstro timing is not a like-for-like comparison. **No cross-tool ratio is quoted for row (f)** (maintainer decision 2026-11-12, M5 review #18: a quiet pinned FerroAstro against a loaded containerised REBOUND is not comparable); both medians stand as measured under their stated conditions.
+8. **The DE440-class row (j)** is the WP26 P7 model in the mixed ABM mode (**measured under the WP19 Major-only EIH; superseded**, M5 review #18, B1). Its Mercury residual against de440.bsp at 40 yr, 0.142 km, is a model-accuracy figure only; WP27 (stage D) owns the full residual analysis.
 9. **R7** (label request) and **V2** stay open; WP22 is blocked (OI-33), WP23 not started, WP27 not started.
 
 ### Remaining after WP28

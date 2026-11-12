@@ -558,11 +558,11 @@ impl SpeedTable {
         );
         let _ = writeln!(
             s,
-            "Every ratio below crosses hardware: it is context, never a gate (CI-008 compares only within this table). NUM-024's \"within 1×\" target is reported, not gated.\n"
+            "**Not comparable** (maintainer decision 2026-11-12, M5 review #18): every ratio below crosses hardware (different machine, normalisation UNVERIFIED, OI-44) and workload (FerroAstro integrates ~338 Minor bodies, Subbotin et al. 2023's EPM2021 run ~642 (count from the M5 review #18)), and FerroAstro's timed core may be contended (see the load column). The ratios are measurements, never a gate, and NUM-024's \"within 1×\" target is **not assessed** by them (neither met nor failed). CI-008 compares only within this table.\n"
         );
         let _ = writeln!(
             s,
-            "| published | wall (s) | steps | ms/step | FerroAstro scenario | FerroAstro median (s) | range (s) | ms/step | FerroAstro / published |\n|---|---|---|---|---|---|---|---|---|"
+            "| published | wall (s) | steps | ms/step | FerroAstro scenario | FerroAstro median (s) | range (s) | ms/step | FerroAstro / published (not comparable) |\n|---|---|---|---|---|---|---|---|---|"
         );
         for p in &self.published {
             let fa = p

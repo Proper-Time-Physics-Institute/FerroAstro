@@ -33,7 +33,8 @@ from dataclasses import dataclass
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-DEFAULT_SCENARIO = ROOT / "ci" / "scenarios" / "wp26-headline-substitute-20yr.toml"
+# M5 review #18 (B1): a Major-only-EIH scenario, so the SoA EIH lanes run for the whole run.
+DEFAULT_SCENARIO = ROOT / "ci" / "scenarios" / "wp26-p7-epm16-majors-20yr.toml"
 SMALL_BODIES = ROOT / "tests" / "goldens" / "sb441-n373s-jdepoc-states.csv"
 #: The variants whose digests must agree (the feature off and on).
 REQUIRED = ("scalar", "simd")
