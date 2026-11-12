@@ -247,3 +247,31 @@ retrieved = "2026-11-12"
 tolerance = { abs = 0.0 }
 tolerance_rationale = "One-sided threshold (measured ratio must be >= the value); the tolerance field is unused."
 verified_by = "WP22 builder agent, 2026-11-12: fixed in the WP22 plan before the first run."
+
+[[vector]]
+id = "EIH-REBARY-RESIDUAL-KM"
+requirement = ["NUM-018"]
+quantity = "|sum mu*_i r_i| / sum mu*_i (km) of the n-body initial conditions after initial_conditions.barycentre = \"relativistic\" (two passes, f64), recomputed in the test from the hashed IC records (physical Earth and Moon reconstructed when geocentric)"
+value = 0.0
+unit = "km"
+kind = "analytic"
+source = "The re-barycentring sets sum mu* r = 0 (Park et al. 2021 Eqs. 1-2); what remains is f64 round-off of a weighted sum of positions up to ~6e9 km (WP15 measured 7.5e-12 km with mu* after two passes)."
+citation = "Park et al. 2021, AJ 161, 105, Eqs. 1-2; NUM-018 sign-off (OI-75); WP22 plan check E7"
+retrieved = "2026-11-12"
+tolerance = { abs = 1.0e-6 }
+tolerance_rationale = "Far above round-off (1e-11 km scale) and far below any physical offset (the header ICs differ from the subset's relativistic SSB by metres to kilometres): it catches a missing pass, a wrong sign or a skipped body, nothing else."
+verified_by = "WP22 builder agent, 2026-11-12: fixed in the WP22 plan before the first run."
+
+[[vector]]
+id = "EIH-REBARY-RESIDUAL-KMS"
+requirement = ["NUM-018"]
+quantity = "|sum (mu*'_i r_i + mu*_i v_i)| / sum mu*_i (km/s) of the initial conditions of EIH-REBARY-RESIDUAL-KM"
+value = 0.0
+unit = "km/s"
+kind = "analytic"
+source = "The re-barycentring sets the velocity condition of DE430 Eq. 3 / Subbotin et al. 2023 Eq. 5 to zero; what remains is f64 round-off (~1e-16 x 1e9 km^4/s / 1.3e11 ~ 1e-18 km/s)."
+citation = "Folkner et al. 2014, IPN PR 42-196, Eq. 3; Subbotin et al. 2023, Eq. 5; NUM-018 sign-off (OI-75); WP22 plan check E7"
+retrieved = "2026-11-12"
+tolerance = { abs = 1.0e-12 }
+tolerance_rationale = "Far above f64 round-off (~1e-18 km/s); a missing pass or a wrong sign leaves a residual of the order of the removed velocity offset, many orders larger. Whether the mu*' term is present is tested by E6 (EIH-MUSTAR-RATE-DRIFT-RATIO-MIN), not here."
+verified_by = "WP22 builder agent, 2026-11-12: fixed in the WP22 plan before the first run."
