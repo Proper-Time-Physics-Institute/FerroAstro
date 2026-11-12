@@ -306,7 +306,7 @@ verified_by = "WP22 builder agent, 2026-11-12: fixed in the WP22 plan before the
 
 [[vector]]
 id = "EIH-ALLBODY-MARS-HELIO-IMPROVEMENT-MIN"
-requirement = ["PHY-014", "NUM-009", "REF-003"]
+requirement = ["NUM-009", "REF-003"]
 quantity = "lower bound on (the Mars system's max heliocentric residual vs de440.bsp without the small bodies) / (the same with the 343 asteroids, 3 identified KBOs and the 36-point KBO ring), the runs of EIH-ALLBODY-SUN-IMPROVEMENT-MIN"
 value = 10.0
 unit = "1"
@@ -317,3 +317,17 @@ retrieved = "2026-11-12"
 tolerance = { abs = 0.0 }
 tolerance_rationale = "POST HOC: written AFTER the E10 result was known (E10 measured a Mars heliocentric improvement of 560x), at the reviewer's request (WP22 review item 2), and disclosed as such. The factor 10 is an order-of-magnitude bound set from the physics above (asteroid signal dominant, the rest >= 10x smaller), not from the measurement. One-sided; the tolerance field is unused."
 verified_by = "WP22 builder agent, 2026-11-12: post hoc, disclosed."
+
+[[vector]]
+id = "E10-KNOWN-FAILURE-SUN-BARY-FACTOR"
+requirement = ["NUM-009", "NUM-019"]
+quantity = "KNOWN-FAILURE GUARD, not an acceptance value: the E10 factor (the Sun's max barycentric residual vs de440.bsp without the small bodies) / (the same with the 343 asteroids, 3 identified KBOs and the 36-point KBO ring), all-body EIH + DE440 J2 + LT, Sun + 8 planets + geocentric Moon (no Pluto, the E10 template), header.440, 10 yr every 10 d, as documented when the failure was recorded"
+value = 0.573
+unit = "1"
+kind = "measured"
+source = "FerroAstro data_eih_all_bodies_with_small_bodies_ten_years_vs_de440_bsp, first run 2026-11-12 (WP22): 1.3992 km -> 2.4405 km, factor 0.5733; the pre-registered EIH-ALLBODY-SUN-IMPROVEMENT-MIN (>= 2) FAILS. Reproduced in four scratch runs (0.5733 with and without the Minor 1PN terms). Cause (WP22 follow-up): the template omits Pluto and DE440's SSBC contains 27 KBOs FerroAstro does not integrate; with Pluto added the Sun's residual falls to 0.238 km. Kept as a recorded failure by the maintainer (2026-11-11); the reviewer asked for a bounded guard (WP22 review S2)."
+citation = "FerroAstro docs/strategy/IMPLEMENTATION-NOTES.md WP22 (real-data result E10 and the review follow-up)"
+retrieved = "2026-11-12"
+tolerance = { abs = 0.05 }
+tolerance_rationale = "The run is deterministic (same binary inputs give 0.5733 to 4 digits in every reproduction); the band [0.523, 0.623] is about 9% of the value, wide enough for round-off-level changes of the force summation and narrow enough that a change of the body set, the ICs or the barycentre treatment (adding Pluto to the template lowers the full-set Sun residual from 2.44 to 0.24 km) fails the guard and forces a re-evaluation. It also fails if the factor ever reaches the original >= 2. Never an acceptance tolerance. Set after the value was measured; it widens nothing."
+verified_by = "WP22 builder agent, 2026-11-12: value copied from the recorded E10 run; band set for the guard at the reviewer's request."
