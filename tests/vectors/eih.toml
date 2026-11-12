@@ -188,3 +188,20 @@ retrieved = "2026-10-20"
 tolerance = { abs = 1.5 }
 tolerance_rationale = "PROVISIONAL sanity window [1e-3, 1] km, fixed before the first run (IMPLEMENTATION-NOTES WP20 D1): log10(shift / km) = -1.5 +/- 1.5, i.e. the shift is neither ~0 (LT a no-op) nor ~1000x the expectation. It does not test the LT form."
 verified_by = "WP20 builder agent, 2026-10-20: order-of-magnitude estimate above."
+
+# WP22: pre-registered in IMPLEMENTATION-NOTES "WP22 ... Plan and pre-registered checks" (2026-11-12 01:36 UTC),
+# before any WP22 code or run.
+
+[[vector]]
+id = "EIH-TIER-SINGLE-MINOR-REL"
+requirement = ["NUM-009", "NUM-020", "PHY-014"]
+quantity = "max over the moving bodies of |delta a_1 - delta a_2| / |delta a_2| between two evaluations of the c^-2 part of Eq. 27 that must agree exactly: (E1) Sun + 8 planets + Moon + Ceres from header.440/REF-003 with Ceres Minor vs Major; (E2) the production term over the tiered interaction graph vs an independent O(N^3) evaluation of Eq. 27 with an explicit edge predicate (synthetic system with heavy Minor bodies and Ring masses)"
+value = 0.0
+unit = "1"
+kind = "analytic"
+source = "Exact identities: with a single Minor body the tiered graph (no Minor-Minor, no Ring-Ring edge) is the complete graph, so Minor and Major give the same sums; the E2 reference implements the same set rules from the typeset Eq. 27. Only the floating-point summation orders differ."
+citation = "Park et al. 2021, AJ 161, 105, Eq. 27; maintainer decision D1 of 2026-10-21 (NUM-009, NUM-020, PHY-014 notes); WP22 plan checks E1, E2"
+retrieved = "2026-11-12"
+tolerance = { abs = 1.0e-13 }
+tolerance_rationale = "About 450 ulp, as EIH-R3-LIMIT-CORRECTION-REL: round-off of different summation orders. A wrong set rule (a missing source, potential or acceleration term) changes a body's correction at O(GM_source/GM_dominant) or more, which is >= 1e-10 for Ceres' own correction and O(1e-2) for the heavy synthetic Minor bodies."
+verified_by = "WP22 builder agent, 2026-11-12: fixed in the WP22 plan before the first run."
