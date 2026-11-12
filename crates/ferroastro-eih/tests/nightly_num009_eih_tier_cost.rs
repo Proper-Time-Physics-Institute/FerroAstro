@@ -10,10 +10,12 @@
 //! default settings, 10 Julian years from JDEPOC, each timed 5 times in this process (median):
 //!
 //! * A: 16 Major, Newtonian + EIH; B: A + 338 Minor (tiered Newtonian + EIH over the tiered
-//!   graph); C: B without EIH.
+//!   graph); C: B without EIH; D: the same 354 bodies all Major, Newtonian (all-mutual).
 //!
-//! B/A is NUM-009's ratio (< 2), reported only while its vector is blocked by OI-42; B/C (the
-//! EIH overhead) is reported. Nothing is asserted (WP22 plan E8).
+//! The configurations run interleaved (A, B, C, D, A, ...), and the 1-minute load average is
+//! recorded. Asserted (NUM-009 acceptance, maintainer decision 2026-11-11): B/C < 5
+//! (`NUM009-TIER-COST-RATIO`) and C/D < 1 (`NUM009-TIER-VS-ALL-MUTUAL`). B/A, the ratio to the
+//! 16-Major run, is reported.
 #![allow(
     clippy::unwrap_used,
     clippy::panic,
@@ -42,54 +44,43 @@ const YEARS: f64 = 10.0; // lint: allow-literal(run length, nightly cost)
 const REPEATS: usize = 5; // lint: allow-literal(median of 5, as CI-008)
 const PROMOTED: usize = 5; // lint: allow-literal(16 Majors = 11 DE440 majors + 5 asteroids, NUM-009 interpretation, IMPLEMENTATION-NOTES WP15)
 
-struct Timing {
-    label: &'static str,
-    bodies: usize,
-    steps: u64,
-    median_s: f64,
+/// One timed IAS15 run of `years` Julian years: wall seconds and accepted steps.
+fn run_once(model: &NBodyModel<Icrf>, x0: &[f64], v0: &[f64], years: f64) -> (f64, u64) {
+    let mut ias = Ias15::new(
+        x0.len(),
+        0.0,
+        x0,
+        v0,
+        0.1 * SECONDS_PER_DAY, // lint: allow-literal(first trial step 0.1 d, the propagate default)
+        Ias15Config::default(),
+    )
+    .unwrap();
+    let t = std::time::Instant::now();
+    ias.integrate_to(
+        model,
+        years * DAYS_PER_JULIAN_YEAR * SECONDS_PER_DAY,
+        |_, _| Ok(()),
+    )
+    .unwrap();
+    (t.elapsed().as_secs_f64(), ias.stats().steps)
 }
 
-fn time(label: &'static str, model: &NBodyModel<Icrf>, x0: &[f64], v0: &[f64]) -> Timing {
-    let mut walls = Vec::new();
-    let mut steps = 0;
-    for _ in 0..REPEATS {
-        let mut ias = Ias15::new(
-            x0.len(),
-            0.0,
-            x0,
-            v0,
-            0.1 * SECONDS_PER_DAY, // lint: allow-literal(first trial step 0.1 d, the propagate default)
-            Ias15Config::default(),
-        )
-        .unwrap();
-        let t = std::time::Instant::now();
-        ias.integrate_to(
-            model,
-            YEARS * DAYS_PER_JULIAN_YEAR * SECONDS_PER_DAY,
-            |_, _| Ok(()),
-        )
-        .unwrap();
-        walls.push(t.elapsed().as_secs_f64());
-        steps = ias.stats().steps;
-    }
-    walls.sort_by(f64::total_cmp);
-    let median_s = walls[REPEATS / 2];
-    println!(
-        "{label:<38} {:>3} bodies: {steps} steps, median {median_s:.3} s of {walls:.3?} ({:.1} us/step)",
-        model.layout().len(),
-        1e6 * median_s / steps as f64 // lint: allow-literal(seconds to microseconds)
-    );
-    Timing {
-        label,
-        bodies: model.layout().len(),
-        steps,
-        median_s,
-    }
+/// The 1-minute load average from `/proc/loadavg` (`NaN` where unavailable).
+fn load() -> f64 {
+    std::fs::read_to_string("/proc/loadavg")
+        .ok()
+        .and_then(|s| s.split_whitespace().next().and_then(|x| x.parse().ok()))
+        .unwrap_or(f64::NAN)
+}
+
+fn median(mut v: Vec<f64>) -> f64 {
+    v.sort_by(f64::total_cmp);
+    v[v.len() / 2]
 }
 
 /// Verifies: NUM-009
 #[test]
-#[ignore = "nightly: three 10-yr IAS15 runs x 5 repeats, 354 bodies with EIH for all of them; release"]
+#[ignore = "nightly: four 10-yr IAS15 configurations x 5 interleaved rounds, up to 354 bodies; release"]
 fn nightly_num009_tiered_minor_bodies_cost_with_eih_for_all_bodies() {
     let v = common::vectors();
     let (h, prov) = common::header();
@@ -169,6 +160,7 @@ fn nightly_num009_tiered_minor_bodies_cost_with_eih_for_all_bodies() {
         }));
         b
     };
+    let d_bodies = with(&asteroids, Tier::Major);
     a_bodies.shrink_to_fit();
     let configs = [
         ("A: 16 Major, EIH", build(&a_bodies, false, true)),
@@ -177,42 +169,70 @@ fn nightly_num009_tiered_minor_bodies_cost_with_eih_for_all_bodies() {
             build(&b_bodies, true, true),
         ),
         (
-            "C: 16 Major + 338 Minor, Newtonian",
+            "C: 16 Major + 338 Minor, Newtonian (tiered)",
             build(&b_bodies, true, false),
         ),
+        (
+            "D: 354 Major, Newtonian (all-mutual)",
+            build(&d_bodies, false, false),
+        ),
     ];
-    let mut t = Vec::new();
-    for (label, m) in &configs {
-        let (x, w) = m.pack(&states, ic.earth_moon()).unwrap();
-        t.push(time(label, m, &x, &w));
+    // Run controls (not physics): the nightly default is 10 yr x 5 rounds; a shorter local run
+    // may set FA_COST_YEARS / FA_COST_ROUNDS. The configurations are INTERLEAVED (A, B, C, D,
+    // A, B, ...), so a change of machine load affects every configuration alike.
+    let years: f64 = std::env::var("FA_COST_YEARS")
+        .ok()
+        .and_then(|s| s.parse().ok())
+        .unwrap_or(YEARS);
+    let rounds: usize = std::env::var("FA_COST_ROUNDS")
+        .ok()
+        .and_then(|s| s.parse().ok())
+        .unwrap_or(REPEATS);
+    let packed: Vec<_> = configs
+        .iter()
+        .map(|(_, m)| m.pack(&states, ic.earth_moon()).unwrap())
+        .collect();
+    let mut walls = vec![Vec::new(); configs.len()];
+    let mut steps = vec![0_u64; configs.len()];
+    let mut loads = vec![load()];
+    for r in 0..rounds {
+        for (k, ((label, m), (x, w))) in configs.iter().zip(&packed).enumerate() {
+            let (wall, n) = run_once(m, x, w, years);
+            println!(
+                "round {r} {label:<44} {wall:8.3} s, {n} steps, load {:.1}",
+                load()
+            );
+            walls[k].push(wall);
+            steps[k] = n;
+        }
+        loads.push(load());
     }
-    let (a, b, c) = (&t[0], &t[1], &t[2]);
-    let per_step = |x: &Timing| x.median_s / x.steps as f64;
-    let ratio_ab = b.median_s / a.median_s;
-    let ratio_bc = b.median_s / c.median_s;
+    let med: Vec<f64> = walls.iter().map(|w| median(w.clone())).collect();
+    for (k, (label, m)) in configs.iter().enumerate() {
+        println!(
+            "{label:<44} {:>3} bodies: {} steps, median {:.3} s of {:.3?}",
+            m.layout().len(),
+            steps[k],
+            med[k],
+            walls[k]
+        );
+    }
+    let (ratio_ba, ratio_bc, ratio_cd) = (med[1] / med[0], med[1] / med[2], med[2] / med[3]);
     println!(
-        "E8 NUM-009 B/A = {ratio_ab:.2} (per step {:.2}); EIH overhead B/C = {ratio_bc:.3} (per \
-         step {:.3}); bodies {}/{}/{}; labels {}/{}/{}",
-        per_step(b) / per_step(a),
-        per_step(b) / per_step(c),
-        a.bodies,
-        b.bodies,
-        c.bodies,
-        a.label,
-        b.label,
-        c.label
+        "E8 ({years} yr, {rounds} interleaved rounds, 1-min load {:.1}..{:.1}, median {:.1}): \
+         B/C = {ratio_bc:.3} (NUM-009 < 5, EIH for every body vs the same tiered run without \
+         EIH); C/D = {ratio_cd:.3} (NUM-009 < 1, tiered vs all-mutual); B/A = {ratio_ba:.2} \
+         (reported, ratio to the 16-Major run)",
+        loads.iter().copied().fold(f64::INFINITY, f64::min),
+        loads.iter().copied().fold(f64::NEG_INFINITY, f64::max),
+        median(loads.clone())
     );
-    let open_items = std::fs::read_to_string(root.join("docs/requirements/OPEN-ITEMS.md")).unwrap();
-    let va = v.get("NUM009-TIER-COST-RATIO").unwrap();
-    let blocked = va.blocking_open_item(&open_items);
-    println!(
-        "E8: {ratio_ab:.2} vs NUM-009 < {} ({}){}",
-        va.tolerance.abs.unwrap(),
-        if ratio_ab < va.tolerance.abs.unwrap() {
-            "within"
-        } else {
-            "OUTSIDE"
-        },
-        blocked.map_or_else(String::new, |oi| format!(", non-gating: {oi} open"))
-    );
+    v.get("NUM009-TIER-COST-RATIO")
+        .unwrap()
+        .check(ratio_bc)
+        .unwrap();
+    v.get("NUM009-TIER-VS-ALL-MUTUAL")
+        .unwrap()
+        .check(ratio_cd)
+        .unwrap();
 }

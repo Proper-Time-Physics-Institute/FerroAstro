@@ -9,8 +9,8 @@
 //!
 //! * A: 16 Major alone; B: 16 Major + 338 Minor (tiered); C: all 354 Major (all-mutual).
 //!
-//! 2a: B/A < 2 (NUM-009), reported only while OI-42 is open (the acceptance assumes EIH Majors).
-//! 2b: B/C < 1 (tiering is cheaper than all-mutual), asserted.
+//! 2a: B/A, reported only (NUM-009's former "< 2x" bound was replaced on 2026-11-11).
+//! 2b: B/C < 1 (tiering is cheaper than all-mutual), asserted (NUM-009 acceptance).
 #![allow(
     clippy::unwrap_used,
     clippy::panic,
@@ -186,22 +186,10 @@ fn nightly_num009_tiered_minor_bodies_cost() {
         b.label,
         c.label
     );
-    let open_items = std::fs::read_to_string(root.join("docs/requirements/OPEN-ITEMS.md")).unwrap();
-    let va = v.get("NUM009-TIER-COST-RATIO").unwrap();
-    let blocked = va.blocking_open_item(&open_items);
-    println!(
-        "2a: {ratio_ab:.2} vs NUM-009 < {} ({}){}",
-        va.tolerance.abs.unwrap(),
-        if ratio_ab < va.tolerance.abs.unwrap() {
-            "within"
-        } else {
-            "OUTSIDE"
-        },
-        blocked.map_or_else(String::new, |oi| format!(", non-gating: {oi} open"))
-    );
-    if blocked.is_none() {
-        va.check(ratio_ab).unwrap();
-    }
+    // B/A is NUM-009's former ratio ("< 2x the 16-Major run"); since the 2026-11-11 revision it is
+    // reported only. The revised EIH bound (NUM009-TIER-COST-RATIO) is asserted by the WP22 E8
+    // nightly in ferroastro-eih, which has the EIH term.
+    println!("2a: B/A = {ratio_ab:.2} (reported only, NUM-009 revised 2026-11-11)");
     v.get("NUM009-TIER-VS-ALL-MUTUAL")
         .unwrap()
         .check(ratio_bc)

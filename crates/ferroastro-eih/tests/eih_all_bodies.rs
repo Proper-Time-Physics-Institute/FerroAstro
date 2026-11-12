@@ -492,7 +492,6 @@ fn the_tiered_eih_model_conserves_its_relativistic_centre_of_mass() {
 /// Verifies: NUM-009
 #[test]
 fn eih_minor_reaction_must_match_minor_from_majors() {
-    use ferroastro_core::ErrorCode;
     let de = De440::load().unwrap();
     let b = synthetic();
     let bodies: Vec<NBody> = b
