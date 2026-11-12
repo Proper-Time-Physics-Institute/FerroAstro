@@ -303,3 +303,17 @@ retrieved = "2026-11-12"
 tolerance = { abs = 0.0 }
 tolerance_rationale = "PROVISIONAL sanity, one-sided (measured factor must be >= the value); the tolerance field is unused. The factor 2 leaves room for REF-003 IC errors and the omitted figure, tide and libration terms."
 verified_by = "WP22 builder agent, 2026-11-12: fixed in the WP22 plan before the first run."
+
+[[vector]]
+id = "EIH-ALLBODY-MARS-HELIO-IMPROVEMENT-MIN"
+requirement = ["PHY-014", "NUM-009", "REF-003"]
+quantity = "lower bound on (the Mars system's max heliocentric residual vs de440.bsp without the small bodies) / (the same with the 343 asteroids, 3 identified KBOs and the 36-point KBO ring), the runs of EIH-ALLBODY-SUN-IMPROVEMENT-MIN"
+value = 10.0
+unit = "1"
+kind = "defined"
+source = "Mars is the planet the 343 DE asteroids were selected for (Folkner et al. 2014, IPN PR 42-196: 'A set of 343 asteroids that have the largest perturbation on the orbit of Mars'), so the planets-only Mars residual is dominated by the asteroid signal. With DE440's masses (header.440) and initial states from the same ephemeris family (REF-003; Ceres agrees with DE430 Table 13 to 43 km and 1.3e-6 km/s), including them must remove at least 90% of it. Heliocentric residuals do not depend on the barycentre definition (the 27 unmodelled KBOs of DE440's SSBC), which E10's barycentric metric measured."
+citation = "Folkner et al. 2014, IPN PR 42-196, Sec. VII (asteroids) and Table 13; Park et al. 2021, AJ 161, 105, Sec. 2.2; IMPLEMENTATION-NOTES WP22 (E10 result and review item 2)"
+retrieved = "2026-11-12"
+tolerance = { abs = 0.0 }
+tolerance_rationale = "POST HOC: written AFTER the E10 result was known (E10 measured a Mars heliocentric improvement of 560x), at the reviewer's request (WP22 review item 2), and disclosed as such. The factor 10 is an order-of-magnitude bound set from the physics above (asteroid signal dominant, the rest >= 10x smaller), not from the measurement. One-sided; the tolerance field is unused."
+verified_by = "WP22 builder agent, 2026-11-12: post hoc, disclosed."

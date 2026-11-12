@@ -73,13 +73,12 @@ fn residuals(out: &RunOutput, spk: &Spk<'_>) -> Vec<(i32, f64, f64)> {
     rows
 }
 
-/// E10: all-body EIH + J2 + LT with and without the small bodies against de440.bsp over
-/// 1969-06-28 → +10 yr.
-///
-/// Verifies: PHY-014, NUM-009, NUM-019
-#[test]
-#[ignore = "data: downloads JPL header.440 and de440.bsp (network); run with --profile data"]
-fn data_eih_all_bodies_with_small_bodies_ten_years_vs_de440_bsp() {
+/// `(NAIF id, max barycentric km, max heliocentric km)`.
+type Row = (i32, f64, f64);
+
+/// The two E10 runs (without and with the small bodies) against de440.bsp: per-body residual
+/// rows `(NAIF id, max barycentric km, max heliocentric km)` of each, printed as a table.
+fn e10_residuals() -> (Vec<Row>, Vec<Row>) {
     let hf = ferroastro_testdata::fetch_product("de440-header").unwrap();
     let hprov = hf.provenance();
     println!("de440-header: {hprov}");
@@ -125,6 +124,20 @@ fn data_eih_all_bodies_with_small_bodies_ten_years_vs_de440_bsp() {
             a.0, a.1, b.1, a.2, b.2
         );
     }
+    (rp, rf)
+}
+
+/// E10: all-body EIH + J2 + LT with and without the small bodies against de440.bsp over
+/// 1969-06-28 → +10 yr.
+///
+/// Recorded FAILURE (WP22): the pre-registered Sun barycentric metric measures the
+/// barycentre definition (27 unmodelled KBOs), not the dynamics; kept unchanged as the record.
+///
+/// Verifies: PHY-014, NUM-009, NUM-019
+#[test]
+#[ignore = "data: downloads JPL header.440 and de440.bsp (network); run with --profile data"]
+fn data_eih_all_bodies_with_small_bodies_ten_years_vs_de440_bsp() {
+    let (rp, rf) = e10_residuals();
     let k_sun = rp.iter().position(|r| r.0 == 10).unwrap(); // lint: allow-literal(NAIF id of the Sun)
     let k_me = rp.iter().position(|r| r.0 == 1).unwrap(); // lint: allow-literal(NAIF id of the Mercury barycentre)
     let factor = rp[k_sun].1 / rf[k_sun].1;
@@ -143,4 +156,35 @@ fn data_eih_all_bodies_with_small_bodies_ten_years_vs_de440_bsp() {
         .value()
         .unwrap();
     assert!(factor >= min, "Sun improvement factor {factor} < {min}");
+}
+
+/// E10b, written AFTER the E10 result (post hoc, disclosed in IMPLEMENTATION-NOTES WP22 and in the
+/// vector's rationale): the heliocentric residual of the Mars system against de440.bsp improves by
+/// at least 10x with the small bodies. Mars is the planet the 343 asteroids were chosen for (DE430
+/// selected the asteroids with the largest perturbation on the orbit of Mars), so its planets-only
+/// residual is the asteroid signal; with DE440's own masses and ICs from the same ephemeris family
+/// the remaining residual must be a small fraction of it. Heliocentric residuals do not depend on
+/// the barycentre definition that E10's barycentric metric measures.
+///
+/// Verifies: PHY-014, NUM-009, REF-003
+#[test]
+#[ignore = "data: downloads JPL header.440 and de440.bsp (network); run with --profile data"]
+fn data_eih_all_bodies_mars_heliocentric_residual_improves_with_the_asteroids() {
+    let (rp, rf) = e10_residuals();
+    let k = rp.iter().position(|r| r.0 == 4).unwrap(); // lint: allow-literal(NAIF id of the Mars barycentre)
+    let factor = rp[k].2 / rf[k].2;
+    println!(
+        "E10b: Mars heliocentric residual {:.4} km -> {:.4} km (factor {factor:.1})",
+        rp[k].2, rf[k].2
+    );
+    let min = VectorSet::load_canonical()
+        .unwrap()
+        .get("EIH-ALLBODY-MARS-HELIO-IMPROVEMENT-MIN")
+        .unwrap()
+        .value()
+        .unwrap();
+    assert!(
+        factor >= min,
+        "Mars heliocentric improvement {factor} < {min}"
+    );
 }
