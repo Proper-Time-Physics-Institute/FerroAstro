@@ -5445,3 +5445,84 @@ All exit 0: `cargo fmt --all --check`; `cargo clippy --workspace --all-targets -
 ruff format, mypy (45 files), pytest (86 passed, 4 skipped); `reuse lint`; `trace.py --check` (121 requirements,
 700 citing tests, 0 errors). MSRV `cargo +1.85.0 check --workspace --all-targets`: clean. Data tier: only E10 was
 run (fails, above). Nightly: only E8 was run (pass, reported only).
+
+### WP22 review follow-up (maintainer rulings of 2026-11-11, relayed by the reviewer)
+Short diagnostic runs (scratch harness on the `ferroastro-forces` API, release, ≤ 4 min each, not committed; source
+and logs in the session scratchpad `merc/`): Sun + 8 planets + geocentric Moon from header.440 (no Pluto, as E10),
+all-body EIH + DE440 J2 + LT unless stated, 10 yr every 10 d against de440.bsp. "Along" is Mercury's along-track
+heliocentric residual at 10 yr; "max" its maximum heliocentric residual.
+
+**1. Mercury regression: what changes it.**
+
+| configuration | Mercury max (m) | Mercury along at 10 yr (m) | Mars helio max (km) | Sun bary max (km) |
+|---|---|---|---|---|
+| planets only | 16.3 | −7.0 | 11.25 | 1.40 |
+| + Ceres | 25.8 | −23.0 | 6.92 | 2.50 |
+| + Pallas | 20.4 | −11.0 | 12.78 | 1.53 |
+| + Vesta | 31.8 | −28.0 | 6.85 | 1.55 |
+| + top 3 by GM | 53.9 | −48.1 | 3.97 | 2.17 |
+| + top 16 | 59.9 | −50.7 | 1.56 | 2.04 |
+| + top 50 | 73.0 | −58.9 | 0.96 | 2.11 |
+| + all 343 | 85.8 | −65.7 | 0.015 | 2.20 |
+| + all 343 + 3 KBOs | 85.8 | — | 0.014 | 2.44 |
+| + all 343 + 3 KBOs + ring (= E10) | 86.9 | −66.0 | 0.020 | 2.44 |
+| same + Pluto | 86.5 | −66.0 | 0.035 | **0.238** |
+| top 16, asteroids do not pull Mercury | 299 | −198 | 1.56 | 2.04 |
+| top 16, asteroids do not pull the Sun | 250 | +140 | 2.07 | 1.39 |
+| top 16, asteroids pull neither | 16.4 | −7.1 | 2.07 | 1.39 |
+| planets only, **no LT** | 54.9 | +53.8 | 11.25 | 1.40 |
+| top 16, no LT | 20.3 | +10.2 | 1.56 | 2.04 |
+| all 343, **no LT** | 41.3 | **−4.9** | 0.018 | 2.20 |
+
+- **Cause of the 16 → 87 m change: the asteroids' tidal (direct minus indirect) Newtonian pull on Mercury, which
+  this model computes correctly.** It is a linear along-track drift (a mean-motion change), it grows with the asteroid
+  mass included (Ceres −16 m, Vesta −21 m, all 343 −59 m relative to the planets-only run), and it is the small
+  difference of two large terms (top 16: direct pull on Mercury +147 m, pull on the Sun −191 m). The analytic estimate
+  for Ceres, with ε = GM r³/(2R³ GM☉) = 6.7e-13 and δn/n ≈ −2ε over 41.5 orbits, is −20 m; the measurement is −16 m.
+- **Ruled out:** D1 (Minor 1PN terms off: 86.9 m, unchanged); KBOs and ring (≤ 1 m on Mercury); the asteroid ICs (Ceres
+  from REF-003 agrees with DE430 Table 13 to 43 km and 1.3e-6 km/s, and the tidal drift depends only on the masses and
+  orbit sizes); the 66 unidentified header masses (GM 11 232 km³/s² = 8.46e-8 GMS, ring included; estimated tidal
+  effect on Mercury ≈ 1 m over 10 yr); solar J2 acting on Majors only (the asteroids' J2 terms do not reach Mercury at
+  this level). **No code bug was found, so nothing was changed.**
+- **Why it looks like a regression: two ~60 m drifts.** The solar LT term also changes Mercury's mean motion at fixed
+  ICs (its in-plane part is radial): planets-only with and without LT give −7.0 and +53.8 m at 10 yr, so LT contributes
+  **−61 m**, as large as the asteroids' −59 m. de440.bsp agrees with this model to ≲ 10 m (no trend) with either
+  effect alone (planets + LT: −7 m; all asteroids without LT: −5 m), but not with both (−66 m). Venus behaves the same
+  way: all asteroids 46.6 m with LT, 31.6 m without; LT shifts it by −15 m, the expected r⁻² scaling of Mercury's −61 m.
+  The WP20 D1 conclusion "LT brings Mercury 3.4× closer to de440.bsp" was therefore made in a model without asteroids
+  and does not hold once they are included.
+- **100-yr check (top 50 asteroids):** Mercury along +742 m with LT, +1202 m without (planets only: +1579 and
+  +2038 m). Over 100 yr LT moves Mercury toward de440.bsp, and the residual is dominated by another drift that grows
+  roughly as t² (≈ 0.15 m/yr² if fitted as −7.4 m/yr · t + 0.15 m/yr² · t² through the 10- and 100-yr points); its cause
+  is not identified (Pluto and the 27 KBOs are omitted in these runs; the Earth–Moon figure, tides and librations are
+  omitted in all of them). So "de440.bsp has no LT mean-motion effect" is **not established**: the 10-yr
+  coincidence is suggestive, the 100-yr runs do not support it. NEEDS HUMAN REVIEW.
+- **Consequence for WP23.** The residual model difference is a mean-motion offset of δn/n ≈ 4e-12 on Mercury. That is
+  an along-track effect, not a perihelion-rate effect at the ±0.005 ″/cy level of PHY-014 (LT's whole rate
+  contribution is −0.0020 ″/cy). I see no reason in this diagnosis to hold WP23; the decision is the reviewer's.
+
+**E10's uniform ≈ 2.4 km barycentric offset: a different cause.** E10's template (`sun-planets-moon-newton-j2-10yr`)
+has **no Pluto**. The missing pull of Pluto (and of the 27 unmodelled KBOs, whose momentum is part of DE440's SSBC,
+Park et al. 2021 §2.2) moves the modelled bodies together against de440.bsp's barycentre. Adding Pluto to the full set
+lowers the Sun's barycentric residual from 2.44 km to **0.238 km**; with top 16 asteroids, from 2.04 to 0.224 km. The
+asteroids changed the offset (1.40 → 2.2 km) only because they removed a partial cancellation. Not a code bug; the E10
+check stays as the recorded failure (item 2). Initial Newtonian Σ GM v / Σ GM is 3.6e-8 km/s for the planets-only set
+(Pluto's momentum dominates), but it is not the drift: in DE440 the same subset moves with that velocity too.
+
+**2. E10b (post hoc, disclosed).** `data_eih_all_bodies_mars_heliocentric_residual_improves_with_the_asteroids`
+asserts that the Mars system's heliocentric residual improves ≥ 10× with the small bodies
+(`EIH-ALLBODY-MARS-HELIO-IMPROVEMENT-MIN`). **It was written after the E10 result**, which already showed 560×; the
+bound comes from physics, not from the measurement: DE430 chose the 343 asteroids for their perturbation of Mars, so the
+planets-only Mars residual is the asteroid signal, and with DE440's masses and ICs from the same ephemeris family at
+least 90% of it must go. Heliocentric residuals do not depend on the barycentre definition. **Measured: 11.25 km →
+0.0202 km (557×), pass.** The failed E10 assertion is kept unchanged as the record, with a doc note.
+
+**3. `MinorReaction::Off` and LT.** `SolarLenseThirring::with_minor_reaction` (default On, set explicitly in
+propagate): with Off, Minor bodies still feel LT but send no reaction to the Sun. Test
+`minor_reaction_off_switches_off_the_lt_reaction_of_minor_bodies`: every non-Sun body is bitwise unchanged; the Sun's
+difference equals −(GM_m/GM☉)a_m (6.2e-11 relative, cancellation-limited); the Major bodies alone balance momentum
+(0.245 ε, bound 8 ε). A new `TermParameter` records the setting.
+
+**4. Gates** (at `75b37f5`): all exit 0. fmt; clippy `-D warnings`; nextest **299 passed, 49 skipped**; doctests;
+deny; doc `-D warnings`; ruff, ruff format, mypy, pytest (86 passed, 4 skipped); reuse; trace (121 requirements,
+705 citing tests, 0 errors). Data tier: E10b pass (557×); E10 still fails as recorded.
