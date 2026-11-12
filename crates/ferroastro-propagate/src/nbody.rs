@@ -183,13 +183,16 @@ fn model<R: Real>(
         let gamma = spec.forces.ppn.map_or(de.ppn_gamma(), |p| p.gamma);
         let c = Velocity::from_km_per_s(R::from_f64(de.speed_of_light().km_per_s()))
             .map_err(|e| setup(&spec.name, e.to_string(), "check the DE440 table"))?;
-        terms.push(Box::new(SolarLenseThirring::new(
-            solar_spin(de, data, &spec.name)?.cast(),
-            c,
-            R::from_f64(gamma),
-            solar_pole::<R>(data)?,
-            LtReaction::On,
-        )?));
+        terms.push(Box::new(
+            SolarLenseThirring::new(
+                solar_spin(de, data, &spec.name)?.cast(),
+                c,
+                R::from_f64(gamma),
+                solar_pole::<R>(data)?,
+                LtReaction::On,
+            )?
+            .with_minor_reaction(MinorReaction::On),
+        ));
     }
     Ok((NBodyModel::new(&bodies, vars, terms)?, gms))
 }

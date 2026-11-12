@@ -800,3 +800,74 @@ fn solar_lense_thirring_acts_on_minor_bodies() {
             .unwrap();
     }
 }
+
+/// WP22 review item 3: with `MinorReaction::Off` the Minor bodies are test particles, so they send
+/// no Lense–Thirring reaction to the Sun; their own LT acceleration and every Major body's are
+/// unchanged bit for bit, and the Sun keeps the Major bodies' reactions.
+///
+/// Verifies: NUM-019, NUM-009
+#[test]
+fn minor_reaction_off_switches_off_the_lt_reaction_of_minor_bodies() {
+    let (mut bodies, x6, v6) = fixture();
+    bodies.push(body(NaifId(2_000_001), 62.6, Tier::Minor)); // lint: allow-literal(structural fixture: Ceres-like GM)
+    let n = bodies.len();
+    let extra_p = [3.0e8, 2.0e8, 1.0e7]; // lint: allow-literal(structural fixture)
+    let extra_v = [-10.0, 14.0, 2.0]; // lint: allow-literal(structural fixture)
+    let grow = |flat: &[f64], e: [f64; 3]| -> Vec<f64> {
+        (0..3)
+            .flat_map(|k| {
+                let mut c: Vec<f64> = flat[k * 6..(k + 1) * 6].to_vec();
+                c.push(e[k]);
+                c
+            })
+            .collect()
+    };
+    let (x, v) = (grow(&x6, extra_p), grow(&v6, extra_v));
+    let run = |minor: MinorReaction| {
+        let t = lt_term(1.0, LtReaction::On).with_minor_reaction(minor);
+        let m = Model::new(&bodies, MoonVariables::Barycentric, vec![Box::new(t)]).unwrap();
+        accel(&m, &x, &v)
+    };
+    let (on, off) = (run(MinorReaction::On), run(MinorReaction::Off));
+    let minor = 6;
+    for i in 1..n {
+        for k in 0..3 {
+            assert_eq!(
+                on[k * n + i].to_bits(),
+                off[k * n + i].to_bits(),
+                "body {i}"
+            );
+        }
+    }
+    // The Sun's difference is exactly the Minor body's reaction −(GM_m/GM☉) a_m.
+    let ratio = bodies[minor].gm / bodies[0].gm;
+    let mut worst = 0.0_f64;
+    for k in 0..3 {
+        let want = -(ratio * on[k * n + minor]);
+        let got = on[k * n] - off[k * n];
+        worst = worst.max((got - want).abs() / want.abs());
+    }
+    println!("Minor LT reaction: Sun on - off vs -(GM_m/GM_sun) a_m: max rel diff {worst:.3e}");
+    assert!(on[minor] != 0.0);
+    assert!(worst < 1e-6, "{worst:e}"); // lint: allow-literal(the reaction is ~1e-28 of the Sun's sum: cancellation budget)
+    // With the Minor reaction off, Σ μ a over the Major bodies balances, the Minor body is extra.
+    let mut sum = [0.0_f64; 3];
+    for (i, b) in bodies.iter().enumerate().take(minor) {
+        for k in 0..3 {
+            sum[k] += b.gm * off[k * n + i];
+        }
+    }
+    let scale: f64 = bodies
+        .iter()
+        .enumerate()
+        .take(minor)
+        .map(|(i, b)| b.gm * off[i].hypot(off[n + i]).hypot(off[2 * n + i]))
+        .sum();
+    let ulps = sum[0].hypot(sum[1]).hypot(sum[2]) / (eps() * scale);
+    println!("Minor reaction off: Majors' |sum GM a| = {ulps:.3} eps");
+    vectors()
+        .get("NBODY-LT-REACTION-MOMENTUM-ULPS")
+        .unwrap()
+        .check(ulps)
+        .unwrap();
+}

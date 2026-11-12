@@ -672,9 +672,11 @@ pub struct SolarLenseThirring<F: Frame, R: Real = f64> {
     gamma: R,
     pole: Pole<F, R>,
     reaction: LtReaction,
+    minor: MinorReaction,
     sun: usize,
     sun_gm: R,
-    bodies: Vec<usize>,
+    /// The bodies accelerated, each with whether it sends the reaction to the Sun.
+    bodies: Vec<(usize, bool)>,
 }
 
 impl<F: Frame, R: Real> SolarLenseThirring<F, R> {
@@ -719,10 +721,20 @@ impl<F: Frame, R: Real> SolarLenseThirring<F, R> {
             gamma,
             pole,
             reaction,
+            minor: MinorReaction::On,
             sun: 0,
             sun_gm: R::ZERO,
             bodies: Vec::new(),
         })
+    }
+
+    /// The same term with the Minor bodies' reaction setting, which must match the model's
+    /// [`MinorFromMajors`] term: with [`MinorReaction::Off`] the Minor bodies are test particles
+    /// and send no Lense–Thirring reaction to the Sun (they still feel the acceleration).
+    #[must_use]
+    pub const fn with_minor_reaction(mut self, minor: MinorReaction) -> Self {
+        self.minor = minor;
+        self
     }
 
     /// The pole.
@@ -808,6 +820,15 @@ impl<F: Frame, R: Real> ForceTerm<F, R> for SolarLenseThirring<F, R> {
                 },
                 unit: "1",
             },
+            TermParameter {
+                name: "reaction from Minor bodies",
+                value: if self.minor == MinorReaction::On {
+                    1.0
+                } else {
+                    0.0
+                },
+                unit: "1",
+            },
         ]
     }
     fn tiers(&self) -> &'static [Tier] {
@@ -833,8 +854,13 @@ impl<F: Frame, R: Real> ForceTerm<F, R> for SolarLenseThirring<F, R> {
         self.sun = sun;
         // Every moving body other than the Sun, Major and Minor (NUM-019, OI-35 decision of
         // 2026-10-21: "LT all bodies"); Ring bodies are fixed.
+        let minor_reacts = self.minor == MinorReaction::On;
         self.bodies = (0..layout.len())
             .filter(|&i| i != sun && layout.moves(i))
+            .map(|i| {
+                let reacts = layout.tiers().get(i) == Some(&Tier::Major) || minor_reacts;
+                (i, reacts)
+            })
             .collect();
         Ok(())
     }
@@ -845,14 +871,14 @@ impl<F: Frame, R: Real> ForceTerm<F, R> for SolarLenseThirring<F, R> {
         acc: &mut Accelerations<'_, R>,
     ) -> Result<(), ForceError> {
         let (ps, vs) = (view.position(self.sun)?, view.velocity(self.sun)?);
-        for &i in &self.bodies {
+        for &(i, reacts) in &self.bodies {
             let r = sub(view.position(i)?, ps);
             if r2_of(r) == R::ZERO {
                 return Err(singular(self.sun, i, t));
             }
             let a = self.acceleration(r, sub(view.velocity(i)?, vs));
             acc.add(i, a);
-            if self.reaction == LtReaction::On {
+            if self.reaction == LtReaction::On && reacts {
                 let ratio = view.layout().gm(i) / self.sun_gm;
                 acc.add(self.sun, a.map(|x| -(ratio * x)));
             }
