@@ -269,10 +269,11 @@ statement: >-
   KBOs), each with its own 1PN terms, with the sums over all bodies;
   tiering does not restrict the 1PN terms.
 acceptance: >-
-  With the DE440 asteroid set (343 Minor bodies), the run costs < 2× the
-  16-Major-body run. The bound applies when EIH is on, as the statement
-  requires; with Newtonian Majors the cost ratio is measured and reported
-  only.
+  With the DE440 asteroid set as Minor bodies and EIH evaluated for every
+  moving body, the run costs < 5× the same tiered run without EIH, and the
+  tiered run costs < 1× the all-mutual run. The ratio to the 16-Major-body
+  run is measured and reported. (Maintainer decision 2026-11-11, replacing
+  "< 2× the 16-Major-body run", which no run with asteroids can meet.)
 source: >-
   docs/strategy/journal/04-numerical-methods.md §5 and NUM-009; Subbotin et al.
   2023; Folkner et al. 2014, IPN PR 42-196.
@@ -327,6 +328,13 @@ notes: >-
   so the moving bodies' momentum is not conserved in their presence (WP12
   deviation 7). Tests: crates/ferroastro-forces/src/nbody/tests.rs::tiers_follow_num009; crates/ferroastro-propagate/tests/scenario_runs.rs::small_body_gms_equal_their_header_values_bitwise and
   small_bodies_carry_their_gm_and_conserve_total_momentum.
+  MAINTAINER DECISIONS 2026-11-11 (WP22 review, #17): (1) the cost acceptance
+  above (WP22 measured EIH over the tiered run 3.37×, tiered over all-mutual
+  0.117×, and 31.4× against the 16-Major run, reported). (2) With EIH, Minor
+  bodies feel 1PN terms from Major and Ring sources but not from other Minor
+  bodies; Ring masses are 1PN sources only (v = a = 0) and receive nothing.
+  (3) MinorReaction::Off also switches off the Lense–Thirring reaction that
+  Minor bodies send to the Sun (fixed in wp22-eih-all-bodies, 15615ca).
 ```
 
 ### NUM-010 — Dense output and perihelion event location
@@ -752,6 +760,12 @@ notes: >-
   drift over 40 yr: 2.92 µm in double-double (2.9173 µm; mixed 2.9243 µm;
   f64 0.405 mm), against Subbotin's 2.6 µm. This evidence is on a build
   branch and is cited here, not yet merged.
+  BUILD EVIDENCE 2026-11-11 (wp22-eih-all-bodies): mu_star_rate and
+  relativistic_barycentre_with_rate, with the opt-in key
+  initial_conditions.barycentre = "relativistic" (ephemeris mode, per
+  OI-75). E5 dμ*/dt 1.09e-9 against 1.1e-9 predicted; E6 barycentre drift
+  5.4e-10 km per 10 yr with the full condition, 4.2e-5 km without dμ*/dt
+  (0.42 m/century; DE430 reports ~0.5 m/century for DE405).
 ```
 
 ### NUM-019 — Solar J₂ reaction and Lense–Thirring for all bodies
@@ -820,6 +834,11 @@ notes: >-
   non-Sun body (WP13), so the LT half of this statement is not yet met.
   Single-body J2/LT vs Park17 Table 3 in the real geometry: 0.0284524 and
   −0.0020148 ″/cy (WP4).
+  BUILD EVIDENCE 2026-11-11 (wp22-eih-all-bodies): the "Minor-body part is
+  not yet met" note above is superseded. SolarLenseThirring now acts on
+  every moving non-Sun body, Minor included, and the Sun's reaction
+  includes them unless MinorReaction is Off. Since OI-35 closed, the N-body
+  LT row NUM019-NBODY-LT-CONTRIBUTION gates.
 ```
 
 ### NUM-020 — Second independent check of the EIH transcription
