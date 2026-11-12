@@ -14,3 +14,81 @@ sha256 = "0f4636b663e6f00af9efa2b605ef23635489f56b23dd1a5e3821d3acc6ac3359"
 first_retrieved = "2026-10-14"
 publisher = "NASA/JPL Solar System Dynamics, planetary ephemeris DE440 (Park et al. 2021, AJ 161, 105)"
 terms = "Redistribution terms not yet confirmed; download-only, not committed"
+
+# WP10 (REF-001, REF-004, DEP-011). Pinned by the WP10 builder agent on first retrieval 2026-10-15;
+# NEEDS HUMAN REVIEW (this manifest is human-owned). Fetch with `tools/fetch_jpl.py`; tests locate
+# and re-verify them with `ferroastro_testdata::locate_product`.
+
+[[product]]
+name = "de440-bsp"
+url = "https://ssd.jpl.nasa.gov/ftp/eph/planets/bsp/de440.bsp"
+file = "de440.bsp"
+# 119799808 bytes; server Last-Modified: Tue, 22 Dec 2020 00:56:26 GMT.
+sha256 = "a4ce9bf9b3282becc9f4b2ac3cebe03a2ae7599981aabd7265fd8482fff7c4b5"
+first_retrieved = "2026-10-15"
+publisher = "NASA/JPL Solar System Dynamics, planetary ephemeris DE440 SPK (Park et al. 2021, AJ 161, 105)"
+terms = "Redistribution terms not yet confirmed; download-only, not committed (LIC-003, DEP-017)"
+
+[[product]]
+name = "de440-testpo"
+url = "https://ssd.jpl.nasa.gov/ftp/eph/planets/ascii/de440/testpo.440"
+file = "testpo.440"
+# 858238 bytes; server Last-Modified: Tue, 22 Dec 2020 00:51:11 GMT.
+sha256 = "45084a7f406b8e41032e7d99dd8042d4df97a9f752a68c06d1a27af16693429f"
+first_retrieved = "2026-10-15"
+publisher = "NASA/JPL Solar System Dynamics, DE440 test points for testeph.f (Park et al. 2021, AJ 161, 105)"
+terms = "Redistribution terms not yet confirmed; download-only, not committed (LIC-003, DEP-017)"
+
+[[product]]
+name = "de440-ascp01550"
+url = "https://ssd.jpl.nasa.gov/ftp/eph/planets/ascii/de440/ascp01550.440"
+file = "ascp01550.440"
+# 30629582 bytes; server Last-Modified: Tue, 22 Dec 2020 00:51:09 GMT.
+sha256 = "ed95a8eb19f2c833dfb118691956623d7a576db6b77513e599d604d79edb6375"
+first_retrieved = "2026-10-15"
+publisher = "NASA/JPL Solar System Dynamics, DE440 ASCII Chebyshev coefficients 1550-1650 (Park et al. 2021, AJ 161, 105)"
+terms = "Redistribution terms not yet confirmed; download-only, not committed (LIC-003, DEP-017)"
+
+[[product]]
+name = "de440-ascp01950"
+url = "https://ssd.jpl.nasa.gov/ftp/eph/planets/ascii/de440/ascp01950.440"
+file = "ascp01950.440"
+# 30629582 bytes; server Last-Modified: Tue, 22 Dec 2020 00:51 GMT (directory listing).
+sha256 = "e24f6356225f7d912e35af2ebc5f9bcf6fb0425c53aa92b5d7243cb063477286"
+first_retrieved = "2026-10-15"
+publisher = "NASA/JPL Solar System Dynamics, DE440 ASCII Chebyshev coefficients 1950-2050 (Park et al. 2021, AJ 161, 105)"
+terms = "Redistribution terms not yet confirmed; download-only, not committed (LIC-003, DEP-017)"
+
+[[product]]
+name = "de440-ascp02550"
+url = "https://ssd.jpl.nasa.gov/ftp/eph/planets/ascii/de440/ascp02550.440"
+file = "ascp02550.440"
+# 30656403 bytes; server Last-Modified: Tue, 22 Dec 2020 00:51 GMT (directory listing).
+sha256 = "66e1230ad344caedf161585a9b3ec686c773839a3d628713ffad0b598e479c08"
+first_retrieved = "2026-10-15"
+publisher = "NASA/JPL Solar System Dynamics, DE440 ASCII Chebyshev coefficients 2550-2650 (Park et al. 2021, AJ 161, 105)"
+terms = "Redistribution terms not yet confirmed; download-only, not committed (LIC-003, DEP-017)"
+
+[[product]]
+name = "sb441-n373s-bsp"
+url = "https://ssd.jpl.nasa.gov/ftp/eph/small_bodies/asteroids_de441/sb441-n373s.bsp"
+file = "sb441-n373s.bsp"
+# 982106112 bytes; server Last-Modified: Thu, 02 Sep 2021 22:54:49 GMT. The 14.13 GB sb441-n373.bsp
+# is not pinned (which file REF-003 uses is OI-24, human-owned).
+sha256 = "2143113282bfc2b2a0b0b4626125d4f84362339b5a8ae7eea40f4120ca8da10b"
+first_retrieved = "2026-10-15"
+publisher = "NASA/JPL Solar System Dynamics, DE441 small-body perturber SPK, 373 bodies (JPL IOM 392R-21-005)"
+terms = "Redistribution terms not yet confirmed; download-only, not committed (LIC-003, DEP-017)"
+
+# WP17 (REF-006, oracle stage B; OI-27). The JPL binary DE440 file that Orekit's
+# JPLEphemeridesLoader reads (it does not read .bsp). Pinned by the WP17 builder agent on first
+# retrieval 2026-10-15; NEEDS HUMAN REVIEW (this manifest is human-owned).
+[[product]]
+name = "de440-linux-binary"
+url = "https://ssd.jpl.nasa.gov/ftp/eph/planets/Linux/de440/linux_p1550p2650.440"
+file = "linux_p1550p2650.440"
+# 102272352 bytes; server Last-Modified: Thu, 04 Mar 2021 19:26:30 GMT.
+sha256 = "29915576d0a6555766b99485ac3056ee415e86df4fce282611c31afb329ad062"
+first_retrieved = "2026-10-15"
+publisher = "NASA/JPL Solar System Dynamics, planetary ephemeris DE440, Linux binary 1550-2650 (Park et al. 2021, AJ 161, 105)"
+terms = "Redistribution terms not yet confirmed; download-only, not committed (LIC-003, DEP-017)"

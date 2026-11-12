@@ -1,0 +1,37 @@
+# SPDX-FileCopyrightText: 2026 Proper-Time Physics Institute
+# SPDX-License-Identifier: Apache-2.0
+# Scenario-driven runs (WP13: CI-002, CI-010, TST-005, NUM-010, NUM-022). Checked by
+# crates/ferroastro-propagate/tests/*.rs, crates/ferroastro-cli/tests/cli_scenario.rs and
+# crates/ferroastro-ladder/tests/data_scenario_gr_schw.rs. Every tolerance below was fixed in
+# IMPLEMENTATION-NOTES WP13 ("Plan and pre-registered checks") before the first WP13 run.
+# Bitwise checks (checkpoint/resume, TST-005, batch, scenario = direct API) need no vector: they
+# assert exact equality of 64-bit words. Schema: ADR-0004.
+schema_version = 1
+
+[[vector]]
+id = "NUM010-NBODY-PERIHELION-VS-KEPLER"
+requirement = ["NUM-010"]
+quantity = "max over 100 yr of |t_k(dense-output event of (r_Me - r_Sun).(v_Me - v_Sun) = 0, rising) - (t_p + k P)|, Newtonian Sun + Mercury N-body run from header.440, P and t_p from the initial relative osculating elements with mu = GM_sun + GM_Mercury"
+value = 0.0
+unit = "s"
+kind = "analytic"
+source = "The relative motion of a Newtonian two-body problem is a fixed Kepler ellipse with mu = GM_1 + GM_2; its perihelion passages are t_p + k P exactly."
+citation = "Murray & Dermott 1999, Solar System Dynamics, Sec. 2.2-2.4 (two-body problem, relative orbit with mu = G(m1 + m2)); FerroAstro docs/requirements/NUM.md NUM-010"
+retrieved = "2026-10-15"
+tolerance = { abs = 1.0e-4 }
+tolerance_rationale = "PROVISIONAL (WP13 plan check 6). Round-off only: the accumulated phase error of ~3e4 IAS15 steps over 3.2e9 s at a few e-16 relative is ~1e-6 s; 1e-4 s leaves two orders of margin and still fails for a wrong mu (GM_sun alone shifts t_k by ~1e2 s after 100 yr) or a mislocated event."
+verified_by = "WP13 builder agent, 2026-10-15: fixed in the WP13 plan before the first run."
+
+[[vector]]
+id = "NUM010-NBODY-EVENT-LOCATION"
+requirement = ["NUM-010"]
+quantity = "max over the passages of |g(t_e)| / |dg/dt(t_e)| with g = r.v of the relative Mercury - Sun state on the dense output at the located time t_e (Newton step that would remain)"
+value = 0.0
+unit = "s"
+kind = "defined"
+source = "NUM-010 acceptance: perihelion events are located to <= 1e-6 s."
+citation = "FerroAstro docs/requirements/NUM.md NUM-010"
+retrieved = "2026-10-15"
+tolerance = { abs = 1.0e-6 }
+tolerance_rationale = "The requirement's own bound. The Illinois iteration stops at a bracket of 4 ulp of the step fraction (~1e-11 s for 1e5 s steps), so the remaining Newton step is far below it."
+verified_by = "WP13 builder agent, 2026-10-15: fixed in the WP13 plan before the first run."

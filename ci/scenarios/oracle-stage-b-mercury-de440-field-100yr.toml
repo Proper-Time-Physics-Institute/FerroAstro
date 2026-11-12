@@ -1,0 +1,34 @@
+# SPDX-FileCopyrightText: 2026 Proper-Time Physics Institute
+# SPDX-License-Identifier: Apache-2.0
+# Oracle stage B (WP17, REF-006): Mercury as a massless particle about the Sun (mu = GM of the Sun)
+# in the field of the other DE440 Major bodies, whose positions come from the DE440 ephemeris
+# (FerroAstro: de440.bsp; Orekit: the JPL binary linux_p1550p2650.440, the same Chebyshev data).
+# Newtonian direct + indirect third-body terms; no GR, no J2, no asteroids. Mercury's initial
+# state is DE440's at J2000.0 TDB; 100 Julian years forward, sampled every 5 d (36525 d is 7305 whole outputs).
+# Schema: scenario.schema.json (CI-002).
+schema_version = 1
+name = "oracle-stage-b-mercury-de440-field-100yr"
+description = "Stage B: Mercury in the DE440-driven Newtonian field (Sun central, 9 field bodies), J2000 TDB, 100 yr, 5-d samples"
+mode = "ephemeris-field"
+bodies = ["Sun", "Mercury", "Venus", "Earth", "Moon", "Mars", "Jupiter", "Saturn", "Uranus", "Neptune", "Pluto"]
+central_body = "Sun"
+
+[initial_conditions]
+source = "de440-bsp"
+epoch_jd_tdb = 2451545.0
+
+[constants]
+gm_set = "de440"
+
+[forces]
+newton = true
+
+[integrator]
+name = "ias15"
+precision = "f64"
+
+[span]
+years = 100.0
+
+[output]
+cadence_days = 5.0

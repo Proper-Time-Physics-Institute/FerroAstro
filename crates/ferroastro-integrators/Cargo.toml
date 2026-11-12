@@ -12,7 +12,14 @@ repository.workspace = true
 
 [dependencies]
 ferroastro-core.workspace = true
+ferroastro-real.workspace = true
 thiserror.workspace = true
+serde = { workspace = true, optional = true }
+
+[features]
+default = []
+# Serialize/Deserialize for the settings, counters and checkpoint snapshots (CI-010).
+serde = ["dep:serde"]
 
 [dev-dependencies]
 ferroastro-vectors.workspace = true

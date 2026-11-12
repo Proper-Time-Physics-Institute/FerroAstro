@@ -9,29 +9,61 @@ use crate::central::{CentralTerm, Pole, dot};
 use crate::{ForceError, Gauge};
 use ferroastro_core::frames::Frame;
 use ferroastro_core::units::{GravParam, Length};
+use ferroastro_real::Real;
 
-/// Solar (central-body) J2 with a configurable pole.
-#[derive(Debug, Clone, Copy, PartialEq)]
-pub struct SolarJ2<F: Frame> {
-    mu: f64,
-    j2: f64,
-    radius: f64,
-    pole: Pole<F>,
+/// The J2 acceleration (km/s²) at `r` (km) relative to a body of parameter `mu` with pole `k_hat`:
+/// `−(3μJ₂R²)/(2r⁵) [(1 − 5z²/r²) r + 2z k̂]`, `z = r·k̂`.
+pub(crate) fn j2_field<R: Real>(mu: R, j2: R, radius: R, k_hat: [R; 3], r: [R; 3]) -> [R; 3] {
+    let r2 = dot(r, r);
+    let z = dot(r, k_hat);
+    let r5 = r2 * r2 * r2.sqrt();
+    let k = R::from_f64(-1.5) * mu * j2 * radius * radius / r5;
+    let radial = R::ONE - R::from_f64(5.0) * z * z / r2;
+    let [r0, r1, r2c] = r;
+    let [k0, k1, k2] = k_hat;
+    [
+        k * radial.mul_add(r0, R::TWO * z * k0),
+        k * radial.mul_add(r1, R::TWO * z * k1),
+        k * radial.mul_add(r2c, R::TWO * z * k2),
+    ]
 }
 
-impl<F: Frame> SolarJ2<F> {
+/// The J2 potential per unit mass of the attracted body (km²/s²) at `r`:
+/// `V = μJ₂R² (3z²/r² − 1) / (2r³)`, so that `a = −∇V` is [`j2_field`].
+pub(crate) fn j2_potential<R: Real>(mu: R, j2: R, radius: R, k_hat: [R; 3], r: [R; 3]) -> R {
+    let r2 = dot(r, r);
+    let z = dot(r, k_hat);
+    let r3 = r2 * r2.sqrt();
+    mu * j2 * radius * radius * (R::from_f64(3.0) * z * z / r2 - R::ONE) / (R::TWO * r3)
+}
+
+/// Solar (central-body) J2 with a configurable pole, in backend `R` (default `f64`).
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct SolarJ2<F: Frame, R: Real = f64> {
+    mu: R,
+    j2: R,
+    radius: R,
+    pole: Pole<F, R>,
+}
+
+impl<F: Frame, R: Real> SolarJ2<F, R> {
     /// Build from the central `μ`, the unnormalised `J₂`, the reference radius and the pole.
     ///
     /// # Errors
     /// `FA-E0500` if `μ` or the radius is not positive, or `J₂` is not finite.
-    pub fn new(mu: GravParam, j2: f64, radius: Length, pole: Pole<F>) -> Result<Self, ForceError> {
-        let check = |name: &'static str, v: f64, ok: bool| {
+    pub fn new(
+        mu: GravParam<R>,
+        j2: R,
+        radius: Length<R>,
+        pole: Pole<F, R>,
+    ) -> Result<Self, ForceError> {
+        let check = |name: &'static str, v: R, ok: bool| {
             if ok {
                 Ok(v)
             } else {
                 Err(ForceError::Invalid {
                     name,
-                    value: v,
+                    value: v.to_f64(),
                     valid: "finite (and > 0 for GM and radius)",
                 })
             }
@@ -39,40 +71,45 @@ impl<F: Frame> SolarJ2<F> {
         let m = mu.km3_per_s2();
         let r = radius.km();
         Ok(Self {
-            mu: check("GM (km^3/s^2)", m, m.is_finite() && m > 0.0)?,
+            mu: check("GM (km^3/s^2)", m, m.is_finite() && m > R::ZERO)?,
             j2: check("J2", j2, j2.is_finite())?,
-            radius: check("reference radius (km)", r, r.is_finite() && r > 0.0)?,
+            radius: check("reference radius (km)", r, r.is_finite() && r > R::ZERO)?,
             pole,
         })
     }
 
     /// The pole.
     #[must_use]
-    pub const fn pole(&self) -> Pole<F> {
+    pub const fn pole(&self) -> Pole<F, R> {
         self.pole
+    }
+
+    /// `(μ, J₂, R)` in km³/s², 1 and km.
+    #[must_use]
+    pub const fn parameters(&self) -> (R, R, R) {
+        (self.mu, self.j2, self.radius)
     }
 }
 
-impl<F: Frame> CentralTerm<F> for SolarJ2<F> {
-    fn add_acceleration(&self, r: [f64; 3], _v: [f64; 3], a: &mut [f64; 3]) {
-        let k_hat = self.pole.unit();
-        let r2 = dot(r, r);
-        let z = dot(r, k_hat);
-        let r5 = r2 * r2 * r2.sqrt();
-        let k = -1.5 * self.mu * self.j2 * self.radius * self.radius / r5;
-        let radial = 1.0 - 5.0 * z * z / r2;
-        for ((ai, ri), ki) in a.iter_mut().zip(r).zip(k_hat) {
-            *ai += k * radial.mul_add(ri, 2.0 * z * ki);
+impl<F: Frame, R: Real> CentralTerm<F, R> for SolarJ2<F, R> {
+    fn add_acceleration(&self, r: [R; 3], _v: [R; 3], a: &mut [R; 3]) {
+        let f = j2_field(self.mu, self.j2, self.radius, self.pole.unit(), r);
+        for (ai, fi) in a.iter_mut().zip(f) {
+            *ai += fi;
         }
     }
     fn gauge(&self) -> Gauge {
         Gauge::Newtonian
     }
     fn describe(&self) -> String {
-        let p = self.pole.unit();
+        let p = self.pole.unit().map(Real::to_f64);
         format!(
             "central-body J2 (Journal #4 R1), J2 = {:e}, R = {} km, pole [{}, {}, {}]",
-            self.j2, self.radius, p[0], p[1], p[2]
+            self.j2.to_f64(),
+            self.radius.to_f64(),
+            p[0],
+            p[1],
+            p[2]
         )
     }
 }
@@ -98,5 +135,36 @@ mod tests {
         j2.add_acceleration([0.0, 0.0, 2.0], [0.0; 3], &mut b);
         assert!((b[2] - 3.0 / 16.0).abs() < 4.0 * f64::EPSILON); // lint: allow-literal(r = 2: r^4 = 16)
         assert!(SolarJ2::new(gm, f64::NAN, Length::from_km(1.0).unwrap(), pole).is_err());
+    }
+
+    /// `j2_potential` is the potential of `j2_field` (`a = −∇V`), checked by central differences
+    /// at an inclined, off-axis point with an inclined pole. The N-body energy diagnostic
+    /// (NUM-023) uses `j2_potential`; a wrong sign or factor there left every PR-tier test green
+    /// (WP12 review mutation probe).
+    ///
+    /// Verifies: NUM-019
+    #[test]
+    fn j2_field_is_minus_the_gradient_of_j2_potential() {
+        let (mu, j2, radius) = (1.0, 1e-3, 1.0); // lint: allow-literal(synthetic structural parameters)
+        let n = 0.12_f64.hypot(0.4).hypot(0.9); // lint: allow-literal(structural pole)
+        let k = [0.12 / n, -0.4 / n, 0.9 / n]; // lint: allow-literal(structural pole)
+        let r = [3.0, -1.5, 2.2]; // lint: allow-literal(structural point)
+        let h = 1e-4; // lint: allow-literal(finite-difference step)
+        let a = j2_field(mu, j2, radius, k, r);
+        let scale = a[0].hypot(a[1]).hypot(a[2]);
+        for c in 0..3 {
+            let (mut rp, mut rm) = (r, r);
+            rp[c] += h;
+            rm[c] -= h;
+            let grad = (j2_potential(mu, j2, radius, k, rp) - j2_potential(mu, j2, radius, k, rm))
+                / (2.0 * h);
+            // Truncation ~ (h/r)^2 ~ 1e-9 and round-off ~ eps |V|/h ~ 1e-12 of the scale.
+            assert!(
+                (a[c] + grad).abs() < 1e-7 * scale, // lint: allow-literal(finite-difference budget)
+                "component {c}: a = {}, -dV/dx = {}",
+                a[c],
+                -grad
+            );
+        }
     }
 }

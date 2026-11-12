@@ -11,6 +11,9 @@ use ferroastro_vectors::VectorSet;
 use std::fmt::Write as _;
 use std::io::Write;
 
+mod scenario_cmd;
+pub use scenario_cmd::{SCENARIO_USAGE, run_scenario_command};
+
 /// Usage text.
 pub const USAGE: &str =
     "usage: ferroastro ladder --rungs single-body [--orbits N] [--details] [--no-check]";
@@ -164,8 +167,16 @@ pub fn run<W: Write>(opts: &Options, out: &mut W) -> Result<bool, CliError> {
     if let Some(n) = opts.orbits {
         setup.orbits = n;
     }
+    // The report is evidence: an FA_VECTORS_DIR override is refused (FA-E0106), never silently
+    // ignored; a checkout without tests/vectors only loses the oracle column.
     let vectors = if opts.check {
-        VectorSet::load_workspace().ok()
+        match VectorSet::load_canonical() {
+            Ok(v) => Some(v),
+            Err(e @ ferroastro_vectors::VectorError::NonCanonical { .. }) => {
+                return Err(CliError(e.to_string(), e.code()));
+            }
+            Err(_) => None,
+        }
     } else {
         None
     };

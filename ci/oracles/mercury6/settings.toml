@@ -1,0 +1,10 @@
+# SPDX-FileCopyrightText: 2026 Proper-Time Physics Institute
+# SPDX-License-Identifier: Apache-2.0
+#
+# Mercury6 integrator settings (WP17; NEEDS HUMAN REVIEW: the scenario's [integrator] block names
+# FerroAstro's IAS15; Mercury6 runs Everhart's RA15 instead, the documented `radau` algorithm).
+# Pre-registered in docs/strategy/IMPLEMENTATION-NOTES.md (WP17 plan) before any run.
+[default]
+algorithm = "radau"          # Everhart RA15 (mercury6.man)
+accuracy = 1.0e-12           # the accuracy parameter of the sample param.in
+first_step_days = 0.5        # RA15 chooses its own steps after the first

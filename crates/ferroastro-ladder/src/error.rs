@@ -8,6 +8,7 @@ use ferroastro_core::ErrorCode;
 use ferroastro_forces::ForceError;
 use ferroastro_integrators::IntegratorError;
 use ferroastro_precession::PrecessionError;
+use ferroastro_propagate::PropagateError;
 
 /// Errors from building or running ladder rungs.
 #[derive(Debug, Clone, PartialEq, thiserror::Error)]
@@ -46,6 +47,9 @@ pub enum LadderError {
     /// Integrator error.
     #[error(transparent)]
     Integrator(#[from] IntegratorError),
+    /// Run-driver error (the passage search moved to `ferroastro-propagate` in WP13).
+    #[error(transparent)]
+    Propagate(#[from] PropagateError),
 }
 
 impl LadderError {
@@ -60,6 +64,7 @@ impl LadderError {
             LadderError::Analytic(e) => e.code(),
             LadderError::Precession(e) => e.code(),
             LadderError::Integrator(e) => e.code(),
+            LadderError::Propagate(e) => e.code(),
         }
     }
 }

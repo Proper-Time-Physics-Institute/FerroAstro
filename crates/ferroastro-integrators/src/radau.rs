@@ -7,29 +7,36 @@
 //! Nothing here is transcribed from tables or code: the spacings are computed as the roots of
 //! `P₇(x) + P₈(x)` on `[−1, 1]` (the left-endpoint Radau nodes, `x = −1` being the step start),
 //! mapped to `[0, 1]`, and the matrices are built from the spacings by polynomial algebra. All of
-//! it is done in double-double ([`crate::dd`]) and rounded to `f64` once, so each constant is the
-//! correctly rounded value of the exact one (Rein & Spiegel 2015 §3.2).
+//! it is done in double-double (`ferroastro_real::DoubleDouble`) and converted once to the
+//! integrator's backend `R`, so each f64 constant is the correctly rounded value of the exact one
+//! (Rein & Spiegel 2015 §3.2) and a double-double integrator gets ≈ 32-digit constants.
 //!
 //! Notation. Over one step the acceleration is the degree-7 polynomial in `τ = (t − t₀)/Δt`
 //! `a(τ) = a₀ + Σₘ Bₘ τᵐ` (m = 1…7; IAS15's `b₀…b₆` are `B₁…B₇`), equivalently the Newton form
 //! `a(τ) = a₀ + Σₖ gₖ Nₖ(τ)` with `Nₖ(τ) = Πⱼ₍₌₀…ₖ₋₁₎ (τ − hⱼ)` and `h₀ = 0`.
 
-use crate::dd::Dd;
+use ferroastro_real::{DoubleDouble as Dd, Real};
 
 /// Number of Radau nodes per step, including the step start.
 pub(crate) const NODES: usize = 8;
 /// Number of polynomial coefficients `B₁…B₇` (IAS15's `b₀…b₆`).
 pub(crate) const TERMS: usize = 7;
 
-/// Spacings and conversion matrices. Index `k`/`m` runs over `1..=7`; row/column 0 is unused.
+/// Spacings and conversion matrices in backend `R`. Index `k`/`m` runs over `1..=7`; row/column
+/// 0 is unused.
 #[derive(Debug, Clone)]
-pub(crate) struct Radau {
+pub(crate) struct Radau<R: Real = f64> {
     /// Node spacings `h₀ = 0 < h₁ < … < h₇ < 1`.
-    pub(crate) h: [f64; NODES],
+    pub(crate) h: [R; NODES],
     /// `c[k][m]`: coefficient of `τᵐ` in `Nₖ(τ)`; so `Bₘ = Σₖ₍≥ₘ₎ c[k][m] gₖ`.
-    pub(crate) c: [[f64; NODES]; NODES],
+    pub(crate) c: [[R; NODES]; NODES],
     /// Inverse map: `gₖ = Σₘ₍≥ₖ₎ d[k][m] Bₘ`.
-    pub(crate) d: [[f64; NODES]; NODES],
+    pub(crate) d: [[R; NODES]; NODES],
+}
+
+/// Round a double-double constant once into backend `R`.
+fn conv<R: Real>(x: Dd) -> R {
+    R::from_parts(x.hi(), x.lo())
 }
 
 /// `(P₇(x) + P₈(x), d/dx)` by the Bonnet recurrence.
@@ -128,8 +135,8 @@ fn radau_poly_dd(x: Dd) -> (Dd, Dd) {
     (p7 + p, dp7 + dp)
 }
 
-impl Radau {
-    /// Compute the spacings and matrices in double-double and round each to `f64`.
+impl<R: Real> Radau<R> {
+    /// Compute the spacings and matrices in double-double and round each to `R`.
     #[expect(
         clippy::indexing_slicing,
         clippy::needless_range_loop,
@@ -146,8 +153,8 @@ impl Radau {
             let mut x = Dd::from_f64(x0);
             for _ in 0..3 {
                 let (f, df) = radau_poly_dd(x);
-                if df.hi != 0.0 {
-                    x = x - f / df;
+                if df.hi() != 0.0 {
+                    x -= f / df;
                 }
             }
             *slot = (x + one) * half;
@@ -168,14 +175,14 @@ impl Radau {
             for m in (1..NODES).rev() {
                 let mut s = if m == j { one } else { zero };
                 for k in (m + 1)..NODES {
-                    s = s - cd[k][m] * dd[k][j];
+                    s -= cd[k][m] * dd[k][j];
                 }
                 dd[m][j] = s;
             }
         }
-        let h = hd.map(Dd::to_f64);
-        let c = cd.map(|row| row.map(Dd::to_f64));
-        let d = dd.map(|row| row.map(Dd::to_f64));
+        let h = hd.map(conv);
+        let c = cd.map(|row| row.map(conv));
+        let d = dd.map(|row| row.map(conv));
         Self { h, c, d }
     }
 }
@@ -191,7 +198,7 @@ mod tests {
     /// Verifies: NUM-001
     #[test]
     fn spacings_are_radau_roots_in_order() {
-        let r = Radau::new();
+        let r = Radau::<f64>::new();
         assert!(r.h[0].abs() < f64::EPSILON);
         for w in r.h.windows(2) {
             assert!(w[0] < w[1], "spacings not increasing: {:?}", r.h);
@@ -211,7 +218,7 @@ mod tests {
     /// Verifies: NUM-001
     #[test]
     fn spacings_are_correctly_rounded() {
-        let r = Radau::new();
+        let r = Radau::<f64>::new();
         for &h in &r.h[1..] {
             let x = Dd::from_f64(h) + Dd::from_f64(h) - Dd::from_f64(1.0);
             let (f, df) = radau_poly_dd(x);
@@ -228,7 +235,7 @@ mod tests {
     /// Verifies: NUM-001
     #[test]
     fn newton_and_monomial_forms_agree() {
-        let r = Radau::new();
+        let r = Radau::<f64>::new();
         // Arbitrary integer monomial coefficients B_1..B_7 (dimensionless test polynomial).
         let big_b = [0.0, 3.0, -2.0, 5.0, 1.0, -4.0, 2.0, 7.0];
         let a0 = 1.0;

@@ -1,0 +1,32 @@
+# SPDX-FileCopyrightText: 2026 Proper-Time Physics Institute
+# SPDX-License-Identifier: Apache-2.0
+# The WP12 check-4 model as a scenario: Sun + 8 planets + Moon (geocentric Moon variables, Earth
+# and Moon listed separately), Newtonian + solar J2, header.440 ICs, 10 Julian years, states
+# every 10 days. Schema: scenario.schema.json (CI-002).
+schema_version = 1
+name = "sun-planets-moon-newton-j2-10yr"
+description = "Sun + 8 planets + Moon (geocentric), Newtonian + solar J2, header.440 ICs, 10 yr"
+mode = "n-body"
+bodies = ["Sun", "Mercury", "Venus", "Earth", "Moon", "Mars", "Jupiter", "Saturn", "Uranus", "Neptune"]
+central_body = "Sun"
+
+[initial_conditions]
+source = "de440-header"
+
+[constants]
+gm_set = "de440"
+
+[forces]
+newton = true
+sun_j2 = true
+
+[integrator]
+name = "ias15"
+precision = "f64"
+
+[span]
+years = 10.0
+
+[output]
+cadence_days = 10.0
+perihelion = ["Mercury"]

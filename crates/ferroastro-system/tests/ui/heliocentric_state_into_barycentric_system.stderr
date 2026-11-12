@@ -1,0 +1,15 @@
+error[E0308]: mismatched types
+  --> tests/ui/heliocentric_state_into_barycentric_system.rs:15:53
+   |
+15 |     let _ = system.push(NaifId::MERCURY_BARYCENTER, &helio);
+   |                    ----                             ^^^^^^ expected `&State<Icrf, Barycentric>`, found `&State<Icrf, Heliocentric>`
+   |                    |
+   |                    arguments to this method are incorrect
+   |
+   = note: expected reference `&State<Icrf, Barycentric>`
+              found reference `&State<Icrf, Heliocentric>`
+note: method defined here
+  --> src/state.rs
+   |
+   |     pub fn push(&mut self, id: NaifId, state: &State<F, C, R>) -> Result<(), SystemError> {
+   |            ^^^^

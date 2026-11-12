@@ -1,0 +1,210 @@
+# SPDX-FileCopyrightText: 2026 Proper-Time Physics Institute
+# SPDX-License-Identifier: Apache-2.0
+# Frame definitions and frame-rotation checks (NUM-014, PHY-010, REF-009, DEP-009). Checked by
+# crates/ferroastro-frames/tests/*.rs and crates/ferroastro-ladder/tests/num014_*.rs.
+# Schema: ADR-0004.
+schema_version = 1
+
+[[vector]]
+id = "PYERFA-OBL06-MAX-DIFF"
+requirement = ["REF-009", "DEP-009", "NUM-014"]
+quantity = "largest |FerroAstro obl06 - pyerfa obl06| over the golden epochs, f64 and double-double"
+value = 0.0
+unit = "rad"
+kind = "computed-reference"
+source = "tests/goldens/erfa-frames-pyerfa.csv, column obl06; 113 TT epochs 1550-2650 plus J2000.0 and JDEPOC 2440400.5."
+citation = "pyerfa 2.0.1.5 (ERFA 2.0.1, SOFA 20231011); IAU 2006 precession (Capitaine, Wallace & Chapront 2003, A&A 412, 567; Hilton et al. 2006, CeMDA 94, 351)"
+retrieved = "2026-10-15"
+generated_by = "tools/goldens/erfa_frames.py@b2fbca9af7c1ad5a2f63649dc10e887e46c1e8b6"
+engine = { name = "pyerfa", version = "2.0.1.5 (ERFA 2.0.1, SOFA 20231011), numpy 2.5.4, CPython 3.12.13 x86_64", settings = "two-part TT dates (0 h JD, fraction of day); deterministic directions per epoch" }
+tolerance = { abs = 1e-12 }
+tolerance_rationale = "PROVISIONAL (WP9 brief, red-team C3/H1): 1e-12 per angle or matrix element. Same algorithm, so the expected residual is binary64 round-off (~1e-16); 1e-12 is the brief's bound, not a measured one."
+verified_by = "WP9 builder agent, 2026-10-15: pre-registered in IMPLEMENTATION-NOTES WP9 before the first run; measured maxima recorded there."
+notes = "golden table sha256 5a68408ea729d1d8f0451206ce6b3665a9cc185668db0cd3a1aaf18cc360ea13"
+
+[[vector]]
+id = "PYERFA-P06E-MAX-DIFF"
+requirement = ["REF-009", "DEP-009", "NUM-014"]
+quantity = "largest |FerroAstro p06e - pyerfa p06e| over all 16 angles (p_A included) and the golden epochs, f64 and double-double"
+value = 0.0
+unit = "rad"
+kind = "computed-reference"
+source = "tests/goldens/erfa-frames-pyerfa.csv, columns eps0..psi; 113 TT epochs 1550-2650 plus J2000.0 and JDEPOC 2440400.5."
+citation = "pyerfa 2.0.1.5 (ERFA 2.0.1, SOFA 20231011); IAU 2006 precession (Capitaine, Wallace & Chapront 2003, A&A 412, 567; Hilton et al. 2006, CeMDA 94, 351)"
+retrieved = "2026-10-15"
+generated_by = "tools/goldens/erfa_frames.py@b2fbca9af7c1ad5a2f63649dc10e887e46c1e8b6"
+engine = { name = "pyerfa", version = "2.0.1.5 (ERFA 2.0.1, SOFA 20231011), numpy 2.5.4, CPython 3.12.13 x86_64", settings = "two-part TT dates (0 h JD, fraction of day); deterministic directions per epoch" }
+tolerance = { abs = 1e-12 }
+tolerance_rationale = "PROVISIONAL (WP9 brief, red-team C3/H1): 1e-12 per angle or matrix element. Same algorithm, so the expected residual is binary64 round-off (~1e-16); 1e-12 is the brief's bound, not a measured one."
+verified_by = "WP9 builder agent, 2026-10-15: pre-registered in IMPLEMENTATION-NOTES WP9 before the first run; measured maxima recorded there."
+notes = "golden table sha256 5a68408ea729d1d8f0451206ce6b3665a9cc185668db0cd3a1aaf18cc360ea13"
+
+[[vector]]
+id = "PYERFA-PMAT06-MAX-DIFF"
+requirement = ["REF-009", "DEP-009", "NUM-014"]
+quantity = "largest element |FerroAstro pmat06 - pyerfa pmat06| (GCRS to mean equator and equinox of date, bias included) over the golden epochs"
+value = 0.0
+unit = "1"
+kind = "computed-reference"
+source = "tests/goldens/erfa-frames-pyerfa.csv, columns pmat06_11..33; 113 TT epochs 1550-2650 plus J2000.0 and JDEPOC 2440400.5."
+citation = "pyerfa 2.0.1.5 (ERFA 2.0.1, SOFA 20231011); IAU 2006 precession (Capitaine, Wallace & Chapront 2003, A&A 412, 567; Hilton et al. 2006, CeMDA 94, 351)"
+retrieved = "2026-10-15"
+generated_by = "tools/goldens/erfa_frames.py@b2fbca9af7c1ad5a2f63649dc10e887e46c1e8b6"
+engine = { name = "pyerfa", version = "2.0.1.5 (ERFA 2.0.1, SOFA 20231011), numpy 2.5.4, CPython 3.12.13 x86_64", settings = "two-part TT dates (0 h JD, fraction of day); deterministic directions per epoch" }
+tolerance = { abs = 1e-12 }
+tolerance_rationale = "PROVISIONAL (WP9 brief, red-team C3/H1): 1e-12 per angle or matrix element. Same algorithm, so the expected residual is binary64 round-off (~1e-16); 1e-12 is the brief's bound, not a measured one."
+verified_by = "WP9 builder agent, 2026-10-15: pre-registered in IMPLEMENTATION-NOTES WP9 before the first run; measured maxima recorded there."
+notes = "golden table sha256 5a68408ea729d1d8f0451206ce6b3665a9cc185668db0cd3a1aaf18cc360ea13"
+
+[[vector]]
+id = "PYERFA-ECM06-MAX-DIFF"
+requirement = ["REF-009", "DEP-009", "NUM-014"]
+quantity = "largest element |ferroastro_frames::icrf_to_ecliptic_of_date - pyerfa ecm06| (ICRS to IAU 2006 ecliptic of date) over the golden epochs"
+value = 0.0
+unit = "1"
+kind = "computed-reference"
+source = "tests/goldens/erfa-frames-pyerfa.csv, columns ecm06_11..33; 113 TT epochs 1550-2650 plus J2000.0 and JDEPOC 2440400.5."
+citation = "pyerfa 2.0.1.5 (ERFA 2.0.1, SOFA 20231011); IAU 2006 precession (Capitaine, Wallace & Chapront 2003, A&A 412, 567; Hilton et al. 2006, CeMDA 94, 351)"
+retrieved = "2026-10-15"
+generated_by = "tools/goldens/erfa_frames.py@b2fbca9af7c1ad5a2f63649dc10e887e46c1e8b6"
+engine = { name = "pyerfa", version = "2.0.1.5 (ERFA 2.0.1, SOFA 20231011), numpy 2.5.4, CPython 3.12.13 x86_64", settings = "two-part TT dates (0 h JD, fraction of day); deterministic directions per epoch" }
+tolerance = { abs = 1e-12 }
+tolerance_rationale = "PROVISIONAL (WP9 brief, red-team C3/H1): 1e-12 per angle or matrix element. Same algorithm, so the expected residual is binary64 round-off (~1e-16); 1e-12 is the brief's bound, not a measured one."
+verified_by = "WP9 builder agent, 2026-10-15: pre-registered in IMPLEMENTATION-NOTES WP9 before the first run; measured maxima recorded there."
+notes = "golden table sha256 5a68408ea729d1d8f0451206ce6b3665a9cc185668db0cd3a1aaf18cc360ea13"
+
+[[vector]]
+id = "PYERFA-EQEC-ECEQ-MAX-DIFF"
+requirement = ["REF-009", "DEP-009", "NUM-014"]
+quantity = "largest angular |FerroAstro - pyerfa| of eqec06 (ICRS RA/Dec to ecliptic lon/lat of date) and eceq06 (the inverse), longitude difference wrapped to +-pi"
+value = 0.0
+unit = "rad"
+kind = "computed-reference"
+source = "tests/goldens/erfa-frames-pyerfa.csv, columns eq_ra, eq_dec -> eqec06_lon, eqec06_lat and ec_lon, ec_lat -> eceq06_ra, eceq06_dec; 113 TT epochs 1550-2650 plus J2000.0 and JDEPOC 2440400.5."
+citation = "pyerfa 2.0.1.5 (ERFA 2.0.1, SOFA 20231011); IAU 2006 precession (Capitaine, Wallace & Chapront 2003, A&A 412, 567; Hilton et al. 2006, CeMDA 94, 351)"
+retrieved = "2026-10-15"
+generated_by = "tools/goldens/erfa_frames.py@b2fbca9af7c1ad5a2f63649dc10e887e46c1e8b6"
+engine = { name = "pyerfa", version = "2.0.1.5 (ERFA 2.0.1, SOFA 20231011), numpy 2.5.4, CPython 3.12.13 x86_64", settings = "two-part TT dates (0 h JD, fraction of day); deterministic directions per epoch" }
+tolerance = { abs = 1e-12 }
+tolerance_rationale = "PROVISIONAL (WP9 brief, red-team C3/H1): 1e-12 per angle or matrix element. Same algorithm, so the expected residual is binary64 round-off (~1e-16); 1e-12 is the brief's bound, not a measured one."
+verified_by = "WP9 builder agent, 2026-10-15: pre-registered in IMPLEMENTATION-NOTES WP9 before the first run; measured maxima recorded there."
+notes = "golden table sha256 5a68408ea729d1d8f0451206ce6b3665a9cc185668db0cd3a1aaf18cc360ea13"
+
+[[vector]]
+id = "PYERFA-ECLIPJ2000-MAX-DIFF"
+requirement = ["REF-009", "DEP-009", "NUM-014"]
+quantity = "largest element |ferroastro_frames::icrf_to_ecliptic_j2000 - pyerfa rx(84381.448 arcsec, ir)|"
+value = 0.0
+unit = "1"
+kind = "computed-reference"
+source = "tests/goldens/erfa-frames-pyerfa.csv, columns eclj2000_11..33; 113 TT epochs 1550-2650 plus J2000.0 and JDEPOC 2440400.5."
+citation = "pyerfa 2.0.1.5 (ERFA 2.0.1, SOFA 20231011); IAU 2006 precession (Capitaine, Wallace & Chapront 2003, A&A 412, 567; Hilton et al. 2006, CeMDA 94, 351)"
+retrieved = "2026-10-15"
+generated_by = "tools/goldens/erfa_frames.py@b2fbca9af7c1ad5a2f63649dc10e887e46c1e8b6"
+engine = { name = "pyerfa", version = "2.0.1.5 (ERFA 2.0.1, SOFA 20231011), numpy 2.5.4, CPython 3.12.13 x86_64", settings = "two-part TT dates (0 h JD, fraction of day); deterministic directions per epoch" }
+tolerance = { abs = 1e-12 }
+tolerance_rationale = "PROVISIONAL (WP9 brief, red-team C3/H1): 1e-12 per angle or matrix element. Same algorithm, so the expected residual is binary64 round-off (~1e-16); 1e-12 is the brief's bound, not a measured one."
+verified_by = "WP9 builder agent, 2026-10-15: pre-registered in IMPLEMENTATION-NOTES WP9 before the first run; measured maxima recorded there."
+notes = "golden table sha256 5a68408ea729d1d8f0451206ce6b3665a9cc185668db0cd3a1aaf18cc360ea13"
+
+[[vector]]
+id = "ECLIPJ2000-OBLIQUITY"
+requirement = ["NUM-014"]
+quantity = "obliquity defining the JPL/NAIF ECLIPJ2000 frame: rotation about the ICRF x-axis (no frame bias)"
+value = 84381.448
+unit = "arcsec"
+kind = "defined"
+source = "JPL Horizons manual, section 'Ecliptic of Standard Epoch (J2000 or B1950)': 'now produced by rotating around the ICRF x-axis by a standard fixed obliquity angle (epsilon) of 84381.448 arcseconds'; and 'Horizons uses the IAU76/80 fixed obliquity of 84381.448 arcsec at the J2000.0 standard epoch'. The value is the IAU 1976 obliquity at J2000."
+citation = "JPL Horizons System manual, https://ssd.jpl.nasa.gov/horizons/manual.html (retrieved 2026-10-15, sha256 5c5100b08abeb10f4a6074e02102e4fe5d915203eed360bb4dd839a77210ddcc); Lieske, J. H. et al. 1977, A&A 58, 1"
+retrieved = "2026-10-15"
+tolerance = { abs = 0.0 }
+tolerance_rationale = "A defined frame constant; exact."
+verified_by = "WP9 builder agent, 2026-10-15: quoted sentences read in the retrieved Horizons manual; the rotation built from it is checked against Horizons ECLIPTIC tables in the data tier (HORIZONS-ECLIPJ2000-ROTATION)."
+
+[[vector]]
+id = "SUN-POLE-IAU-RA"
+requirement = ["PHY-010", "NUM-014"]
+quantity = "right ascension alpha_0 of the Sun's north pole, ICRF (IAU WGCCRE 2015; constant in time)"
+value = 286.13
+unit = "deg"
+kind = "defined"
+source = "NAIF generic PCK pck00011.tpc: 'BODY10_POLE_RA = ( 286.13 0. 0. )', citing Archinal et al. 2018 (IAU WGCCRE 2015 report)."
+citation = "Archinal, B. A. et al. 2018, CeMDA 130, 22 (Report of the IAU WGCCRE: 2015); NAIF https://naif.jpl.nasa.gov/pub/naif/generic_kernels/pck/pck00011.tpc (retrieved 2026-10-15, sha256 3dff7b1dbeceaa01f25467767d3fa25816051c85d162d1edf04acb310ee28bb1)"
+retrieved = "2026-10-15"
+tolerance = { abs = 0.0 }
+tolerance_rationale = "An adopted (IAU-recommended) model constant used as a frame definition; exact transcription."
+verified_by = "WP9 builder agent, 2026-10-15: read in the retrieved pck00011.tpc (not in the Archinal 2018 paper itself); re-read from a fresh download in the data tier (data_naif_pck_solar_pole)."
+
+[[vector]]
+id = "SUN-POLE-IAU-DEC"
+requirement = ["PHY-010", "NUM-014"]
+quantity = "declination delta_0 of the Sun's north pole, ICRF (IAU WGCCRE 2015; constant in time)"
+value = 63.87
+unit = "deg"
+kind = "defined"
+source = "NAIF generic PCK pck00011.tpc: 'BODY10_POLE_DEC = ( 63.87 0. 0. )', citing Archinal et al. 2018 (IAU WGCCRE 2015 report)."
+citation = "Archinal, B. A. et al. 2018, CeMDA 130, 22 (Report of the IAU WGCCRE: 2015); NAIF https://naif.jpl.nasa.gov/pub/naif/generic_kernels/pck/pck00011.tpc (retrieved 2026-10-15, sha256 3dff7b1dbeceaa01f25467767d3fa25816051c85d162d1edf04acb310ee28bb1)"
+retrieved = "2026-10-15"
+tolerance = { abs = 0.0 }
+tolerance_rationale = "An adopted (IAU-recommended) model constant used as a frame definition; exact transcription."
+verified_by = "WP9 builder agent, 2026-10-15: read in the retrieved pck00011.tpc (not in the Archinal 2018 paper itself); re-read from a fresh download in the data tier (data_naif_pck_solar_pole)."
+
+[[vector]]
+id = "NUM014-RATE-DIFF-VS-PA"
+requirement = ["NUM-014"]
+quantity = "(ecliptic-of-date perihelion-longitude rate - inertial rate) - (linear-fit slope of p_A(t) from the ported p06e), both longitudes measured in the IAU 2006 J2000 ecliptic plane, linear fits over the same passages"
+value = 0.0
+unit = "arcsec/cy"
+kind = "computed-reference"
+source = "NUM-014 acceptance: 'The ecliptic-of-date result minus the inertial result ~ p_A, with both measured in the same reference plane.' p_A from ferroastro-erfa's p06e port, itself checked against pyerfa 2.0.1.5 (PYERFA-P06E-MAX-DIFF) and t_erfa_c (ERFA-T-P06E-PA); never the unverified search-snippet value of open item OI-02."
+citation = "Capitaine, Wallace & Chapront 2003, A&A 412, 567 (P03); ERFA 2.0.1 p06e"
+retrieved = "2026-10-15"
+generated_by = "crates/ferroastro-erfa/src/precession.rs@46105a2b9354b0fe7db1abcccb3c59dae977e073"
+engine = { name = "ferroastro-erfa p06e", version = "port of ERFA 2.0.1", settings = "TT = TDB - dtdb at each passage; linear least squares in TT Julian centuries" }
+tolerance = { abs = 1e-3 }
+tolerance_rationale = "The WP9 brief's 1e-3 arcsec/cy. Expected residual (pre-run with pyerfa, NOT blind): +4.4e-4 arcsec/cy, the second-order projection of the moving ecliptic onto the fixed plane, ~(pi_A^2/4) sin 2(Pi_A + p_A); the margin is therefore only ~2x. Check NUM014-RATE-DIFF-VS-GEOMETRY removes that term."
+verified_by = "WP9 builder agent, 2026-10-15: pre-registered in IMPLEMENTATION-NOTES WP9 before the first Rust run."
+
+[[vector]]
+id = "NUM014-RATE-DIFF-VS-GEOMETRY"
+requirement = ["NUM-014"]
+quantity = "(ecliptic-of-date perihelion-longitude rate - inertial rate) - (linear-fit slope of the exact projected-equinox longitude -[Pi_A - atan2(sin(Pi_A + p_A) cos pi_A, cos(Pi_A + p_A))] from p06e's pi_A, Pi_A, p_A), same passages"
+value = 0.0
+unit = "arcsec/cy"
+kind = "computed-reference"
+source = "Geometry of the IAU 2006 ecliptic precession (ecliptic-to-ecliptic rotation R3(-(Pi_A + p_A)) R1(pi_A) R3(Pi_A)) with p06e's angles; the measured difference comes from ecm06 (Fukushima-Williams bias-precession), an independent parameterisation of the same P03 theory."
+citation = "Capitaine, Wallace & Chapront 2003, A&A 412, 567; Hilton et al. 2006, CeMDA 94, 351, Table 1; ERFA 2.0.1 p06e note 6 ('agreement between the different parameterizations is at the 1 microarcsecond level in the present era')"
+retrieved = "2026-10-15"
+generated_by = "crates/ferroastro-erfa/src/precession.rs@46105a2b9354b0fe7db1abcccb3c59dae977e073"
+engine = { name = "ferroastro-erfa p06e", version = "port of ERFA 2.0.1", settings = "as NUM014-RATE-DIFF-VS-PA" }
+tolerance = { abs = 1e-5 }
+tolerance_rationale = "ERFA documents 1 microarcsecond agreement between parameterisations; the pyerfa pre-run (NOT blind) measured 8.4e-7 arcsec/cy for this slope difference over 1969-2169. 1e-5 leaves a 10x margin."
+verified_by = "WP9 builder agent, 2026-10-15: pre-registered in IMPLEMENTATION-NOTES WP9 before the first Rust run."
+
+[[vector]]
+id = "HORIZONS-ECLIPJ2000-ROTATION"
+requirement = ["NUM-014", "PHY-010"]
+quantity = "largest |R r_ICRF - r_Horizons|/|r| and |R v_ICRF - v_Horizons|/|v| for Horizons DE441 heliocentric Mercury states 1900-2100, R = icrf_to_ecliptic_j2000 (ECLIPJ2000 definition), Horizons REF_PLANE='ECLIPTIC'"
+value = 0.0
+unit = "1"
+kind = "measured"
+source = "JPL Horizons API vector tables (COMMAND 199, CENTER 500@10, REF_SYSTEM ICRF, REF_PLANE FRAME and ECLIPTIC), fetched in the data tier with full provenance."
+citation = "JPL Horizons System, https://ssd.jpl.nasa.gov/api/horizons.api (DE441)"
+retrieved = "2026-10-15"
+tolerance = { abs = 1e-12 }
+tolerance_rationale = "Horizons prints 16 significant digits (~5e-17 relative); our rotation uses binary64 constants. A frame-bias or obliquity-convention error would give >= 1e-7, a wrong x-axis convention O(1)."
+verified_by = "WP9 builder agent, 2026-10-15: pre-registered in IMPLEMENTATION-NOTES WP9 before the first data run."
+
+[[vector]]
+id = "HORIZONS-IAU-SUN-ROTATION"
+requirement = ["NUM-014", "PHY-010"]
+quantity = "largest |R r_ICRF - r_Horizons|/|r| and |R v_ICRF - v_Horizons|/|v| for Horizons DE441 heliocentric Mercury states 1900-2100, R = icrf_to_sun_equator_iau (IAU solar pole, x = node on the ICRF equator), Horizons REF_PLANE='BODY EQUATOR'"
+value = 0.0
+unit = "1"
+kind = "measured"
+source = "JPL Horizons API vector tables (COMMAND 199, CENTER 500@10, REF_SYSTEM ICRF, REF_PLANE FRAME and BODY EQUATOR), fetched in the data tier with full provenance."
+citation = "JPL Horizons System, https://ssd.jpl.nasa.gov/api/horizons.api (DE441)"
+retrieved = "2026-10-15"
+tolerance = { abs = 1e-12 }
+tolerance_rationale = "Horizons prints 16 significant digits (~5e-17 relative); our rotation uses binary64 constants. A frame-bias or obliquity-convention error would give >= 1e-7, a wrong x-axis convention O(1)."
+verified_by = "WP9 builder agent, 2026-10-15: pre-registered in IMPLEMENTATION-NOTES WP9 before the first data run."

@@ -4,11 +4,14 @@
 //! km³/s², rad, rad/s), so conversions happen only at construction and read-out.
 //!
 //! Only dimensionally meaningful arithmetic is implemented: same-type `+`/`-`, scaling by a
-//! dimensionless `f64`, same-type ratio (dimensionless), `Length / TimeSpan = Velocity` and
-//! `Angle / TimeSpan = AngularRate`.
+//! dimensionless number of the same backend, same-type ratio (dimensionless),
+//! `Length / TimeSpan = Velocity` and `Angle / TimeSpan = AngularRate`. Every type is generic
+//! over the scalar backend ([`ferroastro_real::Real`], default `f64`), and mixing backends
+//! (`Length<f64> + Length<DoubleDouble>`) does not compile either.
 //! `Length + Velocity` therefore does not compile.
 
 use crate::error::{Error, require_finite};
+use ferroastro_real::Real;
 use std::ops::{Add, Div, Mul, Neg, Sub};
 
 macro_rules! quantity {
@@ -17,24 +20,37 @@ macro_rules! quantity {
         $name:ident, $unit:literal, $ctor:ident, $get:ident, $what:literal
     ) => {
         $(#[$meta])*
+        ///
+        #[doc = concat!(
+            "Generic over the scalar backend `R` ([`Real`]); `", stringify!($name),
+            "` alone means `", stringify!($name), "<f64>`."
+        )]
         #[derive(Debug, Clone, Copy, PartialEq, PartialOrd, Default)]
-        pub struct $name(f64);
+        pub struct $name<R: Real = f64>(R);
 
-        impl $name {
-            #[doc = concat!("The zero ", $what, ".")]
+        impl $name<f64> {
+            #[doc = concat!("The zero ", $what, " (binary64).")]
             pub const ZERO: Self = Self(0.0);
+        }
+
+        impl<R: Real> $name<R> {
+            #[doc = concat!("The zero ", $what, " in any backend.")]
+            #[must_use]
+            pub fn zero() -> Self {
+                Self(R::ZERO)
+            }
 
             #[doc = concat!("Construct from a value in ", $unit, ".")]
             ///
             /// # Errors
             /// [`Error::NonFinite`] (`FA-E0001`) if the value is NaN or infinite.
-            pub fn $ctor(value: f64) -> Result<Self, Error> {
+            pub fn $ctor(value: R) -> Result<Self, Error> {
                 require_finite($what, value, $unit).map(Self)
             }
 
             #[doc = concat!("The value in ", $unit, ".")]
             #[must_use]
-            pub const fn $get(self) -> f64 {
+            pub const fn $get(self) -> R {
                 self.0
             }
 
@@ -43,47 +59,56 @@ macro_rules! quantity {
             pub fn abs(self) -> Self {
                 Self(self.0.abs())
             }
+
+            /// The same quantity in another backend (exact when widening, e.g. f64 → double-double;
+            /// rounded once when narrowing).
+            #[must_use]
+            pub fn cast<S: Real>(self) -> $name<S> {
+                let (hi, lo) = self.0.to_parts();
+                $name(S::from_parts(hi, lo))
+            }
         }
 
-        impl Add for $name {
+        impl<R: Real> Add for $name<R> {
             type Output = Self;
             fn add(self, rhs: Self) -> Self {
                 Self(self.0 + rhs.0)
             }
         }
 
-        impl Sub for $name {
+        impl<R: Real> Sub for $name<R> {
             type Output = Self;
             fn sub(self, rhs: Self) -> Self {
                 Self(self.0 - rhs.0)
             }
         }
 
-        impl Neg for $name {
+        impl<R: Real> Neg for $name<R> {
             type Output = Self;
             fn neg(self) -> Self {
                 Self(-self.0)
             }
         }
 
-        impl Mul<f64> for $name {
+        /// Scaling by a dimensionless number of the same backend.
+        impl<R: Real> Mul<R> for $name<R> {
             type Output = Self;
-            fn mul(self, rhs: f64) -> Self {
+            fn mul(self, rhs: R) -> Self {
                 Self(self.0 * rhs)
             }
         }
 
-        impl Div<f64> for $name {
+        impl<R: Real> Div<R> for $name<R> {
             type Output = Self;
-            fn div(self, rhs: f64) -> Self {
+            fn div(self, rhs: R) -> Self {
                 Self(self.0 / rhs)
             }
         }
 
         /// Same-quantity ratio is dimensionless.
-        impl Div for $name {
-            type Output = f64;
-            fn div(self, rhs: Self) -> f64 {
+        impl<R: Real> Div for $name<R> {
+            type Output = R;
+            fn div(self, rhs: Self) -> R {
                 self.0 / rhs.0
             }
         }
@@ -123,43 +148,46 @@ quantity!(
     SpinGm, "km^5/s^3", from_km5_per_s3, km5_per_s3, "G times spin angular momentum"
 );
 
-impl Div<TimeSpan> for Angle {
-    type Output = AngularRate;
-    fn div(self, rhs: TimeSpan) -> AngularRate {
+impl<R: Real> Div<TimeSpan<R>> for Angle<R> {
+    type Output = AngularRate<R>;
+    fn div(self, rhs: TimeSpan<R>) -> AngularRate<R> {
         AngularRate(self.0 / rhs.0)
     }
 }
 
-impl Div<TimeSpan> for Length {
-    type Output = Velocity;
-    fn div(self, rhs: TimeSpan) -> Velocity {
+impl<R: Real> Div<TimeSpan<R>> for Length<R> {
+    type Output = Velocity<R>;
+    fn div(self, rhs: TimeSpan<R>) -> Velocity<R> {
         Velocity(self.0 / rhs.0)
     }
 }
 
-impl Mul<TimeSpan> for Velocity {
-    type Output = Length;
-    fn mul(self, rhs: TimeSpan) -> Length {
+impl<R: Real> Mul<TimeSpan<R>> for Velocity<R> {
+    type Output = Length<R>;
+    fn mul(self, rhs: TimeSpan<R>) -> Length<R> {
         Length(self.0 * rhs.0)
     }
 }
 
-/// Arcseconds per radian, 180·3600/π (a mathematical, not physical, conversion).
-const ARCSEC_PER_RAD: f64 = 180.0 * 3600.0 / std::f64::consts::PI;
+/// Arcseconds per radian, `180·3600/π = 648000/π` (a mathematical, not physical, conversion),
+/// in the backend's precision.
+fn arcsec_per_rad<R: Real>() -> R {
+    R::from_f64(180.0 * 3600.0) / R::PI
+}
 
-impl Angle {
+impl<R: Real> Angle<R> {
     /// Construct from arcseconds.
     ///
     /// # Errors
     /// [`Error::NonFinite`] (`FA-E0001`) if the value is NaN or infinite.
-    pub fn from_arcsec(value: f64) -> Result<Self, Error> {
-        require_finite("angle", value, "arcsec").map(|v| Self(v / ARCSEC_PER_RAD))
+    pub fn from_arcsec(value: R) -> Result<Self, Error> {
+        require_finite("angle", value, "arcsec").map(|v| Self(v / arcsec_per_rad::<R>()))
     }
 
     /// The angle in arcseconds.
     #[must_use]
-    pub fn arcsec(self) -> f64 {
-        self.0 * ARCSEC_PER_RAD
+    pub fn arcsec(self) -> R {
+        self.0 * arcsec_per_rad::<R>()
     }
 }
 

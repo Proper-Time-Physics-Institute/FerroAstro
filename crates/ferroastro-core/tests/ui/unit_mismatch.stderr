@@ -5,3 +5,6 @@ error[E0308]: mismatched types
   |             ------------   ^^^^^^^^^^^^^^ expected `Length`, found `Velocity`
   |             |
   |             expected because this is `Length`
+  |
+  = note: expected struct `Length`
+             found struct `Velocity`

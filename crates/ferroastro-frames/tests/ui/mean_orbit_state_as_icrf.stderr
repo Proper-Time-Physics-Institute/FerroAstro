@@ -1,0 +1,15 @@
+error[E0308]: mismatched types
+  --> tests/ui/mean_orbit_state_as_icrf.rs:11:16
+   |
+11 |     needs_icrf(&mo);
+   |     ---------- ^^^ expected `&State<Icrf, Heliocentric>`, found `&State<MercuryMeanOrbit, Heliocentric>`
+   |     |
+   |     arguments to this function are incorrect
+   |
+   = note: expected reference `&State<Icrf, Heliocentric>`
+              found reference `&State<MercuryMeanOrbit, Heliocentric>`
+note: function defined here
+  --> tests/ui/mean_orbit_state_as_icrf.rs:6:4
+   |
+ 6 | fn needs_icrf(_s: &State<Icrf, Heliocentric>) {}
+   |    ^^^^^^^^^^ ------------------------------

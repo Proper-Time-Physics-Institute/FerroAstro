@@ -1,0 +1,41 @@
+# SPDX-FileCopyrightText: 2026 Proper-Time Physics Institute
+# SPDX-License-Identifier: Apache-2.0
+[package]
+name = "ferroastro-propagate"
+description = "Run driver: builds system, forces and integrator from a scenario, streams states and perihelion passages, checkpoint/resume with bitwise continuation, batch runs"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+authors.workspace = true
+repository.workspace = true
+
+[dependencies]
+ferroastro-analytic.workspace = true
+ferroastro-constants.workspace = true
+ferroastro-core.workspace = true
+ferroastro-ephem.workspace = true
+ferroastro-forces.workspace = true
+ferroastro-frames.workspace = true
+ferroastro-integrators = { workspace = true, features = ["serde"] }
+ferroastro-precession.workspace = true
+ferroastro-real.workspace = true
+ferroastro-scenario.workspace = true
+ferroastro-system.workspace = true
+postcard.workspace = true
+rayon = { workspace = true, optional = true }
+serde.workspace = true
+thiserror.workspace = true
+
+[features]
+default = []
+# Run-level parallelism for batches (NUM-022). Off on wasm32.
+parallel = ["dep:rayon"]
+
+[dev-dependencies]
+proptest.workspace = true
+ferroastro-testdata.workspace = true
+ferroastro-vectors.workspace = true
+
+[lints]
+workspace = true

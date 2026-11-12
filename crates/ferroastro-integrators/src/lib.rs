@@ -9,8 +9,9 @@
 //!   (NUM-023) and by the precession estimators.
 //! * [`compensated`]: Kahan summation.
 //!
-//! M0 scope: the scalar is `f64`; genericity over the `Real` trait (ARCHITECTURE design rule 1)
-//! arrives with `ferroastro-real` in M1.
+//! Every integrator type is generic over the scalar backend `R: Real` (`ferroastro-real`; DEP-007,
+//! NUM-006), with `R = f64` as the default type parameter: `Ias15` is `Ias15<f64>`, and
+//! `Ias15<DoubleDouble>` integrates the same system in double-double.
 //!
 //! ```
 //! use ferroastro_integrators::{Ias15, Ias15Config, IntegratorError, SecondOrderSystem};
@@ -35,11 +36,12 @@
 //! ```
 
 pub mod compensated;
-mod dd;
 pub mod diagnostics;
 mod error;
 mod ias15;
 mod radau;
 
 pub use error::IntegratorError;
-pub use ias15::{Ias15, Ias15Config, Ias15Stats, SecondOrderSystem, StepReport};
+pub use ias15::{
+    Ias15, Ias15Config, Ias15Snapshot, Ias15Stats, Parts, SecondOrderSystem, StepReport,
+};

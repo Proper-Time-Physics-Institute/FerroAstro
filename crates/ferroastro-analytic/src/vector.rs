@@ -2,12 +2,14 @@
 // SPDX-License-Identifier: Apache-2.0
 //! Raw 3-vector helpers (km, km/s) and the Laplace–Runge–Lenz (eccentricity) vector.
 //!
-//! These work on the untyped `[f64; 3]` arrays that integrators produce; typed states live in
-//! `ferroastro_core::frames`.
+//! These work on the untyped `[R; 3]` arrays that integrators produce (any backend
+//! `R: Real`); typed states live in `ferroastro_core::frames`.
 
-/// Cross product `a × b` (fused multiply-add form).
+use ferroastro_real::Real;
+
+/// Cross product `a × b` (fused multiply-add form), any backend.
 #[must_use]
-pub fn cross(a: [f64; 3], b: [f64; 3]) -> [f64; 3] {
+pub fn cross<R: Real>(a: [R; 3], b: [R; 3]) -> [R; 3] {
     [
         a[1].mul_add(b[2], -a[2] * b[1]),
         a[2].mul_add(b[0], -a[0] * b[2]),
@@ -17,13 +19,13 @@ pub fn cross(a: [f64; 3], b: [f64; 3]) -> [f64; 3] {
 
 /// Dot product `a · b`.
 #[must_use]
-pub fn dot(a: [f64; 3], b: [f64; 3]) -> f64 {
+pub fn dot<R: Real>(a: [R; 3], b: [R; 3]) -> R {
     a[0].mul_add(b[0], a[1].mul_add(b[1], a[2] * b[2]))
 }
 
 /// Euclidean norm `|a|`.
 #[must_use]
-pub fn norm(a: [f64; 3]) -> f64 {
+pub fn norm<R: Real>(a: [R; 3]) -> R {
     dot(a, a).sqrt()
 }
 
@@ -31,7 +33,7 @@ pub fn norm(a: [f64; 3]) -> f64 {
 /// gravitational parameter `mu` (km³/s²); `r` in km, `v` in km/s. It points to periapsis, has
 /// length `e`, and is a constant of Newtonian two-body motion.
 #[must_use]
-pub fn eccentricity_vector(r: [f64; 3], v: [f64; 3], mu: f64) -> [f64; 3] {
+pub fn eccentricity_vector<R: Real>(r: [R; 3], v: [R; 3], mu: R) -> [R; 3] {
     let h = cross(r, v);
     let vxh = cross(v, h);
     let rn = norm(r);

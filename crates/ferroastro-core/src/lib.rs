@@ -22,8 +22,22 @@
 //! # }
 //! ```
 //!
-//! M0 scope: the scalar is `f64`. ADR-0001 asks for newtypes generic over the `Real` trait, which
-//! arrives with `ferroastro-real` in M1 (see `docs/strategy/IMPLEMENTATION-NOTES.md`, WP1).
+//! Every newtype is generic over the scalar backend `R: Real` (`ferroastro-real`; ADR-0001,
+//! ADR-0002) with `R = f64` as the default type parameter, so `Length` means `Length<f64>` and
+//! M0 call sites compile unchanged. The same mismatch classes fail to compile with the
+//! double-double backend, and mixing backends is a further mismatch class (API-001):
+//!
+//! ```
+//! use ferroastro_core::units::{Length, TimeSpan, Velocity};
+//! use ferroastro_real::{DoubleDouble, Real};
+//! # fn main() -> Result<(), ferroastro_core::Error> {
+//! let d: Length<DoubleDouble> = Length::from_km(DoubleDouble::from_f64(1.0))?;
+//! let t = TimeSpan::from_seconds(DoubleDouble::from_f64(3.0))?;
+//! let v: Velocity<DoubleDouble> = d / t; // 1/3 km/s to ~32 digits
+//! assert!(v.km_per_s().lo() != 0.0);
+//! # Ok(())
+//! # }
+//! ```
 
 pub mod error;
 pub mod frames;

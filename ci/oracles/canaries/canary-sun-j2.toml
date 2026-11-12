@@ -1,0 +1,28 @@
+# SPDX-FileCopyrightText: 2026 Proper-Time Physics Institute
+# SPDX-License-Identifier: Apache-2.0
+# REF-011 canary (WP16): solar J2 is not wired in the REBOUND runner yet (REBOUNDx
+# gravitational_harmonics arrives with stage C); the runner must refuse `sun_j2` by name rather than
+# integrate a Newtonian-only model.
+schema_version = 1
+name = "canary-sun-j2"
+description = "REF-011 canary: solar J2, not implemented in the REBOUND runner"
+mode = "n-body"
+bodies = ["Sun", "Mercury"]
+central_body = "Sun"
+
+[initial_conditions]
+source = "de440-header"
+
+[constants]
+gm_set = "de440"
+
+[forces]
+newton = true
+sun_j2 = true
+
+[integrator]
+name = "ias15"
+precision = "f64"
+
+[span]
+years = 1.0

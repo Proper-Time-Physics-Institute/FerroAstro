@@ -1,0 +1,40 @@
+{
+  "entries": [
+    {
+      "command": "python -m oracles.mercury6_runner --scenario /in/stage-a-sun-8planets-newton-100yr.toml --header /in/header.440 --out-dir /out",
+      "cpu": "13th Gen Intel(R) Core(TM) i9-13900 (32 logical CPUs)",
+      "extra": {
+        "accuracy": "1e-12",
+        "algorithm": "radau",
+        "compiler": "GNU Fortran (Debian 12.2.0-14+deb12u1) 12.2.0",
+        "first_step_days": "0.5",
+        "integrator_mapping": "scenario integrator 'ias15' (f64) mapped to the tool settings [accuracy = 1e-12, algorithm = 'radau', first_step_days = 0.5]; IAS15-only options not applicable: epsilon = 1e-09, dt0_days = 0.1",
+        "k2_blackbox_gm_misfit": "-7.772e-16",
+        "k2_used": "0.00029591220828559115",
+        "max_output_time_deviation_days": "0.0",
+        "mercury6_source": "github.com/smirik/mercury@aee9e0f6b8e4d359a9ed3607ee12e34a2e2dafac",
+        "output_precision": "high",
+        "relative_energy_change": "9.53057E-15"
+      },
+      "file": "stage-a-sun-8planets-newton-100yr.mercury6.states.csv",
+      "frame": "ICRF axes, heliocentric (body minus Sun; center_naif 10)",
+      "generated_utc": "2026-10-15T19:51:08Z",
+      "image_digest": "sha256:7ebd3de59ba16bf8f4999a8d5a41f7415df30e40798bef4fac2c2378f8aa9e90",
+      "input_sha256": {
+        "header.440": "0f4636b663e6f00af9efa2b605ef23635489f56b23dd1a5e3821d3acc6ac3359",
+        "settings.toml": "86972a421f296bddcfc7ed4dcbe07b38b22db73e7f329c9ca3bcce5035802786",
+        "stage-a-sun-8planets-newton-100yr.toml": "c7d044d018bb59ab565c4830101e4bf338af55a55ed6fb07fbf142e1fa4a009c"
+      },
+      "output_sha256": "adc20290e65553931bdfed9db39248d48c07ff493e88843809fd5c9cc92ea729",
+      "runner_sha": "8a73faa81fa35673fa65fd146180f1c51a9663d8",
+      "runner_sha256": "55411417bcb9995e0c2ea80105c7d491967d76dcdaaa84640342a49335b45858",
+      "scenario": "stage-a-sun-8planets-newton-100yr",
+      "time_scale": "TDB",
+      "tool": "mercury6",
+      "units": "t_days: TDB days since epoch_jd_tdb; position: km; velocity: km/s",
+      "version": "mercury6 (smirik/mercury aee9e0f6, Chambers 1999 package version 6)",
+      "wall_clock_s": 0.145
+    }
+  ],
+  "schema_version": 1
+}

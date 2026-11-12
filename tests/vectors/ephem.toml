@@ -1,0 +1,206 @@
+# SPDX-FileCopyrightText: 2026 Proper-Time Physics Institute
+# SPDX-License-Identifier: Apache-2.0
+# DAF/SPK reader checks (DEP-011, REF-004, REF-001, DEP-007). Checked by
+# crates/ferroastro-ephem/tests/*.rs. Every tolerance was pre-registered in IMPLEMENTATION-NOTES WP10
+# before the first FerroAstro SPK evaluation. Schema: ADR-0004.
+schema_version = 1
+
+[[vector]]
+id = "REF004-JPLEPHEM-POS-MAX-DIFF"
+requirement = ["REF-004", "DEP-011"]
+quantity = "largest |FerroAstro f64 - jplephem| position component over every de440.bsp segment (raw, target wrt its own centre) at the golden epochs"
+value = 0.0
+unit = "km"
+kind = "computed-reference"
+source = "tests/goldens/jplephem-de440.csv: 14 segments x (2 ends + 4 record boundaries + 50 quasi-random epochs), 1549-12-31..2650-01-25 TDB, two-part dates."
+citation = "jplephem 2.24 (MIT, B. Rhodes), the REF-004 reference reader; JPL DE440 (Park et al. 2021, AJ 161, 105), de440.bsp sha256 a4ce9bf9b3282becc9f4b2ac3cebe03a2ae7599981aabd7265fd8482fff7c4b5"
+retrieved = "2026-10-15"
+generated_by = "tools/goldens/jplephem_de440.py@78f6045ec57d17d7ccf235600488f3ae790aa1e1"
+engine = { name = "jplephem", version = "2.24, numpy 2.5.4, CPython 3.12.13 x86_64", settings = "Segment.compute_and_differentiate(jd1, jd2), jd1 0h TDB, 0 <= jd2 < 1; velocity km/day / 86400" }
+tolerance = { abs = 1e-6 }
+tolerance_rationale = "REF-004's target, copied: 1 mm. Same Clenshaw recurrence and date split as jplephem, so the expected residual is a few ulp. Stated before the run: 1 ulp of a 4-7e9 km Neptune/Pluto barycentric coordinate is 0.95 mm, so 2 ulp would exceed the target; such a failure is reported, not widened."
+verified_by = "WP10 builder agent, 2026-10-15: pre-registered in IMPLEMENTATION-NOTES WP10 before the first run."
+notes = "golden table sha256 9c188fca4392b8e5f56340677d50ec7301981d3af6ce143ec1b794cfe8075987"
+
+[[vector]]
+id = "REF004-JPLEPHEM-VEL-MAX-DIFF"
+requirement = ["REF-004", "DEP-011"]
+quantity = "largest |FerroAstro f64 - jplephem| velocity component over every de440.bsp segment at the golden epochs"
+value = 0.0
+unit = "km/s"
+kind = "computed-reference"
+source = "tests/goldens/jplephem-de440.csv (as REF004-JPLEPHEM-POS-MAX-DIFF)."
+citation = "jplephem 2.24 (MIT), the REF-004 reference reader; JPL DE440 (Park et al. 2021, AJ 161, 105)"
+retrieved = "2026-10-15"
+generated_by = "tools/goldens/jplephem_de440.py@78f6045ec57d17d7ccf235600488f3ae790aa1e1"
+engine = { name = "jplephem", version = "2.24, numpy 2.5.4, CPython 3.12.13 x86_64", settings = "Segment.compute_and_differentiate(jd1, jd2); velocity km/day / 86400" }
+tolerance = { abs = 1e-9 }
+tolerance_rationale = "REF-004's target, copied: 1 um/s. Velocities are <= ~60 km/s, whose ulp is ~7e-15 km/s, so round-off cannot approach the bound."
+verified_by = "WP10 builder agent, 2026-10-15: pre-registered in IMPLEMENTATION-NOTES WP10 before the first run."
+notes = "golden table sha256 9c188fca4392b8e5f56340677d50ec7301981d3af6ce143ec1b794cfe8075987"
+
+[[vector]]
+id = "EPHEM-F64-DD-ROUNDOFF-RATIO"
+requirement = ["DEP-007", "DEP-011"]
+quantity = "largest rho = |x_f64 - x_DD| / (n u sum_k |c_k|) over all de440 segments, golden epochs and components; for velocities the denominator is n u sum_k k^2 |c_k| 2/INTLEN (u = 2^-53, n = coefficients per component)"
+value = 0.0
+unit = "1"
+kind = "analytic"
+source = "First-order rounding size of the Clenshaw recurrence in binary64, n u sum |c_k| for |s| <= 1 (|T_k| <= 1), and n u sum k^2 |c_k| for the derivative (|T'_k| <= k^2)."
+citation = "FerroAstro engineering bound (WP10), not a published theorem; no literature was re-opened for it. Double-double accuracy: JMP 2017 (vectors in real-backends.toml)."
+retrieved = "2026-10-15"
+tolerance = { abs = 2.0 }
+tolerance_rationale = "rho <= 2 is read as 'f64 agrees with double-double to binary64 round-off': twice the first-order a-priori size n u sum |c_k|. The time argument is exact for these epochs (0h + fraction split), so it adds nothing."
+verified_by = "WP10 builder agent, 2026-10-15: pre-registered in IMPLEMENTATION-NOTES WP10 before the first run."
+
+[[vector]]
+id = "SPK-SYNTHETIC-JPLEPHEM-POS-MAX-DIFF"
+requirement = ["DEP-011", "REF-004"]
+quantity = "largest |FerroAstro f64 - jplephem| position component for the synthetic type-2 + type-3 SPK in both byte orders"
+value = 0.0
+unit = "km"
+kind = "computed-reference"
+source = "tests/goldens/jplephem-synthetic.csv; the file bytes are rebuilt by crates/ferroastro-ephem/tests/common and must match the SHA-256 recorded in the table header (LTL and BIG)."
+citation = "jplephem 2.24 (MIT); NAIF SPK Required Reading (types 2 and 3) and DAF Required Reading (file record, LOCFMT), retrieved 2026-10-15"
+retrieved = "2026-10-15"
+generated_by = "tools/goldens/jplephem_de440.py@78f6045ec57d17d7ccf235600488f3ae790aa1e1"
+engine = { name = "jplephem", version = "2.24, numpy 2.5.4, CPython 3.12.13 x86_64", settings = "synthetic dyadic coefficients; type 3 velocity from its own coefficients; type 2 velocity km/day / 86400" }
+tolerance = { abs = 1e-6 }
+tolerance_rationale = "Same bound as REF-004 (1 mm); coefficients are dyadic and of order 1e4 km, so the expected residual is round-off (~1e-12 km)."
+verified_by = "WP10 builder agent, 2026-10-15: pre-registered in IMPLEMENTATION-NOTES WP10 before the first run."
+notes = "golden table sha256 268d0d8f43a3094d8367c8907563e7f72e83f7bb24617dae7053718e07c7040c"
+
+[[vector]]
+id = "SPK-SYNTHETIC-JPLEPHEM-VEL-MAX-DIFF"
+requirement = ["DEP-011", "REF-004"]
+quantity = "largest |FerroAstro f64 - jplephem| velocity component for the synthetic type-2 + type-3 SPK in both byte orders"
+value = 0.0
+unit = "km/s"
+kind = "computed-reference"
+source = "tests/goldens/jplephem-synthetic.csv (as SPK-SYNTHETIC-JPLEPHEM-POS-MAX-DIFF)."
+citation = "jplephem 2.24 (MIT); NAIF SPK Required Reading (types 2 and 3)"
+retrieved = "2026-10-15"
+generated_by = "tools/goldens/jplephem_de440.py@78f6045ec57d17d7ccf235600488f3ae790aa1e1"
+engine = { name = "jplephem", version = "2.24, numpy 2.5.4, CPython 3.12.13 x86_64", settings = "as SPK-SYNTHETIC-JPLEPHEM-POS-MAX-DIFF" }
+tolerance = { abs = 1e-9 }
+tolerance_rationale = "Same bound as REF-004 (1 um/s)."
+verified_by = "WP10 builder agent, 2026-10-15: pre-registered in IMPLEMENTATION-NOTES WP10 before the first run."
+notes = "golden table sha256 268d0d8f43a3094d8367c8907563e7f72e83f7bb24617dae7053718e07c7040c"
+
+[[vector]]
+id = "TESTPO440-MAX-DEL"
+requirement = ["REF-001", "DEP-011"]
+quantity = "largest DEL = |testpo value - FerroAstro value| over every testpo.440 point with body target and centre (codes 1-13); positions in au, velocities in au/day, AU from header.440"
+value = 0.0
+unit = "au or au/day"
+kind = "measured"
+source = "testpo.440 (https://ssd.jpl.nasa.gov/ftp/eph/planets/ascii/de440/testpo.440, sha256 45084a7f406b8e41032e7d99dd8042d4df97a9f752a68c06d1a27af16693429f), evaluated on de440.bsp."
+citation = "JPL testeph.f (https://ssd.jpl.nasa.gov/ftp/eph/planets/fortran/testeph.f, sha256 18f32f073c1a345850d9deebc8b53b06c83a386c066b566f65001b51adeb7120, retrieved 2026-10-15), lines 186 and 210: 'The agreement is considered okay if DEL is less than 1e-13'; 'IF (DEL .GE. 1.D-13) WRITE ... WARNING'"
+retrieved = "2026-10-15"
+tolerance = { abs = 1e-13 }
+tolerance_rationale = "JPL's own acceptance threshold for an ephemeris reader, copied (testeph.f compares strictly: DEL >= 1e-13 is a warning; the vector check is <=, which differs only at exactly 1e-13). 1e-13 au = 1.5 cm."
+verified_by = "WP10 builder agent, 2026-10-15: threshold read in testeph.f; pre-registered in IMPLEMENTATION-NOTES WP10 before the first run."
+
+[[vector]]
+id = "DE440-ASCII-COEFF-MISMATCHES"
+requirement = ["DEP-011", "REF-001"]
+quantity = "number of de440.bsp Chebyshev coefficients (SSB-centred segments 1-10) whose 16-significant-digit D-format rendering differs from the token in the DE440 ASCII blocks ascp01550/01950/02550.440"
+value = 0
+unit = "1"
+kind = "measured"
+source = "DE440 ASCII coefficient files ascp01550.440, ascp01950.440, ascp02550.440 and header.440 GROUP 1050 (pinned in tests/data/MANIFEST.toml)."
+citation = "JPL DE440 (Park et al. 2021, AJ 161, 105); ASCII format per header.440 GROUP 1050 (coefficient pointers, counts, sub-intervals) and testeph.f"
+retrieved = "2026-10-15"
+tolerance = { abs = 0.0 }
+tolerance_rationale = "Both products are renderings of the same fit; the ASCII prints 16 significant digits, so the correctly rounded 16-digit rendering of each SPK double must equal the ASCII token exactly. Any record-mapping or layout error gives mismatches."
+verified_by = "WP10 builder agent, 2026-10-15: pre-registered in IMPLEMENTATION-NOTES WP10 before the first run."
+
+[[vector]]
+id = "DE440-ASCII-MOON-GEO-POS-MAX-DIFF"
+requirement = ["DEP-011", "REF-001"]
+quantity = "largest |SPK (301 wrt 3) - (399 wrt 3) - ASCII geocentric Moon| position component at 3 epochs per 4-day sub-interval in the three ASCII files"
+value = 0.0
+unit = "km"
+kind = "measured"
+source = "As DE440-ASCII-COEFF-MISMATCHES (body 10 of GROUP 1050, geocentric Moon)."
+citation = "JPL DE440 (Park et al. 2021, AJ 161, 105)"
+retrieved = "2026-10-15"
+tolerance = { abs = 1e-8 }
+tolerance_rationale = "ASCII 16-digit quantisation (<= 5e-16 relative per coefficient) on ~4e5 km gives ~2e-10 km, plus the EMRAT scaling round-off inside the SPK (~1e-10 km); 1e-8 km leaves a 50x margin."
+verified_by = "WP10 builder agent, 2026-10-15: pre-registered in IMPLEMENTATION-NOTES WP10 before the first run."
+
+[[vector]]
+id = "DE440-ASCII-MOON-GEO-VEL-MAX-DIFF"
+requirement = ["DEP-011", "REF-001"]
+quantity = "largest |SPK - ASCII| geocentric Moon velocity component (as DE440-ASCII-MOON-GEO-POS-MAX-DIFF)"
+value = 0.0
+unit = "km/s"
+kind = "measured"
+source = "As DE440-ASCII-MOON-GEO-POS-MAX-DIFF."
+citation = "JPL DE440 (Park et al. 2021, AJ 161, 105)"
+retrieved = "2026-10-15"
+tolerance = { abs = 1e-12 }
+tolerance_rationale = "Quantisation of c_1 (~1.7e5 km) at 5e-16 relative, times 2/INTLEN (INTLEN = 4 d) gives ~5e-16 km/s; 1e-12 km/s is a wide margin that still catches any layout error."
+verified_by = "WP10 builder agent, 2026-10-15: pre-registered in IMPLEMENTATION-NOTES WP10 before the first run."
+
+[[vector]]
+id = "HORIZONS-DE441-VS-DE440-POS-GROSS"
+requirement = ["DEP-011"]
+quantity = "largest |FerroAstro de440 chain - Horizons DE441| barycentric position component (Mercury 199, Earth 399, Moon 301; 21 TDB epochs 1600-2600; ICRF; km)"
+value = 0.0
+unit = "km"
+kind = "measured"
+source = "JPL Horizons API vector tables (CENTER 500@0, REF_SYSTEM ICRF, REF_PLANE FRAME, TIME_TYPE TDB, OUT_UNITS KM-S), fetched in the data tier with full provenance."
+citation = "JPL Horizons System, https://ssd.jpl.nasa.gov/api/horizons.api (DE441; Park et al. 2021, AJ 161, 105)"
+retrieved = "2026-10-15"
+tolerance = { abs = 10.0 }
+tolerance_rationale = "Gross-error bound only: DE441 is not DE440. A UT/TDB mix-up gives >= 3000 km for Mercury, a wrong frame ~1e7 km, a wrong centre >= 1e5 km. It does NOT catch TT vs TDB (<= 80 m); testpo (TESTPO440-MAX-DEL) covers the time argument. The measured DE440-DE441 difference is reported, not asserted. This check replaces the ANISE cross-check, which the maintainer decision in force excludes."
+verified_by = "WP10 builder agent, 2026-10-15: pre-registered in IMPLEMENTATION-NOTES WP10 before the first data run."
+
+[[vector]]
+id = "HORIZONS-DE441-VS-DE440-VEL-GROSS"
+requirement = ["DEP-011"]
+quantity = "largest |FerroAstro de440 chain - Horizons DE441| barycentric velocity component (as HORIZONS-DE441-VS-DE440-POS-GROSS)"
+value = 0.0
+unit = "km/s"
+kind = "measured"
+source = "As HORIZONS-DE441-VS-DE440-POS-GROSS."
+citation = "JPL Horizons System, https://ssd.jpl.nasa.gov/api/horizons.api (DE441)"
+retrieved = "2026-10-15"
+tolerance = { abs = 1e-3 }
+tolerance_rationale = "Gross-error bound only (a wrong frame gives tens of km/s, a 1-day epoch error ~0.6 km/s for Mercury)."
+verified_by = "WP10 builder agent, 2026-10-15: pre-registered in IMPLEMENTATION-NOTES WP10 before the first data run."
+
+[[vector]]
+id = "SB441-JPLEPHEM-POS-MAX-DIFF"
+requirement = ["DEP-011", "REF-004"]
+quantity = "largest |FerroAstro f64 - jplephem| position component for Ceres, Pallas and Vesta (sb441-n373s.bsp, Sun-centred) at the golden epochs"
+value = 0.0
+unit = "km"
+kind = "computed-reference"
+source = "tests/goldens/jplephem-sb441.csv: 3 segments x (2 ends + 50 quasi-random epochs)."
+citation = "jplephem 2.24 (MIT); JPL sb441-n373s.bsp (sha256 2143113282bfc2b2a0b0b4626125d4f84362339b5a8ae7eea40f4120ca8da10b; JPL IOM 392R-21-005)"
+retrieved = "2026-10-15"
+generated_by = "tools/goldens/jplephem_de440.py@78f6045ec57d17d7ccf235600488f3ae790aa1e1"
+engine = { name = "jplephem", version = "2.24, numpy 2.5.4, CPython 3.12.13 x86_64", settings = "as REF004-JPLEPHEM-POS-MAX-DIFF" }
+tolerance = { abs = 1e-6 }
+tolerance_rationale = "REF-004's target (1 mm), applied to a second SPK file."
+verified_by = "WP10 builder agent, 2026-10-15: pre-registered in IMPLEMENTATION-NOTES WP10 before the first run."
+notes = "golden table sha256 8adc555390bf8f59bf1154fb3783f8234356b8b1a01a8ada9b315ddad8078b1f"
+
+[[vector]]
+id = "SB441-JPLEPHEM-VEL-MAX-DIFF"
+requirement = ["DEP-011", "REF-004"]
+quantity = "largest |FerroAstro f64 - jplephem| velocity component for Ceres, Pallas and Vesta (sb441-n373s.bsp)"
+value = 0.0
+unit = "km/s"
+kind = "computed-reference"
+source = "tests/goldens/jplephem-sb441.csv."
+citation = "jplephem 2.24 (MIT); JPL sb441-n373s.bsp"
+retrieved = "2026-10-15"
+generated_by = "tools/goldens/jplephem_de440.py@78f6045ec57d17d7ccf235600488f3ae790aa1e1"
+engine = { name = "jplephem", version = "2.24, numpy 2.5.4, CPython 3.12.13 x86_64", settings = "as REF004-JPLEPHEM-VEL-MAX-DIFF" }
+tolerance = { abs = 1e-9 }
+tolerance_rationale = "REF-004's target (1 um/s)."
+verified_by = "WP10 builder agent, 2026-10-15: pre-registered in IMPLEMENTATION-NOTES WP10 before the first run."
+notes = "golden table sha256 8adc555390bf8f59bf1154fb3783f8234356b8b1a01a8ada9b315ddad8078b1f"

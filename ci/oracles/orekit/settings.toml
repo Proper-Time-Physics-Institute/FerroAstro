@@ -1,0 +1,17 @@
+# SPDX-FileCopyrightText: 2026 Proper-Time Physics Institute
+# SPDX-License-Identifier: Apache-2.0
+#
+# Orekit integrator settings (WP17; NEEDS HUMAN REVIEW: the scenario's [integrator] block names
+# FerroAstro's IAS15; Orekit runs Hipparchus's DormandPrince853Integrator instead).
+#
+# CHANGED AFTER MEASUREMENT (WP17 notes, "Stage B"): the pre-registered settings (abs 1e-3 m,
+# rel 1e-14) were not converged: their run differed from a run at abs 1e-4 m / rel 1e-15 by up to
+# 0.97 km over the 100 yr, and from FerroAstro by 1.10 km (pre-registered bound 1 km: FAILED).
+# FerroAstro itself moves by < 1 m between IAS15 epsilon 1e-8 and 1e-11. The tighter settings
+# below are the oracle's converged configuration (0.13 km from FerroAstro).
+[default]
+integrator = "DormandPrince853"
+min_step_s = 1.0e-3
+max_step_s = 172800.0        # 2 d
+abs_tol_m = 1.0e-4
+rel_tol = 1.0e-15

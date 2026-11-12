@@ -75,6 +75,13 @@ def test_dev_only_cycle_and_test_support_runtime_use_fail() -> None:
     assert any(f.startswith("dependency cycle") for f in found)
 
 
+def test_self_dev_dependency_is_not_an_edge_but_self_runtime_cycle_is() -> None:
+    # ferroastro-time dev-depends on itself to enable its `hifitime` feature in its own tests.
+    assert _findings({"ferroastro-core": [], "ferroastro-time": [("ferroastro-time", "dev")]}) == []
+    found = _findings({"ferroastro-core": [], "ferroastro-time": [("ferroastro-time", None)]})
+    assert any("cycle" in f for f in found)
+
+
 def test_unplaced_crate_fails() -> None:
     deps = dict(GOOD)
     deps["ferroastro-newthing"] = [("ferroastro-core", None)]

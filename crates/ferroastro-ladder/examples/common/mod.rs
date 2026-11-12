@@ -32,7 +32,7 @@ pub(crate) struct Ctx {
 pub(crate) fn ctx() -> Res<Ctx> {
     let de = De440::load()?;
     let scn = Scenario::mercury_single_body()?;
-    let vs = VectorSet::load_workspace()?;
+    let vs = VectorSet::load_canonical()?;
     let mut setup = SingleBody::mercury(&scn, &de)?;
     setup.orbits = ORBITS;
     Ok(Ctx { de, scn, vs, setup })

@@ -98,6 +98,8 @@ pub struct ChunkProvenance {
     pub version: String,
     /// Ephemeris source of the target (e.g. `DE441`).
     pub target_source: String,
+    /// The target's name as Horizons prints it (e.g. `136199 Eris (2003 UB313)`).
+    pub target_name: String,
     /// Ephemeris source of the centre.
     pub center_source: String,
     /// The `Reference frame :` line.
@@ -111,10 +113,11 @@ impl ChunkProvenance {
     #[must_use]
     pub fn line(&self) -> String {
         format!(
-            "Horizons {} signature.version={} target_source={} center_source={} \
+            "Horizons {} signature.version={} target={:?} target_source={} center_source={} \
              reference_frame={:?} rows={}",
             self.fetched.provenance(),
             self.version,
+            self.target_name,
             self.target_source,
             self.center_source,
             self.frame,
@@ -167,6 +170,8 @@ pub struct ParsedAnswer {
     pub version: String,
     /// Ephemeris source of the target.
     pub target_source: String,
+    /// The target's name (text of the `Target body name:` line before `{source: …}`).
+    pub target_name: String,
     /// Ephemeris source of the centre.
     pub center_source: String,
     /// The `Reference frame :` line.
@@ -230,6 +235,10 @@ pub fn parse_vector_answer(json: &str, plane: RefPlane) -> Result<ParsedAnswer, 
     };
     let target_source = source_of(result, "Target body name")
         .ok_or_else(|| service("no ephemeris source on the 'Target body name' line"))?;
+    let target_name = header_value(result, "Target body name:")
+        .and_then(|l| l.split('{').next())
+        .map(|n| n.trim().to_owned())
+        .unwrap_or_default();
     let center_source = source_of(result, "Center body name")
         .ok_or_else(|| service("no ephemeris source on the 'Center body name' line"))?;
     let frame = header_value(result, "Reference frame :")
@@ -258,6 +267,7 @@ pub fn parse_vector_answer(json: &str, plane: RefPlane) -> Result<ParsedAnswer, 
     let mut out = ParsedAnswer {
         version,
         target_source,
+        target_name,
         center_source,
         frame,
         jd_tdb: Vec::new(),
@@ -287,7 +297,14 @@ pub fn parse_vector_answer(json: &str, plane: RefPlane) -> Result<ParsedAnswer, 
 /// The request URL of one chunk.
 #[must_use]
 pub fn vector_url(q: &VectorQuery, start_jd: f64, stop_jd: f64) -> String {
-    let p = |s: &str| format!("%27{}%27", s.replace(' ', "%20").replace('@', "%40"));
+    let p = |s: &str| {
+        format!(
+            "%27{}%27",
+            s.replace(' ', "%20")
+                .replace('@', "%40")
+                .replace(';', "%3B")
+        )
+    };
     let mut url = format!("{API}?format=json");
     let params: [(&str, String); 14] = [
         ("COMMAND", q.command.clone()),
@@ -357,14 +374,17 @@ pub fn chunks(q: &VectorQuery) -> Result<Vec<(f64, f64, u64)>, DataError> {
 }
 
 fn cache_name(q: &VectorQuery, start: f64, stop: f64) -> String {
-    let center: String = q
-        .center
-        .chars()
-        .map(|c| if c.is_ascii_alphanumeric() { c } else { '_' })
-        .collect();
+    let safe = |s: &str| -> String {
+        s.chars()
+            .map(|c| if c.is_ascii_alphanumeric() { c } else { '_' })
+            .collect()
+    };
+    let center = safe(&q.center);
+    // Plain numeric commands keep their spelling (existing cache names are unchanged); a
+    // small-body command such as `136199;` becomes `136199_`.
+    let command = safe(&q.command);
     format!(
-        "horizons-vec-{}-{center}-{}-jd{start:.1}-jd{stop:.1}-{}d.json",
-        q.command,
+        "horizons-vec-{command}-{center}-{}-jd{start:.1}-jd{stop:.1}-{}d.json",
         q.ref_plane.tag(),
         q.step_days
     )
@@ -458,6 +478,7 @@ pub fn fetch_vectors(q: &VectorQuery) -> Result<VectorTable, DataError> {
             fetched,
             version: parsed.version,
             target_source: parsed.target_source,
+            target_name: parsed.target_name,
             center_source: parsed.center_source,
             frame: parsed.frame,
             rows: n,
@@ -479,6 +500,7 @@ mod tests {
         let a = parse_vector_answer(FIXTURE, RefPlane::Frame).unwrap();
         assert_eq!(a.version, "1.2");
         assert_eq!(a.target_source, "DE441");
+        assert_eq!(a.target_name, "Mercury (199)");
         assert_eq!(a.center_source, "DE441");
         assert_eq!(a.frame, "ICRF");
         assert_eq!(a.jd_tdb.len(), 2);

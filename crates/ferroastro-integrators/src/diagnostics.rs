@@ -123,7 +123,7 @@ mod tests {
             fit_line(&[1.0, 1.0, 1.0], &[1.0, 2.0, 3.0])
                 .unwrap_err()
                 .code(),
-            ErrorCode::FitDegenerate
+            ErrorCode::DiagnosticFitDegenerate
         );
         assert!(fit_line(&[1.0, 2.0], &[1.0, 2.0]).is_err());
         assert!(fit_line(&[1.0, 2.0, f64::NAN], &[1.0, 2.0, 3.0]).is_err());

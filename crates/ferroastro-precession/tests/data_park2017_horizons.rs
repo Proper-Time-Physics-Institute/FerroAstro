@@ -147,7 +147,7 @@ fn print_result<F: Frame>(what: &str, r: &Park2017Result) {
 #[test]
 #[ignore = "network: data tier (cargo nextest run --profile data --run-ignored only)"]
 fn data_sw92_rate_from_horizons_de441_ecliptic() {
-    let vs = VectorSet::load_workspace().unwrap();
+    let vs = VectorSet::load_canonical().unwrap();
     // 1800-Jan-01 0h and 2050-Jan-01 0h TDB (Gregorian), 1-day step (two chunks).
     let (start, stop) = (2_378_496.5, 2_469_807.5); // lint: allow-literal(calendar dates of SW92's fit window)
     let t = mercury(start, stop, 1, RefPlane::Ecliptic);
@@ -221,7 +221,7 @@ fn data_sw92_rate_from_horizons_de441_ecliptic() {
 #[test]
 #[ignore = "network: data tier (cargo nextest run --profile data --run-ignored only)"]
 fn data_park17_rate_from_horizons_de441_mean_orbit() {
-    let vs = VectorSet::load_workspace().unwrap();
+    let vs = VectorSet::load_canonical().unwrap();
     let half = 1000.0 * DAYS_PER_JULIAN_YEAR; // lint: allow-literal(1000-year half-span, Park17 2000-yr fit)
     let t = mercury(J2000_JD - half, J2000_JD + half, 2, RefPlane::Frame);
     let orbit = SampledOrbit::<Icrf>::from_raw(&t.jd_tdb, &t.r_km, &t.v_km_s).unwrap();

@@ -310,6 +310,13 @@ notes: >-
   provenance. Before #13 merges, the Swiftest gap must be explained, with
   evidence in the vector rationale, or fixed. Any change to the tolerance
   needs the golden-change label and the maintainer's sign-off (TST-004).
+  MAINTAINER DECISION 2026-11-08 (#13, recorded in Journal #13): no Swiftest
+  WHM step meets 1 km for every body. Scan of the worst body over dt = 1/4,
+  1/8, 1/16, 1/32, 1/64, 1/128 d: 7.92, 1.97, 1.46, 4.11, 8.34, 28.68 km
+  (docs/strategy/evidence/swiftest-dt-scan-2026-11-08.md). Stage A therefore
+  runs at dt = 1/16 d (scenario override in ci/oracles/swiftest/settings.toml)
+  with ORACLE-STAGE-A-SWIFTEST-MAX-DR = 2 km for every body (golden-change;
+  measured 1.464 km, Saturn). Other Swiftest scenarios keep 1/128 d.
 ```
 
 ### REF-008 — Mercury6 as Newtonian-only legacy oracle

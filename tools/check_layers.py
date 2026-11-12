@@ -87,6 +87,10 @@ def workspace_edges(metadata: Mapping[str, Any]) -> tuple[list[str], list[Edge]]
             dep = str(d["name"])  # the package name, also for renamed dependencies
             if dep in local:
                 kind = d.get("kind") or "normal"
+                if dep == p["name"] and kind == "dev":
+                    # A self dev-dependency only turns on the crate's own features for its tests
+                    # (e.g. ferroastro-time's `hifitime`); it is not an edge between crates.
+                    continue
                 edges.append((str(p["name"]), dep, str(kind)))
     return names, sorted(set(edges))
 

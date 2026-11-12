@@ -1,0 +1,19 @@
+# SPDX-FileCopyrightText: 2026 Proper-Time Physics Institute
+# SPDX-License-Identifier: Apache-2.0
+#
+# Swiftest integrator settings (WP17; NEEDS HUMAN REVIEW: the scenario's [integrator] block names
+# FerroAstro's IAS15, which Swiftest does not have, so the runner maps it to the settings below).
+# Pre-registered in docs/strategy/IMPLEMENTATION-NOTES.md (WP17 plan) before any run.
+# Units: au, day (TDB), GM in au^3/d^2 (bodies are added by Gmass).
+[default]
+integrator = "whm"           # Wisdom-Holman in Jacobi coordinates (fixed step, symplectic)
+dt_days = 0.0078125          # 1/128 d, exact in binary64
+
+# Stage A override (maintainer decision 2026-11-08 on PR #13, after the dt scan below). WHM's error
+# has two parts: truncation, which falls as dt^2 and dominates Mercury, and Swiftest's per-step f64
+# energy drift, which grows with step count and dominates the outer planets. The scan of max
+# heliocentric |dr| (km) vs FerroAstro/REBOUND over 100 yr gave, for dt = 1/4, 1/8, 1/16, 1/32,
+# 1/64 and 1/128 d: 7.92, 1.97, 1.46, 4.11, 8.34 and 28.68. 1/16 d is the minimum, and no tested
+# dt meets 1 km for every body.
+[scenario."stage-a-sun-8planets-newton-100yr"]
+dt_days = 0.0625             # 1/16 d, exact in binary64; 5844 steps per yearly output

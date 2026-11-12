@@ -1,0 +1,273 @@
+# SPDX-FileCopyrightText: 2026 Proper-Time Physics Institute
+# SPDX-License-Identifier: Apache-2.0
+# WP15: asteroid/KBO initial conditions (REF-003, provisional while OI-24 is open), the DE440 KBO ring, the
+# relativistic SSB of the full body set (NUM-018), the NUM-009 tier cost and the PHY-013 N-SUM rung. Checked by
+# crates/ferroastro-system/tests/ref003_small_bodies.rs, crates/ferroastro-forces/tests/num009_tier_cost.rs and
+# crates/ferroastro-diffrun/tests/nightly_phy013.rs. Tolerances were fixed in IMPLEMENTATION-NOTES WP15 before the
+# first FerroAstro run. Schema: ADR-0004.
+schema_version = 1
+
+[[vector]]
+id = "PP2018-T1-ERIS-MASS"
+requirement = ["REF-003"]
+quantity = "mass of the trans-Neptunian object Eris (Pitjeva & Pitjev 2018 Table 1), used only by the WP15 rule that ties header.440 KBO GMs (MA8001..MA8030) to NAIF ids"
+value = "28.0e-4"
+unit = "Earth masses"
+kind = "measured"
+source = "Pitjeva & Pitjev 2018 Table 1, row 'Eris': (28.0 +/- 0.33) x 1e-4 Earth masses"
+citation = "Pitjeva, E. V., & Pitjev, N. P. 2018, Astron. Lett. 44, 554, doi:10.1134/S1063773718090050 (arXiv:1811.05191v1), Table 1"
+retrieved = "2026-10-15"
+tolerance = { abs = 0.33e-4 }
+tolerance_rationale = "The quoted 1-sigma uncertainty, copied. The identification rule uses value +/- tolerance as the object's interval (IMPLEMENTATION-NOTES WP15)."
+verified_by = "WP15 builder agent, 2026-10-15: read in arXiv:1811.05191v1 (PDF sha256 4366051396246c28b5366dd7fa893be7f68d0c748e937802a206422cc746c9d9), pdftotext -layout, Table 1 'Mass estimates for large Kuiper belt objects with satellites'."
+notes = "Park et al. 2021 (DE440, AJ 161, 105, section 2.2) state that the masses of the 30 KBOs were from Pitjeva & Pitjev (2018); which header symbol is which object is not published (OI-24)."
+
+[[vector]]
+id = "PP2018-T1-HAUMEA-MASS"
+requirement = ["REF-003"]
+quantity = "mass of the trans-Neptunian object Haumea (Pitjeva & Pitjev 2018 Table 1), used only by the WP15 rule that ties header.440 KBO GMs (MA8001..MA8030) to NAIF ids"
+value = "6.71e-4"
+unit = "Earth masses"
+kind = "measured"
+source = "Pitjeva & Pitjev 2018 Table 1, row 'Haumea': (6.71 +/- 0.067) x 1e-4 Earth masses"
+citation = "Pitjeva, E. V., & Pitjev, N. P. 2018, Astron. Lett. 44, 554, doi:10.1134/S1063773718090050 (arXiv:1811.05191v1), Table 1"
+retrieved = "2026-10-15"
+tolerance = { abs = 0.067e-4 }
+tolerance_rationale = "The quoted 1-sigma uncertainty, copied. The identification rule uses value +/- tolerance as the object's interval (IMPLEMENTATION-NOTES WP15)."
+verified_by = "WP15 builder agent, 2026-10-15: read in arXiv:1811.05191v1 (PDF sha256 4366051396246c28b5366dd7fa893be7f68d0c748e937802a206422cc746c9d9), pdftotext -layout, Table 1 'Mass estimates for large Kuiper belt objects with satellites'."
+notes = "Park et al. 2021 (DE440, AJ 161, 105, section 2.2) state that the masses of the 30 KBOs were from Pitjeva & Pitjev (2018); which header symbol is which object is not published (OI-24)."
+
+[[vector]]
+id = "PP2018-T1-MAKEMAKE-MASS"
+requirement = ["REF-003"]
+quantity = "mass of the trans-Neptunian object Makemake (Pitjeva & Pitjev 2018 Table 1), used only by the WP15 rule that ties header.440 KBO GMs (MA8001..MA8030) to NAIF ids"
+value = "4.35e-4"
+unit = "Earth masses"
+kind = "measured"
+source = "Pitjeva & Pitjev 2018 Table 1, row 'Makemake': (4.35 +/- 0.84) x 1e-4 Earth masses"
+citation = "Pitjeva, E. V., & Pitjev, N. P. 2018, Astron. Lett. 44, 554, doi:10.1134/S1063773718090050 (arXiv:1811.05191v1), Table 1"
+retrieved = "2026-10-15"
+tolerance = { abs = 0.84e-4 }
+tolerance_rationale = "The quoted 1-sigma uncertainty, copied. The identification rule uses value +/- tolerance as the object's interval (IMPLEMENTATION-NOTES WP15)."
+verified_by = "WP15 builder agent, 2026-10-15: read in arXiv:1811.05191v1 (PDF sha256 4366051396246c28b5366dd7fa893be7f68d0c748e937802a206422cc746c9d9), pdftotext -layout, Table 1 'Mass estimates for large Kuiper belt objects with satellites'."
+notes = "Park et al. 2021 (DE440, AJ 161, 105, section 2.2) state that the masses of the 30 KBOs were from Pitjeva & Pitjev (2018); which header symbol is which object is not published (OI-24)."
+
+[[vector]]
+id = "PP2018-T1-2007-OR10-MASS"
+requirement = ["REF-003"]
+quantity = "mass of the trans-Neptunian object 2007 OR10 (Pitjeva & Pitjev 2018 Table 1), used only by the WP15 rule that ties header.440 KBO GMs (MA8001..MA8030) to NAIF ids"
+value = "6.3e-4"
+unit = "Earth masses"
+kind = "measured"
+source = "Pitjeva & Pitjev 2018 Table 1, row '2007 OR10': (6.3 +/- 4.5) x 1e-4 Earth masses"
+citation = "Pitjeva, E. V., & Pitjev, N. P. 2018, Astron. Lett. 44, 554, doi:10.1134/S1063773718090050 (arXiv:1811.05191v1), Table 1"
+retrieved = "2026-10-15"
+tolerance = { abs = 4.5e-4 }
+tolerance_rationale = "The quoted 1-sigma uncertainty, copied. The identification rule uses value +/- tolerance as the object's interval (IMPLEMENTATION-NOTES WP15)."
+verified_by = "WP15 builder agent, 2026-10-15: read in arXiv:1811.05191v1 (PDF sha256 4366051396246c28b5366dd7fa893be7f68d0c748e937802a206422cc746c9d9), pdftotext -layout, Table 1 'Mass estimates for large Kuiper belt objects with satellites'."
+notes = "Park et al. 2021 (DE440, AJ 161, 105, section 2.2) state that the masses of the 30 KBOs were from Pitjeva & Pitjev (2018); which header symbol is which object is not published (OI-24)."
+
+[[vector]]
+id = "PP2018-T1-QUAOAR-MASS"
+requirement = ["REF-003"]
+quantity = "mass of the trans-Neptunian object Quaoar (Pitjeva & Pitjev 2018 Table 1), used only by the WP15 rule that ties header.440 KBO GMs (MA8001..MA8030) to NAIF ids"
+value = "1.67e-4"
+unit = "Earth masses"
+kind = "measured"
+source = "Pitjeva & Pitjev 2018 Table 1, row 'Quaoar': (1.67 +/- 0.17) x 1e-4 Earth masses"
+citation = "Pitjeva, E. V., & Pitjev, N. P. 2018, Astron. Lett. 44, 554, doi:10.1134/S1063773718090050 (arXiv:1811.05191v1), Table 1"
+retrieved = "2026-10-15"
+tolerance = { abs = 0.17e-4 }
+tolerance_rationale = "The quoted 1-sigma uncertainty, copied. The identification rule uses value +/- tolerance as the object's interval (IMPLEMENTATION-NOTES WP15)."
+verified_by = "WP15 builder agent, 2026-10-15: read in arXiv:1811.05191v1 (PDF sha256 4366051396246c28b5366dd7fa893be7f68d0c748e937802a206422cc746c9d9), pdftotext -layout, Table 1 'Mass estimates for large Kuiper belt objects with satellites'."
+notes = "Park et al. 2021 (DE440, AJ 161, 105, section 2.2) state that the masses of the 30 KBOs were from Pitjeva & Pitjev (2018); which header symbol is which object is not published (OI-24)."
+
+[[vector]]
+id = "PP2018-T1-ORCUS-MASS"
+requirement = ["REF-003"]
+quantity = "mass of the trans-Neptunian object Orcus (Pitjeva & Pitjev 2018 Table 1), used only by the WP15 rule that ties header.440 KBO GMs (MA8001..MA8030) to NAIF ids"
+value = "1.059e-4"
+unit = "Earth masses"
+kind = "measured"
+source = "Pitjeva & Pitjev 2018 Table 1, row 'Orcus': (1.059 +/- 0.008) x 1e-4 Earth masses"
+citation = "Pitjeva, E. V., & Pitjev, N. P. 2018, Astron. Lett. 44, 554, doi:10.1134/S1063773718090050 (arXiv:1811.05191v1), Table 1"
+retrieved = "2026-10-15"
+tolerance = { abs = 0.008e-4 }
+tolerance_rationale = "The quoted 1-sigma uncertainty, copied. The identification rule uses value +/- tolerance as the object's interval (IMPLEMENTATION-NOTES WP15)."
+verified_by = "WP15 builder agent, 2026-10-15: read in arXiv:1811.05191v1 (PDF sha256 4366051396246c28b5366dd7fa893be7f68d0c748e937802a206422cc746c9d9), pdftotext -layout, Table 1 'Mass estimates for large Kuiper belt objects with satellites'."
+notes = "Park et al. 2021 (DE440, AJ 161, 105, section 2.2) state that the masses of the 30 KBOs were from Pitjeva & Pitjev (2018); which header symbol is which object is not published (OI-24)."
+
+[[vector]]
+id = "PP2018-T1-2003-AZ84-MASS"
+requirement = ["REF-003"]
+quantity = "mass of the trans-Neptunian object 2003 AZ84 (Pitjeva & Pitjev 2018 Table 1), used only by the WP15 rule that ties header.440 KBO GMs (MA8001..MA8030) to NAIF ids"
+value = "0.69e-4"
+unit = "Earth masses"
+kind = "measured"
+source = "Pitjeva & Pitjev 2018 Table 1, row '2003 AZ84': (0.69 +/- 0.33) x 1e-4 Earth masses"
+citation = "Pitjeva, E. V., & Pitjev, N. P. 2018, Astron. Lett. 44, 554, doi:10.1134/S1063773718090050 (arXiv:1811.05191v1), Table 1"
+retrieved = "2026-10-15"
+tolerance = { abs = 0.33e-4 }
+tolerance_rationale = "The quoted 1-sigma uncertainty, copied. The identification rule uses value +/- tolerance as the object's interval (IMPLEMENTATION-NOTES WP15)."
+verified_by = "WP15 builder agent, 2026-10-15: read in arXiv:1811.05191v1 (PDF sha256 4366051396246c28b5366dd7fa893be7f68d0c748e937802a206422cc746c9d9), pdftotext -layout, Table 1 'Mass estimates for large Kuiper belt objects with satellites'."
+notes = "Park et al. 2021 (DE440, AJ 161, 105, section 2.2) state that the masses of the 30 KBOs were from Pitjeva & Pitjev (2018); which header symbol is which object is not published (OI-24)."
+
+[[vector]]
+id = "PP2018-T1-SALACIA-MASS"
+requirement = ["REF-003"]
+quantity = "mass of the trans-Neptunian object Salacia (Pitjeva & Pitjev 2018 Table 1), used only by the WP15 rule that ties header.440 KBO GMs (MA8001..MA8030) to NAIF ids"
+value = "0.73e-4"
+unit = "Earth masses"
+kind = "measured"
+source = "Pitjeva & Pitjev 2018 Table 1, row 'Salacia': (0.73 +/- 0.03) x 1e-4 Earth masses"
+citation = "Pitjeva, E. V., & Pitjev, N. P. 2018, Astron. Lett. 44, 554, doi:10.1134/S1063773718090050 (arXiv:1811.05191v1), Table 1"
+retrieved = "2026-10-15"
+tolerance = { abs = 0.03e-4 }
+tolerance_rationale = "The quoted 1-sigma uncertainty, copied. The identification rule uses value +/- tolerance as the object's interval (IMPLEMENTATION-NOTES WP15)."
+verified_by = "WP15 builder agent, 2026-10-15: read in arXiv:1811.05191v1 (PDF sha256 4366051396246c28b5366dd7fa893be7f68d0c748e937802a206422cc746c9d9), pdftotext -layout, Table 1 'Mass estimates for large Kuiper belt objects with satellites'."
+notes = "Park et al. 2021 (DE440, AJ 161, 105, section 2.2) state that the masses of the 30 KBOs were from Pitjeva & Pitjev (2018); which header symbol is which object is not published (OI-24)."
+
+[[vector]]
+id = "PP2018-T1-VARDA-MASS"
+requirement = ["REF-003"]
+quantity = "mass of the trans-Neptunian object Varda (Pitjeva & Pitjev 2018 Table 1), used only by the WP15 rule that ties header.440 KBO GMs (MA8001..MA8030) to NAIF ids"
+value = "0.444e-4"
+unit = "Earth masses"
+kind = "measured"
+source = "Pitjeva & Pitjev 2018 Table 1, row 'Varda': (0.444 +/- 0.011) x 1e-4 Earth masses"
+citation = "Pitjeva, E. V., & Pitjev, N. P. 2018, Astron. Lett. 44, 554, doi:10.1134/S1063773718090050 (arXiv:1811.05191v1), Table 1"
+retrieved = "2026-10-15"
+tolerance = { abs = 0.011e-4 }
+tolerance_rationale = "The quoted 1-sigma uncertainty, copied. The identification rule uses value +/- tolerance as the object's interval (IMPLEMENTATION-NOTES WP15)."
+verified_by = "WP15 builder agent, 2026-10-15: read in arXiv:1811.05191v1 (PDF sha256 4366051396246c28b5366dd7fa893be7f68d0c748e937802a206422cc746c9d9), pdftotext -layout, Table 1 'Mass estimates for large Kuiper belt objects with satellites'."
+notes = "Park et al. 2021 (DE440, AJ 161, 105, section 2.2) state that the masses of the 30 KBOs were from Pitjeva & Pitjev (2018); which header symbol is which object is not published (OI-24)."
+
+[[vector]]
+id = "PP2018-T1-2002-UX25-MASS"
+requirement = ["REF-003"]
+quantity = "mass of the trans-Neptunian object 2002 UX25 (Pitjeva & Pitjev 2018 Table 1), used only by the WP15 rule that ties header.440 KBO GMs (MA8001..MA8030) to NAIF ids"
+value = "0.209e-4"
+unit = "Earth masses"
+kind = "measured"
+source = "Pitjeva & Pitjev 2018 Table 1, row '2002 UX25': (0.209 +/- 0.005) x 1e-4 Earth masses"
+citation = "Pitjeva, E. V., & Pitjev, N. P. 2018, Astron. Lett. 44, 554, doi:10.1134/S1063773718090050 (arXiv:1811.05191v1), Table 1"
+retrieved = "2026-10-15"
+tolerance = { abs = 0.005e-4 }
+tolerance_rationale = "The quoted 1-sigma uncertainty, copied. The identification rule uses value +/- tolerance as the object's interval (IMPLEMENTATION-NOTES WP15)."
+verified_by = "WP15 builder agent, 2026-10-15: read in arXiv:1811.05191v1 (PDF sha256 4366051396246c28b5366dd7fa893be7f68d0c748e937802a206422cc746c9d9), pdftotext -layout, Table 1 'Mass estimates for large Kuiper belt objects with satellites'."
+notes = "Park et al. 2021 (DE440, AJ 161, 105, section 2.2) state that the masses of the 30 KBOs were from Pitjeva & Pitjev (2018); which header symbol is which object is not published (OI-24)."
+
+[[vector]]
+id = "REF003-SB441-TARGETS"
+requirement = ["REF-003"]
+quantity = "number of targets (distinct NAIF ids) of sb441-n373s.bsp, each sampled at JDEPOC in tests/goldens/sb441-n373s-jdepoc-states.csv"
+value = 373
+unit = "1"
+kind = "measured"
+source = "Segment list of the pinned sb441-n373s.bsp (374 segments, 373 targets, all Sun-centred type 2), read with jplephem 2.24 and by ferroastro-ephem."
+citation = "JPL sb441-n373s.bsp, sha256 2143113282bfc2b2a0b0b4626125d4f84362339b5a8ae7eea40f4120ca8da10b (tests/data/MANIFEST.toml); the file name's n373"
+retrieved = "2026-10-15"
+tolerance = { abs = 0 }
+tolerance_rationale = "A count: exact."
+verified_by = "WP15 builder agent, 2026-10-15: listed with jplephem before the plan (disclosed in IMPLEMENTATION-NOTES WP15)."
+notes = "343 are the numbered asteroids of header.440 (SYSTEM-HEADER-NUMBERED-ASTEROIDS); the other 30 are trans-Neptunian objects. That the 30 are DE440's 30 KBOs is UNVERIFIED (OI-24)."
+
+[[vector]]
+id = "SSB-FULL-SET-OFFSET-POS"
+requirement = ["NUM-018", "REF-003"]
+quantity = "|sum mu_i* r_i| / sum mu_i* at JDEPOC over the header.440 major bodies, the 343 numbered asteroids and the 3 identified KBOs placed from tests/goldens/sb441-n373s-jdepoc-states.csv, and the 36-point KBO ring (relativistic DE440 masses)"
+value = 0.0
+unit = "km"
+kind = "analytic"
+source = "DE440 defines the SSB by sum mu_i* r_i = 0 over the Sun, the planetary-system barycentres, Pluto, 343 asteroids, 30 KBOs and the KBO ring (Park et al. 2021, section 2.2, Eqs. 1-2)."
+citation = "Park, R. S., Folkner, W. M., Williams, J. G., & Boggs, D. H. 2021, AJ 161, 105, doi:10.3847/1538-3881/abd414, section 2.2"
+retrieved = "2026-10-15"
+tolerance = { abs = 90.0 }
+tolerance_rationale = "B = 89.73 km rounded up: the largest dipole the 27 unplaced KBO masses (MA80nn not identified, total GM 1150.17 km^3/s^2) could add, by the rearrangement bound sum_k GM_(k) (r_(k) + |r_Sun|) / GM_total with the GMs and the remaining 27 TNO heliocentric distances (33.6-102.4 au) each sorted descending, |r_Sun| = 6.84e5 km. Computed from the header and the sampled file before the offset was computed (IMPLEMENTATION-NOTES WP15). The ring is centred on the SSB and adds no dipole. Non-gating while OI-24 (KBO identities, ring geometry) is open."
+verified_by = "WP15 builder agent, 2026-10-15: bound derived and computed before the first barycentre run (IMPLEMENTATION-NOTES WP15, check 3)."
+blocked_by = "OI-24"
+
+[[vector]]
+id = "PHY013-N-SUM"
+requirement = ["PHY-013"]
+quantity = "full Newtonian N-body precession rate of Mercury's perihelion, Mercury mean-orbit frame, 1000-3000 CE (rung N-SUM)"
+value = "532.30"
+unit = "arcsec/cy"
+kind = "measured"
+source = "PHY-013 acceptance: 532.30 +/- 0.01 arcsec/cy (the sum of the Newtonian Park17 Table 3 rows, 532.3035, computed in Journal #1)."
+citation = "Park, R. S., Folkner, W. M., Konopliv, A. S., et al. 2017, AJ 153, 121, doi:10.3847/1538-3881/aa5be2, Table 3 (rows Mercury through Asteroids, summed)"
+retrieved = "2026-10-15"
+tolerance = { abs = 0.01 }
+tolerance_rationale = "PHY-013 acceptance, copied. The sum contains the Mercury self row (0.0050, meaning UNVERIFIED, OI-09) and the Mercury+Venus row (-0.0053); together -0.0003, 3% of the tolerance. Park17's ephemeris has no KBOs; their expected effect (~1e-5) is far below the tolerance."
+verified_by = "WP15 builder agent, 2026-10-15: Park17 Table 3 re-read in the PDF (sha256 24fb2153f6b78109daa80171cd37006157b73564f8d0ac383532b5c92433380b); the 18 Newtonian rows sum to 532.3035."
+
+[[vector]]
+id = "NUM009-TIER-COST-RATIO"
+requirement = ["NUM-009"]
+quantity = "wall time of an IAS15 run with 16 Major + 338 Minor bodies divided by the same run with the 16 Major bodies alone (same machine, same process, median of 5)"
+value = 0.0
+unit = "1"
+kind = "defined"
+source = "NUM-009 acceptance: the run with the DE440 asteroid set as Minor bodies costs < 2x the 16-Major-body run (the ratio must lie in [0, 2])."
+citation = "FerroAstro NUM-009 (docs/requirements/NUM.md); Subbotin et al. 2023"
+retrieved = "2026-10-15"
+tolerance = { abs = 2.0 }
+tolerance_rationale = "NUM-009's bound, copied. NUM-009 states the Majors interact under EIH; its notes give EIH ~3-5x Newtonian per pair (UNVERIFIED, OI-42). With Newtonian Majors (the only model before WP19) the pair count alone predicts ~46x for the forces, so this check is reported, not asserted, while OI-42 is open."
+verified_by = "WP15 builder agent, 2026-10-15: pre-registered in IMPLEMENTATION-NOTES WP15 (check 2a) before any timing."
+blocked_by = "OI-42"
+
+[[vector]]
+id = "NUM009-TIER-VS-ALL-MUTUAL"
+requirement = ["NUM-009"]
+quantity = "wall time of the tiered run (16 Major + 338 Minor) divided by the same bodies all Major (all-mutual), IAS15, same span"
+value = 0.0
+unit = "1"
+kind = "defined"
+source = "The purpose of tiering (NUM-009 notes: 16 x 343 + 120 interactions versus ~6.4e4): tiering must cost less than the all-mutual run (ratio in [0, 1])."
+citation = "FerroAstro NUM-009 notes (docs/requirements/NUM.md)"
+retrieved = "2026-10-15"
+tolerance = { abs = 1.0 }
+tolerance_rationale = "Agent-set (WP15 plan, check 2b): a one-sided structural bound, ratio < 1. PROVISIONAL."
+verified_by = "WP15 builder agent, 2026-10-15: pre-registered in IMPLEMENTATION-NOTES WP15 before any timing."
+
+[[vector]]
+id = "REF003-KBO-HORIZONS-POS-GROSS"
+requirement = ["REF-003"]
+quantity = "largest |Horizons heliocentric position - sb441-n373s state| at JDEPOC over the identified KBOs (Eris, Orcus, 2002 UX25), queried by MPC number"
+value = 0.0
+unit = "km"
+kind = "measured"
+source = "JPL Horizons API vectors (COMMAND '<number>;', CENTER 500@10, ICRF, TDB) at JDEPOC vs tests/goldens/sb441-n373s-jdepoc-states.csv."
+citation = "JPL Horizons API (ssd.jpl.nasa.gov/api/horizons.api); JPL sb441-n373s.bsp"
+retrieved = "2026-10-15"
+tolerance = { abs = 1.0e6 }
+tolerance_rationale = "Gross bound (WP15 addendum, fixed before the first query): Horizons uses its current small-body orbit solution, not the DE441 perturber file, so the two differ by the orbit-solution change propagated back to 1969; 1e6 km (0.007 au) still separates each TNO from every other of the 30 targets (they are AU apart). The check confirms the NAIF id <-> object mapping of KBO_IDENTIFICATION, not the state."
+verified_by = "WP15 builder agent, 2026-10-15: pre-registered in the WP15 addendum of IMPLEMENTATION-NOTES before the first query."
+
+[[vector]]
+id = "DE440-KBO-RING-RADIUS"
+requirement = ["NUM-009", "REF-003"]
+quantity = "radius (semimajor axis) of the DE440 KBO ring"
+value = 44.0
+unit = "au"
+kind = "defined"
+source = "Park et al. 2021 section 2.2: 'The circular KBO ring was modeled as 36 point masses with equal mass located in the ecliptic plane with a semimajor axis of 44 au, with the ring mass estimated.'"
+citation = "Park, R. S., Folkner, W. M., Williams, J. G., & Boggs, D. H. 2021, AJ 161, 105, doi:10.3847/1538-3881/abd414, section 2.2"
+retrieved = "2026-10-15"
+tolerance = { abs = 0.0 }
+tolerance_rationale = "A model definition: exact."
+verified_by = "WP15 builder agent, 2026-10-15: read in the published PDF (iopscience, sha256 96c3945deb12e0f0843c2bf0703d3542d950cf85ff903b1fe11a501634f68ee0), pdftotext -layout, page 2."
+
+[[vector]]
+id = "DE440-KBO-RING-POINTS"
+requirement = ["NUM-009", "REF-003"]
+quantity = "number of equal point masses of the DE440 KBO ring"
+value = 36
+unit = "1"
+kind = "defined"
+source = "Park et al. 2021 section 2.2 (as DE440-KBO-RING-RADIUS); header.440 has 36 equal GMs MA8201..MA8236."
+citation = "Park, R. S., Folkner, W. M., Williams, J. G., & Boggs, D. H. 2021, AJ 161, 105, section 2.2"
+retrieved = "2026-10-15"
+tolerance = { abs = 0 }
+tolerance_rationale = "A count: exact."
+verified_by = "WP15 builder agent, 2026-10-15: as DE440-KBO-RING-RADIUS."

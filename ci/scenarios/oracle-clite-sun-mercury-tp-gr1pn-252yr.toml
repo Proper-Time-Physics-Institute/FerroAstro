@@ -1,0 +1,34 @@
+# SPDX-FileCopyrightText: 2026 Proper-Time Physics Institute
+# SPDX-License-Identifier: Apache-2.0
+# Oracle stage C-lite (WP17, REF-007, CI-009): Sun + Mercury test particle (mu = GM of the Sun),
+# header.440 ICs, 252 Julian years forward (92043 d, about 1045 orbits; a whole number of 1/128-d
+# steps and daily outputs), Mercury sampled daily. The GR contribution is the difference of this
+# pair (gr_1pn_central on minus off) from identical ICs, one estimator for every tool.
+# Schema: scenario.schema.json (CI-002).
+schema_version = 1
+name = "oracle-clite-sun-mercury-tp-gr1pn-252yr"
+description = "Oracle C-lite GR on: Sun + Mercury test particle, 1PN Schwarzschild, header.440 ICs, 252 yr, daily samples"
+mode = "test-particle"
+bodies = ["Sun", "Mercury"]
+central_body = "Sun"
+
+[initial_conditions]
+source = "de440-header"
+
+[constants]
+gm_set = "de440"
+
+[forces]
+newton = true
+gr_1pn_central = true
+
+[integrator]
+name = "ias15"
+precision = "f64"
+
+[span]
+years = 252.0
+
+[output]
+cadence_days = 1.0
+sample_bodies = ["Sun", "Mercury"]

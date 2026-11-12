@@ -91,7 +91,7 @@ notes: >-
   a scenario's [integrator] block describes FerroAstro's IAS15; the
   symplectic and legacy tools run tool-specific committed settings
   (ci/oracles/{swiftest,mercury6,orekit}/settings.toml, keyed by scenario
-  name: Swiftest WHM dt 1/128 d, Mercury6 RA15 1e-12, Orekit DP853), and
+  name: Swiftest WHM dt 1/128 d, stage A 1/16 d since 2026-11-08; Mercury6 RA15 1e-12, Orekit DP853), and
   every MANIFEST entry records the mapping (WP17 item 1). Scenario files
   added by agents (sun-mercury-*, sun-8planets-*, phy012-*, stage-a-*,
   oracle-*, bench-*) and the new switch names, mode and integrator mapping

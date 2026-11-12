@@ -55,6 +55,20 @@ pub enum DataError {
     /// The manifest is missing, malformed, or lacks the product.
     #[error("FA-E0202: data manifest problem: {0}")]
     Manifest(String),
+    /// A pinned product is not in the local cache (offline lookup, [`locate_product`]).
+    #[error(
+        "FA-E0204: data product {name:?} ({path}) is {problem}; fix: run \
+         `(cd tools && uv run python fetch_jpl.py {name})` (cache: $FA_DATA_DIR, default \
+         target/fa-data)"
+    )]
+    Missing {
+        /// Manifest product name.
+        name: String,
+        /// Expected cache path.
+        path: String,
+        /// "missing" or a checksum mismatch description.
+        problem: String,
+    },
     /// A data service answered with an error or with something that cannot be parsed.
     #[error(
         "FA-E0203: data service answer unusable: {0}; fix: inspect the cached answer in \
@@ -72,6 +86,7 @@ impl DataError {
             DataError::Checksum { .. } => ErrorCode::DataChecksum,
             DataError::Manifest(_) => ErrorCode::DataManifest,
             DataError::Service(_) => ErrorCode::DataService,
+            DataError::Missing { .. } => ErrorCode::DataMissing,
         }
     }
 }
@@ -197,6 +212,51 @@ pub fn fetch_product(name: &str) -> Result<Fetched, DataError> {
     fetch_url(&p.url, &p.file, Some(&p.sha256))
 }
 
+/// Locate a manifest product in the cache **without network access** and re-verify its pinned
+/// SHA-256 (REF-001, DEP-017). This is the lookup used by PR-tier tests that read cached JPL
+/// products (CI-005): a missing or mismatching file is an error that names the `fetch_jpl.py`
+/// command, never a silent skip.
+///
+/// # Errors
+/// [`DataError::Manifest`] for an unknown product, [`DataError::Missing`] if the file is absent
+/// or does not match its pin.
+pub fn locate_product(name: &str) -> Result<Fetched, DataError> {
+    locate_product_in(name, &data_dir())
+}
+
+/// [`locate_product`] in an explicit cache directory `dir` instead of [`data_dir`].
+///
+/// # Errors
+/// As [`locate_product`].
+pub fn locate_product_in(name: &str, dir: &Path) -> Result<Fetched, DataError> {
+    let p = product(name)?;
+    let path = dir.join(&p.file);
+    let missing = |problem: String| DataError::Missing {
+        name: name.to_owned(),
+        path: path.display().to_string(),
+        problem,
+    };
+    let bytes = std::fs::read(&path).map_err(|e| missing(format!("missing ({e})")))?;
+    let sha = sha256_hex(&bytes);
+    if sha != p.sha256 {
+        return Err(missing(format!(
+            "present but has SHA-256 {sha}, while tests/data/MANIFEST.toml pins {}",
+            p.sha256
+        )));
+    }
+    let side = std::fs::read_to_string(dir.join(format!("{}.provenance.toml", p.file)))
+        .unwrap_or_default();
+    Ok(Fetched {
+        path,
+        url: p.url,
+        sha256: sha,
+        bytes: bytes.len() as u64,
+        retrieved: sidecar_field(&side, "retrieved").unwrap_or_else(|| "unknown".to_owned()),
+        last_modified: sidecar_field(&side, "last_modified"),
+        from_cache: true,
+    })
+}
+
 /// Fetch any URL into the cache under `file`. With `pin`, a cached copy is reused only if it
 /// matches, and a fresh download must match. Without `pin` (e.g. Horizons API answers, whose
 /// content depends on the service version), the cached copy is always reused if present.
@@ -242,8 +302,12 @@ pub fn fetch_url(url: &str, file: &str, pin: Option<&str>) -> Result<Fetched, Da
             "--silent",
             "--show-error",
             "--location",
+            // Network-level retries live here, not in the test runner: transient failures
+            // (timeouts, refused connections, HTTP 408/429/5xx) are retried by curl, while a
+            // failed physics assertion is never re-run (nextest `data` profile: retries = 0).
             "--retry",
             "3",
+            "--retry-connrefused",
         ])
         .args(["--max-time", "300", "--dump-header"])
         .arg(&headers)
@@ -369,5 +433,29 @@ mod tests {
         );
         assert!(p.url.starts_with("https://"));
         assert_eq!(product("nope").unwrap_err().code(), ErrorCode::DataManifest);
+        for name in ["de440-bsp", "de440-testpo", "sb441-n373s-bsp"] {
+            let p = product(name).unwrap();
+            assert!(
+                p.url.starts_with("https://ssd.jpl.nasa.gov/ftp/eph/"),
+                "{name}"
+            );
+        }
+    }
+
+    /// Verifies: REF-001, DEP-017
+    #[test]
+    fn locate_reports_a_missing_product_with_the_fetch_command() {
+        let err = locate_product("nope").unwrap_err();
+        assert_eq!(err.code(), ErrorCode::DataManifest);
+        let err = DataError::Missing {
+            name: "de440-bsp".into(),
+            path: "/x/de440.bsp".into(),
+            problem: "missing".into(),
+        };
+        let msg = err.to_string();
+        assert_eq!(err.code(), ErrorCode::DataMissing);
+        for needle in ["FA-E0204", "de440-bsp", "fetch_jpl.py", "fix"] {
+            assert!(msg.contains(needle), "{msg}");
+        }
     }
 }

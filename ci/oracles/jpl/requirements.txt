@@ -1,0 +1,5 @@
+# SPDX-FileCopyrightText: 2026 Proper-Time Physics Institute
+# SPDX-License-Identifier: Apache-2.0
+# REF-001 / CI-001: exact pins with PyPI SHA-256s (jplephem 2.24, MIT; the REF-004 reader).
+numpy==2.5.4 --hash=sha256:fbde6962867ee75b48b0ee29b2b9372ec5d617799dbaf38e82dc0596f2f7738a
+jplephem==2.24 --hash=sha256:2de15608a0f13010a71a0a8af8765646d5884402006dac0dd7639d7db13629ac
