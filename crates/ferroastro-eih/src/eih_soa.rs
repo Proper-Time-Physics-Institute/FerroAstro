@@ -14,9 +14,11 @@
 //! WP22, [`Eih`] sums over the whole tiered interaction graph (Minor receivers, Ring sources with
 //! `v = a = 0`, Minor sources per [`ferroastro_forces::MinorReaction`]). For a layout with any
 //! Minor or Ring body, [`EihSoa`] therefore delegates to [`Eih`] itself, so the physics never
-//! depends on the kernel choice; only an all-Major layout runs on the SoA lanes.
+//! depends on the kernel choice; only an all-Major layout runs on the SoA lanes. Under
+//! [`EihScope::Majors`] (EPM2021) the sums run over the Major bodies only, which is exactly the
+//! SoA kernel's graph, so the lanes are used whatever Minor or Ring bodies the layout holds.
 
-use crate::eih::{Eih, RhsAcceleration};
+use crate::eih::{Eih, EihScope, RhsAcceleration};
 use ferroastro_core::frames::Frame;
 use ferroastro_forces::soa::{
     Lane, Scalar, SoaBackend, SoaBodies, coinciding, dot3, inv_r3_exact, load3, splat3,
@@ -226,14 +228,17 @@ impl<R: Real> EihSoa<R> {
     }
 
     /// The c⁻² corrections (km/s²) of every body, in storage order, as [`Eih::corrections`]:
-    /// on the SoA lanes for an all-Major layout, by [`Eih`] itself otherwise (module docs).
+    /// on the SoA lanes for an all-Major layout or under [`EihScope::Majors`], by [`Eih`] itself
+    /// otherwise (module docs).
     ///
     /// # Errors
     /// `FA-E0501` if two bodies joined by the interaction graph coincide; `FA-E0500` for a view
     /// whose layout does not match its state.
     pub fn corrections(&self, t: R, view: &View<'_, R>) -> Result<Vec<[R; 3]>, ForceError> {
         let layout = view.layout();
-        if !(layout.indices(Tier::Minor).is_empty() && layout.indices(Tier::Ring).is_empty()) {
+        if self.eih.scope() == EihScope::All
+            && !(layout.indices(Tier::Minor).is_empty() && layout.indices(Tier::Ring).is_empty())
+        {
             return self.eih.corrections(t, view);
         }
         let n = layout.len();
@@ -302,7 +307,7 @@ impl<F: Frame, R: Real> ForceTerm<F, R> for EihSoa<R> {
         <Eih<R> as ForceTerm<F, R>>::tiers(&self.eih)
     }
     fn minor_reaction(&self) -> Option<MinorReaction> {
-        Some(self.eih.minor_reaction())
+        <Eih<R> as ForceTerm<F, R>>::minor_reaction(&self.eih)
     }
     fn bind(&mut self, _layout: &Layout<R>) -> Result<(), ForceError> {
         Ok(())

@@ -72,8 +72,22 @@ impl RhsAcceleration {
     }
 }
 
+/// Which bodies receive and source the 1PN terms (scenario key `forces.eih_scope`; maintainer
+/// decision 2026-11-12). Eq. 27's terms are the same in both; only the summation sets differ.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum EihScope {
+    /// DE440 (decision D1, WP22): every moving body over the tiered interaction graph (default).
+    #[default]
+    All,
+    /// EPM2021 (Subbotin et al. 2023): the Major bodies only receive and source the 1PN terms,
+    /// with `U` and the right-hand-side `a_j` over the Major bodies; Minor and Ring bodies stay
+    /// Newtonian (the WP19 Majors-only sums).
+    Majors,
+}
+
 /// The c⁻² part of the EIH acceleration (Eq. 27) for every moving body, with PPN β, γ, summed over
-/// the tiered model's interaction graph (module docs).
+/// the tiered model's interaction graph (module docs), or over the Major bodies only with
+/// [`EihScope::Majors`].
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Eih<R: Real = f64> {
     c2: R,
@@ -81,6 +95,7 @@ pub struct Eih<R: Real = f64> {
     gamma: R,
     rhs: RhsAcceleration,
     minor: MinorReaction,
+    scope: EihScope,
 }
 
 fn finite<R: Real>(name: &'static str, value: R) -> Result<R, ForceError> {
@@ -122,7 +137,21 @@ impl<R: Real> Eih<R> {
             gamma: finite("PPN gamma", gamma)?,
             rhs,
             minor: MinorReaction::On,
+            scope: EihScope::All,
         })
+    }
+
+    /// The same term with the scope [`EihScope`] (default [`EihScope::All`]).
+    #[must_use]
+    pub const fn with_scope(mut self, scope: EihScope) -> Self {
+        self.scope = scope;
+        self
+    }
+
+    /// The scope.
+    #[must_use]
+    pub const fn scope(&self) -> EihScope {
+        self.scope
     }
 
     /// The same term with the Minor bodies' reaction setting, which must match the model's
@@ -158,7 +187,7 @@ impl<R: Real> Eih<R> {
     /// `FA-E0501` if two bodies joined by the interaction graph coincide; `FA-E0500` for a view
     /// whose layout does not match its state.
     pub fn corrections(&self, t: R, view: &View<'_, R>) -> Result<Vec<[R; 3]>, ForceError> {
-        let g = Graph::new(t, view, self.minor)?;
+        let g = Graph::new(t, view, self.minor, self.scope)?;
         let first = self.correction_with(&g, &g.newton);
         Ok(match self.rhs {
             RhsAcceleration::Newtonian => first,
@@ -297,7 +326,12 @@ struct Graph<R: Real> {
 }
 
 impl<R: Real> Graph<R> {
-    fn new(t: R, view: &View<'_, R>, reaction: MinorReaction) -> Result<Self, ForceError> {
+    fn new(
+        t: R,
+        view: &View<'_, R>,
+        reaction: MinorReaction,
+        scope: EihScope,
+    ) -> Result<Self, ForceError> {
         let layout: &Layout<R> = view.layout();
         let n = layout.len();
         let pos = (0..n)
@@ -330,8 +364,16 @@ impl<R: Real> Graph<R> {
             newton: vec![[R::ZERO; 3]; n],
             edge: Vec::new(),
             major: layout.indices(Tier::Major).to_vec(),
-            minor: layout.indices(Tier::Minor).to_vec(),
-            ring: layout.indices(Tier::Ring).to_vec(),
+            // EihScope::Majors: no Minor or Ring body joins the graph, so the edges are the
+            // Major–Major pairs only and the other bodies get no correction.
+            minor: match scope {
+                EihScope::All => layout.indices(Tier::Minor).to_vec(),
+                EihScope::Majors => Vec::new(),
+            },
+            ring: match scope {
+                EihScope::All => layout.indices(Tier::Ring).to_vec(),
+                EihScope::Majors => Vec::new(),
+            },
         };
         let mut singular = None;
         let (mut u, mut newton) = (vec![R::ZERO; n], vec![[R::ZERO; 3]; n]);
@@ -448,10 +490,17 @@ impl<F: Frame, R: Real> ForceTerm<F, R> for Eih<R> {
                 value: 1.0,
                 unit: "1",
             },
-            TermParameter {
-                name: "1PN sums over the tiered interaction graph, all moving bodies (WP22 D1)",
-                value: 1.0,
-                unit: "1",
+            match self.scope {
+                EihScope::All => TermParameter {
+                    name: "1PN sums over the tiered interaction graph, all moving bodies (WP22 D1)",
+                    value: 1.0,
+                    unit: "1",
+                },
+                EihScope::Majors => TermParameter {
+                    name: "1PN sums over the Major bodies only (eih_scope = majors, EPM2021)",
+                    value: 1.0,
+                    unit: "1",
+                },
             },
             TermParameter {
                 name: "Minor bodies as 1PN sources (reaction on Majors)",
@@ -464,10 +513,17 @@ impl<F: Frame, R: Real> ForceTerm<F, R> for Eih<R> {
         ]
     }
     fn tiers(&self) -> &'static [Tier] {
-        &[Tier::Major, Tier::Minor]
+        match self.scope {
+            EihScope::All => &[Tier::Major, Tier::Minor],
+            EihScope::Majors => &[Tier::Major],
+        }
     }
     fn minor_reaction(&self) -> Option<MinorReaction> {
-        Some(self.minor)
+        // Under EihScope::Majors no Minor body enters the sums, so the setting is irrelevant.
+        match self.scope {
+            EihScope::All => Some(self.minor),
+            EihScope::Majors => None,
+        }
     }
     fn bind(&mut self, _layout: &Layout<R>) -> Result<(), ForceError> {
         Ok(())
@@ -496,8 +552,11 @@ impl<R: Real> std::fmt::Display for Eih<R> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(
             f,
-            "EIH 1PN (Park et al. 2021 Eq. 27), all moving bodies over the tiered graph, beta = {}, \
-             gamma = {}, {}",
+            "EIH 1PN (Park et al. 2021 Eq. 27), {}, beta = {}, gamma = {}, {}",
+            match self.scope {
+                EihScope::All => "all moving bodies over the tiered graph",
+                EihScope::Majors => "Major bodies only (eih_scope = majors)",
+            },
             self.beta.to_f64(),
             self.gamma.to_f64(),
             self.rhs.label()

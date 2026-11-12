@@ -44,5 +44,5 @@ pub use barycentre::{
     relativistic_barycentre_with_rate,
 };
 pub use central::HeliocentricSchwarzschild;
-pub use eih::{Eih, RhsAcceleration};
+pub use eih::{Eih, EihScope, RhsAcceleration};
 pub use eih_soa::EihSoa;
