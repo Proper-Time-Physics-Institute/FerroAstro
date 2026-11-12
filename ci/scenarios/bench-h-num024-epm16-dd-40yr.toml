@@ -7,6 +7,9 @@
 # re-barycentred to the relativistic SSB (Subbotin et al. 2023 Eq. 5); ABM13 PECEC at h = 1/16 d
 # with the DP8 start-up at h/8, 40 Julian years (233 760 steps); every body every 20 d. Run by
 # tools/bench/speed_table.sh --suite wp28. Schema: scenario.schema.json (CI-002).
+# EIH scope (maintainer decision 2026-11-12): eih_scope = "majors", the EPM2021 model of Subbotin et al.
+# 2023, where only the 16 Major bodies receive and source the 1PN terms and the Minor asteroids stay
+# Newtonian (as this configuration was recorded in WP25/WP28 before the WP22 all-body EIH merged).
 schema_version = 1
 name = "bench-h-num024-epm16-dd-40yr"
 description = "Bench (h)/(i) truth: the WP25 reference configuration in full double-double (untimed round-off reference)"
@@ -26,6 +29,7 @@ newton = true
 gr_eih = true
 asteroids = 343
 major_asteroids = "epm2021"
+eih_scope = "majors"
 
 [integrator]
 name = "abm"

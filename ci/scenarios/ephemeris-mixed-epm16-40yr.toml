@@ -9,6 +9,9 @@
 # h = 1/16 d with the DP8 start-up at h/8, 40 Julian years forward, in the NUM-007 mixed mode
 # (double-double state and sums, f64 forces). Every body is sampled every 20 d. The f64 and
 # full double-double twins differ only in integrator.precision. Schema: scenario.schema.json.
+# EIH scope (maintainer decision 2026-11-12): eih_scope = "majors", the EPM2021 model of Subbotin et al.
+# 2023, where only the 16 Major bodies receive and source the 1PN terms and the Minor asteroids stay
+# Newtonian (as this configuration was recorded in WP25/WP28 before the WP22 all-body EIH merged).
 schema_version = 1
 name = "ephemeris-mixed-epm16-40yr"
 description = "WP25: 16 EIH Majors (EPM2021 set) + 338 Minor asteroids, header.440 + REF-003, relativistic SSB, ABM13 PECEC h = 1/16 d, 40 yr, mixed DD"
@@ -28,6 +31,7 @@ newton = true
 gr_eih = true
 asteroids = 343
 major_asteroids = "epm2021"
+eih_scope = "majors"
 
 [integrator]
 name = "abm"

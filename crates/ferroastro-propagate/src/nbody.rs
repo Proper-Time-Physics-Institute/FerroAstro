@@ -95,7 +95,11 @@ fn relativity<R: Real>(
     let (beta, gamma) = (R::from_f64(beta), R::from_f64(gamma));
     let mut terms: Vec<Box<dyn ForceTerm<Icrf, R>>> = Vec::new();
     if f.gr_eih {
-        let eih = Eih::new(c, beta, gamma, RhsAcceleration::Newtonian)?;
+        let scope = match f.eih_scope {
+            ferroastro_scenario::EihScope::All => ferroastro_eih::EihScope::All,
+            ferroastro_scenario::EihScope::Majors => ferroastro_eih::EihScope::Majors,
+        };
+        let eih = Eih::new(c, beta, gamma, RhsAcceleration::Newtonian)?.with_scope(scope);
         if soa_kernel(spec) {
             terms.push(Box::new(EihSoa::new(eih, SoaBackend::preferred())));
         } else {

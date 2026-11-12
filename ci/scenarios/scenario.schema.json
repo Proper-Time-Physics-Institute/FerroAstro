@@ -169,6 +169,21 @@
         "gm_set"
       ]
     },
+    "EihScope": {
+      "description": "Which bodies receive and source the 1PN EIH terms (`forces.eih_scope`, NUM-009; maintainer\ndecision 2026-11-12). Only meaningful with `gr_eih`.",
+      "oneOf": [
+        {
+          "description": "DE440 (Park et al. 2021; decision D1 of 2026-10-21): every moving body, Major and Minor,\nover the tiered interaction graph, Ring masses as sources. The default.",
+          "type": "string",
+          "const": "all"
+        },
+        {
+          "description": "EPM2021 (Subbotin et al. 2023 §2): only the Major bodies receive and source the 1PN\nterms; Minor and Ring bodies stay Newtonian.",
+          "type": "string",
+          "const": "majors"
+        }
+      ]
+    },
     "ForceKernel": {
       "description": "The N-body pair kernels (`integrator.force_kernel`, NUM-021, WP26).",
       "oneOf": [
@@ -194,6 +209,10 @@
           "format": "uint32",
           "default": 0,
           "minimum": 0
+        },
+        "eih_scope": {
+          "description": "Which bodies receive and source the 1PN EIH terms (`all`, the default: DE440; `majors`:\nEPM2021). Requires `gr_eih` (not a CI-002 switch name; maintainer decision 2026-11-12).",
+          "$ref": "#/$defs/EihScope"
         },
         "gr_1pn_central": {
           "description": "1PN Schwarzschild field of the central body (test-particle mode).",

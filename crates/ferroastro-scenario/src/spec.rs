@@ -217,6 +217,38 @@ impl MajorAsteroids {
     pub const EPM2021: [u32; 5] = [1, 2, 4, 7, 324];
 }
 
+/// Which bodies receive and source the 1PN EIH terms (`forces.eih_scope`, NUM-009; maintainer
+/// decision 2026-11-12). Only meaningful with `gr_eih`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "kebab-case")]
+pub enum EihScope {
+    /// DE440 (Park et al. 2021; decision D1 of 2026-10-21): every moving body, Major and Minor,
+    /// over the tiered interaction graph, Ring masses as sources. The default.
+    #[default]
+    All,
+    /// EPM2021 (Subbotin et al. 2023 §2): only the Major bodies receive and source the 1PN
+    /// terms; Minor and Ring bodies stay Newtonian.
+    Majors,
+}
+
+impl EihScope {
+    /// The spelling in scenario files.
+    #[must_use]
+    pub const fn label(self) -> &'static str {
+        match self {
+            EihScope::All => "all",
+            EihScope::Majors => "majors",
+        }
+    }
+
+    /// True for [`EihScope::All`] (the serde skip test: the default is not serialized, so the
+    /// digest of every scenario without the key is unchanged).
+    #[must_use]
+    pub fn is_all(&self) -> bool {
+        *self == EihScope::All
+    }
+}
+
 /// The GM set (CI-002).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "kebab-case")]
@@ -290,10 +322,14 @@ pub struct Forces {
     /// perihelion advance, but the mean motion is off by O(GM/(ac²)).
     #[serde(default, skip_serializing_if = "std::ops::Not::not")]
     pub gr_potential: bool,
+    /// Which bodies receive and source the 1PN EIH terms (`all`, the default: DE440; `majors`:
+    /// EPM2021). Requires `gr_eih` (not a CI-002 switch name; maintainer decision 2026-11-12).
+    #[serde(default, skip_serializing_if = "EihScope::is_all")]
+    pub eih_scope: EihScope,
 }
 
 /// The force switches of CI-002, as written under `[forces]`.
-pub const SWITCHES: [&str; 11] = [
+pub const SWITCHES: [&str; 12] = [
     "newton",
     "sun_j2",
     "gr_1pn_central",
@@ -305,6 +341,7 @@ pub const SWITCHES: [&str; 11] = [
     "kbo_ring",
     "major_asteroids",
     "gr_potential",
+    "eih_scope",
 ];
 
 impl Forces {
@@ -323,6 +360,7 @@ impl Forces {
             self.kbo_ring,
             self.major_asteroids != MajorAsteroids::None,
             self.gr_potential,
+            !self.eih_scope.is_all(),
         ];
         SWITCHES
             .iter()
@@ -684,6 +722,13 @@ impl ScenarioSpec {
                 return err("initial_conditions.epoch_jd_tdb", &jd, "must be finite");
             }
             _ => {}
+        }
+        if !self.forces.eih_scope.is_all() && !self.forces.gr_eih {
+            return err(
+                "forces.eih_scope",
+                &self.forces.eih_scope.label(),
+                "selects the bodies of the EIH terms; it needs gr_eih = true",
+            );
         }
         if self.forces.major_asteroids != MajorAsteroids::None && self.forces.asteroids == 0 {
             return err(

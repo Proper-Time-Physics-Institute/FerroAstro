@@ -162,6 +162,12 @@ fn mixed_mode_refusals_tiers_and_shared_initial_conditions() {
         mixed.model
     );
     assert!(mixed.model.contains("mixed (NUM-007)"), "{}", mixed.model);
+    // EPM2021 EIH scope (maintainer decision 2026-11-12): only the Major bodies carry 1PN terms.
+    assert!(
+        mixed.model.contains("eih_scope = majors"),
+        "{}",
+        mixed.model
+    );
     assert!(
         mixed
             .ic_source

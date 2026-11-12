@@ -177,7 +177,10 @@ pub fn supports(item: &str, mode: Mode) -> Result<(), String> {
     // mode (WP19). lense_thirring: the R3b field in test-particle mode, the DE440 Eq. 37-39 term
     // on every non-Sun body in n-body mode (WP20).
     let central_term = matches!(item, "gr_1pn_central" | "lense_thirring");
-    let nbody_relativity = matches!(item, "gr_eih" | "gr_1pn_central" | "lense_thirring");
+    let nbody_relativity = matches!(
+        item,
+        "gr_eih" | "gr_1pn_central" | "lense_thirring" | "eih_scope"
+    );
     let small_bodies = matches!(item, "asteroids" | "kbos" | "kbo_ring" | "major_asteroids");
     if mode == Mode::EphemerisField {
         const FIELD: [&str; 4] = [
