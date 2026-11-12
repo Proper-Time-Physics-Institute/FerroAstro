@@ -62,8 +62,8 @@
         "notes": { "type": "string" },
         "blocked_by": { "type": "string", "pattern": "^OI-[0-9]+$" },
         "provisional": {
-          "description": "Open item under which this gating assertion is PROVISIONAL (ADR-0014); must exist in docs/requirements/OPEN-ITEMS.md (checked by ferroastro-vectors).",
-          "type": "string", "pattern": "^OI-[0-9]+$"
+          "description": "ADR-0004 revision 2026-10-21: the row asserts under a protocol or decision that is provisional until this open item closes (first use: ADR-0014 P-remove, OI-38). It gates and fails outside tolerance like any vector; the item must exist in docs/requirements/OPEN-ITEMS.md, open or closed (checked by ferroastro-vectors); never together with blocked_by.",
+          "type": "string", "pattern": "^OI-[0-9]{2,}$"
         }
       },
       "allOf": [

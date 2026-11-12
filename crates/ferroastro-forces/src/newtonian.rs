@@ -161,13 +161,31 @@ impl<F: Frame, C: Center, R: Real> SecondOrderSystem<R> for NewtonianPointMasses
 
     /// Pairwise evaluation: each pair is visited once and its terms are applied with opposite
     /// signs, so the force sum is antisymmetric (momentum is conserved to round-off).
+    ///
+    /// # Errors
+    /// `FA-E0403` if `x`, `v` or `a` does not have length `3n` (checked here, not only by the
+    /// integrator: the trait method is public; PR #13 review R13-CODE-2); `FA-E0501` for
+    /// coincident bodies.
     #[expect(
         clippy::indexing_slicing,
-        reason = "x and a have length 3n (checked by the integrator); i, j < n"
+        reason = "x and a have length 3n (checked on entry); i, j < n"
     )]
-    fn acceleration(&self, t: R, x: &[R], _v: &[R], a: &mut [R]) -> Result<(), IntegratorError> {
-        a.fill(R::ZERO);
+    fn acceleration(&self, t: R, x: &[R], v: &[R], a: &mut [R]) -> Result<(), IntegratorError> {
         let n = self.gm.len();
+        for (what, got) in [
+            ("positions", x.len()),
+            ("velocities", v.len()),
+            ("accelerations", a.len()),
+        ] {
+            if got != 3 * n {
+                return Err(IntegratorError::Dimension {
+                    what,
+                    got,
+                    expected: 3 * n,
+                });
+            }
+        }
+        a.fill(R::ZERO);
         for i in 0..n {
             for j in (i + 1)..n {
                 let d = [
@@ -245,6 +263,18 @@ mod tests {
             .acceleration(0.0, &[1.0; 6], &[0.0; 6], &mut a)
             .unwrap_err();
         assert_eq!(e.code(), ErrorCode::ForceModelSingular);
+        // R13-CODE-2: the public trait method checks every slice length itself.
+        let x = [0.0, 0.0, 0.0, 2.0, 0.0, 0.0];
+        for (xs, vs, n_a) in [
+            (&x[..5], &[0.0; 6][..], 6),
+            (&x[..], &[0.0; 5][..], 6),
+            (&x[..], &[0.0; 6][..], 5),
+            (&x[..], &[][..], 6),
+        ] {
+            let mut a = vec![0.0; n_a];
+            let e = m.acceleration(0.0, xs, vs, &mut a).unwrap_err();
+            assert_eq!(e.code(), ErrorCode::IntegratorDimension, "{e}");
+        }
     }
 
     /// Verifies: API-001

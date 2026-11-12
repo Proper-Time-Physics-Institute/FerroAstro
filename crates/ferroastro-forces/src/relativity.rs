@@ -669,4 +669,27 @@ mod tests {
         assert!((a[0] - 4.0).abs() < 4.0 * f64::EPSILON && a[1].abs() < f64::EPSILON);
         assert!(a[2].abs() < f64::EPSILON);
     }
+
+    /// Off the equatorial plane (r·ŝ ≠ 0) the `3(r·ŝ)/r²` term along `r × v` contributes; worked
+    /// by hand from a = (1+γ)·GS/(c² r³)·[3(r·ŝ)(r × v)/r² + v × ŝ] (PR #13 review F5: changing
+    /// that coefficient left every PR-tier test green).
+    ///
+    /// Verifies: PHY-011
+    #[test]
+    fn lense_thirring_out_of_plane_uses_three_r_dot_s() {
+        use std::f64::consts::SQRT_2;
+        let pole = Pole::<Icrf>::from_components([0.0, 0.0, 1.0]).unwrap();
+        let lt = LenseThirring::new(SpinGm::from_km5_per_s3(2.0).unwrap(), speed(1.0), 1.0, pole)
+            .unwrap();
+        // r = (1, 0, 1): r² = 2, r³ = 2√2, r·ẑ = 1; v = ŷ: r × v = (−1, 0, 1), v × ẑ = x̂.
+        // Prefactor (1+γ)·GS/(c² r³) = 4/(2√2) = √2; 3(r·ŝ)/r² = 3/2.
+        // a = √2·[(3/2)(−1, 0, 1) + (1, 0, 0)] = √2·(−1/2, 0, 3/2).
+        let a = accel(&lt, [1.0, 0.0, 1.0], [0.0, 1.0, 0.0]);
+        let want = [-SQRT_2 / 2.0, 0.0, 3.0 * SQRT_2 / 2.0];
+        for (got, w) in a.iter().zip(want) {
+            assert!((got - w).abs() <= 8.0 * f64::EPSILON, "{a:?} vs {want:?}");
+        }
+        // A coefficient of 2 instead of 3 would give √2·(0, 0, 1): the x component tells them apart.
+        assert!(a[0] < -0.5);
+    }
 }

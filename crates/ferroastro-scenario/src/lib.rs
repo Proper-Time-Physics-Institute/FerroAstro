@@ -58,6 +58,6 @@ pub use error::ScenarioError;
 pub use hash::{IcRecord, Parts, canonical_ic_text, ic_hash};
 pub use spec::{
     BodyName, ConstantsSpec, DAYS_PER_JULIAN_YEAR, Forces, GmSet, IcSource, InitialConditionsSpec,
-    IntegratorName, IntegratorSpec, Mode, OutputSpec, Ppn, Precision, SCHEMA_VERSION, SWITCHES,
-    ScenarioSpec, Span, json_schema,
+    IntegratorName, IntegratorSpec, MAX_OUTPUT_SAMPLES, Mode, OutputSpec, Ppn, Precision,
+    SCHEMA_VERSION, SWITCHES, ScenarioSpec, Span, json_schema,
 };

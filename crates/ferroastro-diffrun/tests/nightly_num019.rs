@@ -152,9 +152,11 @@ fn nightly_num019_solar_j2_and_lense_thirring_contributions_under_eih() {
     ] {
         for w in r.rows_of(p) {
             println!(
-                "{} {}: {:+.7} arcsec/cy (informational)",
+                "{} {}: {:+.7} arcsec/cy ({}; raw signed sum {:+.7}; informational)",
                 p.label(),
                 w.combination.label,
+                p.to_park17(w.value),
+                p.park17_convention(),
                 w.value
             );
         }

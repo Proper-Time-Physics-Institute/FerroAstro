@@ -20,6 +20,7 @@ sha2.workspace = true
 thiserror.workspace = true
 
 [dev-dependencies]
+proptest.workspace = true
 ferroastro-constants.workspace = true
 ferroastro-diffrun.workspace = true
 ferroastro-ephem.workspace = true

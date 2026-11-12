@@ -267,9 +267,13 @@ def run(
 
 
 def series_name(scenario_name: str, variant: str | None) -> str:
-    """File name of a series: the primary one, or a named REBOUNDx variant next to it."""
-    infix = "" if variant is None else f".{variant}"
-    return f"{scenario_name}.rebound{infix}.states.csv"
+    """File name of a series: the primary one, or a named REBOUNDx variant next to it.
+
+    The scenario name must be a plain file stem (:func:`common.safe_stem`, R13-CODE-6).
+    """
+    if variant is None:
+        return common.output_file({"name": scenario_name}, "rebound")
+    return f"{common.safe_stem(scenario_name)}.rebound.{common.safe_stem(variant)}.states.csv"
 
 
 def main(argv: Sequence[str] | None = None) -> int:

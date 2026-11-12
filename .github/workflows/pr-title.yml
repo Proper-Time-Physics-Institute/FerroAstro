@@ -1,0 +1,42 @@
+# SPDX-FileCopyrightText: 2026 Proper-Time Physics Institute
+# SPDX-License-Identifier: Apache-2.0
+#
+# PR-title lint (STD-011, title part only): the squash-merge title becomes the commit on main, so
+# it must follow Conventional Commits 1.0.0. Release automation (release-please) is not
+# implemented here.
+#
+# Security (STD-012): no third-party action, read-only token, no pull_request_target. The title is
+# attacker-controlled, so it reaches the script only through an environment variable and is never
+# interpolated into the shell source.
+name: pr-title
+
+on:
+  pull_request:
+    types: [opened, edited, synchronize, reopened]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pr-title-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  title:
+    name: pr-title (Conventional Commits)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Conventional Commits PR title
+        env:
+          PR_TITLE: ${{ github.event.pull_request.title }}
+        shell: bash
+        run: |
+          re='^(feat|fix|docs|style|refactor|perf|test|build|ci|chore|revert)(\([a-z0-9._/-]+\))?!?: .+'
+          printf 'PR title: %s\n' "$PR_TITLE"
+          if [[ "$PR_TITLE" =~ $re ]]; then
+            echo "PR title follows Conventional Commits (STD-011)."
+          else
+            echo "::error::PR title is not a Conventional Commits header: type(scope)!: summary, type one of feat fix docs style refactor perf test build ci chore revert (STD-011)"
+            exit 1
+          fi

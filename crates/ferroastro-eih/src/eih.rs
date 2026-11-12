@@ -206,8 +206,14 @@ impl<R: Real> Pairs<R> {
         let layout = view.layout();
         let major = layout.indices(Tier::Major);
         let m = major.len();
-        let pos: Vec<[R; 3]> = major.iter().map(|&i| view.position(i)).collect();
-        let vel: Vec<[R; 3]> = major.iter().map(|&i| view.velocity(i)).collect();
+        let pos = major
+            .iter()
+            .map(|&i| view.position(i))
+            .collect::<Result<Vec<[R; 3]>, _>>()?;
+        let vel = major
+            .iter()
+            .map(|&i| view.velocity(i))
+            .collect::<Result<Vec<[R; 3]>, _>>()?;
         let gm: Vec<R> = major.iter().map(|&i| layout.gm(i)).collect();
         let mut r = vec![R::ZERO; m * m];
         for i in 0..m {

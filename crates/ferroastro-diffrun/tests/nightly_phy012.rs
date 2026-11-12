@@ -5,18 +5,19 @@
 //!
 //! Protocol (ADR-0014, maintainer decision C of 2026-10-20, requirements PR #19): "report both".
 //! P-remove = ϖ̇(full) − ϖ̇(full − X) is ASSERTED for the seven rows within each vector's
-//! tolerance; P-add = ϖ̇(Sun + Mercury + X) − ϖ̇(Sun + Mercury) and the cross terms of Park17's six
-//! planet pairs (both protocols, sign convention labelled) are printed as information only.
+//! tolerance, and the P-remove cross terms of Park17's six planet pairs, in Park17's sign
+//! convention (`Protocol::to_park17`), are ASSERTED against the six interaction rows (maintainer
+//! decision 2026-10-21 on PR #13). P-add = ϖ̇(Sun + Mercury + X) − ϖ̇(Sun + Mercury) and the P-add
+//! cross terms are printed as information only.
 //! Every configuration starts from the header.440 records at JDEPOC (identical per body, asserted
 //! by the harness), runs Newtonian point masses with IAS15 backwards and forwards, and is
 //! measured by one Park2017 estimator (daily samples, mean-orbit plane, quadratic + 14 Table-2
 //! terms, J2000 ± 1000 Julian yr).
 //!
-//! The assertion is PROVISIONAL: P-add was pre-registered (WP14) and missed 4 of 7 rows; P-remove
-//! was chosen after those results were known. The Park17 rows carry `provisional = "OI-38"`.
-//! Revert condition: if a maintainer's reading of the Park 2017 text (OI-38) says P-add, the gate
-//! asserts P-add again and its misses are physics discrepancies. The evidence table is written to
-//! `target/diffrun/` as markdown and JSON.
+//! P-remove is Park's protocol (OI-38 closed 2026-10-21: Park 2017 §4 p. 5, ADR-0014). It was
+//! chosen after the WP14 results were known, when P-add, the pre-registered protocol, had missed
+//! 4 of 7 rows; that order stays disclosed. The evidence table is written to `target/diffrun/` as
+//! markdown and JSON.
 
 mod common;
 
@@ -163,18 +164,49 @@ fn nightly_phy012_park17_table3_newtonian_contributions() {
         "base (Sun + Mercury) rate {:.3e} arcsec/cy: the estimator floor on a closed Kepler orbit (true 0)",
         rate("base")
     );
+    // Cross terms in Park17's sign convention (ADR-0014): each protocol's inclusion-exclusion
+    // second difference is the negative of Park's "pair removal minus single removals"
+    // (`Protocol::to_park17`). P-remove cross terms are ASSERTED against the six interaction rows
+    // (maintainer decision 2026-10-21 on PR #13); P-add cross terms are information only.
+    let mut failures = Vec::new();
+    let mut pairs_asserted = 0_usize;
     for p in [Protocol::CrossTerm, Protocol::CrossTermRemove] {
         for w in r.rows_of(p) {
             let park = reference(&w.combination.label, p);
+            let v = p.to_park17(w.value);
+            let asserted = p == Protocol::CrossTermRemove;
             println!(
-                "{} {}: {:+.6} vs Park17 interaction row {} (informational, OI-38)",
+                "{} {}: {v:+.6} ({}; harness signed sum {:+.6}) vs Park17 interaction row {}, difference {} ({})",
                 p.label(),
                 w.combination.label,
+                p.park17_convention(),
                 w.value,
-                park.map_or_else(|| "-".into(), |x| format!("{x:+.4}"))
+                park.map_or_else(|| "-".into(), |x| format!("{x:+.4}")),
+                park.map_or_else(|| "-".into(), |x| format!("{:+.6}", v - x)),
+                if asserted {
+                    "ASSERTED"
+                } else {
+                    "information only"
+                },
             );
+            if asserted {
+                let id = vector_id(&w.combination.label, p);
+                let pv = vs.get(&id).unwrap();
+                assert!(
+                    pv.blocking_open_item(&open_items).is_none(),
+                    "{id}: the pair rows gate since the decision of 2026-10-21; remove `blocked_by`"
+                );
+                if let Err(e) = pv.check(v) {
+                    failures.push(e.to_string());
+                }
+                pairs_asserted += 1;
+            }
         }
     }
+    assert_eq!(
+        pairs_asserted, 6,
+        "one asserted P-remove cross term per Park17 interaction row"
+    );
 
     // P-add rows: information only (ADR-0014), never asserted.
     let mut add_misses = Vec::new();
@@ -202,32 +234,29 @@ fn nightly_phy012_park17_table3_newtonian_contributions() {
         r.rows_of(Protocol::Add).count()
     );
 
-    // PHY-012 / NUM-013(b) rows: P-remove ASSERTED (ADR-0014), PROVISIONAL under OI-38.
-    let mut failures = Vec::new();
-    let mut labels = std::collections::BTreeSet::new();
+    // PHY-012 / NUM-013(b) rows: P-remove ASSERTED (ADR-0014; OI-38 closed 2026-10-21).
     let mut asserted = 0_usize;
     for w in r.rows_of(Protocol::Remove) {
         let id = vector_id(&w.combination.label, Protocol::Remove);
         let v = vs.get(&id).unwrap();
         assert!(
             v.blocking_open_item(&open_items).is_none(),
-            "{id}: the PHY-012 rows gate under ADR-0014; use `provisional`, not `blocked_by`"
+            "{id}: the PHY-012 rows gate under ADR-0014; remove `blocked_by`"
         );
-        let provisional = v.provisional_open_item(&open_items).unwrap();
+        assert!(
+            v.provisional_open_item(&open_items).unwrap().is_none(),
+            "{id}: OI-38 is closed; the row must not carry `provisional`"
+        );
         let expected = v.value().unwrap();
         let tol = v.tolerance.allowed(expected);
         let d = w.value - expected;
         println!(
-            "PHY-012 {:<10} P-remove {:.6} vs Park17 {expected} : {d:+.6} arcsec/cy, margin {:.2} ({}), ASSERTED{}",
+            "PHY-012 {:<10} P-remove {:.6} vs Park17 {expected} : {d:+.6} arcsec/cy, margin {:.2} ({}), ASSERTED",
             w.combination.label,
             w.value,
             d.abs() / tol,
             if d.abs() <= tol { "within" } else { "OUTSIDE" },
-            provisional.map_or_else(String::new, |p| format!(", PROVISIONAL ({})", p.open_item)),
         );
-        if let Some(p) = provisional {
-            labels.insert(p.to_string());
-        }
         if let Err(e) = v.check(w.value) {
             failures.push(e.to_string());
         }
@@ -238,24 +267,13 @@ fn nightly_phy012_park17_table3_newtonian_contributions() {
         toggles.len(),
         "one asserted P-remove row per planet"
     );
-    for l in &labels {
-        println!("{l}");
-    }
-    if !labels.is_empty() {
-        println!(
-            "PROVISIONAL (ADR-0014): P-remove was chosen after the WP14/WP17 results were known; P-add was \
-             pre-registered and missed 4 of 7 rows. Revert condition: if a maintainer's reading of the Park 2017 \
-             text (OI-38) says P-add, the gate asserts P-add again and the P-add misses above are physics \
-             discrepancies (type:physics-discrepancy)."
-        );
-    }
     println!(
-        "PHY-012 rows outside the tolerance under P-remove (asserted): {}",
+        "PHY-012 rows and pair rows outside the tolerance under P-remove (asserted): {}",
         failures.len()
     );
     assert!(
         failures.is_empty(),
-        "PHY-012 P-remove rows outside tolerance:\n{}",
+        "PHY-012 P-remove rows or pair rows outside tolerance:\n{}",
         failures.join("\n")
     );
 }

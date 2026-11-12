@@ -18,7 +18,7 @@
 //! | `tolerance` | table with `abs` and/or `rel`, both finite and ≥ 0 |
 //! | `generated_by`, `engine` | required when `kind = "computed-reference"` (TST-003) |
 //! | `blocked_by` | optional `OI-NN`: the oracle is non-gating while that open item is open ([`Vector::blocking_open_item`]) |
-//! | `provisional` | optional `OI-NN`, never with `blocked_by`: the oracle gates, but its assertion is PROVISIONAL until that open item is closed; the item must exist in `OPEN-ITEMS.md` and results are labelled with it and its revert condition ([`Vector::provisional_open_item`], ADR-0014) |
+//! | `provisional` | optional `OI-NN` (two or more digits, ADR-0004 revision 2026-10-21), never with `blocked_by`: the oracle gates, but its assertion is PROVISIONAL until that open item is closed; the item must exist in `OPEN-ITEMS.md` and results are labelled with it and its revert condition ([`Vector::provisional_open_item`], ADR-0004, ADR-0014) |
 //!
 //! `source` and `citation` may not contain `UNVERIFIED` or `[S]`: such values cannot be oracles
 //! until closed in `docs/requirements/OPEN-ITEMS.md` (PHY-018).

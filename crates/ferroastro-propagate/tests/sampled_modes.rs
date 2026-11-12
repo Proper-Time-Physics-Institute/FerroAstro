@@ -102,6 +102,53 @@ fn test_particle_cadence_refusals_name_the_option() {
     assert!(e.to_string().contains("perihelion"), "{e}");
 }
 
+/// B4 (PR #13 review): an output grid past `MAX_OUTPUT_SAMPLES` (a huge span or a tiny cadence)
+/// is refused by `ScenarioSpec::validate` and by `run` with `FA-E1203`, at once, for every mode
+/// that samples; a grid at the cap validates. Neither the refusal nor the check counts the grid.
+///
+/// Verifies: API-002, CI-009
+#[test]
+fn output_grid_past_the_cap_is_refused_without_panic_or_hang() {
+    use ferroastro_scenario::{DAYS_PER_JULIAN_YEAR, MAX_OUTPUT_SAMPLES};
+    let (h, prov) = header();
+    let data = DataSources::none().with_header(&h, &prov);
+    let cap = f64::from(MAX_OUTPUT_SAMPLES);
+    let t0 = std::time::Instant::now();
+    for file in [
+        "oracle-clite-sun-mercury-tp-newton-252yr.toml",
+        "stage-a-sun-8planets-newton-100yr.toml",
+    ] {
+        let base = spec(file);
+        let cadence = base.output.cadence_days.unwrap();
+        // At the cap: (cap - 1) whole intervals, i.e. MAX_OUTPUT_SAMPLES samples, validate.
+        let mut ok = base.clone();
+        ok.span.years = (cap - 1.0) * cadence / DAYS_PER_JULIAN_YEAR;
+        ok.validate().unwrap();
+        // Huge spans (2^32 intervals and more) and tiny cadences, forwards and backwards.
+        let mut huge = base.clone();
+        huge.span.years = cap * cadence / DAYS_PER_JULIAN_YEAR;
+        let mut wraps = base.clone();
+        wraps.span.years = -f64::from(u32::MAX) * 2.0 * cadence / DAYS_PER_JULIAN_YEAR;
+        let mut tiny = base.clone();
+        tiny.output.cadence_days = Some(f64::MIN_POSITIVE);
+        let mut subnormal = base.clone();
+        subnormal.output.cadence_days = Some(f64::MIN_POSITIVE / 4.0);
+        let mut far = base.clone();
+        far.span.years = f64::MAX;
+        for s in [huge, wraps, tiny, subnormal, far] {
+            let e = s.validate().unwrap_err();
+            assert_eq!(e.code(), ErrorCode::ScenarioValue, "{file}: {e}");
+            assert!(e.to_string().contains("MAX_OUTPUT_SAMPLES"), "{e}");
+            let e = run(&s, &data).unwrap_err();
+            assert_eq!(e.code(), ErrorCode::ScenarioValue, "{file}: {e}");
+        }
+    }
+    assert!(
+        t0.elapsed().as_secs_f64() < 5.0, // lint: allow-literal(wall-clock bound: refusals must not count the grid)
+        "refusing a huge grid must not count it"
+    );
+}
+
 /// Ephemeris-field mode: only Newtonian f64 from de440-bsp; J2 and double-double are refused by
 /// name; a header IC source is a schema error.
 ///

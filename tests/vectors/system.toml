@@ -19,7 +19,7 @@ retrieved = "2026-10-15"
 tolerance = { abs = 1e-3 }
 tolerance_rationale = "PROVISIONAL (WP11 plan): 1 m. The SPK is a Chebyshev fit to the same integration, so at the integration's start epoch it reproduces the initial conditions to the fit's interpolation error. A wrong centre, frame or unit reading misses by >= 1e5 km (the test prints and bounds those)."
 verified_by = "WP11 builder agent, 2026-10-15: tolerance from the WP11 plan, written before any run (IMPLEMENTATION-NOTES WP11)."
-notes = "OI-23 evidence. Closure of OI-23 is a maintainer decision (NEEDS HUMAN REVIEW)."
+notes = "OI-23 evidence. OI-23 is closed (maintainer decision B, 2026-10-20), so this is no longer a review item."
 
 [[vector]]
 id = "SYSTEM-HEADER-VS-DE440-VEL-MAX-DIFF"
@@ -115,7 +115,7 @@ value = 0.0
 unit = "km"
 kind = "analytic"
 source = "After translating every body by the weighted mean, the weighted mean is zero up to the rounding of the translated coordinates and of the compensated weighted sums."
-citation = "Definition of the barycentre; mu* per NUM-018 (Park et al. 2021 Eqs. 1-2, transcription NEEDS HUMAN REVIEW)"
+citation = "Definition of the barycentre; mu* per NUM-018 (Park et al. 2021 Eqs. 1-2; the maintainer signed off the transcription on 2026-10-21: OI-75, Journal #12)"
 retrieved = "2026-10-15"
 tolerance = { abs = 1e-6 }
 tolerance_rationale = "1 mm: the translated coordinates carry <= 1/2 ulp each (<= 5e-7 km for the 7.4e9 km Pluto system, whose weight is ~7e-9 of the total; ~1e-10 km for the Sun), so the weighted residual is far below 1e-6 km."

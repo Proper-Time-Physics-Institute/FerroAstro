@@ -4973,7 +4973,10 @@ Reviewer artefacts are in the session scratchpad `rev21/`, not committed:
 Maintainer decision C of 2026-10-20 (ADR-0014, requirements PR #19, merged to `main` as `8353efc`): "report both".
 PHY-012 and NUM-013(b) assert P-remove = ϖ̇(full) − ϖ̇(full − X) and report P-add = ϖ̇(Sun + Mercury + X) −
 ϖ̇(Sun + Mercury) as information only. The ADR text, the PHY-012/PHY-019/NUM-013 acceptance and the OI-38 update
-live on `main`; this branch has not merged `main`, so its own `docs/requirements` still show the older OI-38 text.
+live on `main`. (Cherry-picked to `m3-newtonian-nbody` from `m4-eih` `92ca0bb` after `main` was merged in; the
+numbers below were measured on `m4-eih`. The `m3-newtonian-nbody` rerun is in "PR #13 judge fixes" below.) Until the merge of the final
+`m3-newtonian-nbody` into `m4-eih`, that branch had not merged `main`, so its own `docs/requirements` showed the older
+OI-38 text.
 
 **This choice was made after the results were known.** P-add was pre-registered in WP14 and missed 4 of 7 rows
 (WP14: Venus −0.022706, Earth/Moon −0.018997, Jupiter +0.038832, Saturn +0.043049 ″/cy; WP17: P-add Venus −0.029820
@@ -5019,3 +5022,185 @@ shared IC hash `6d875b67…bada552`):
   - The printed σ_rss of the N-AST P-remove row is 0.0022 ″/cy, 7× the tolerance. It is the RSS of two independent
     per-configuration jack-knife σ, which ignores that the runs share their ICs. It is not used by the gate.
     NEEDS HUMAN REVIEW: confirm that this is acceptable for a ±0.0003 rung.
+
+## PR #13 judge fixes (B1-B4, PO-4, minors)
+Response to the ferroastro-58 independent judge review of PR #13 at `5a05b88` (changes requested). Builder agent,
+2026-10-20/21, worktree of `m3-newtonian-nbody`. Every item below is a separate commit on this branch.
+
+**Merge.** `origin/main` (`fd30df7`: #16, #19, #24, #25, #26) merged with `--no-ff` (`5eb8504`). The only conflict was
+`docs/requirements/TRACE.md`; it was regenerated with `tools/trace.py`, never hand-merged. `docs/requirements` and ADRs
+are main's text.
+
+**B1/B2 (cherry-picked from `m4-eih`).** `1d56668`, `cc7e123`, `b4ea6ca` and `92ca0bb` were cherry-picked with `-x`;
+`abffb28` (TRACE regeneration) was not, and TRACE.md was regenerated here. Nothing in them depends on m4-only code.
+- The `provisional` schema change is its own commit, `046a471` (`tests/vectors/schema.json` only).
+  **NEEDS HUMAN REVIEW: ADR-0004 amendment pending in a separate docs PR by ferroastro-2f.** ADR-0004 on `main` does
+  not mention `provisional` yet (ADR-0014 still says the vectors carry `blocked_by`), so the schema runs ahead of the
+  ADR; there was no ADR wording to match.
+- The parser part of `1d56668` is `a6c86f1`. `speed_table.rs` exists on m3, so `b4ea6ca` applied (`f8a7061`).
+- `92ca0bb`'s notes section was taken alone (the m4 file has EIH sections this branch does not); its numbers were
+  measured on `m4-eih` and are re-measured below.
+- B2: `nightly_phy013` now carries `Verifies: PHY-019`, and `PARK17-T3-ASTEROIDS` lists PHY-019 (provenance-only
+  golden-change, `d2e657a`).
+
+**B3 (OI-77).** `num013a_scenario.rs` converts every analytic rate with n = √((GM☉ + GM☿)/a³) (per-orbit advance of
+the GM☉ test particle, as the ladder's `RATE_CONVENTION`). No expected value or tolerance moved
+(`NUM013-ISOLATION-DIFF-SCENARIO` is 0 ± 1e-4); its rationale now states the basis (provenance-only golden-change,
+`e7b3362`). Measured difference, before → after (″/cy): GR-SCHW −1.233e-5 → −1.589e-5 (analytic +3.57e-6, the OI-77
+figure), J2 +3.575e-8 → +3.345e-8, LT −2.747e-9 → −2.580e-9. A workspace grep found no other GM☉-only mean-motion
+conversion.
+
+**B4.** `grid_samples` counts in closed form with a checked conversion and returns FA-E1300 for non-finite input or
+more than `MAX_OUTPUT_SAMPLES` = 2²⁶ samples; `ScenarioSpec::validate` refuses `|span|/cadence` at that cap
+(FA-E1203). Tests: closed form = old loop on every scenario grid; 2³²+ intervals, tiny/subnormal cadences, ∞ and NaN
+are refused at once by `grid_samples` and by `validate`/`run` (test-particle and N-body), in debug and release.
+(The judge cites `ferroastro-propagate/src/passages.rs`; the task text said ferroastro-precession — the code is in
+propagate.)
+
+**PO-4.** `Protocol::to_park17` maps a row into Park's sign: both cross-term protocols compute the
+inclusion–exclusion second difference, which ADR-0014 states is the negative of Park's "pair removal − single
+removals", so both are negated; single-body rows are unchanged. The markdown report and the nightly print values,
+cross-checks and `value − reference` in that convention, with the convention in each header; JSON and `Row::value`
+keep the raw sums. A first commit (`0215956`) negated only P-remove; the PHY-012 run of the negative check showed the
+P-add cross terms opposite in sign to Park in 6/6 pairs, and `28bc7dc` negates both.
+
+**Minors.**
+- F3: the NUM-023 long-ensemble guard and the WP12 1b guard also check their documented failure values
+  (new vectors `NUM023-LONG-ENSEMBLE-KNOWN-FAILURE-ENERGY-SLOPE` 0.629 ± 0.018 and
+  `WP12-1B-KNOWN-FAILURE-ENERGY-SLOPE` 0.050 ± 0.027, the recorded slope and its fit standard error; labelled as
+  guards, never acceptance values). Long ensemble re-run: 0.6288534543, bound check passes (1.47e-4 of 0.018).
+  WP12 1b re-run (release, nightly profile, 4109 s under load): energy slope 0.050 ± 0.027, bound check passes
+  (3.2e-4 of 0.027), still the known failure.
+- F5: new unit test `lense_thirring_out_of_plane_uses_three_r_dot_s` (r·ŝ = 1). Mutating the coefficient 3.0 → 2.0
+  locally made it fail (`[0.0, 0.0, 1.414213562373095] vs [-0.7071067811865476, 0.0, 2.121320343559643]`); reverted,
+  never committed.
+- LIC-2: the `t_erfa_c.c`-copied vectors and the two tests that repeat their arguments carry
+  `Apache-2.0 AND BSD-3-Clause`, the NumFOCUS copyright and the ERFA licence block; `dep009_attribution` checks them.
+- LIC-3: `tools/oracles/nightly.sh` is the oracle job only (no cargo) and writes `oracle-job.done`;
+  `tools/oracles/nightly_ferroastro.sh` is the separate FerroAstro job that reads its files. CI-006's build-evidence
+  text in `docs/requirements/CI.md` still describes the combined script (requirements owner's text).
+- R13-CODE-2: `NewtonianPointMasses::acceleration` and the ephemeris-field acceleration check slice lengths
+  (FA-E0403). R13-CODE-3: `View::position/velocity` return `Result` (FA-E0500 for a bad index);
+  `momentum_over_g` returns `Option`. R13-CODE-4: `compare_states` refuses non-finite differences (FA-E1503).
+  R13-CODE-5: `RunOptions::validate`/`segments` (finite > 0, at most `MAX_SEGMENTS` = 10⁶; FA-E1400).
+  R13-CODE-6: oracle runners refuse scenario names that are not plain file stems. R13-CODE-7: proptest API-002
+  property tests in scenario, propagate, diffrun and oracle.
+
+**Left for the maintainer (not touched):** PO-6 (the 60× `ORACLE-STAGE-A-SWIFTEST-MAX-DR` widening) and B5
+(`pc_b_from_g` / NUM-023 at ≥ 5e7 steps; the long ensemble still fails at 0.629). Also open from the review and not
+addressed here: F6, F7, F8, F9, F10, LIC-1, PO-5.
+
+### Negative check: `provisional` still asserts
+At `d48261a`, `PARK17-T3-VENUS` was set locally from 277.4176 to 277.4276 (+0.01) and `nightly_phy012` was run
+(release, nightly profile). It FAILED; the vector was then restored (never committed):
+
+```
+PHY-012 Venus      P-remove 277.418142 vs Park17 277.4276 : -0.009458 arcsec/cy, margin 1.89 (OUTSIDE), ASSERTED, PROVISIONAL (OI-38)
+PHY-012 rows outside the tolerance under P-remove (asserted): 1
+thread 'nightly_phy012_park17_table3_newtonian_contributions' panicked at crates/ferroastro-diffrun/tests/nightly_phy012.rs:262:5:
+PHY-012 P-remove rows outside tolerance:
+FA-E0105: PARK17-T3-VENUS (...): measured 277.41814163541585 arcsec/cy, expected 277.4276 arcsec/cy, |diff| = 9.45836458413396e-3 > allowed 5e-3 arcsec/cy (abs Some(0.005), rel None); PROVISIONAL assertion (OI-38): it reverts if OI-38 is closed against its protocol (revert condition in OPEN-ITEMS.md OI-38 and the vector's tolerance_rationale)
+        FAIL [ 142.629s] (1/1) ferroastro-diffrun::nightly_phy012 nightly_phy012_park17_table3_newtonian_contributions
+```
+
+### Nightly PHY-012 and PHY-013 at the code tip
+Code tip `28bc7dcfc97c0e7a370d22640e319ded2f8694d8` (the only later commit is this docs-only one).
+`cargo nextest run --workspace --cargo-profile release --profile nightly --run-ignored only -E 'test(nightly_phy012) | test(nightly_phy013)'`,
+local, 32 threads, machine shared with other builds (load ≈ 45): **2/2 PASS**, 6320 s wall (PHY-012 194 s,
+PHY-013 6126 s). Shared IC hash `6d875b67…bada552`, 56 legs, 23 371 502 IAS15 steps for PHY-012.
+
+PHY-012 / NUM-013(b), Park17 Table 3, ″/cy:
+
+| row | Park17 | P-remove (ASSERTED, PROVISIONAL OI-38) | − Park | margin | P-add (information) | − Park | margin |
+|---|---|---|---|---|---|---|---|
+| Venus | 277.4176 | 277.418142 | +0.000542 | 0.11 | 277.394894 | −0.022706 | **4.54 OUTSIDE** |
+| Earth/Moon | 90.8881 | 90.888795 | +0.000695 | 0.14 | 90.869103 | −0.018997 | **3.80 OUTSIDE** |
+| Mars | 2.4814 | 2.481426 | +0.000026 | 0.01 | 2.479384 | −0.002016 | 0.40 |
+| Jupiter | 153.9899 | 153.990192 | +0.000292 | 0.06 | 154.028732 | +0.038832 | **7.77 OUTSIDE** |
+| Saturn | 7.3227 | 7.322772 | +0.000072 | 0.01 | 7.365749 | +0.043049 | **8.61 OUTSIDE** |
+| Uranus | 0.1425 | 0.142531 | +0.000031 | 0.01 | 0.139602 | −0.002898 | 0.58 |
+| Neptune | 0.0424 | 0.042378 | −0.000022 | 0.00 | 0.042068 | −0.000332 | 0.07 |
+
+P-remove: 0 of 7 rows outside ±0.005 (asserted, PASS). P-add: 4 of 7 outside (information only, ADR-0014).
+
+Cross terms in Park's sign (`Protocol::to_park17`: −(inclusion–exclusion second difference)), information only, ″/cy:
+
+| pair | Park17 | P-remove | − Park | P-add | − Park |
+|---|---|---|---|---|---|
+| Venus+Earth/Moon | −0.0209 | −0.020782 | +0.000118 | −0.022316 | −0.001416 |
+| Venus+Jupiter | −0.0012 | −0.001116 | +0.000084 | −0.000743 | +0.000457 |
+| Earth/Moon+Mars | −0.0016 | −0.001570 | +0.000030 | −0.001744 | −0.000144 |
+| Mars+Jupiter | +0.0002 | +0.000199 | −0.000001 | +0.000351 | +0.000151 |
+| Jupiter+Saturn | +0.0411 | +0.041038 | −0.000062 | +0.040937 | −0.000163 |
+| Saturn+Uranus | +0.0004 | +0.000380 | −0.000020 | +0.000298 | −0.000102 |
+
+Both protocols now agree in sign with Park in 6/6 pairs.
+
+PHY-013 / PHY-019 (Park17 mean orbit, epoch JDEPOC 2440400.5, J2000 ± 1000 Julian yr, quadratic + 14 Table-2 terms):
+- PHY-019 N-AST P-remove **0.001245** vs 0.0012 ± 0.0003: +0.000045, margin 0.15, ASSERTED, **PASS**. P-add 0.001242
+  (information only). The σ_rss caveat of the section above (0.0022, NEEDS HUMAN REVIEW) still applies.
+- PHY-013 N-SUM **532.304907** vs 532.30 ± 0.01: +0.004907, margin 0.491, **PASS**. Planets only 532.303644 (= WP14);
+  KBOs + ring +0.000019 (reported).
+
+### Gates
+At `28bc7dc` (all pass): `cargo fmt --check`; clippy `-D warnings`; nextest 270 passed, 41 skipped (every skip a
+`data_*`/`nightly_*` test); doctests 17 passed; `cargo deny check`; `cargo doc -D warnings`; ruff, ruff format, mypy
+strict; `reuse lint` (compliant); `trace.py --check` 0 errors; pytest 64 passed, 4 skipped (pyerfa not installed).
+
+### Adversarial review of the judge fixes (2026-10-21)
+Reviewer agent, on the builder tip `1fafeea`. Every judge item was checked against the ferroastro-58 review text on
+PR #13.
+- **Main had moved.** After the builder's merge (`5eb8504`, at `fd30df7`), `main` gained #28 (the ADR-0004 revision
+  defining `provisional`), #27 (PR-title and lint-canary CI) and #29 (the maintainer sign-offs of 2026-10-21). They
+  were merged with `--no-ff` (`1a2b4b3`), with TRACE.md regenerated by `tools/trace.py`.
+- **ADR-0004 alignment.** The "NEEDS HUMAN REVIEW: ADR-0004 amendment pending" note above is superseded: ADR-0004's
+  2026-10-21 revision is on `main` and accepted. Its contract requires `^OI-\d{2,}$`, but the schema and parser
+  accepted `^OI-\d+$`. Fixed in `a5dc213` (schema.json only, its own commit; the description now cites ADR-0004) and
+  `2b954ff` (parser, plus a test rejecting `provisional = "OI-7"`; setting the minimum back to one digit locally made
+  it fail, then it was reverted).
+- **Mutation checks (local, reverted, never committed):**
+  - B4: with the `validate` cap disabled, `output_grid_past_the_cap_is_refused_without_panic_or_hang` and the
+    scenario API-002 proptest fail.
+  - B4: with both `grid_samples` caps disabled, `grid_samples_closed_form_and_refusals` and the propagate API-002
+    proptest fail.
+  - F5: with LT `3.0 → 2.0` (`relativity.rs:412`), `lense_thirring_out_of_plane_uses_three_r_dot_s` fails.
+- **PO-4 sign.** Checked by algebra. If the rate carries a bilinear interaction term b_XY, both inclusion–exclusion
+  second differences (about `full` for P-remove, about `base` for P-add) equal +b_XY. Park's "pair removal − single
+  removals" equals −b_XY. Negating both protocols is therefore correct and independent of the measured signs.
+- **Negative check reproduced** at `2b954ff`. Venus was set locally to 277.4276, and `nightly_phy012` FAILED:
+  `FA-E0105: PARK17-T3-VENUS … |diff| = 9.45836458413396e-3 > allowed 5e-3 … PROVISIONAL assertion (OI-38)`. The
+  vector was reverted and never committed.
+- **Maintainer rulings since the builder's report** (PR #13 comment, 2026-10-21, and `main` #29) change the "left for
+  the maintainer" items above. They are now decided and block the merge:
+  - **B5 / NUM-023 blocks #13.** It must pass with an asserting test at ≥ 5e7 steps; a known-failure guard is not
+    enough.
+  - **PO-6 is rejected.** `ORACLE-STAGE-A-SWIFTEST-MAX-DR` must go back to 1 km, with the Swiftest gap explained or
+    fixed.
+  - **OI-38 is confirmed as P-remove.** Under ADR-0004 the OI-38 tick and the removal of `provisional` from the seven
+    Park rows land together, in #13. This pass touched neither: OPEN-ITEMS.md belongs to ferroastro-2f.
+- **Nightly re-run at code tip `2b954ff`** (release, nightly profile, local, load ≈ 38):
+  `-E 'test(nightly_phy012) | test(nightly_phy013)'` gave **2/2 PASS** in 4808 s (PHY-012 135 s, PHY-013 4673 s).
+  Every number is identical to the `28bc7dc` table above.
+  - P-remove: 0 of 7 rows outside ±0.005 (largest margin 0.14, Earth/Moon).
+  - P-add: 4 of 7 rows outside (information only).
+  - Cross terms in Park's sign agree with Park in 6/6 pairs for both protocols.
+  - N-AST P-remove: 0.001245 (margin 0.15, PHY-019 asserted).
+  - N-SUM: 532.304907 (margin 0.491).
+- **Gates at `2b954ff`:** all pass.
+  - fmt, clippy `-D warnings`, deny, `cargo doc -D warnings`, ruff, ruff format and mypy, reuse, `trace.py --check`
+    (0 errors).
+  - nextest: 270 passed, 41 skipped (`data_*` and `nightly_*` only).
+  - doctests: 17 passed.
+  - pytest: 78 passed, 4 skipped (pyerfa not installed).
+
+## Merge of the final `m3-newtonian-nbody` into `m4-eih` (cross-term API)
+M3 (PO-4) and M4 (progress review after WP18, R1) fixed the cross-term sign independently. The merge keeps M3's API:
+`Row::value` (and the JSON) is the raw inclusion–exclusion second difference for both cross-term protocols, and
+`Protocol::to_park17` negates it into Park17's sign ("pair removal minus single removals"); `park17_convention`
+labels it. M4's `Protocol::convention`, `Protocol::second_difference_sign` and the `Row::convention` and
+`Row::second_difference` fields described in WP19 above are gone; `Protocol::is_cross_term`, `Plan::switches_both`
+and the markdown's separate second-difference column are kept. M4's sign-flipped `CrossTermRemove` coefficients in
+`Plan::bodies` and `Plan::switches_both` are reverted to the second difference, so that `to_park17` is not applied
+twice. P-remove cross terms print the same Park17-sign values as before. The P-add cross term now prints
+−(second difference), M3's convention, where M4 printed +(second difference); P-add cross terms are information only.
+M4 JSON evidence written before this merge holds the opposite sign for `CrossTermRemove` rows.

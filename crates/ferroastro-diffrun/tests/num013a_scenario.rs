@@ -10,12 +10,13 @@
 mod common;
 
 use ferroastro_analytic::advance::{
-    j2_inclined_rate, lense_thirring_rate, rate_arcsec_per_century, schwarzschild_advance,
+    j2_inclined_rate, keplerian_period, lense_thirring_rate, rate_arcsec_per_century,
+    schwarzschild_advance,
 };
 use ferroastro_analytic::kepler::Elements;
 use ferroastro_analytic::vector::{cross, dot, norm};
-use ferroastro_constants::De440;
-use ferroastro_core::units::Angle;
+use ferroastro_constants::{Body, De440};
+use ferroastro_core::units::{Angle, AngularRate, GravParam};
 use ferroastro_diffrun::{PassageSource, Plan, Protocol, RunOptions, SwitchToggle, run_plan};
 use ferroastro_propagate::{DataSources, de440_solar_spin};
 use ferroastro_vectors::VectorSet;
@@ -62,7 +63,10 @@ fn single_body_toggles_through_the_harness_match_their_analytic_rates() {
             .all(|c| c.ic_hashes.iter().all(|x| x == first))
     );
 
-    // Analytic rates of the initial osculating orbit (mu = GM_sun, the integrated dynamics).
+    // Analytic rates of the initial osculating orbit. OI-77 (closed 2026-10-21) and the ladder's
+    // RATE_CONVENTION: the per-orbit advance is that of the integrated test particle (mu =
+    // GM_sun: elements, Schwarzschild GM, J2 mean motion, period of the advance), and every
+    // arcsec/cy conversion uses n = sqrt((GM_sun + GM_Mercury)/a^3).
     let de = De440::load().unwrap();
     let sp = plan.configs[0].legs[0].clone();
     let ic = ferroastro_propagate::initial_conditions(&sp, &data).unwrap();
@@ -73,21 +77,29 @@ fn single_body_toggles_through_the_harness_match_their_analytic_rates() {
         mercury.velocity.map(|p| p[0]),
     );
     let mu = de.gm_sun();
+    let mu_rate =
+        GravParam::from_km3_per_s2(mu.km3_per_s2() + de.gm(Body::Mercury).km3_per_s2()).unwrap();
     let el = Elements::from_vectors(r0, v0, mu.km3_per_s2()).unwrap();
+    let period = keplerian_period(mu, el.a).unwrap();
+    let rate_period = keplerian_period(mu_rate, el.a).unwrap();
+    // Per-orbit advance of a rate of the integrated dynamics, re-expressed with n from mu_rate.
+    let convert = |r: AngularRate| r.rad_per_s() * period.seconds() / rate_period.seconds();
     let pole = ferroastro_frames::Pole::<f64>::sun_wgccre2015()
         .unwrap()
         .unit_vector();
     let h_dir = cross(r0, v0);
     let inc = Angle::from_radians((dot(h_dir, pole) / norm(h_dir)).acos()).unwrap();
     let c = de.speed_of_light();
-    let gr = schwarzschild_advance(mu, c, el.a, el.e, mu).unwrap();
+    let gr = schwarzschild_advance(mu, c, el.a, el.e, mu_rate).unwrap();
+    let to_cy =
+        |rad_per_s: f64| rate_arcsec_per_century(AngularRate::from_rad_per_s(rad_per_s).unwrap());
     let analytic = |id: &str| -> f64 {
         match id {
             "GR-SCHW" => gr.arcsec_per_century(),
-            "J2" => rate_arcsec_per_century(
+            "J2" => to_cy(convert(
                 j2_inclined_rate(mu, de.sun_j2(), de.sun_radius(), el.a, el.e, inc).unwrap(),
-            ),
-            _ => rate_arcsec_per_century(
+            )),
+            _ => to_cy(convert(
                 lense_thirring_rate(
                     de440_solar_spin(&de, "num013a").unwrap(),
                     c,
@@ -97,11 +109,11 @@ fn single_body_toggles_through_the_harness_match_their_analytic_rates() {
                     inc,
                 )
                 .unwrap(),
-            ),
+            )),
         }
     };
     println!(
-        "initial osculating orbit (mu = GM_sun): a = {:.3} km, e = {:.10}, inclination to the WGCCRE 2015 solar equator {:.6} deg",
+        "initial osculating orbit (mu = GM_sun): a = {:.3} km, e = {:.10}, inclination to the WGCCRE 2015 solar equator {:.6} deg; arcsec/cy with n = sqrt((GM_sun + GM_Mercury)/a^3) (OI-77)",
         el.a.km(),
         el.e,
         inc.radians().to_degrees()
