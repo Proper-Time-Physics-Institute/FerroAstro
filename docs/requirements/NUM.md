@@ -266,8 +266,12 @@ statement: >-
   bodies are fixed point masses. When EIH is on, the 1PN EIH acceleration
   (DE440 Eq. 27 minus its Newtonian part) SHALL be evaluated for every
   moving body, Major and Minor (the Sun, planets, the Moon, asteroids and
-  KBOs), each with its own 1PN terms, with the sums over all bodies;
-  tiering does not restrict the 1PN terms.
+  KBOs), each with its own 1PN terms. The 1PN sums run over the tiered
+  interaction graph: Major–Major, Major–Minor, Major–Ring and Minor–Ring,
+  with Ring masses as sources only (v = a = 0); a Minor body does not feel
+  1PN terms from other Minor bodies. (Amended 2026-11-12 to match the
+  maintainer's tier rules of 2026-11-11; it previously read "with the sums
+  over all bodies; tiering does not restrict the 1PN terms".)
 acceptance: >-
   With the DE440 asteroid set as Minor bodies and EIH evaluated for every
   moving body, the run costs < 5× the same tiered run without EIH, and the
@@ -909,6 +913,16 @@ notes: >-
   consistent (the 1PN correction of the relative acceleration is the
   difference of the two barycentric corrections); it is noted for code
   review of the WP22/WP23 wiring, not as a transcription issue.
+  RE-CHECK SIGNED OFF 2026-11-12 (maintainer, questionnaire answer "Signed
+  off"): WP22 changed the pinned files. The re-check checklist (18 rows:
+  12 unchanged, 2 changed-equivalent, 4 changed rows 12, 13, 16, 17 read
+  against DE430 p. 12, DE440 p. 5 and DE430 Eqs. 2-3) was signed against
+  m4-eih bdcec8b: eih.rs deefc428, barycentre.rs dcaa4bbf, terms.rs
+  76e3a354. After the sign-off, c86d328 forced v = a = 0 for bodies that do
+  not move (the signed Ring rule) and added minor-reaction accessors; no
+  Eq. 27 term changed (judge reading 2026-11-12). Current blobs: eih.rs
+  362a7603, terms.rs 7047ae8f. Any further change to these files needs a
+  re-check of the affected rows.
 ```
 
 ### NUM-021 — SIMD force kernels with bitwise reproducibility
