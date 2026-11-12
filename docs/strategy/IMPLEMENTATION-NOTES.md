@@ -5204,3 +5204,67 @@ and the markdown's separate second-difference column are kept. M4's sign-flipped
 twice. P-remove cross terms print the same Park17-sign values as before. The P-add cross term now prints
 −(second difference), M3's convention, where M4 printed +(second difference); P-add cross terms are information only.
 M4 JSON evidence written before this merge holds the opposite sign for `CrossTermRemove` rows.
+
+## WP22 — [M4] EIH for all bodies (D1), Lense–Thirring on Minor bodies, dμ*/dt barycentre (NUM-018)
+Branch `wp22-eih-all-bodies`, based on `origin/m4-eih` at `dbbc701`. Implements the maintainer decisions of
+2026-10-21 (Journal #12; NUM-020, NUM-009, PHY-014, NUM-019 and NUM-018 notes): D1 "Match DE440: all bodies",
+OI-35 "Sun reaction on; LT all bodies", OI-75 "Include dμ*/dt; scope to ephemeris mode".
+
+### Clean-room record (DEP-008, AGENTS.md rule 7)
+No REBOUND, REBOUNDx, ASSIST, Swiftest or Mercury6 source is opened. The EIH coefficients are the signed-off WP19
+transcription (NUM-020); nothing in Eq. 27's terms changes, only the sets the sums run over. The μ̇* expression is the
+time derivative of DE440 Eq. 2 (differentiated by hand); the velocity condition is DE430 Eq. 3 / Subbotin et al. 2023
+Eq. 5 as quoted in the NUM-018 sign-off. `mu_star_rate` and `relativistic_barycentre_with_rate` already exist on
+`m5-performance` (WP25, FerroAstro's own code); they are taken over textually so that the later merge is trivial,
+and they are re-verified here by checks of this WP's own.
+
+### Plan and pre-registered checks (written 2026-11-12 01:36 UTC, before any WP22 code or run)
+**Model.**
+- **Interaction graph.** The 1PN correction is applied to every interaction the Newtonian model contains. Define the
+  symmetric graph E of the tiered model (NUM-009): Major–Major, Major–Minor, Major–Ring and Minor–Ring; no
+  Minor–Minor and no Ring–Ring pairs. With `MinorReaction::Off` the Minor bodies are test particles: their GM is 0
+  as a source of anything.
+- **Eq. 27 over E.** For every **moving** body i (Major and Minor; the Moon is a Major body in every scenario, so it
+  already feels and sources EIH since WP19), the sources j and the potential U_i run over E(i); U_j runs over
+  E(j). The right-hand-side a_j is the Newtonian point-mass acceleration of j in the tiered model (over E(j)); a Ring
+  body has v_j = a_j = 0 (its frozen state). Ring bodies receive nothing (frozen). `RhsAcceleration::Iterated`
+  iterates every moving body. The coefficients (S1, S2, S3, B_ij) are the signed lines, unchanged.
+- **Why this is consistent.** Restricting every sum of the EIH Lagrangian to the pairs of a symmetric graph gives
+  a Lagrangian whose Euler–Lagrange equations are Eq. 27 with every sum restricted to the graph neighbours (the
+  three-body terms G²mᵢmⱼmₖ/(rᵢⱼrᵢₖ) need both edges; the a_j substitution uses the restricted Newtonian a_j). Its
+  boost invariance is pairwise, so the 1PN centre of mass with μᵢ* = GMᵢ(1 + vᵢ²/2c² − U_i^E/2c²), U^E over E(i),
+  is conserved to O(c⁻⁴). Check E3 tests this claim; if it fails, the claim is wrong and that is a finding.
+- **The two items NUM-009 left open** (to be decided by a human; NEEDS HUMAN REVIEW): (a) a Minor receiver's 1PN
+  sums do **not** include other Minor sources, because the tiered model omits their Newtonian pull and a 1PN
+  correction to an omitted force would be inconsistent; (b) the fixed Ring masses **are** sources in the 1PN sums
+  and in the potentials (their state: fixed position, zero velocity and acceleration), but receive nothing.
+- **Lense–Thirring** (`SolarLenseThirring`): every non-Sun **moving** body, Major and Minor (NUM-019, OI-35); the
+  Sun's reaction (default On) includes the Minor bodies. Ring bodies are frozen. Solar J2 stays Major-only (OI-76
+  open; not part of this WP).
+- **NUM-018.** `mu_star_rate` (μ̇*ᵢ = (GMᵢ/c²)[vᵢ·aᵢ + ½ Σⱼ GMⱼ (rᵢⱼ·vᵢⱼ)/rᵢⱼ³], Newtonian aᵢ) and
+  `relativistic_barycentre_with_rate` (Σμ*r = 0, Σ(μ̇*r + μ*v) = 0) in `ferroastro-eih`. Scenario key
+  `initial_conditions.barycentre = "relativistic"` (n-body only, opt-in; absent = header ICs unchanged, so every
+  existing IC hash and differential run is untouched), spelled as on `m5-performance`. This branch has no separate
+  "ephemeris mode"; the opt-in key is that scope. Ring bodies are translated in position only (they stay at rest).
+- **PHY-014 run (WP23)** keeps the header.440 ICs unchanged (the heliocentric rate does not depend on a uniform
+  metre-level shift; NUM-018's notes keep differential runs on the header ICs as well).
+
+**Checks.** Every bound is fixed here, before any run. A failure is a finding, not a reason to tune.
+
+| # | check | tier | pre-registered bound (vector) | rationale |
+|---|---|---|---|---|
+| E1 | **single-Minor equivalence**: Sun + 8 planets + geocentric Moon (header.440) + Ceres (REF-003 state); Ceres Minor vs Ceres Major. With one Minor body there is no Minor–Minor pair, so E is the complete graph in both cases and the 1PN corrections must agree; β = γ = 1 and (1.1, 0.9) | PR | max over bodies \|δa_Minor − δa_Major\| / \|δa_Major\| ≤ **1e-13** (`EIH-TIER-SINGLE-MINOR-REL`, new) | round-off of two summation orders, as `EIH-R3-LIMIT-CORRECTION-REL`; any graph error is O(1) for Ceres |
+| E2 | **independent reference evaluator** (in the test: Eq. 27 written again with an explicit edge predicate and freshly computed U_i, U_j, a_j per pair, O(N³)): synthetic Sun + 3 planets + 4 heavy Minor bodies (GM 1e-4 GM☉) + 2 Ring masses, reaction On and Off, β = γ = 1 and (1.1, 0.9) | PR | per moving body \|δa − δa_ref\| / \|δa_ref\| ≤ **1e-13** (same vector as E1); Ring bodies get exactly 0; **negative control**: the reference with Minor–Minor edges differs from the production value by > 1e-10 for some Minor body | the reference is a second transcription of the set rules; the control proves the comparison sees the graph |
+| E3 | **1PN centre of mass with tiering**: header.440 Sun, Mercury, Venus, Earth, Moon (geocentric), Mars Major; Jupiter, Saturn, Uranus, Neptune **Minor** (so the giant–giant pairs are omitted at both orders); EIH (β = γ = 1); 10 yr, every 10 d; R*_E = Σμ*r/Σμ* with U over E | PR | deviation from its least-squares line ≤ **1e-5 km** (`EIH-REL-SSB-DEVIATION-KM`, existing, C6's bound); the Newtonian barycentre's deviation ≥ **10×** larger (`EIH-NEWTON-SSB-RATIO-MIN`, existing) | the restricted-Lagrangian argument above. Heavy Minor bodies make it discriminating: a Minor body without 1PN terms (the WP19 behaviour) would move R* by ~1e-3–1e-2 km (Jupiter's 1PN acceleration × m_J/M over its period) |
+| E4 | **LT on a Minor body**: the WP20 synthetic fixture plus one Minor body; the Minor body's LT acceleration vs the single-body R3b form, γ = 1 and 0.999; momentum with the reaction | PR | ≤ 1e-13 relative (`LT-DE440-VS-R3B-REL`, existing); ≤ 8 ε (`NBODY-LT-REACTION-MOMENTUM-ULPS`, existing); the Minor body's acceleration ≠ 0 | as WP20 L1a/L1b |
+| E5 | **μ̇***: `mu_star_rate` vs a central difference of `mu_star` along the second-order Taylor flow, double-double, header.440 Sun + 8 planets + Moon (barycentric), half-width 60 s | PR | max_i \|μ̇*ᵢ − FD\| / max_i \|μ̇*ᵢ\| ≤ **1e-6** (`EIH-MUSTAR-RATE-FD-REL`, new) | truncation O((ωδ)²) ≈ 1e-9 for the Moon at δ = 60 s (WP25 measured 3.9e-6 at δ = 1 h; ×(60/3600)² = 1.1e-9); a wrong coefficient is O(1) |
+| E6 | **the dμ*/dt term matters**: EIH Sun + 8 planets + Moon (all Major, barycentric Moon), header.440, re-barycentred (i) with Σ(μ̇*r + μ*v) = 0 and (ii) with Σμ*v = 0 only; 10 yr, every 10 d | PR | (i) max_t \|R*(t) − R*(0)\| ≤ **5e-6 km** (`EIH-REL-SSB-DRIFT-10YR-KM`, new); (ii)/(i) ≥ **5** (`EIH-MUSTAR-RATE-DRIFT-RATIO-MIN`, new) | (i): IC round-off ~1e-15 km/s × 3e8 s ≈ 3e-7 km; (ii): DE430 pp. 5–6 report ~0.5 m/century for DE405's neglect, ≈ 5e-5 km per 10 yr |
+| E7 | **scenario key**: an n-body EIH scenario with `initial_conditions.barycentre = "relativistic"`; the key refused in test-particle mode; absent = ICs bitwise unchanged | PR | after re-barycentring \|Σμ*r\|/Σμ* ≤ **1e-6 km** and \|Σ(μ̇*r + μ*v)\|/Σμ* ≤ **1e-12 km/s** (`EIH-REBARY-RESIDUAL-KM`, `EIH-REBARY-RESIDUAL-KMS`, new); the IC source string names it; refusal is a stable FA code | f64 round-off of a 1e9 km-scale weighted sum after two passes (WP15 measured 7.5e-12 km with μ*) is far below; the bounds catch a missing pass or a wrong sign |
+| E8 | **cost (NUM-009)**: 10 yr from JDEPOC, IAS15 default, median of 5, one process: A = 16 Major (11 DE440 + 5 largest asteroids) Newtonian + EIH; B = A + 338 Minor with all-body EIH; C = B without EIH | nightly (run once locally) | reported only: B/A against NUM-009's < 2× (`NUM009-TIER-COST-RATIO`, `blocked_by = "OI-42"`), B/C (the EIH overhead). Prediction: B/A ≈ 30–150 (pair counts), B/C ≈ 2–5 | NUM-009 notes: "with EIH evaluated for all bodies the ratio MUST be re-measured. The bound is not changed here." |
+| E9 | **PHY-014 rung (WP23)**: PHY-012 full system + `gr_eih` + `sun_j2` (DE440 J2 2.19614e-7, WGCCRE pole) + `lense_thirring` (DE440 spin, reaction on) + 343 asteroids + 3 identified KBOs + 36-point ring, header.440, legs to J2000 ± 1000 yr (+30 d), Park2017 estimator (daily samples, Park17 mean-orbit plane, quadratic + 14 Table-2 terms) | nightly (long; left to the reviewer) | rate within **575.3093 ± 0.005** ″/cy (`PHY014-EIH-FULL-RATE`, new, PHY-014 acceptance) | prediction: N3's 575.308579 (planets, J2 Park, LT) − 0.000684 (J2 DE440 vs Park, PHY-010) + 0.001245 (N-AST P-remove, WP15) + 0.000019 (KBOs + ring) ≈ **575.30916**, i.e. Δ ≈ −0.0001 |
+| E10 | **real data**: Sun + 8 planets + geocentric Moon + 343 asteroids + 3 KBOs + ring from header.440/REF-003, all-body EIH + J2 (DE440) + LT, 10 yr every 10 d vs de440.bsp; the same without the small bodies | data | asserted (PROVISIONAL sanity): the Sun's max barycentric residual improves by ≥ **2×** (`EIH-ALLBODY-SUN-IMPROVEMENT-MIN`, new); every residual is published | WP19/WP20: the Sun's 1.40 km residual comes from the omitted asteroids, KBOs and ring moving the SSB |
+| E11 | **PHY-014 model smoke**: the E9 scenario built through the scenario API and run for 30 d | PR | completes; the model description lists the EIH and LT terms on Major and Minor tiers; the run's step cost is printed | wiring check (no tolerance) |
+
+**Mutation probes (planned):** Minor receivers skipped in `Eih`; Ring sources skipped; Minor sources omitted for
+Major receivers; U_j over all bodies instead of E(j); LT skipping Minor bodies; μ̇* with the ½ dropped; the velocity
+condition without μ̇*.
