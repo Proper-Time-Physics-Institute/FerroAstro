@@ -719,3 +719,84 @@ fn solar_lense_thirring_equals_the_r3b_form() {
         tol.check(worst).unwrap();
     }
 }
+
+/// WP22 E4 (OI-35 decision of 2026-10-21, "LT all bodies"): the WP20 fixture plus one Minor body
+/// and one Ring body. The Minor body receives the DE440 Eq. 37–38 acceleration, equal to the
+/// single-body R3b form at its heliocentric state; the Sun's reaction includes it, so Σ μᵢ aᵢ = 0
+/// to round-off; the Ring body gets nothing.
+///
+/// Verifies: NUM-019, PHY-014
+#[test]
+fn solar_lense_thirring_acts_on_minor_bodies() {
+    use ferroastro_core::units::SpinGm;
+    let vs = vectors();
+    let (mut bodies, x6, v6) = fixture();
+    bodies.push(body(NaifId(2_000_001), 62.6, Tier::Minor)); // lint: allow-literal(structural fixture: Ceres-like GM)
+    bodies.push(body(NaifId(3_000_001), 1.0, Tier::Ring));
+    let n = bodies.len();
+    let extra_p = [[3.0e8, 2.0e8, 1.0e7], [6.0e9, 0.0, 0.0]]; // lint: allow-literal(structural fixture)
+    let extra_v = [[-10.0, 14.0, 2.0], [0.0; 3]]; // lint: allow-literal(structural fixture)
+    let grow = |flat: &[f64], extra: [[f64; 3]; 2]| -> Vec<f64> {
+        (0..3)
+            .flat_map(|k| {
+                let mut c: Vec<f64> = flat[k * 6..(k + 1) * 6].to_vec();
+                c.extend(extra.iter().map(|e| e[k]));
+                c
+            })
+            .collect()
+    };
+    let (x, v) = (grow(&x6, extra_p), grow(&v6, extra_v));
+    for gamma in [1.0, 0.999] {
+        // lint: allow-literal(PPN test points)
+        let terms: Vec<Box<dyn ForceTerm<Icrf>>> = vec![Box::new(lt_term(gamma, LtReaction::On))];
+        let m = Model::new(&bodies, MoonVariables::Barycentric, terms).unwrap();
+        let a = accel(&m, &x, &v);
+        let minor = 6;
+        let r = [
+            x[minor] - x[0],
+            x[n + minor] - x[n],
+            x[2 * n + minor] - x[2 * n],
+        ];
+        let w = [
+            v[minor] - v[0],
+            v[n + minor] - v[n],
+            v[2 * n + minor] - v[2 * n],
+        ];
+        let r3b = crate::LenseThirring::<Icrf>::new(
+            SpinGm::from_km5_per_s3(1.27e16).unwrap(), // lint: allow-literal(same synthetic G S as lt_term)
+            Velocity::from_km_per_s(3.0e5).unwrap(), // lint: allow-literal(same synthetic c as lt_term)
+            gamma,
+            pole(),
+        )
+        .unwrap();
+        let mut want = [0.0; 3];
+        r3b.add_acceleration(r, w, &mut want);
+        let got = [a[minor], a[n + minor], a[2 * n + minor]];
+        let rel = (got[0] - want[0])
+            .hypot(got[1] - want[1])
+            .hypot(got[2] - want[2])
+            / want[0].hypot(want[1]).hypot(want[2]);
+        let mut sum = [0.0_f64; 3];
+        let mut scale = 0.0;
+        for (i, b) in bodies.iter().enumerate() {
+            let ai = [a[i], a[n + i], a[2 * n + i]];
+            for k in 0..3 {
+                sum[k] += b.gm * ai[k];
+            }
+            scale += b.gm * ai[0].hypot(ai[1]).hypot(ai[2]);
+        }
+        let ulps = sum[0].hypot(sum[1]).hypot(sum[2]) / (eps() * scale);
+        println!(
+            "E4 (gamma = {gamma}): Minor body |a_LT| = {:.4e} km/s^2, rel diff vs R3b {rel:.3e}; \
+             |sum GM_i a_i| / (eps sum GM_i |a_i|) = {ulps:.3}",
+            want[0].hypot(want[1]).hypot(want[2])
+        );
+        assert!(got.iter().any(|&z| z != 0.0));
+        assert_eq!([a[7], a[n + 7], a[2 * n + 7]], [0.0; 3]);
+        vs.get("LT-DE440-VS-R3B-REL").unwrap().check(rel).unwrap();
+        vs.get("NBODY-LT-REACTION-MOMENTUM-ULPS")
+            .unwrap()
+            .check(ulps)
+            .unwrap();
+    }
+}

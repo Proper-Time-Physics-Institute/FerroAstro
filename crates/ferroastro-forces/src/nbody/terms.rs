@@ -645,13 +645,15 @@ impl<F: Frame, R: Real> ForceTerm<F, R> for SolarJ2WithReaction<F, R> {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum LtReaction {
     /// The Sun receives `−(GMᵢ/GM☉) aᵢ` for every body `i`, as for J2: total linear momentum is
-    /// conserved (NUM-019 acceptance; WP20 default, NEEDS HUMAN REVIEW).
+    /// conserved (NUM-019 acceptance; the default, confirmed by the OI-35 decision of
+    /// 2026-10-21, "Sun reaction on").
     On,
     /// The literal DE440 §3.4 reading: only the bodies other than the Sun are accelerated.
     Off,
 }
 
-/// Solar Lense–Thirring acceleration on every Major body other than the Sun (NUM-019, PHY-011),
+/// Solar Lense–Thirring acceleration on every moving body other than the Sun, Major and Minor
+/// (NUM-019, PHY-011; OI-35 decision of 2026-10-21; Ring bodies are fixed),
 /// DE440 (Park et al. 2021) Eqs. 37–39, evaluated as written:
 ///
 /// `aᵢ = 2 Ωᵢ × vᵢ`, `Ωᵢ = (1+γ) G/(2c²rᵢ³) [−J + 3 (J·rᵢ) rᵢ/rᵢ²]`, `J = C☉ M☉ R☉² ω☉ p̂`,
@@ -809,7 +811,7 @@ impl<F: Frame, R: Real> ForceTerm<F, R> for SolarLenseThirring<F, R> {
         ]
     }
     fn tiers(&self) -> &'static [Tier] {
-        &[Tier::Major]
+        &[Tier::Major, Tier::Minor]
     }
     fn bind(&mut self, layout: &Layout<R>) -> Result<(), ForceError> {
         let sun = layout
@@ -829,11 +831,10 @@ impl<F: Frame, R: Real> ForceTerm<F, R> for SolarLenseThirring<F, R> {
             });
         }
         self.sun = sun;
-        self.bodies = layout
-            .indices(Tier::Major)
-            .iter()
-            .copied()
-            .filter(|&i| i != sun)
+        // Every moving body other than the Sun, Major and Minor (NUM-019, OI-35 decision of
+        // 2026-10-21: "LT all bodies"); Ring bodies are fixed.
+        self.bodies = (0..layout.len())
+            .filter(|&i| i != sun && layout.moves(i))
             .collect();
         Ok(())
     }
