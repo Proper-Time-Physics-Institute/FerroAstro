@@ -116,7 +116,7 @@ source = "WP19 task check 5 (PROVISIONAL sanity): the EIH Mercury residual must 
 citation = "JPL DE440 (Park et al. 2021): header.440 sha256 0f4636b663e6f00af9efa2b605ef23635489f56b23dd1a5e3821d3acc6ac3359; de440.bsp sha256 a4ce9bf9b3282becc9f4b2ac3cebe03a2ae7599981aabd7265fd8482fff7c4b5; WP19 plan check C7"
 retrieved = "2026-10-20"
 tolerance = { abs = 0.0 }
-tolerance_rationale = "One-sided threshold (measured factor must be >= the value; PROVISIONAL, NEEDS HUMAN REVIEW). The remaining EIH residual is expected from omitted asteroids, KBOs, ring, lunar and terrestrial figure, tides and Lense-Thirring."
+tolerance_rationale = "One-sided threshold (measured factor must be >= the value; PROVISIONAL, REVIEWED, accepted by the maintainer 2026-11-12 (#17 questionnaire)). The remaining EIH residual is expected from omitted asteroids, KBOs, ring, lunar and terrestrial figure, tides and Lense-Thirring."
 verified_by = "WP19 builder agent, 2026-10-20: bound from the WP19 task text, fixed in the plan before the first run."
 
 [[vector]]
