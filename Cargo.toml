@@ -104,3 +104,12 @@ unreadable_literal = "warn"
 [profile.test]
 # Long-running physics tests are compiled with optimisation (STD-008 nightly tier stays fast enough).
 opt-level = 1
+
+[profile.release-v3]
+# WP26 NEEDS HUMAN REVIEW 2 (NUM-021 2.5x SIMD target), adopted 2026-11-12 (M5 review #18): a
+# release profile for runs on x86-64-v3 (AVX2/FMA-capable) machines. Build it with
+#   RUSTFLAGS="-C target-cpu=x86-64-v3" cargo build --profile release-v3 --features ferroastro-propagate/simd
+# (stable Cargo cannot set target-cpu in a profile; the separate profile keeps its artefacts in
+# target/release-v3, apart from the baseline x86-64 release build). WP26 P7 found a native AVX
+# build bitwise identical to the baseline (the SoA kernels contain no FMA).
+inherits = "release"

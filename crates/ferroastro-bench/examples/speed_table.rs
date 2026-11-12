@@ -228,7 +228,10 @@ fn need(args: &[String], key: &str) -> String {
     arg(args, key).unwrap_or_else(|| panic!("missing {key}"))
 }
 
-/// `ferroastro`: n timed runs of one scenario.
+/// Span of the untimed warm-up run before the timed ones (Julian years).
+const WARMUP_YEARS: f64 = 0.1;
+
+/// `ferroastro`: one untimed warm-up run, then n timed runs of one scenario.
 fn cmd_ferroastro(args: &[String]) {
     let path = PathBuf::from(need(args, "--scenario"));
     let runs: usize = need(args, "--runs").parse().unwrap();
@@ -247,6 +250,21 @@ fn cmd_ferroastro(args: &[String]) {
         sources = sources.with_spk(s, p);
     }
     let commit = std::env::var("FA_BENCH_GIT_COMMIT").unwrap_or_default();
+    // One untimed warm-up run first (M5 review #18 nit): the same scenario over at most
+    // WARMUP_YEARS, so that page-in, data parsing caches and the CPU's frequency ramp do not
+    // land in run 1's wall time.
+    {
+        let mut warm = spec.clone();
+        warm.span.years = warm.span.years.signum() * warm.span.years.abs().min(WARMUP_YEARS);
+        let t0 = Instant::now();
+        let _ = run_with_energy(&warm, &sources).unwrap();
+        println!(
+            "ferroastro {} warm-up ({} yr, untimed): {:.3} s",
+            spec.name,
+            warm.span.years,
+            t0.elapsed().as_secs_f64()
+        );
+    }
     for k in 1..=runs {
         let before = load_avg();
         let t0 = Instant::now();
@@ -402,7 +420,7 @@ fn run_dirs(dir: &Path) -> Vec<PathBuf> {
 fn timer_scope(tool: &str) -> &'static str {
     match tool {
         "ferroastro" => {
-            "run_with_energy in-process (IC assembly, model build, IAS15 integration, sampling); header.440/SPK parsed before the timer; release build; 5 runs in one process"
+            "run_with_energy in-process (IC assembly, model build, IAS15 integration, sampling); header.440/SPK parsed before the timer; release build; one untimed warm-up run (<= 0.1 yr), then 5 runs in one process"
         }
         "rebound" => {
             "runner's wall clock around sim set-up + integrate (Python API), inside the container"

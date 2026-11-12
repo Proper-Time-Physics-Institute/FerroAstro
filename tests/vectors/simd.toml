@@ -46,7 +46,7 @@ source = "f64 rounding ~1e-16 per term of the S1/S2/S3 sums; the bound admits a 
 citation = "Park et al. 2021, AJ 161, 105, Eq. 27; FerroAstro NUM-021, DEP-007; WP26 plan check P3b"
 retrieved = "2026-10-20"
 tolerance = { abs = 1.0e-12 }
-tolerance_rationale = "Ulp-level kernels on both sides; a coefficient or sign slip in the SoA transcription is >= 1e-3 relative. Pre-registered without a measured cancellation factor: if the cancellation exceeds 1e4 the check fails and is reported, the bound is not moved."
+tolerance_rationale = "Ulp-level kernels on both sides; a coefficient or sign slip in the SoA transcription is >= 1e-3 relative. Pre-registered without a measured cancellation factor: if the cancellation exceeds 1e4 the check fails and is reported, the bound is not moved. Real margin (M5 review #18 nit, 2026-11-12, text only): the worst measured value is 1.29e-15 (epm16, PPN (1, 1), Newtonian RHS), so the bound is ~780x the measurement; it detects transcription errors (>= 1e-3) with a very wide margin, not round-off changes."
 verified_by = "WP26 builder agent, 2026-10-20: fixed in the WP26 plan before the first run."
 
 [[vector]]

@@ -5720,7 +5720,7 @@ Each mutant was applied to a backed-up file, the named tests were run, and the f
 Round 2 (`run_mutants.py`, all 9 mutants, fresh mtimes on restore): 9/9 killed.
 
 ### Interpretations, deviations and NEEDS HUMAN REVIEW (WP24)
-1. **NEEDS HUMAN REVIEW — B2 failed its PROVISIONAL bound.**
+1. **~~NEEDS HUMAN REVIEW~~ REVIEWED (#18 questionnaire, maintainer 2026-11-12): option (c), compare against a DD truth — done (B2d, ABM_DD vs IAS15_DD 1.28e-12 km; B2 stays a known failure, 2.0738e-3 km after the D1 merge). — B2 failed its PROVISIONAL bound.**
    - Measured: Mercury 2.24 m between ABM13 PECEC (compensated, f64) and IAS15 over 40 yr, against a bound of 1 m.
    - The diagnosis is above: ABM's f64 round-off is in the history sums (Σ\|α\| = 51.6 for AM13), and the ABM−IAS15 method difference in double-double is 1.3 nm.
    - The bound and the vector are unchanged. The assertion moved from the PR tier to the nightly tier, where it fails every night until a human decides. This deviates from the plan ("PR if ≤ 60 s"); the alternative was a permanently red PR tier.
@@ -5728,7 +5728,7 @@ Round 2 (`run_mutants.py`, all 9 mutants, fresh mtimes on restore): 9/9 killed.
      - (a) keep 1 m and accept the failure until WP25's mixed mode; then the check would compare mixed-DD ABM with IAS15, which needs a new pre-registered vector;
      - (b) re-derive the bound from Subbotin's f64 figure (2.47 m), with a written rationale;
      - (c) compare against a DD truth instead of IAS15.
-2. **NEEDS HUMAN REVIEW — the A4 error metric was chosen after an exploratory scan.**
+2. **~~NEEDS HUMAN REVIEW~~ REVIEWED (#18 questionnaire, maintainer 2026-11-12): accepted as disclosed; a position-metric band `ABM-ORDER-SLOPE-POSITION` ([p − 0.5, p + 1]) is now asserted in A4 (set from the scan, disclosed). — the A4 error metric was chosen after an exploratory scan.**
    - The plan fixed the ±0.5 window but not the error measure.
    - The scan (before 13:21 UTC, before the A4 test was written; logs in `wp24/scan_dd.log` and `wp24/scan_order.rs`) showed two things:
      - in f64, high orders (p ≥ 12) go from unstable (h ≳ 2π/192) to round-off-limited with no asymptotic window, so A4 runs in double-double;
@@ -5740,7 +5740,7 @@ Round 2 (`run_mutants.py`, all 9 mutants, fresh mtimes on restore): 9/9 killed.
    - A3/A5 first ran with the au divided by 1000 (`CONST-AU-IAU2012` is in km), giving a 45-step "orbit". A3 passed vacuously and A5 failed; both were re-run after the fix at 13:23:03.
    - B2 first looked up Mercury by NAIF 199 instead of the barycentre slot 1.
    - V1 first set `ppn` on the LT-off run, which is refused because it has no relativistic term.
-6. **NEEDS HUMAN REVIEW (low, pre-existing): `ferroastro-integrators/tests/num010_dense_events.rs` (WP3/WP6)** divides `CONST-AU-IAU2012` (km) by 1000. Its "Mercury-like" orbit therefore has a = 5.79e4 km and P ≈ 240 s. The test is still a valid NUM-010 check of IAS15, but it is not the orbit its header describes. Not changed here.
+6. **~~NEEDS HUMAN REVIEW~~ REVIEWED (#18 questionnaire, maintainer 2026-11-12): fixed — the orbit now uses the au in km (P = 88 d; f64 location 2.37e-8 s, DD vs analytic 3.66e-11 s, bounds 1e-6 s). (low, pre-existing): `ferroastro-integrators/tests/num010_dense_events.rs` (WP3/WP6)** divides `CONST-AU-IAU2012` (km) by 1000. Its "Mercury-like" orbit therefore has a = 5.79e4 km and P ≈ 240 s. The test is still a valid NUM-010 check of IAS15, but it is not the orbit its header describes. Not changed here.
 7. **Checkpoint format v3:** the integrator snapshot is now an enum. v2 checkpoints, none of which is committed, are refused with `FA-E1302`.
 8. **`RunOutput.stats` for ABM runs** fills `steps` and `force_evaluations` only. The IAS15-specific counters stay 0, and the model string names the integrator.
 9. **The REF-011 refusal test** (`run_refuses_unimplemented_switches_by_name`) used ABM as its unimplemented integrator. It now uses WHFast, because ABM is implemented. ABM outside n-body mode is refused and tested in B1.
@@ -5992,15 +5992,15 @@ Script: scratchpad `wp25/mut/run_mutants.py` and `run_mutants_r2.py`. Restores u
 | R2 (reviewer) the EMB-slot compensation in `finish_into` set to zero | killed (`mixed_forces_is_the_compensated_model_widened`) |
 
 ### Interpretations, deviations and NEEDS HUMAN REVIEW (WP25)
-1. **NEEDS HUMAN REVIEW — N1 (NUM-007) fails:** Mercury 2.04 cm against 1 cm. Options for the maintainer:
+1. **~~NEEDS HUMAN REVIEW~~ REVIEWED (#18 questionnaire, maintainer 2026-11-12): accepted; the requirement owner amends NUM-007. — N1 (NUM-007) fails:** Mercury 2.04 cm against 1 cm. Options for the maintainer:
    - (a) accept that the f64-terms scheme cannot meet 1 cm on this model;
    - (b) add a DD Sun-term ("mixed+") mode, which needs a requirement decision;
    - (c) define the round-off estimator as Subbotin's two-way integration, which needs a requirement change.
 
    The vector is unchanged.
-2. **NEEDS HUMAN REVIEW — the mixed design was corrected after the first nightly run** (above). Both runs are reported.
-3. **NEEDS HUMAN REVIEW — C3b's pre-registered bound fails** because of an estimate error ((2π)² omitted). The bound is unchanged, and the assertion runs in the nightly tier. The convergence vector was added after the first run.
-4. **NEEDS HUMAN REVIEW — N4 Mars tiering 2.2 cm > 1 cm** (resolvable, both realisations). NUM-009's notes cite "< 1 cm planets" [V], from Subbotin's EPM2021 model. With DE440's 343 asteroids this does not hold for Mars. NUM-009's notes need a source-specific wording (PR #2).
+2. **~~NEEDS HUMAN REVIEW~~ REVIEWED (#18 questionnaire, maintainer 2026-11-12): run 2 accepted, run 1 kept on record. — the mixed design was corrected after the first nightly run** (above). Both runs are reported.
+3. **~~NEEDS HUMAN REVIEW~~ REVIEWED (#18 questionnaire, maintainer 2026-11-12): corrected vector `EPH-MUSTAR-RATE-REL-CORRECTED` (4.4e-5, (2π)² restored, post hoc) asserted in the PR tier (3.927e-6); the original stays a known failure. — C3b's pre-registered bound fails** because of an estimate error ((2π)² omitted). The bound is unchanged, and the assertion runs in the nightly tier. The convergence vector was added after the first run.
+4. **~~NEEDS HUMAN REVIEW~~ REVIEWED (#18 questionnaire, maintainer 2026-11-12): the requirement owner makes NUM-009 source-specific and names Subbotin's five asteroids (WP25-4, WP25-5). — N4 Mars tiering 2.2 cm > 1 cm** (resolvable, both realisations). NUM-009's notes cite "< 1 cm planets" [V], from Subbotin's EPM2021 model. With DE440's 343 asteroids this does not hold for Mars. NUM-009's notes need a source-specific wording (PR #2).
 5. **NUM-009's 16 Majors:** WP25 uses Subbotin's set (Ceres, Pallas, Vesta, Iris, Bamberga), not WP15's five largest-GM asteroids. The requirement text should name one (PR #2).
 6. **Round-off estimator:** FerroAstro measures against a full-DD run (task text); Subbotin use two-way integration. The numbers are not strictly comparable.
 7. **Model differences from EPM2021:** DE440 GMs and 343 asteroids; no TNOs, annulus or ring; no J2 or LT (they omit both too).
@@ -6190,18 +6190,18 @@ Script: scratchpad `wp26/mut/run_mutants.py`. Each mutant runs the three SoA tes
 | M10 Newtonian kernel's singular flag dropped | killed (singular-error test) |
 
 ### Interpretations, deviations and NEEDS HUMAN REVIEW (WP26)
-1. **NEEDS HUMAN REVIEW — P3c's pre-registered rationale was wrong.**
+1. **~~NEEDS HUMAN REVIEW~~ REVIEWED (#18 questionnaire, maintainer 2026-11-12): M5 is recorded as an equivalent mutant (the Earth–Moon pull is internal to the EMB and cancels; the pair rule only saves work and round-off). — P3c's pre-registered rationale was wrong.**
    - The rationale said that a pair-rule error changes the EMB slot by ≥ 6e-3 relative.
    - In the geocentric variables, the Earth–Moon mutual pull enters the EMB as m_E·(GM_M d/r³)/M + m_M·(−GM_E d/r³)/M = 0. It is an internal force and cancels exactly, so dropping the pair rule changes the result only at round-off. M5 is equivalent.
    - The bound (1e-13) passes and is unchanged. The check still compares the SoA and pairwise models with the pair, but it cannot detect a missing pair rule, because there is nothing physical to detect: the rule only saves work and round-off.
-2. **NEEDS HUMAN REVIEW — NUM-021's 2.5× SIMD target** is met only with AVX (`-C target-cpu=native`): 3.25× for the bare Newtonian kernel and 2.73× for EIH.
+2. **~~NEEDS HUMAN REVIEW~~ REVIEWED (#18 questionnaire, maintainer 2026-11-12): option (b), a `release-v3` Cargo profile (built with `RUSTFLAGS="-C target-cpu=x86-64-v3"`) was added. — NUM-021's 2.5× SIMD target** is met only with AVX (`-C target-cpu=native`): 3.25× for the bare Newtonian kernel and 2.73× for EIH.
    - The x86-64 baseline build gets SSE2 2-lane vectors from `wide` (≤ 2.05×).
    - Options:
      - (a) accept the target as AVX-only;
      - (b) ship a `-C target-cpu=x86-64-v3` build profile for runs. P7 showed the native build gives identical bits;
      - (c) revisit `pulp` (run-time dispatch) under DEP-015.
    - OI-45 can record the measured numbers.
-3. **NEEDS HUMAN REVIEW — NUM-022 "throughput scales linearly with core count"** holds to 4 threads (E = 0.94) and not beyond (0.78 at 8, 0.38 at 32) on this heterogeneous P/E-core CPU, which was shared.
+3. **~~NEEDS HUMAN REVIEW~~ REVIEWED (#18 questionnaire, maintainer 2026-11-12): the requirement owner adds a hardware qualifier to NUM-022. — NUM-022 "throughput scales linearly with core count"** holds to 4 threads (E = 0.94) and not beyond (0.78 at 8, 0.38 at 32) on this heterogeneous P/E-core CPU, which was shared.
    - The requirement text would need a hardware qualifier (per P-core, or SMT off), or a quiet homogeneous runner (OI-46). The efficiency is reported as the task asks.
 4. **The default kernel stays `pairwise`.** Making `soa` the default would change every FerroAstro-vs-FerroAstro bitwise reproduction (not any oracle tolerance), and the SoA Newtonian term is slower at N = 16 (P8). That is a maintainer choice.
 5. **`force_kernel` is a new CI-002 key** under `[integrator]`, not a force switch. The oracle runners ignore unknown integrator keys. It needs a line in CI-002's text (PR #2).
@@ -6557,9 +6557,9 @@ Restores with `cp` + `touch`; the tree was clean afterwards.
 | review W2: Moon slot low words zeroed in `layout.rs` | killed (T2: "the Moon slot's compensation words are zero") |
 
 ### Interpretations, deviations and NEEDS HUMAN REVIEW (WP28)
-1. **NEEDS HUMAN REVIEW — T1 passes with margin 1.04.** The pre-registered expectation (30–100) was wrong by about 3×: the compensated error floor at 10 orbits is higher than the per-step estimate suggested. The vector's source text also says "~340 for its velocity"; that is an arithmetic slip (h·|a| is 0.014 km/s, not 1.4e-3 km/s, so the velocity estimate is ≈ 34 like the position one). The bound and its text are unchanged; a maintainer may want a longer run or a different k.
-2. **NEEDS HUMAN REVIEW — review W1's mutant is equivalent** (above). The correction asked for a test that kills it; that is impossible in binary64, and T1/T1b kill the non-equivalent compensation mutants instead.
-3. **NEEDS HUMAN REVIEW — rows (i) and (j) were timed on a contended core** (load 12–68, 7-Zip score 6757 → 3563 MIPS). The table is valid under CI-008 and is published as measured; the mixed/f64 ratio (3.54) and the mixed median should be re-measured on a quiet machine before they are cited.
+1. **~~NEEDS HUMAN REVIEW~~ REVIEWED (#18 questionnaire, maintainer 2026-11-12): = X1, done: T1c with a shared DD start-up gives 92.38 (pre-registered ≥ 30). — T1 passes with margin 1.04.** The pre-registered expectation (30–100) was wrong by about 3×: the compensated error floor at 10 orbits is higher than the per-step estimate suggested. The vector's source text also says "~340 for its velocity"; that is an arithmetic slip (h·|a| is 0.014 km/s, not 1.4e-3 km/s, so the velocity estimate is ≈ 34 like the position one). The bound and its text are unchanged; a maintainer may want a longer run or a different k.
+2. **~~NEEDS HUMAN REVIEW~~ REVIEWED (#18 questionnaire, maintainer 2026-11-12): accepted. — review W1's mutant is equivalent** (above). The correction asked for a test that kills it; that is impossible in binary64, and T1/T1b kill the non-equivalent compensation mutants instead.
+3. **~~NEEDS HUMAN REVIEW~~ REVIEWED (#18 questionnaire, maintainer 2026-11-12): annotated; a quiet-machine rerun of the wp28 suite is required (listed for the reviewer). Row (j) is also superseded (B1). — rows (i) and (j) were timed on a contended core** (load 12–68, 7-Zip score 6757 → 3563 MIPS). The table is valid under CI-008 and is published as measured; the mixed/f64 ratio (3.54) and the mixed median should be re-measured on a quiet machine before they are cited.
 4. **"Criterion suite" (deviation):** the 40-yr medians come from the harness (median of 5, CI-008); criterion measures a 0.25-yr span (criterion needs ≥ 10 samples, i.e. ≥ 40 min per 40-yr variant).
 5. **NUM-024 wording (PR #2):** "16 Major + 343 Minor" — FerroAstro runs 16 Majors + 338 Minor (343 asteroids, 5 of them Major, as in WP25). Subbotin's own model differs (277 asteroids, 30 TNOs, annulus, ring).
 6. **Weekly workflow:** the suite runs from `tools/run_long_local.sh --weekly-bench` on this machine (maintainer decision: long runs local). No cron line is installed and no GitHub workflow was added (CI and scheduling are for humans).
@@ -6590,7 +6590,7 @@ Restores with `cp` + `touch`; the tree was clean afterwards.
 - Final-state tail dropped from `Series::from_run`: killed by D1, as a missing-sample error.
 - Corrupted table (Subbotin f64 81 → 80 s, and the IC hash of (j) removed): N1 fails.
 
-**NEEDS HUMAN REVIEW (reviewer): the workload differs from Subbotin's.** Subbotin et al. 2023 §2 lists Pluto and 30 other TNOs, 277 asteroids, a 180-point annulus and a 160-point ring. Taking away the 16 Majors leaves about **642 Minor point masses** (30 + 272 + 180 + 160). Rows (h) and (i) have 338, and (j) has 404 (338 + 30 KBOs + the 36-point ring). In both codes each Minor body feels the 16 Majors only, so the Minor-body force work in Subbotin's run is about 1.9× that of (h)/(i).
+**~~NEEDS HUMAN REVIEW~~ REVIEWED (#18 questionnaire, maintainer 2026-11-12): the requirement owner fixes NUM-024; the comparison is reworded as not comparable (SF5/SF6). (reviewer): the workload differs from Subbotin's.** Subbotin et al. 2023 §2 lists Pluto and 30 other TNOs, 277 asteroids, a 180-point annulus and a 160-point ring. Taking away the 16 Majors leaves about **642 Minor point masses** (30 + 272 + 180 + 160). Rows (h) and (i) have 338, and (j) has 404 (338 + 30 KBOs + the 36-point ring). In both codes each Minor body feels the 16 Majors only, so the Minor-body force work in Subbotin's run is about 1.9× that of (h)/(i).
 
 The rough estimate derived here assumes the 240 EIH pair terms cost about 5–10 Newtonian pair evaluations each. On that assumption, Subbotin's total force work is about 1.4–1.7× FerroAstro's per step. The "FerroAstro / Subbotin" ratios of 0.711 (f64) and 0.829 (mixed) are therefore **not like-for-like even before the hardware question (OI-44)**, and "within 1×: met" should not be quoted without this caveat. Two changes are needed:
 - The NUM-024 text ("16 Major + 343 Minor") mis-describes Subbotin's configuration and should be corrected in PR #2.
@@ -6726,21 +6726,21 @@ Provenance: header.440 `0f4636b6…6ac3359` and de440.bsp `a4ce9bf9…fff7c4b5`.
 - IRK16 position update with b/2 instead of bA: killed (I2c, I3, dense output).
 
 ### Interpretations, deviations and NEEDS HUMAN REVIEW (WP29)
-1. **NEEDS HUMAN REVIEW: the pre-registered IRK16 order checks failed through test design.**
+1. **~~NEEDS HUMAN REVIEW~~ REVIEWED (#18 questionnaire, maintainer 2026-11-12): = X4, done: I2 (0.685) and I2b (11.791) restored as nightly known failures. — the pre-registered IRK16 order checks failed through test design.**
    - I2 in f64 measured round-off. I2b in DD fell on a pre-asymptotic dip (11.79).
    - The order-16 evidence is the post-hoc I2c (16.21) and the diagnostic sweep, which reached 16.06 at 40→48 steps per orbit.
    - Both vectors stay in place. `IRK16-OBSERVED-ORDER` carries a superseded note.
 2. **I1 failed as first implemented** (monomial Lagrange basis, 1.73e-29). The implementation was fixed and the bound is unchanged. Recorded in addendum 1.
-3. **NEEDS HUMAN REVIEW: the corrector coefficients are derived, not transcribed.** Wisdom (2006) and Wisdom, Holman & Touma (1996) were not available.
+3. **~~NEEDS HUMAN REVIEW~~ REVIEWED (#18 questionnaire, maintainer 2026-11-12): an open issue for WHT96 / Wisdom 2006 is filed by the maintainer (text in the M5 review-fixes report). — the corrector coefficients are derived, not transcribed.** Wisdom (2006) and Wisdom, Holman & Touma (1996) were not available.
    - The derivation (first order in ε, stage pairs at a_i = i h) is in this section and in `tools/symplectic_correctors.py`.
    - It is validated by W3 (gain 656), by W4 (corrected error 3e-12 against 1.2e-9 uncorrected), and by the mutation probe on the direction.
    - A maintainer with access to WHT96 or Wisdom 2006 should compare the β_i, or the structure of the stage pairs. Equivalent first-order correctors need not have identical coefficients.
-4. **NEEDS HUMAN REVIEW: S1 locates the WP17 Swiftest stage A discrepancy in the Swiftest run, not in the Wisdom–Holman method.**
+4. **~~NEEDS HUMAN REVIEW~~ REVIEWED (#18 questionnaire, maintainer 2026-11-12): superseded on main by the maintainer decision of 2026-11-08 (PR #13, golden-change): Swiftest stage A now runs at dt = 1/16 d against a 2 km bound (`ORACLE-STAGE-A-SWIFTEST-MAX-DR`), which this branch carries; the 60 km widening and the 1/128 d setting below are historical. — S1 locates the WP17 Swiftest stage A discrepancy in the Swiftest run, not in the Wisdom–Holman method.**
    - FerroAstro's independent WH at Swiftest's step agrees with IAS15 to ≤ 0.1 km.
    - Swiftest's golden differs from both by the WP17 amounts (Mars 28.7 km), so WH truncation at 1/128 d is not the cause.
    - This contradicts the WP17 "drift model" rationale behind widening `ORACLE-STAGE-A-SWIFTEST-MAX-DR` to 60 km. The likely causes are in the Swiftest runner's mapping (units, G, mass handling, output coordinates). They were not investigated here; that is clean-room-safe black-box work for a follow-up.
 5. **G1's estimator** is a line fit to the osculating LRL angle at daily samples, not the ladder's per-orbit perihelion estimator, which lives in L10. The formal error (2.1e-3) is larger than the tolerance because the residuals are periodic and correlated. The value is 4.5e-4 below the PHY-005 expectation of 42.9801, inside the 1e-3 tolerance.
-6. **The GR effective potential's mean-motion offset is larger than the pre-registered estimate.** D1 measured 8 711 km for Mercury over 10 yr, against the plan's "few hundred km" (reported, not asserted). The offset is O(6GM/(c²a)) ≈ 1.5e-7, not 2.6e-8. The potential reproduces the advance, not the orbit. This is the Saha–Tremaine motivation for NUM-005.
+6. **The GR effective potential's mean-motion offset is larger than the pre-registered estimate.** D1 measured 8 711 km for Mercury over 10 yr, against the plan's "few hundred km" (reported, not asserted). The offset is O(6GM/(c²a)) ≈ 1.5e-7, not 2.6e-8. **Correction (progress review after WP29, X5; applied in the M5 review fixes): the mean-motion offset is ≈ 22.6 GM/(c²a) ≈ 5.8e-7, 3.8× the "6 GM/(c²a)" stated here, reproduced independently in two-body as 8 710.2 km; the measurement (8 711 km) is unchanged.** The potential reproduces the advance, not the orbit. This is the Saha–Tremaine motivation for NUM-005.
 7. **W4's corrected series** has a drift fraction of 0.108 with a formally significant slope (4.8e-19 per yr, i.e. 5e-13 over 1e6 yr). This is consistent with round-off accumulating in the output corrector, at about Brouwer size. The assertion applies to the uncorrected series as pre-registered; the corrected series is reported only.
 8. **NUM-005 (Saha–Tremaine) is not implemented.** It is blocked by OI-34: the H_PN coefficients are unverified and the paper was not available.
 9. **Scenario extensions are not CI-002 switch names** (`gr_potential`, `wh_corrector`), as with `kbos`. The CI-002 text may want them (PR #2).
@@ -6860,7 +6860,7 @@ Margin = |Δ| / tolerance (or bound / measured for a lower bound).
 - **`m4-eih` since the branch point (`78d5a4c..92ca0bb`, not on this branch):**
   - The seven PHY-012 rows of `park2017-table3.toml` go from `blocked_by = "OI-38"` (P-add, non-gating) to **asserted under P-remove** with `provisional = "OI-38"`, and the asteroid row (PHY-019) to asserted.
   - Values and tolerances are unchanged. Each rationale states that P-remove was chosen after the results were known, lists the 4 P-add misses, and gives a revert condition. The authority cited is ADR-0014 / requirements PR #19 (merged).
-  - This is a disclosed post-hoc protocol switch made by a human decision. However, the maintainer-decision text this workflow hands to agents still says "PHY-012 protocol: contribution = (Sun+Mercury+planet) − (Sun+Mercury)", which is P-add. That text is stale against ADR-0014 (**NEEDS HUMAN REVIEW**, see section 5).
+  - This is a disclosed post-hoc protocol switch made by a human decision. However, the maintainer-decision text this workflow hands to agents still says "PHY-012 protocol: contribution = (Sun+Mercury+planet) − (Sun+Mercury)", which is P-add. That text is stale against ADR-0014 (~~NEEDS HUMAN REVIEW~~ **REVIEWED (#18 questionnaire, maintainer 2026-11-12)**: the workflow text lives outside this repository; the wording to apply is in the M5 review-fixes report: "PHY-012 protocol: P-remove (ADR-0014): contribution = rate(full system) − rate(full system without the planet); P-add is reported, not asserted").
 - **Mutation probes** (scratch clone at `52fe669`, `FA_DATA_DIR` = the pinned cache; baseline 112/112 PR tests of analytic, symplectic, integrators, forces, propagate and bench; reverted with `git checkout`):
 
 | crate | mutant | result |
@@ -6975,3 +6975,55 @@ residual. Mercury **0.784623 km under `majors`**, equal to the WP25 D1 recorded 
 re-confirmed by the nightlies that recorded M5 numbers on these scenarios: `nightly_ephemeris_mode.rs` (WP25 N1–N4,
 NUM-007/NUM-018 SSB drift), `data_ephemeris_mode_de440` (WP25 D1, data tier), and the WP28 speed table
 (`ferroastro-bench` `nightly_speed_table`, `data_num024_de440`), whose rows (h) use `bench-h-*`.
+
+
+## M5 review (#18) fixes — independent review and maintainer decisions of 2026-11-12
+Branch `m5-review-fixes` from `origin/m5-performance` `f32eb1f`. Local commits; the reviewer pushes.
+
+**B1 (blocker).** `bench-j-de440class-{mixed,dd}-40yr` and `wp26-headline-substitute-20yr` stay on
+`eih_scope = "all"`; their descriptions now say every moving body is under EIH (D1). Speed row (j), its truth run
+and the (i) → (j) comparison are annotated in WP28 and in `run4-wp28-…md` as measured under the WP19 Major-only EIH
+and superseded. P7 (`tools/simd_identity.py`) now runs the new `wp26-p7-epm16-majors-20yr` (`eih_scope = "majors"`),
+so `EihSoa` runs its lanes for the whole run. **Hashing hole closed:** `ScenarioSpec::digest` covers
+`model_semantics()` = `"model-semantics v1: eih_scope = <scope>"` for every `gr_eih` scenario, the default included.
+Every EIH scenario's digest changed; checkpoints and diffrun stores written before are refused with FA-E1302 and a
+message naming the scope (test `digest_covers_the_effective_eih_scope_and_old_checkpoints_are_refused`). The IC hash
+is unchanged (the scope is a model choice).
+
+**Should-fix.**
+- SF1: IRK16 counts a stall above 64 ulp (backend epsilon) of the largest stage acceleration in
+  `Irk16Stats::stalled_steps` (serde default 0); the run output's stats carry IRK16's iterations, capped steps
+  (`unconverged`) and stalls (`stalled`). Oversized-step test: h = 4 on the e = 0.5 orbit, 2 of 3 steps stall.
+- SF2: re-barycentring pass counts in `EIH-REBARY-RESIDUAL-KM` (three passes) and the system vector (two passes of the
+  `ferroastro-system` function, correct as written) clarified; the rationales now say what the checks catch (a wrong
+  sign, a skipped body or a missing translation; not a missing pass). Text only, golden-change.
+- SF3: `data_ephemeris_mode_majors_scope_reproduces_the_wp25_f64_residual` with `EPH-MAJORS-F64-MERCURY-HELIO-KM`
+  = 0.784623 km ± 1e-6: measured 0.784623 (majors), 0.784609 (all).
+- SF4: X1 T1c (shared DD start-up) **92.38** against the pre-registered ≥ 30; X2 the IRK16 compensation — the
+  pre-registered gain ≥ 3 **failed (1.98)** and is a nightly known failure, a structural PR pin (runs differ, the
+  compensated one is closer to DD) was added after that result and kills the `if false` mutant; X3 WH Galilean boost
+  (7.8e-14, kills the frozen-centre mutant); X4/X6 I2 (0.685) and I2b (11.791) restored as nightly known failures;
+  X5 corrected in WP29 item 6.
+- SF5/SF6: NUM-024 is no longer called "met"; the published-timings section of the speed table states "not
+  comparable" (hardware, ~338 vs ~642 Minor bodies, contended core); no cross-tool ratio for row (f); the full-DD
+  452.6 s is an untimed parallel truth run, not a ratio row.
+
+**NEEDS HUMAN REVIEW items, outcomes** (markers updated in place): WP24-1 B2d added (ABM_DD vs IAS15_DD Mercury
+1.278e-12 km over 40 yr, bound 1e-3 km, pre-registered); WP24-2 position band; WP24-6 fixed; WP25-1/2 accepted;
+WP25-3 corrected vector; WP25-4/5 requirement text (maintainer); WP26-1 equivalent mutant; WP26-2 `release-v3`
+profile; WP26-3 requirement text; WP28-1 = X1; WP28-2 accepted; WP28-3 quiet rerun listed; WP28 workload: NUM-024
+text (maintainer); WP29-1 = X4; WP29-3 issue text in the report; WP29-4 Swiftest text points at main's 1/16 d, 2 km;
+PHY-012 workflow text: wording in the report.
+
+**Nits.** WH Kepler-drift non-convergence is `FA-E0406` (`IntegratorNoConvergence`), not `NonFinite` (a degenerate
+orbit stays `FA-E0400`); the speed-table harness makes one untimed warm-up run (≤ 0.1 yr) before the timed runs;
+`SIMD-SOA-EIH-REL`'s real margin is stated (worst 1.29e-15 against 1e-12); the `IRK16-OBSERVED-ORDER(-DD)`
+rationales say the interval accepts order 14; the CI simd job runs with `ferroastro-propagate/parallel`, so P5 uses
+several threads (local run: 0 differing words, speed-up 3.85 on 32 threads).
+
+**Known failures updated** (`ci/nightly-known-failures.toml`): B2 last value 2.0738e-3 km (after the D1 merge; was
+2.241986e-3); new entries for I2, I2b and the X2 gain.
+
+**Long runs for the reviewer:** the wp28 speed-table suite on a quiet machine (rows (i), (j) under the all-body EIH,
+with the new warm-up); P7 `tools/simd_identity.py` on `wp26-p7-epm16-majors-20yr`; `nightly_ephemeris_mode`,
+`nightly_speed_table`, `data_num024_de440` (the `bench-h` / `ephemeris-mixed` scenarios now run "majors").
