@@ -99,7 +99,7 @@ quantity = "number of header.440 MAnnnn entries with nnnn >= 8000 (MA8001..MA823
 value = 66
 unit = "1"
 kind = "measured"
-source = "Counted in the downloaded header.440 (409 MA entries - 343 numbered asteroids). Their GMs sum to ~8.5e-8 GMS. No manifest SPK carries NAIF ids for them; their identity is an OI-24 question (NEEDS HUMAN REVIEW)."
+source = "Counted in the downloaded header.440 (409 MA entries - 343 numbered asteroids). Their GMs sum to ~8.5e-8 GMS. No manifest SPK carries NAIF ids for them; their identity is an OI-24 question (deferred by the maintainer 2026-11-08 to issue #35)."
 citation = "JPL DE440 ASCII header header.440 (sha256 0f4636b663e6f00af9efa2b605ef23635489f56b23dd1a5e3821d3acc6ac3359)"
 retrieved = "2026-10-15"
 tolerance = { abs = 0.0 }

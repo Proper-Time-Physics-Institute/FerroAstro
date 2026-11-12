@@ -29,5 +29,5 @@ source = "Identity of the two JPL products at JDEPOC: WP11 check 1 measured head
 citation = "FerroAstro docs/strategy/IMPLEMENTATION-NOTES.md WP11 check 1 and WP14 (bound derivation)"
 retrieved = "2026-10-15"
 tolerance = { abs = 1.0e-6 }
-tolerance_rationale = "Engineering bound fixed before the first run (WP14). An IC difference of 6.7e-7 km on r ~ 5e7 km moves passage longitudes by ~1e-14 rad; propagated over 40 yr (0.4 cy) that is <~ 1e-8 arcsec/cy in the slope, so 1e-6 is ~100x above the expected difference while 1e3x below the smallest PHY-012 row tolerance. PROVISIONAL; NEEDS HUMAN REVIEW with the other agent-set engineering bounds."
+tolerance_rationale = "Engineering bound fixed before the first run (WP14). An IC difference of 6.7e-7 km on r ~ 5e7 km moves passage longitudes by ~1e-14 rad; propagated over 40 yr (0.4 cy) that is <~ 1e-8 arcsec/cy in the slope, so 1e-6 is ~100x above the expected difference while 1e3x below the smallest PHY-012 row tolerance. PROVISIONAL; REVIEWED, accepted by the maintainer 2026-11-08 (#13 questionnaire, Journal #14) with the other agent-set engineering bounds."
 verified_by = "WP14 builder agent, 2026-10-15: derivation above; WP11 numbers re-read in IMPLEMENTATION-NOTES."
