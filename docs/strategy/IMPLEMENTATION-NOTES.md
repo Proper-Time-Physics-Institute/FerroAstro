@@ -5268,3 +5268,180 @@ and they are re-verified here by checks of this WP's own.
 **Mutation probes (planned):** Minor receivers skipped in `Eih`; Ring sources skipped; Minor sources omitted for
 Major receivers; U_j over all bodies instead of E(j); LT skipping Minor bodies; μ̇* with the ½ dropped; the velocity
 condition without μ̇*.
+
+### What was built (WP22, commits `04d7c39`…)
+- **`ferroastro-eih`**
+  - `Eih` evaluates the c⁻² part of Eq. 27 for every moving body (Major and Minor) over the tiered interaction
+    graph (`Graph::for_each_edge`: Major–Major, Major–Minor, Major–Ring, Minor–Ring). One pass computes U and the
+    Newtonian a over the graph and caches each edge's (r, 1/r³); a second pass adds both directions of every edge.
+    The coefficient lines (B_ij, S1–S3) are the signed ones, moved into `term()` unchanged. `Eih::with_minor_reaction`
+    mirrors `MinorFromMajors` (Off: Minor GM 0 as a source). `tiers()` is now [Major, Minor]; `corrections()` returns
+    storage order; two new `TermParameter`s record the scope.
+  - `mu_star_rate` and `relativistic_barycentre_with_rate`, textually those of `m5-performance` (WP25): the new
+    `barycentre.rs` blob `dcaa4bbf…` equals m5's.
+  - `TRANSCRIPTION.md` T12/T13 updated for D1 and D2 (DE430 p. 12 as the citation of the Newtonian a_j).
+- **`ferroastro-forces`**: `SolarLenseThirring` acts on every moving non-Sun body (Minor included); the Sun's reaction
+  includes them. `LT-TRANSCRIPTION.md` body row updated.
+- **`ferroastro-scenario`**: optional `initial_conditions.barycentre = "relativistic"` (`IcBarycentre`), refused
+  outside n-body mode (FA-E1203); schema regenerated. Spelling and doc text follow `m5-performance`.
+- **`ferroastro-propagate`**: `rebarycentre` (two passes, geocentric pair reconstructed for μ*, Moon − Earth slot
+  untouched, Ring masses moved in position only); the IC source string records it and the residuals.
+- **`ci/scenarios/phy014-eih-full-header440.toml`**: the PHY-014 template.
+- **Tests**: `eih_all_bodies.rs` (E1–E3), `wp22_barycentre.rs` (E5, E6), forces unit test E4,
+  `wp22_rebarycentre.rs` (E7), `wp22_phy014_model.rs` (E11), `nightly_num009_eih_tier_cost.rs` (E8),
+  `data_wp22_all_bodies_de440.rs` (E10), `nightly_phy014.rs` (E9, WP23). `.config/nextest.toml`: a long
+  slow-timeout for the PHY-014 nightly (scheduling only).
+- **Vectors** (`tests/vectors/eih.toml`, all written before their first run): `EIH-TIER-SINGLE-MINOR-REL`,
+  `EIH-MUSTAR-RATE-FD-REL`, `EIH-REL-SSB-DRIFT-10YR-KM`, `EIH-MUSTAR-RATE-DRIFT-RATIO-MIN`, `EIH-REBARY-RESIDUAL-KM`,
+  `EIH-REBARY-RESIDUAL-KMS`, `EIH-ALLBODY-SUN-IMPROVEMENT-MIN`, `PHY014-EIH-FULL-RATE`.
+
+### WP22 results (PR tier, pinned header.440, toolchain 1.95.0, 2026-11-12; loaded machine, load 30–45 on 32 cores)
+Every PR-tier check passed on its first run. No bound or expected value was changed after a run.
+
+| # | measured | bound | margin |
+|---|---|---|---|
+| E1 single-Minor equivalence (Ceres), β = γ = 1 / (1.1, 0.9) | **exactly 0** (bitwise) for all 11 bodies; Ceres \|δa\| = 7.04e-15 km/s² | 1e-13 | 0 |
+| E2 production vs independent reference, reaction On / Off, two PPN points | max 1.05e-15 | 1e-13 | 0.01 |
+| E2 negative control (Minor–Minor edges added) | 2.5e-2 on the Minor bodies | > 1e-10 | detected |
+| E2 Ring bodies | exactly 0 | exact | — |
+| E3 1PN centre of mass with the four giants Minor, 10 yr | **4.31e-10 km** (U over the graph); Newtonian barycentre 1.97e-5 km, ratio 4.6e4 | 1e-5 km; ratio ≥ 10 | 4e-5; pass |
+| E4 LT on a Minor body vs R3b (γ = 1 / 0.999) | 1.72e-16 / 5.99e-17; momentum 0.160 / 0.128 ε; Ring body exactly 0 | 1e-13; 8 ε | 0.002; 0.02 |
+| E5 μ̇* vs central difference (δ = 60 s, DD) | **1.091e-9** (Sun and Mercury; predicted 1.1e-9) | 1e-6 | 1e-3 |
+| E6 R* drift over 10 yr, full condition / Σμ*v only | **5.40e-10 km / 4.16e-5 km**, ratio 7.7e4 | 5e-6 km; ratio ≥ 5 | 1e-4; pass |
+| E7 re-barycentred residual, EMB system / geocentric + Pluto + ring | 0 km, 1.2e-18 km/s / 3.7e-11 km, 2.3e-18 km/s; ring masses at rest; Moon − Earth slot unchanged; key absent: records bitwise unchanged; test-particle mode refused FA-E1203 | 1e-6 km; 1e-12 km/s | 4e-5; 2e-6 |
+| E11 PHY-014 model smoke, 30 d | runs; EIH and LT act on [Major, Minor]; 46 steps, 1061 force evaluations, 1.9 s (42 ms/step) | structural | — |
+
+**Existing checks after the refactor.** All WP19–WP21 checks pass. The summation order changed, so some round-off
+numbers moved, all inside their unchanged bounds: C2b correction 1.288e-16 → 5.8e-17; C6 3.20e-10 → 3.50e-10 km;
+C5c 1.50e-5 → 4.07e-5 km (bound 1e-3; round-off divergence of two 10-yr runs); C5a/C5b, the binaries and the
+sympy checks are unchanged.
+
+**E6 matches DE430's statement.** Without μ̇* the barycentre drifts 4.2e-5 km in 10 yr, i.e. 0.42 m/century,
+against DE430's "about 0.5 m/century" for DE405.
+
+### Mutation probes (WP22; each applied to a backed-up file, the named tests run, the file restored; tree clean afterwards; script and log in the session scratchpad `mut/`)
+| # | mutant | killed by |
+|---|---|---|
+| M1 | Minor bodies do not receive the 1PN correction (the WP19 behaviour) | E1, E2, **E3** |
+| M2 | Ring masses are not sources | E2 |
+| M3 | Minor sources omitted for Major receivers | E1, E2, E3 |
+| M4 | U includes the Minor–Minor pairs | E2 |
+| M5 | LT skips Minor bodies | E4 |
+| M6 | μ̇* without the ½ | E5, E6 |
+| M7 | velocity condition without μ̇* | E6 |
+
+E3 kills M1, as the plan predicted: the 1PN centre-of-mass check sees a Minor body without its own 1PN terms.
+
+### WP22 cost (E8, NUM-009; nightly test run once locally, release, 2026-11-12, load 40–46 on 32 cores, so absolute times are pessimistic; ratios are from the same process)
+10 yr from JDEPOC, 5172 IAS15 steps in every configuration, median of 5:
+
+| configuration | bodies | median wall | per step |
+|---|---|---|---|
+| A: 16 Major, Newtonian + EIH | 16 | 3.55 s | 0.69 ms |
+| B: A + 338 Minor, EIH for every moving body | 354 | 111.5 s | 21.6 ms |
+| C: B without EIH (tiered Newtonian) | 354 | 33.1 s | 6.4 ms |
+
+- **B/A = 31.4** (NUM-009 bound < 2; prediction 30–150; reported only, `NUM009-TIER-COST-RATIO` is
+  `blocked_by = "OI-42"`). **The < 2× bound cannot be met by any model that integrates the asteroids**: the tiered
+  Newtonian run alone (C) costs 9.3× A, as WP15 found (28× with Newtonian Majors).
+- **EIH overhead B/C = 3.37** (prediction 2–5): evaluating the 1PN terms for all 354 bodies over the tiered graph
+  costs 2.4× the tiered Newtonian forces on top of them.
+- PHY-014 estimate (E11, debug-optimised test profile under load: 42 ms/step for 393 moving bodies + ring + J2 + LT;
+  a scratch run of the E9 plumbing, 2 × 3.1 yr in 70 s): about 21 s per simulated year per leg, i.e. **≈ 6 h per
+  1000-yr leg** on this machine under this load (the two legs run in parallel).
+
+### WP22 real-data result (E10, data tier; header.440 and de440.bsp from the pinned cache, SHA re-verified) — **FAILED its pre-registered assertion**
+All-body EIH + J2 (DE440) + LT, Sun + 8 planets + geocentric Moon, 10 yr every 10 d, 5172 steps each; maximum
+residual against de440.bsp, km:
+
+| body | planets only, bary | + small bodies, bary | planets only, helio | + small bodies, helio |
+|---|---|---|---|---|
+| Sun | 1.399 | **2.440** | – | – |
+| Mercury | 1.401 | 2.494 | 0.0163 | **0.0869** |
+| Venus | 1.483 | 2.480 | 0.115 | 0.050 |
+| Earth | 3.909 | 4.825 | 2.707 | 2.745 |
+| Moon | 219.98 | 220.15 | 218.87 | 218.89 |
+| Mars system | 10.23 | 2.446 | 11.25 | **0.020** |
+| Jupiter system | 11.51 | 2.743 | 12.22 | 0.475 |
+| Saturn system | 7.553 | 2.107 | 8.793 | 0.982 |
+| Uranus system | 10.27 | 8.947 | 9.744 | 6.720 |
+| Neptune system | 6.091 | 2.548 | 6.845 | 2.057 |
+
+- **The pre-registered check fails**: the Sun's barycentric residual gets worse, 1.399 → 2.440 km (factor 0.573,
+  bound ≥ 2). The bound and the test are unchanged; the test fails in the data tier.
+- **Reading.** With the small bodies every body carries a common barycentric offset of ≈ 2.4 km, while the
+  heliocentric residuals improve strongly: Mars 11.25 km → 20 m (560×), Jupiter 26×, Saturn 9×, Neptune 3.3×,
+  Venus 2.3×. A common offset is a drift of the model's barycentre relative to DE440's, i.e. a total-momentum
+  mismatch: the asteroids' momentum (Σ GM v / Σ GM up to ~1e-8 km/s, ~km per 10 yr) is now included, but DE440's SSB
+  also contains the 27 KBO masses FerroAstro does not integrate (only the 3 identified KBOs; OI-24) and the ring as
+  DE440 models it. My choice of the Sun's barycentric residual as the metric was wrong: it measures the SSB
+  definition, not the dynamics. The heliocentric residuals are the meaningful comparison.
+- **Mercury heliocentric gets worse, 16.3 m → 86.9 m.** Diagnostics (scratch runs, not committed): asteroids only
+  85.8 m; asteroids + KBOs 85.8 m; the full set with the **Minor bodies' 1PN terms switched off** (mutant M1) 86.9 m.
+  So the change comes from the asteroids' Newtonian pull, present since WP15, and **not from D1**; the 16 m without
+  asteroids was probably a partial cancellation (as the Moon in WP19). Its cause is not established (candidates:
+  the solar J2 pole, OI-76; the REF-003 asteroid states; DE440 vs this model's asteroid treatment, OI-78).
+  NEEDS HUMAN REVIEW.
+- The ring improves the outer planets' heliocentric residuals (Neptune 5.30 km with asteroids + KBOs → 2.06 km with
+  the ring).
+
+### WP23 (PHY-014 rung): written, not run
+`crates/ferroastro-diffrun/tests/nightly_phy014.rs::nightly_phy014_eih_full_rate_with_de440_constants` (nightly,
+`#[ignore]`) runs `ci/scenarios/phy014-eih-full-header440.toml` back and forward over 1000–3000 CE with the
+Park2017 estimator and asserts `PHY014-EIH-FULL-RATE` = 575.3093 ± 0.005 ″/cy. Expected ≈ 6 h per leg here, so the
+long run is left to the reviewer:
+`cargo nextest run -p ferroastro-diffrun --cargo-profile release --profile nightly --run-ignored only -E 'test(nightly_phy014_eih_full_rate_with_de440_constants)'`
+(checkpoints every 50 yr in `target/diffrun/store-wp23`; an interrupted run resumes). Its plumbing (scenario, two
+legs, store, estimator call) was exercised with a scratch copy over ±3 yr around JDEPOC: the legs ran (70 s) and the
+estimator refused the 6-yr window as ill-posed (25 samples for 31 parameters), as expected; the scratch file was
+deleted. Prediction: 575.30916 (Δ ≈ −0.0001).
+
+### Deviations and NEEDS HUMAN REVIEW (WP22)
+1. **The two set rules NUM-009 left open** (NEEDS HUMAN REVIEW): (a) a Minor receiver's 1PN sums exclude other Minor
+   sources (consistent with the tiered Newtonian model); (b) the fixed Ring masses are 1PN sources (v = a = 0) and
+   receive nothing. E3 shows the resulting model conserves its 1PN centre of mass to 4e-10 km.
+2. **NUM-020 re-check of the changed blobs** (NEEDS HUMAN REVIEW; required by the NUM-020 notes): `eih.rs`
+   `9f8a3fb8…` → `deefc428…` (summation sets and order, `term()` holds the signed coefficient lines unchanged);
+   `barycentre.rs` `9b43722d…` → `dcaa4bbf…` (additive: `mu_star_rate`, `relativistic_barycentre_with_rate`,
+   identical to m5-performance); `terms.rs` → `62ec6f6d…` (LT body list). E2 is an independent second evaluation of
+   Eq. 27 with the new set rules, not a human check.
+3. **E10 failed its pre-registered bound** (Sun barycentric improvement ≥ 2×; measured 0.573). Bound and test
+   unchanged; the data tier now has a failing test. The metric was ill-chosen (see above); a replacement check
+   (heliocentric residuals, e.g. Mars) would be post hoc and is not added. NEEDS HUMAN REVIEW: keep the failing
+   assertion as the record, or retire the vector with this explanation.
+4. **Mercury heliocentric residual vs de440.bsp worsens with the asteroids** (16.3 → 86.9 m), independent of D1.
+   NEEDS HUMAN REVIEW (with OI-76, OI-78).
+5. **NUM-009 cost bound**: B/A = 31.4 against < 2×; the asteroids alone (Newtonian) cost 9.3×. Proposed requirement
+   text below.
+6. **E1 deviation from the plan text**: E1 used barycentric Moon variables, not the geocentric pair, because it
+   compares the `Eih` term's own output and `NBodyModel` requires the `GeocentricMoon` term with the pair. The
+   geocentric path is covered by E3 and E11.
+7. **μ̇* in the re-barycentring uses the Newtonian accelerations by every body** (all pairs, Minor–Minor included),
+   not the tiered ones; the difference is O(GM_asteroid²) and far below the residual bounds.
+8. **LT reaction with `MinorReaction::Off`**: the Sun still receives the LT reaction of Minor bodies in proportion to
+   their GM. Propagate always uses `On`.
+9. **Solar J2 remains Major-only** (OI-76 open; not in this WP's decisions).
+10. **Merge with m5-performance**: the barycentre functions and the scenario key are textually m5's; `nbody.rs`
+    (`rebarycentre`) is written independently and will conflict with m5's version, which moves every body
+    (Ring velocities included). Keep this branch's Ring handling or m5's, deliberately.
+
+### Proposed requirement text (for the requirement owners; requirement files not edited)
+- **NUM-009 acceptance**, replace "the run costs < 2× the 16-Major-body run" with: "With the DE440 asteroid set as
+  Minor bodies and EIH evaluated for every moving body, the run costs < 5× the same tiered run without EIH, and the
+  tiered run costs < 1× the all-mutual run. The ratio to the 16-Major-body run is measured and reported." (WP22
+  measured 3.37× and WP15 0.117×.) Notes: record decisions (a) and (b) above once confirmed.
+- **NUM-019 notes**: replace "The build branch's SolarLenseThirring … applies LT to Major bodies only, so the
+  Minor-body part is not yet met" with "Build evidence (wp22-eih-all-bodies): SolarLenseThirring acts on every moving
+  non-Sun body, Minor included, with the Sun's reaction including them
+  (crates/ferroastro-forces/src/nbody/tests.rs::solar_lense_thirring_acts_on_minor_bodies)."
+- **NUM-018 notes**: add "Build evidence on the m4 line (wp22-eih-all-bodies): mu_star_rate and
+  relativistic_barycentre_with_rate, the opt-in key initial_conditions.barycentre = "relativistic"; E5 1.09e-9,
+  E6 drift 5.4e-10 km per 10 yr with the full condition and 4.2e-5 km without μ̇* (0.42 m/century)."
+
+### WP22 gate results (local, toolchain 1.95.0, at code tip `14c6353`, `FA_DATA_DIR` = the pinned cache)
+All exit 0: `cargo fmt --all --check`; `cargo clippy --workspace --all-targets --all-features -- -D warnings`;
+`cargo nextest run --workspace` (**298 passed, 48 skipped**: `data_*` and `nightly_*`); `cargo test --doc
+--workspace` (17 passed); `cargo deny check`; `RUSTDOCFLAGS="-D warnings" cargo doc --no-deps --workspace`; ruff,
+ruff format, mypy (45 files), pytest (86 passed, 4 skipped); `reuse lint`; `trace.py --check` (121 requirements,
+700 citing tests, 0 errors). MSRV `cargo +1.85.0 check --workspace --all-targets`: clean. Data tier: only E10 was
+run (fails, above). Nightly: only E8 was run (pass, reported only).
