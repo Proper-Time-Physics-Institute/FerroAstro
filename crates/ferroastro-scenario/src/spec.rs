@@ -957,12 +957,36 @@ impl ScenarioSpec {
         Ok(())
     }
 
-    /// SHA-256 (hex) of the scenario's canonical JSON form (field order fixed by the type), used
-    /// to tie a checkpoint to its scenario.
+    /// The model semantics an EIH scenario's digest covers besides its JSON form, `None` for a
+    /// scenario without `gr_eih`: the effective EIH scope, default included
+    /// (`"model-semantics v1: eih_scope = all"`).
+    #[must_use]
+    pub fn model_semantics(&self) -> Option<String> {
+        self.forces.gr_eih.then(|| {
+            format!(
+                "model-semantics v1: eih_scope = {}",
+                self.forces.eih_scope.label()
+            )
+        })
+    }
+
+    /// SHA-256 (hex) of the scenario's canonical JSON form (field order fixed by the type) and,
+    /// for an EIH scenario, of the **effective** model semantics ([`ScenarioSpec::model_semantics`]),
+    /// used to tie a checkpoint (and a differential-run store) to its scenario.
+    ///
+    /// The JSON form omits defaults (`eih_scope = "all"` is not serialized), so a change of what a
+    /// default means would otherwise leave the digest unchanged: the M5 review (#18, B1) found
+    /// scenarios measured under the Major-only EIH and re-run under the all-body EIH (decision D1)
+    /// with the same digest. Since 2026-11-12 the digest of every `gr_eih` scenario covers its
+    /// effective `eih_scope`; a checkpoint written before that is refused (FA-E1302).
     #[must_use]
     pub fn digest(&self) -> String {
         use sha2::{Digest, Sha256};
-        let json = serde_json::to_string(self).unwrap_or_default();
+        let mut json = serde_json::to_string(self).unwrap_or_default();
+        if let Some(m) = self.model_semantics() {
+            json.push('\n');
+            json.push_str(&m);
+        }
         let d = Sha256::digest(json.as_bytes());
         d.iter().fold(String::with_capacity(64), |mut s, b| {
             use std::fmt::Write as _;

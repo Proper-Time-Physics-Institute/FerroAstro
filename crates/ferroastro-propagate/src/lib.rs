@@ -413,13 +413,17 @@ fn matching<'c>(
     if ck.scenario_digest != spec.digest() || ck.precision != spec.integrator.precision.label() {
         return Err(PropagateError::Checkpoint {
             problem: format!(
-                "checkpoint of scenario {} ({}, digest {}) does not match scenario {} ({}, digest {})",
+                "checkpoint of scenario {} ({}, digest {}) does not match scenario {} ({}, digest {}{}); \
+                 the digest covers the scenario and, since 2026-11-12, an EIH scenario's effective \
+                 eih_scope, so a checkpoint written before then must be re-run from the start",
                 ck.scenario,
                 ck.precision,
                 ck.scenario_digest,
                 spec.name,
                 spec.integrator.precision.label(),
-                spec.digest()
+                spec.digest(),
+                spec.model_semantics()
+                    .map_or_else(String::new, |m| format!(", {m}"))
             ),
         });
     }

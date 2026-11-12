@@ -42,6 +42,8 @@ simd = ["ferroastro-forces/simd", "ferroastro-eih/simd"]
 proptest.workspace = true
 ferroastro-testdata.workspace = true
 ferroastro-vectors.workspace = true
+serde_json.workspace = true
+sha2.workspace = true
 
 [lints]
 workspace = true

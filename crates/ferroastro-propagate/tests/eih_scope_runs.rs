@@ -12,7 +12,7 @@
 )]
 
 use ferroastro_constants::header440::Header;
-use ferroastro_propagate::{DataSources, run};
+use ferroastro_propagate::{DataSources, resume, run, run_until};
 use ferroastro_scenario::{EihScope, ScenarioSpec};
 use std::path::PathBuf;
 
@@ -79,4 +79,51 @@ fn eih_scope_is_validated_recorded_and_defaults_to_all() {
         a.ic_hash, m.ic_hash,
         "the scope is a model choice, not an IC change"
     );
+}
+
+/// M5 review B1: the digest of an EIH scenario covers its effective `eih_scope`, the default
+/// included, so a checkpoint whose digest is the bare JSON hash (as written before 2026-11-12)
+/// is refused with FA-E1302 and a message naming the scope.
+///
+/// Verifies: CI-010, NUM-009
+#[test]
+fn digest_covers_the_effective_eih_scope_and_old_checkpoints_are_refused() {
+    use sha2::{Digest, Sha256};
+    let base = spec("stage-c-sun-planets-moon-eih-100yr.toml");
+    let json = serde_json::to_string(&base).unwrap();
+    let bare = Sha256::digest(json.as_bytes())
+        .iter()
+        .fold(String::new(), |mut s, b| {
+            use std::fmt::Write as _;
+            let _ = write!(s, "{b:02x}");
+            s
+        });
+    assert_ne!(
+        base.digest(),
+        bare,
+        "the default eih_scope must enter the digest"
+    );
+    assert_eq!(
+        base.model_semantics().as_deref(),
+        Some("model-semantics v1: eih_scope = all")
+    );
+    let mut newton = base.clone();
+    newton.forces.gr_eih = false;
+    assert!(newton.model_semantics().is_none());
+
+    let f = ferroastro_testdata::locate_product("de440-header").expect("cached header.440");
+    let prov = f.provenance();
+    let h = Header::parse(&std::fs::read_to_string(&f.path).unwrap()).unwrap();
+    let data = DataSources::none().with_header(&h, &prov);
+    let mut s = base;
+    s.span.years = 0.02; // lint: allow-literal(a few steps: only the checkpoint is used)
+    s.output.cadence_days = None;
+    let (_, ck) = run_until(&s, &data, 0.01).unwrap(); // lint: allow-literal(stop half-way)
+    let mut ck = ck.expect("a checkpoint half-way");
+    assert!(resume(&s, &data, &ck).is_ok());
+    ck.scenario_digest = bare;
+    let e = resume(&s, &data, &ck).unwrap_err();
+    println!("{e}");
+    assert_eq!(e.code().to_string(), "FA-E1302");
+    assert!(e.to_string().contains("eih_scope = all"), "{e}");
 }
