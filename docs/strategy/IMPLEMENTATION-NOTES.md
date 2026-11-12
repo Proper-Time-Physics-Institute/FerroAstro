@@ -5403,7 +5403,7 @@ deleted. Prediction: 575.30916 (Δ ≈ −0.0001).
 2. **NUM-020 re-check of the changed blobs** (NEEDS HUMAN REVIEW; required by the NUM-020 notes): `eih.rs`
    `9f8a3fb8…` → `deefc428…` (summation sets and order, `term()` holds the signed coefficient lines unchanged);
    `barycentre.rs` `9b43722d…` → `dcaa4bbf…` (additive: `mu_star_rate`, `relativistic_barycentre_with_rate`,
-   identical to m5-performance); `terms.rs` → `62ec6f6d…` (LT body list). E2 is an independent second evaluation of
+   identical to m5-performance); `terms.rs` → `76e3a354…` after `15615ca` (LT body list and Minor reaction; this item first said `62ec6f6d…`, a stale id; review correction) and `7047ae8f…` after `c86d328` (`ForceTerm::minor_reaction`); `eih.rs` → `362a7603…` after `c86d328` (Ring v = 0, `minor_reaction`). E2 is an independent second evaluation of
    Eq. 27 with the new set rules, not a human check.
 3. **E10 failed its pre-registered bound** (Sun barycentric improvement ≥ 2×; measured 0.573). Bound and test
    unchanged; the data tier now has a failing test. The metric was ill-chosen (see above); a replacement check
@@ -5418,8 +5418,9 @@ deleted. Prediction: 575.30916 (Δ ≈ −0.0001).
    geocentric path is covered by E3 and E11.
 7. **μ̇* in the re-barycentring uses the Newtonian accelerations by every body** (all pairs, Minor–Minor included),
    not the tiered ones; the difference is O(GM_asteroid²) and far below the residual bounds.
-8. **LT reaction with `MinorReaction::Off`**: the Sun still receives the LT reaction of Minor bodies in proportion to
-   their GM. Propagate always uses `On`.
+8. ~~**LT reaction with `MinorReaction::Off`**: the Sun still receives the LT reaction of Minor bodies in proportion to
+   their GM. Propagate always uses `On`.~~ **Superseded by `15615ca`**: with `Off` the Minor bodies send no LT
+   reaction; since `c86d328` `NBodyModel::new` also refuses terms whose Minor reaction settings differ.
 9. **Solar J2 remains Major-only** (OI-76 open; not in this WP's decisions).
 10. **Merge with m5-performance**: the barycentre functions and the scenario key are textually m5's; `nbody.rs`
     (`rebarycentre`) is written independently and will conflict with m5's version, which moves every body
@@ -5474,8 +5475,13 @@ heliocentric residual at 10 yr; "max" its maximum heliocentric residual.
 | top 16, no LT | 20.3 | +10.2 | 1.56 | 2.04 |
 | all 343, **no LT** | 41.3 | **−4.9** | 0.018 | 2.20 |
 
-- **Cause of the 16 → 87 m change: the asteroids' tidal (direct minus indirect) Newtonian pull on Mercury, which
-  this model computes correctly.** It is a linear along-track drift (a mean-motion change), it grows with the asteroid
+- **What the bisection shows (reworded after the independent review, S3):** the 16 → 87 m change is **attributable
+  to the asteroids' tidal (direct minus indirect) Newtonian pull on Mercury**. That the model computes this pull
+  *correctly* is **not shown**: the full model (asteroids + LT) disagrees with de440.bsp by 66 m along-track at
+  10 yr, while either effect alone agrees to ≲ 10 m, so at least one of them, or a third term, differs from DE440.
+  Followed up in issue #42; the harness is committed as
+  `crates/ferroastro-propagate/tests/data_wp22_mercury_diagnostics.rs` (`#[ignore]`d data test, configured by
+  `FA_WP22_DIAG`, asserts nothing). What is shown: it is a linear along-track drift (a mean-motion change), it grows with the asteroid
   mass included (Ceres −16 m, Vesta −21 m, all 343 −59 m relative to the planets-only run), and it is the small
   difference of two large terms (top 16: direct pull on Mercury +147 m, pull on the Sun −191 m). The analytic estimate
   for Ceres, with ε = GM r³/(2R³ GM☉) = 6.7e-13 and δn/n ≈ −2ε over 41.5 orbits, is −20 m; the measurement is −16 m.
@@ -5483,7 +5489,8 @@ heliocentric residual at 10 yr; "max" its maximum heliocentric residual.
   from REF-003 agrees with DE430 Table 13 to 43 km and 1.3e-6 km/s, and the tidal drift depends only on the masses and
   orbit sizes); the 66 unidentified header masses (GM 11 232 km³/s² = 8.46e-8 GMS, ring included; estimated tidal
   effect on Mercury ≈ 1 m over 10 yr); solar J2 acting on Majors only (the asteroids' J2 terms do not reach Mercury at
-  this level). **No code bug was found, so nothing was changed.**
+  this level). **No code bug was found, so nothing was changed**; the size of the drift agrees with the analytic
+  estimate above, which is a consistency check of the pull's magnitude, not a proof against DE440.
 - **Why it looks like a regression: two ~60 m drifts.** The solar LT term also changes Mercury's mean motion at fixed
   ICs (its in-plane part is radial): planets-only with and without LT give −7.0 and +53.8 m at 10 yr, so LT contributes
   **−61 m**, as large as the asteroids' −59 m. de440.bsp agrees with this model to ≲ 10 m (no trend) with either
@@ -5526,3 +5533,32 @@ difference equals −(GM_m/GM☉)a_m (6.2e-11 relative, cancellation-limited); t
 **4. Gates** (at `75b37f5`): all exit 0. fmt; clippy `-D warnings`; nextest **299 passed, 49 skipped**; doctests;
 deny; doc `-D warnings`; ruff, ruff format, mypy, pytest (86 passed, 4 skipped); reuse; trace (121 requirements,
 705 citing tests, 0 errors). Data tier: E10b pass (557×); E10 still fails as recorded.
+
+### WP22 independent-review fixes (2026-11-12; branch rebased on `origin/m4-eih` `bdcec8b`)
+- **S2, E10 as a bounded known-failure guard.** E10 and E10b now share one pair of 10-yr runs in a single test,
+  `data_eih_all_bodies_with_small_bodies_ten_years_vs_de440_bsp` (187 s, well inside the 600 s terminate; E10b is no
+  longer a separate test). The pre-registered `EIH-ALLBODY-SUN-IMPROVEMENT-MIN` (≥ 2) is printed ("FAILS as recorded"),
+  not asserted. The guard `E10-KNOWN-FAILURE-SUN-BARY-FACTOR` = 0.573 ± 0.05 passes while the documented failure
+  reproduces in [0.523, 0.623] and fails if it changes, worsens or stops reproducing (provenance and band in the
+  vector). Data-tier run: factor 0.573 (guard pass), Mars 557× (E10b pass).
+- **S3, wording and reproducibility.** The follow-up's "computes correctly" is withdrawn: the bisection attributes the
+  change to the asteroids' pull; correctness against DE440 is not shown (full model 66 m off, either effect alone
+  ≲ 10 m), issue #42. The harness is committed as
+  `crates/ferroastro-propagate/tests/data_wp22_mercury_diagnostics.rs` (`#[ignore]`d, `FA_WP22_DIAG`); a re-run of
+  `ids:2000001` reproduces the table's Ceres row exactly (25.78 m, −22.97 m).
+- **S4, NUM-009 cost bounds asserted.** `NUM009-TIER-COST-RATIO` now holds the revised acceptance (EIH for every body
+  / the same tiered run without EIH < 5; golden-change, blocked_by OI-42 removed); `NUM009-TIER-VS-ALL-MUTUAL` (< 1)
+  is asserted too. The E8 nightly adds configuration D (the same 354 bodies all Major, Newtonian), runs A, B, C, D
+  interleaved, records the 1-minute load and asserts both bounds; the WP15 Newtonian nightly reports B/A only.
+- **NITs.** `eih.rs` sets v = 0 (and a = 0, as before) for bodies that do not move, whatever is stored (test
+  `ring_bodies_enter_eih_with_zero_velocity_whatever_is_stored`, killed by the mutant that reads the stored velocity).
+  `ForceTerm::minor_reaction` (reported by `MinorFromMajors`, `SolarLenseThirring`, `Eih`) lets `NBodyModel::new`
+  refuse terms whose Minor reaction settings differ (FA-E0500; tests in forces and eih). The stale `terms.rs` blob id
+  and deviation item 8 are corrected above. E10b's `Verifies:` is NUM-009, NUM-019, REF-003 (no PHY-014); the Mars
+  vector's requirement list is NUM-009, REF-003.
+- **E8 re-measured, interleaved** (release, nightly test with `FA_COST_YEARS=5 FA_COST_ROUNDS=3` to stay inside the
+  20-min limit of a local run; the nightly default stays 10 yr × 5 rounds; 2026-11-12, 1-minute load 17.8–30.0, median
+  22.2, on 32 cores; 2586 steps per run): medians A 1.153 s, B 54.27 s, C 15.23 s, D 63.97 s. **B/C = 3.56 (< 5,
+  pass)**, **C/D = 0.238 (< 1, pass)**, B/A = 47.1 (reported). Round-to-round scatter is ±20% (B 46.8–65.4 s), which
+  is why the median of interleaved rounds is used. The earlier block measurement gave B/C = 3.37.
+- **Gates** (at `766e60b` + this notes commit): all exit 0. fmt, clippy `-D warnings`, nextest **302 passed, 49 skipped**, doctests, deny, doc `-D warnings`, ruff, ruff format, mypy, pytest (86 passed, 4 skipped), reuse, trace (121 requirements, 709 citing tests, 0 errors). Data tier: the combined E10 guard + E10b test passes (187 s); the diagnostic harness runs (Ceres row reproduced).
