@@ -274,6 +274,15 @@ statement: >-
   1PN terms from other Minor bodies. (Amended 2026-11-12 to match the
   maintainer's tier rules of 2026-11-11; it previously read "with the sums
   over all bodies; tiering does not restrict the 1PN terms".)
+  The above is the default EIH scope (scenario eih_scope = "all", matching
+  DE440). A scenario MAY instead select the source-specific scope
+  eih_scope = "majors" (EPM2021, Subbotin et al. 2023): the 1PN EIH
+  acceleration is then evaluated for the Major bodies only, with the 1PN
+  sums, U and the right-hand-side a_j over the Major bodies; Minor and Ring
+  bodies stay Newtonian. The scope SHALL be recorded in every run's model
+  provenance. (Amended 2026-11-13: the statement previously admitted only
+  the "all" scope, so the "majors" mode added on M5 was described only in
+  the notes; maintainer decision 2026-11-13, NUM-020 row 12 re-check.)
 acceptance: >-
   With the DE440 asteroid set as Minor bodies and EIH evaluated for every
   moving body, the run costs < 5× the same tiered run without EIH, and the
@@ -348,6 +357,17 @@ notes: >-
   eih_scope = "majors"), tiering costs < 1 cm (planets) and < 1 mm (Moon)
   over 40 yr for their body set. For the DE440 set (eih_scope = "all", D1)
   FerroAstro measures Mars 2.2 cm (WP25 N4), reported.
+  EIH_SCOPE = "majors" OPEN POINTS (NUM-020 row 12 re-check, 2026-11-13):
+  (1) Under MinorReaction::On the Majors are integrated with the Minor
+  bodies' Newtonian reaction included, but the 1PN right-hand side uses a
+  Majors-only Newtonian a_j. The mismatch is O(GM_ast/c²). Recorded as a
+  known deviation until it is confirmed against EPM2021's practice.
+  (2) The reading of Subbotin et al. 2023 is still owed (human, against the
+  typeset page): that EPM2021 (a) evaluates the 1PN terms for its 16 Majors
+  only, (b) sums U and a_j over those 16 only, and (c) uses the 16 named
+  above (OI-78). Until then the "majors" scope is checked against its own
+  documentation only (crates/ferroastro-eih/tests/eih_scope.rs, 3 tests),
+  not against EPM2021, and NUM-020 row 12 stays unsigned for it.
 ```
 
 ### NUM-010 — Dense output and perihelion event location
