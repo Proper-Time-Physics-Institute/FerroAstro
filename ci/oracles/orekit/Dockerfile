@@ -4,10 +4,15 @@
 # Orekit 13.1.9 + Hipparchus 4.0.3 oracle image (REF-006, CI-001; WP17 stage B). Orekit and
 # Hipparchus are Apache-2.0 like FerroAstro; the image still follows the oracle conventions:
 # built locally, never pushed, no FerroAstro build inside, plain files in and out.
-# * Base image by digest; OpenJDK 17 and unzip from Debian by exact version.
+# * Base image by digest; OpenJDK 17 and unzip from Debian by exact version. Debian drops a
+#   superseded security build, so the JDK pin must be bumped when that happens (FerroAstro#32:
+#   17.0.20.1+1-1~deb12u1 -> 17.0.21+9-1~deb12u1 on 2026-11-13).
 # * Jars from Maven Central by URL and SHA-256 (each also matched its .sha1 on Maven Central).
 # * orekit-data at git commit 2422a7d06ee2cc3b5a503a47271203b0706f3e82 (2026-10-06, "Updated to
-#   October 2026") by archive SHA-256. Its DE-440-ephemerides/lnxp1990.440 is removed so that
+#   October 2026"), fetched with BuildKit's git source at that commit, then checked against a
+#   SHA-256 of the installed data tree (ORE_DATA_TREE_SHA256 below). It was pinned by archive
+#   SHA-256 until 2026-11-13, but GitLab generates archives on the fly and their bytes changed
+#   for the same commit (FerroAstro#32). Its DE-440-ephemerides/lnxp1990.440 is removed so that
 #   the only JPL ephemeris Orekit can load is the pinned linux_p1550p2650.440 mounted at run time
 #   (tests/data/MANIFEST.toml product de440-linux-binary).
 # * StageB.java (FerroAstro, Apache-2.0) is compiled here against the pinned jars; it uses the
@@ -15,7 +20,7 @@
 FROM python:3.12-slim-bookworm@sha256:34386ef0cb081344d7ec1c103ba398e6e9f64e9ab3a1509accc92a4e24a07258
 
 RUN apt-get update \
- && apt-get install -y --no-install-recommends openjdk-17-jdk-headless=17.0.20.1+1-1~deb12u1 \
+ && apt-get install -y --no-install-recommends openjdk-17-jdk-headless=17.0.21+9-1~deb12u1 \
       unzip=6.0-28+deb12u1 \
  && rm -rf /var/lib/apt/lists/*
 
@@ -35,14 +40,17 @@ ADD --checksum=sha256:279eece43411f372bd8340355cb89101def0bf9b1b6824231b76181d1e
     https://repo1.maven.org/maven2/org/hipparchus/hipparchus-filtering/4.0.3/hipparchus-filtering-4.0.3.jar /opt/orekit/lib/
 ADD --checksum=sha256:8b066e3060dc119efcce241fb0720a3b9e59c026d0f5fe9e70abfd5e22d3817b \
     https://repo1.maven.org/maven2/org/hipparchus/hipparchus-stat/4.0.3/hipparchus-stat-4.0.3.jar /opt/orekit/lib/
-ADD --checksum=sha256:3f1cdf30d802f5e3cbeaaf22cadf02e6f30c8ba6c0d9ef865c57c83e2532761e \
-    https://gitlab.orekit.org/orekit/orekit-data/-/archive/2422a7d06ee2cc3b5a503a47271203b0706f3e82/orekit-data-2422a7d06ee2cc3b5a503a47271203b0706f3e82.zip \
-    /tmp/orekit-data.zip
+ADD https://gitlab.orekit.org/orekit/orekit-data.git#2422a7d06ee2cc3b5a503a47271203b0706f3e82 \
+    /tmp/od
+# SHA-256 over `sha256sum` of every installed data file, in C-locale path order.
+ARG ORE_DATA_TREE_SHA256=48b4dbcae7b33b74b33ce3cd519addf086784b363bbb247b36845aca3e83ac9a
 RUN mkdir -p /opt/orekit/data /opt/orekit/classes \
- && unzip -q /tmp/orekit-data.zip -d /tmp/od \
- && mv /tmp/od/orekit-data-2422a7d06ee2cc3b5a503a47271203b0706f3e82/* /opt/orekit/data/ \
+ && mv /tmp/od/* /opt/orekit/data/ \
  && rm -rf /opt/orekit/data/DE-440-ephemerides /opt/orekit/data/_pyinstaller /tmp/od \
-      /tmp/orekit-data.zip \
+ && got="$(cd /opt/orekit/data && find . -type f -print0 | LC_ALL=C sort -z \
+           | xargs -0 sha256sum | sha256sum | cut -d' ' -f1)" \
+ && echo "orekit-data tree sha256 ${got}" \
+ && [ "$got" = "$ORE_DATA_TREE_SHA256" ] \
  && chmod -R a+rX /opt/orekit
 
 COPY StageB.java settings.toml /opt/fa/
