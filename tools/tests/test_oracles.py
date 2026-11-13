@@ -295,10 +295,19 @@ def test_oracle_images_are_fully_pinned() -> None:
                 if not word.startswith("-") and word != "\\":
                     assert "=" in word, (dockerfile, word)
         assert "--require-hashes" in text or "pip install" not in text, dockerfile
-        # Downloaded sources (Mercury6) are pinned by checksum.
+        # Downloaded sources (Mercury6) are pinned by checksum. A git source (orekit-data, #32:
+        # GitLab regenerates archives, so an archive checksum cannot hold) is pinned by its full
+        # commit hash AND by a SHA-256 of the installed tree, declared as an ARG ..._TREE_SHA256
+        # that the build checks.
         for add in re.findall(r"^ADD\s[^\n]*(?:\\\n[^\n]*)*", text, re.MULTILINE):
             if "http" in add:
-                assert re.search(r"--checksum=sha256:[0-9a-f]{64}", add), (dockerfile, add)
+                if re.search(r"\.git#[0-9a-f]{40}\b", add):
+                    assert re.search(r"^ARG \w+_TREE_SHA256=[0-9a-f]{64}$", text, re.MULTILINE), (
+                        dockerfile,
+                        add,
+                    )
+                else:
+                    assert re.search(r"--checksum=sha256:[0-9a-f]{64}", add), (dockerfile, add)
         for req in sorted(dockerfile.parent.glob("requirements*.txt")):
             lines = [
                 ln
