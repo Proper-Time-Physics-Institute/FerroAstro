@@ -115,8 +115,16 @@ source: >-
   docs/viewer/DESIGN.md (principal's request: see the orbits and toggle the
   perturbations while probing Mercury's perihelion).
 parent: null
-related: [API-002, PHY-015, CI-009, CI-010, DEP-006]
+related: [API-002, PHY-015, PHY-020, CI-009, CI-010, DEP-006]
 notes: >-
   Proposed with the viewer (NEEDS HUMAN REVIEW). The ABI shims need the
   unsafe-attribute lint exception of DESIGN §2.2 (AGENTS.md rule 5, STD-003).
+  PLANNED ABI v2 (ADR-0016, decision D5 of 2026-11-14, #59): a later viewer PR
+  defines toggle bit 12 as CONFORMAL (the PHY-020 conformal-gravity comparison
+  model, labelled "comparison model"), adds parameters 13–15 for γ0, γ* and κ
+  plus the gamma0_centre choice ("uniform" by default), moves the invalid-bit
+  checks to bit 13 and bumps the extern "C" ABI to version 2. Until that PR
+  lands, bit 12 and parameters 13–15 stay reserved, the statement's version-1
+  ABI applies, and the default mask does not change (it will not include bit
+  12 after the change either).
 ```
