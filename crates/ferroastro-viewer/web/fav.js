@@ -340,7 +340,7 @@
     const imports = WebAssembly.Module.imports(module);
     if (imports.length !== 0) {
       throw new Error(
-        "ferroastro_viewer.wasm has " + imports.length + " imports; ABI v1 requires none (" +
+        "ferroastro_viewer.wasm has " + imports.length + " imports; the ABI requires none (" +
           imports.map((i) => i.module + "." + i.name).join(", ") + ")",
       );
     }

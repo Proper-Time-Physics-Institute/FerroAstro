@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2026 Proper-Time Physics Institute
 // SPDX-License-Identifier: Apache-2.0
 //
-// Engine-level node smoke test of ferroastro_viewer.wasm through the raw ABI v1 exports, with no
+// Engine-level node smoke test of ferroastro_viewer.wasm through the raw ABI v2 exports, with no
 // JS glue (docs/viewer/DESIGN.md sections 4 and 9; the page-level test through fav.js is
 // crates/ferroastro-viewer/web/smoke.mjs). Node >= 18 built-ins only; no npm packages.
 //
@@ -11,7 +11,8 @@
 // the fetched JPL header.440 for the System-mode initial conditions (DESIGN section 5, #22); a
 // module built without it fails the first check below with its FA-E0303 message.
 //
-// Checks: zero imports; every ABI export present; fav_abi_version() === 1; E_STATE / E_ARG /
+// Checks: zero imports; every ABI export present; fav_abi_version() === 2 (ABI v2, ADR-0016 D5:
+// bit 12 is the conformal-gravity comparison model, bit 13 the first reserved bit); E_STATE / E_ARG /
 // E_UNSUPPORTED / E_FIT with FA-E messages; Kepler only (mask 0, WHFast) runs in 0.25-yr chunks to
 // FAV_DONE with whole buffer records and a near-zero rate; GR only with IAS15 and the Rung-lab GR
 // rung give rates within a short-span bound of PHY004-GR-RATE (loaded by id from tests/vectors,
@@ -26,7 +27,7 @@ const root = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
 const wasmPath =
   process.argv[2] || join(root, "crates", "ferroastro-viewer", "web", "ferroastro_viewer.wasm");
 
-// ABI v1 constants (crates/ferroastro-viewer/src/lib.rs).
+// ABI v2 constants (crates/ferroastro-viewer/src/lib.rs).
 const OK = 0, DONE = 1, E_STATE = -1, E_ARG = -2, E_UNSUPPORTED = -3, E_FIT = -5;
 const P = { MODE: 0, ENGINE: 1, SPAN_YEARS: 6 };
 const BIT = { GR_1PN: 1 << 8, LENSE_THIRRING: 1 << 9 };
@@ -61,8 +62,8 @@ const imports = WebAssembly.Module.imports(module);
 check(imports.length === 0, "module has no imports", imports.length);
 const x = new WebAssembly.Instance(module, {}).exports;
 const missing = EXPORTS.filter((n) => typeof x[n] !== "function");
-check(missing.length === 0 && x.memory instanceof WebAssembly.Memory, "every ABI v1 export", missing.join(", ") || "all present");
-check(x.fav_abi_version() === 1, "fav_abi_version() === 1", x.fav_abi_version());
+check(missing.length === 0 && x.memory instanceof WebAssembly.Memory, "every ABI v2 export", missing.join(", ") || "all present");
+check(x.fav_abi_version() === 2, "fav_abi_version() === 2", x.fav_abi_version());
 
 // A pointer is valid until the next fav_* call other than its _len partner: fresh view, copy now.
 function f64s(name) {
@@ -112,8 +113,10 @@ x.fav_reset();
 
 // Error paths.
 check(x.fav_run(1) === E_STATE, "fav_run before fav_configure is E_STATE");
-check(x.fav_set_toggles(1 << 12) === E_ARG, "reserved toggle bit is E_ARG");
+check(x.fav_set_toggles(1 << 13) === E_ARG, "reserved toggle bit 13 is E_ARG");
 check(/^FA-E\d{4}/.test(text("error")), "error message starts with FA-Exxxx", text("error").slice(0, 60));
+check(x.fav_set_toggles(1 << 12) === OK, "toggle bit 12 (conformal gravity, comparison model) is defined");
+x.fav_reset();
 check(x.fav_set_param(99, 0) === E_ARG && Number.isNaN(x.fav_get_param(99)), "unknown parameter id is E_ARG / NaN");
 check(configure(BIT.LENSE_THIRRING, { [P.ENGINE]: 1 }) === E_UNSUPPORTED && text("error").startsWith("FA-E1201"),
   "WHFast + Lense-Thirring is E_UNSUPPORTED (FA-E1201)", text("error").slice(0, 60));
@@ -131,7 +134,7 @@ check(x.fav_fit(NaN, NaN) === OK, "fav_fit Kepler only", text("error"));
 let fit = f64s("fit");
 check(fit.length === STRIDE.fit && Math.abs(fit[0]) < KEPLER_BOUND, "Kepler-only rate near zero", `${fit[0]} arcsec/cy, ${fit[5]} passages`);
 const meta = JSON.parse(text("meta"));
-check(meta.abi === 1 && meta.toggles === 0 && typeof meta.ic_hash === "string" && meta.fit !== null, "metadata JSON", meta.engine);
+check(meta.abi === 2 && meta.toggles === 0 && meta.conformal && meta.conformal.label === "comparison model" && typeof meta.ic_hash === "string" && meta.fit !== null, "metadata JSON", meta.engine);
 
 // GR only, IAS15, 10 yr; the Rung-lab GR rung, 10 yr.
 const gr = vector("phy004-gr-analytic.toml", "PHY004-GR-RATE");
