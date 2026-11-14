@@ -3,7 +3,7 @@
 
 # ORG — Organization, governance and contribution policy
 
-**Scope.** These requirements cover the project-level structure of FerroAstro. They include the mission document, the flagship Mercury perihelion ladder (the parent of every rung requirement), the requirements and traceability system itself, architecture decision records, milestones and labels, the software classification and tailoring statement, contributor sign-off, and human oversight of agent-authored work. Source: Journal #5 (`docs/strategy/journal/05-organization-standards.md`), revised by Journal #6 (`06-maintainer-decisions.md`). Journal #6 changes three things here. ORG-008 now requires a DCO sign-off instead of a CLA. The CLA moves to a new requirement, ORG-010. Traceability starts with `tools/trace.py`, and an ADR will evaluate StrictDoc and OpenFastTrace.
+**Scope.** These requirements cover the project-level structure of FerroAstro. They include the mission document, the flagship Mercury perihelion ladder (the parent of every rung requirement), the requirements and traceability system itself, architecture decision records, milestones and labels, the software classification and tailoring statement, contributor sign-off and commit signing, and the evidence-gated merge policy with its human-owned meta surface (ORG-009, ORG-011; ADR-0015). Source: Journal #5 (`docs/strategy/journal/05-organization-standards.md`), revised by Journal #6 (`06-maintainer-decisions.md`). Journal #6 changes three things here. ORG-008 now requires a DCO sign-off instead of a CLA. The CLA moves to a new requirement, ORG-010. Traceability starts with `tools/trace.py`, and an ADR will evaluate StrictDoc and OpenFastTrace.
 
 ---
 
@@ -162,7 +162,8 @@ notes: >-
   reference-oracles-and-gpl-isolation, 0010 requirements-tooling (the
   "000x-requirements-tooling" placeholder of Journal #6), 0011
   precession-observable-and-frames, 0012 special-relativity-rungs, 0013
-  benchmark-and-long-run-infrastructure. Journal #5's proposed seed numbering
+  benchmark-and-long-run-infrastructure, 0014 per-body-contribution-protocol,
+  0015 evidence-gated-merges. Journal #5's proposed seed numbering
   (e.g. 0002 time scales, 0003 reference implementations) is superseded.
 ```
 
@@ -230,10 +231,17 @@ statement: >-
   Every commit SHALL carry a Developer Certificate of Origin sign-off
   (Signed-off-by:), checked in CI by the DCO GitHub App or an equivalent
   Action. Agent-authored commits SHALL be signed off by the human or
-  organization operating the agent.
+  organization operating the agent. Because a trailer alone proves nothing,
+  every commit SHALL also be signed (SSH or OpenPGP) by a key registered in
+  .github/signing/ whose delegation record names that operator, and CI SHALL
+  verify the signature and the record.
 acceptance: >-
-  The DCO check is a required status check on main; a PR containing a commit
-  without a valid Signed-off-by trailer fails it.
+  The DCO check and the `signed-commits` check are required status checks on
+  main; a PR containing a commit without a valid Signed-off-by trailer fails
+  `dco`, and, once .github/signing/delegations.toml is in `enforce` mode, a
+  commit that is unsigned, signed by an unregistered key, outside its
+  delegation's validity window, or signed off by someone other than the
+  delegating operator fails `signed-commits`.
 source: >-
   docs/strategy/journal/06-maintainer-decisions.md (ORG-008 revised);
   docs/strategy/journal/05-organization-standards.md ORG-008 (original).
@@ -245,29 +253,62 @@ notes: >-
   checked by cla.yml; the CLA is deferred to ORG-010. Consequences for Journal
   #5's proposals: the branch-protection required check `cla` becomes `dco`; the
   `cla:signed` label and cla.yml are not used until ORG-010 is enforced.
+  REVISED 2026-11-14 by ADR-0015 / ADR-0005 revision (decision of 2026-10-14
+  in #12): signing keys and delegation records, checked by
+  tools/verify_signatures.py (.github/workflows/signatures.yml). The check
+  starts in `report` mode (warnings only) so that it can be made required
+  without blocking open PRs; it enforces nothing until a maintainer
+  registers the agents' keys and switches delegations.toml to `enforce`.
+  Until then only the trailer is enforced.
 ```
 
-### ORG-009 — Human approval for agent-authored PRs
+### ORG-009 — Evidence-gated, agent-led merges (revised)
 
 ```yaml
 id: ORG-009
-title: "Agent-authored PRs need approval from at least one human maintainer"
+title: "Evidence-gated, agent-led merges; humans own the meta surface"
 status: draft
-criticality: medium
-verification: inspection
+criticality: high
+verification: test
 statement: >-
-  Agent-authored PRs SHALL require approval from at least one human maintainer
-  before merge.
+  A PR, whether authored by an agent or a human, SHALL merge to main when every
+  required evidence check passes: the STD-* gates, traceability (ORG-004),
+  vector provenance (TST-002/003), commit signatures and delegation records
+  (ORG-008), the ratchet (TST-006), the hold check, and the physics/oracle
+  comparisons within their stated tolerances. Agents MAY open, lead and merge
+  PRs. A maintainer review SHALL be required only for PRs that touch the meta
+  surface (ORG-011) or that the ratchet flags (TST-006).
 acceptance: >-
-  The main-branch ruleset requires ≥ 1 approving review (2 for crit:high paths
-  via CODEOWNERS), and agent accounts cannot approve.
+  1. The main ruleset requires the evidence checks. Required workflows are
+  pinned to the default branch, and checker scripts are executed from the base
+  SHA. 2. There is 0 required review outside the CODEOWNERS meta surface and
+  the ratchet's approval findings. 3. GITHUB_TOKEN is read-only, agent tokens
+  cannot write rulesets, and label changes by non-maintainers cannot clear a
+  hold, grant golden-change or pass a ratchet finding. 4. `hold` is a required check. Anyone
+  can set a hold (fail-safe; #12 says "only maintainers can set or clear",
+  and a hold set by a non-maintainer can only make a PR stricter), and only a
+  maintainer can clear one, whoever set it. It is re-evaluated on every label
+  change and push, and in the merge queue when the queue is enabled. 5. No merge-queue delay:
+  PRs merge as soon as all checks pass (maintainer decision 2026-10-14).
 source: >-
-  docs/strategy/journal/05-organization-standards.md §8 and ORG-009.
+  GitHub issue #12 (maintainer choice 2026-10-14, "data-gated + human-owned
+  meta"); red-team review, Journal #9; ADR-0015.
 parent: null
-related: [ORG-008, AGT-001]
+related: [ORG-004, ORG-008, ORG-011, TST-004, TST-006, AGT-001]
 notes: >-
-  Optional signed commits: their interaction with agent workflows is
-  UNVERIFIED.
+  REVISED by ADR-0015 (#12). Replaces "agent-authored PRs need approval from
+  at least one human maintainer". Implementation: .github/CODEOWNERS (meta
+  surface), .github/workflows/hold.yml (`hold`), ratchet.yml (`ratchet`,
+  `ratchet (test count)`), signatures.yml (`signed-commits`), with checkers
+  tools/governance.py, tools/ratchet.py and tools/verify_signatures.py run
+  from a base-SHA checkout. Acceptance items 1, 3 (ruleset and token parts)
+  and the merge-queue part of 4 are repository settings that only a
+  maintainer can apply; ADR-0015 lists them. Until they are applied this
+  requirement is not met, whatever CI reports. Residual risk: a maintainer
+  check can only tell people apart by GitHub account, so agents must not run
+  under a maintainer's account (ADR-0015, "Agent identities"). Acceptance 4
+  and 5 together need a merge queue with group size 1 and no wait, or no
+  queue (then a hold set while a merge is already in flight is not seen).
 ```
 
 ### ORG-010 — Contributor License Agreement (deferred)
@@ -301,4 +342,62 @@ notes: >-
   signatures in a private Proper-Time-Physics-Institute/cla-signatures repo.
   Whether and how CLAs cover agent-authored code is UNVERIFIED and needs
   counsel.
+```
+
+### ORG-011 — Human-owned meta surface
+
+```yaml
+id: ORG-011
+title: "Maintainers own the files that define the evidence"
+status: draft
+criticality: high
+verification: test
+statement: >-
+  CODEOWNERS SHALL require maintainer review for: `tests/vectors/` (including
+  `tests/vectors/schema.json`), `tests/goldens/`, `tests/data/MANIFEST.toml`,
+  `ci/`, `.github/`, `tools/trace.py`, the lint scripts `tools/lint_*.py`,
+  `tools/check_layers.py`, `tools/validate_scenarios.py`, the governance
+  checkers `tools/ratchet.py`, `tools/governance.py` and
+  `tools/verify_signatures.py`, the pytest files of these checkers
+  (`tools/tests/conftest.py`, `tools/tests/test_trace.py`,
+  `tools/tests/test_lints.py`, `tools/tests/test_lint_canary.py`,
+  `tools/tests/test_check_layers.py`, `tools/tests/test_validate_scenarios.py`,
+  `tools/tests/test_ratchet.py`, `tools/tests/test_governance.py`,
+  `tools/tests/test_verify_signatures.py`), the vector harness
+  `crates/ferroastro-vectors/`, `tools/canary/`, `tools/pyproject.toml`,
+  `tools/uv.lock`, the pytest configuration files at any depth under tools/
+  (`tools/**/pytest.toml`, `tools/**/.pytest.toml`, `tools/**/pytest.ini`,
+  `tools/**/.pytest.ini`, `tools/**/tox.ini`, `tools/**/setup.cfg`,
+  `tools/**/pyproject.toml`), `.config/nextest.toml`, `clippy.toml`, `rustfmt.toml`, `deny.toml`,
+  `rust-toolchain.toml`, `REUSE.toml`, `LICENSE*`, `LICENSES/`, `NOTICE`,
+  `CONTRIBUTING.md`, every `AGENTS.md`, `CLAUDE.md` and `docs/adr/`. Changes
+  to the `status` or `verified_by_gate` field of any requirement, and to the
+  `statement` or `acceptance` (where values and tolerances live) of a PHY or
+  NUM requirement, SHALL need a maintainer approval through the ratchet
+  (TST-006), because CODEOWNERS cannot see fields.
+acceptance: >-
+  A canary PR that edits each listed path cannot merge without a maintainer
+  approval. A canary PR that changes a requirement status, or a PHY.md or
+  NUM.md statement, fails `ratchet` until a maintainer approves its head. A
+  canary PR outside the surface merges on checks alone. pytest checks that
+  .github/CODEOWNERS covers this list and names exactly the logins in
+  .github/governance/maintainers.txt.
+source: >-
+  GitHub issue #12 §2; red-team review, Journal #9; ADR-0015.
+parent: ORG-009
+related: [TST-004, TST-006, ORG-005]
+notes: >-
+  NEW (ADR-0015). Beyond the list in #12 this adds the files that equally
+  define what CI checks or which tests run: tests/goldens/,
+  tests/data/MANIFEST.toml, the remaining checker scripts and the new
+  governance checkers, tools/canary/, the ruff/mypy configuration in
+  tools/pyproject.toml, the nextest profiles, clippy.toml and rustfmt.toml,
+  and crate-level AGENTS.md files; also the pytest files that test the
+  checkers (a weakened checker test would let a weakened checker pass), the
+  tools/ lockfile, and crates/ferroastro-vectors, which loads the vectors
+  and applies their tolerances. Other tests are not on the surface; deleting
+  one is a ratchet finding (TST-006). The root Cargo.toml (workspace lints) is
+  not on the surface because every dependency change touches it; the lint
+  canary (STD-003) guards its lint keys. The canary PRs are run by a
+  maintainer after the rulesets are applied.
 ```

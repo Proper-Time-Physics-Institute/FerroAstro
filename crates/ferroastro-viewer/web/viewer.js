@@ -27,14 +27,14 @@
 
   // Orbital periods in years: only to size the drawn trails (about one orbit each).
   const BODIES = [
-    { name: "Mercury", css: "--mercury", period: 0.2408, trailOrbits: 2 },
-    { name: "Venus", css: "--venus", period: 0.6152, trailOrbits: 1 },
-    { name: "Earth–Moon", css: "--emb", period: 1.0, trailOrbits: 1 },
-    { name: "Mars", css: "--mars", period: 1.8808, trailOrbits: 1 },
-    { name: "Jupiter", css: "--jupiter", period: 11.862, trailOrbits: 1 },
-    { name: "Saturn", css: "--saturn", period: 29.457, trailOrbits: 1 },
-    { name: "Uranus", css: "--uranus", period: 84.02, trailOrbits: 1 },
-    { name: "Neptune", css: "--neptune", period: 164.8, trailOrbits: 1 },
+    { name: "Mercury", term: "mercury", css: "--mercury", period: 0.2408, trailOrbits: 2 },
+    { name: "Venus", term: "venus", css: "--venus", period: 0.6152, trailOrbits: 1 },
+    { name: "Earth–Moon", term: "emb", css: "--emb", period: 1.0, trailOrbits: 1 },
+    { name: "Mars", term: "mars", css: "--mars", period: 1.8808, trailOrbits: 1 },
+    { name: "Jupiter", term: "jupiter", css: "--jupiter", period: 11.862, trailOrbits: 1 },
+    { name: "Saturn", term: "saturn", css: "--saturn", period: 29.457, trailOrbits: 1 },
+    { name: "Uranus", term: "uranus", css: "--uranus", period: 84.02, trailOrbits: 1 },
+    { name: "Neptune", term: "neptune", css: "--neptune", period: 164.8, trailOrbits: 1 },
   ];
   // Toggle bit -> body slot in the bodies buffer.
   const BIT_BODY = { 0: 1, 1: 2, 2: 3, 3: 4, 4: 5, 5: 6, 6: 7 };
@@ -43,18 +43,18 @@
   // table rows. Planets reuse their body colour from the orbit view; GR 1PN and EIH share one (they
   // are mutually exclusive and describe the same physics).
   const TOGGLES = [
-    { bit: B.VENUS, label: "Venus", short: "Venus", css: "--venus", exp: "≈277 ″/cy" },
-    { bit: B.EMB, label: "Earth–Moon (EMB)", short: "EMB", css: "--emb", exp: "≈91 ″/cy" },
-    { bit: B.MARS, label: "Mars", short: "Mars", css: "--mars", exp: "≈2.5 ″/cy" },
-    { bit: B.JUPITER, label: "Jupiter", short: "Jupiter", css: "--jupiter", exp: "≈154 ″/cy" },
-    { bit: B.SATURN, label: "Saturn", short: "Saturn", css: "--saturn", exp: "≈7.3 ″/cy" },
-    { bit: B.URANUS, label: "Uranus", short: "Uranus", css: "--uranus", exp: "≈0.14 ″/cy" },
-    { bit: B.NEPTUNE, label: "Neptune", short: "Neptune", css: "--neptune", exp: "≈0.04 ″/cy" },
-    { bit: B.SUN_J2, label: "Solar J2", short: "J2", css: "--fx-j2", exp: "≈0.03 ″/cy" },
-    { bit: B.GR_1PN, label: "GR 1PN (Sun)", short: "GR", css: "--fx-gr", exp: "≈42.98 ″/cy" },
-    { bit: B.LENSE_THIRRING, label: "Lense–Thirring", short: "LT", css: "--fx-lt", exp: "≈−0.002 ″/cy", note: "IAS15 only" },
-    { bit: B.ASTEROIDS, label: "Big asteroids", short: "Asteroids", css: "--fx-ast", exp: "≈0.001 ″/cy", note: "IAS15 only" },
-    { bit: B.EIH, label: "EIH 1PN, all bodies (adv.)", short: "EIH", css: "--fx-gr", exp: "≈42.98 ″/cy", note: "IAS15 only; replaces GR 1PN" },
+    { bit: B.VENUS, term: "venus", label: "Venus", short: "Venus", css: "--venus", exp: "≈277 ″/cy" },
+    { bit: B.EMB, term: "emb", label: "Earth–Moon (EMB)", short: "EMB", css: "--emb", exp: "≈91 ″/cy" },
+    { bit: B.MARS, term: "mars", label: "Mars", short: "Mars", css: "--mars", exp: "≈2.5 ″/cy" },
+    { bit: B.JUPITER, term: "jupiter", label: "Jupiter", short: "Jupiter", css: "--jupiter", exp: "≈154 ″/cy" },
+    { bit: B.SATURN, term: "saturn", label: "Saturn", short: "Saturn", css: "--saturn", exp: "≈7.3 ″/cy" },
+    { bit: B.URANUS, term: "uranus", label: "Uranus", short: "Uranus", css: "--uranus", exp: "≈0.14 ″/cy" },
+    { bit: B.NEPTUNE, term: "neptune", label: "Neptune", short: "Neptune", css: "--neptune", exp: "≈0.04 ″/cy" },
+    { bit: B.SUN_J2, term: "solar-j2", label: "Solar J2", short: "J2", css: "--fx-j2", exp: "≈0.03 ″/cy" },
+    { bit: B.GR_1PN, term: "gr-1pn", label: "GR 1PN (Sun)", short: "GR", css: "--fx-gr", exp: "≈42.98 ″/cy" },
+    { bit: B.LENSE_THIRRING, term: "lense-thirring", label: "Lense–Thirring", short: "LT", css: "--fx-lt", exp: "≈−0.002 ″/cy", note: "IAS15 only" },
+    { bit: B.ASTEROIDS, term: "asteroids", label: "Big asteroids", short: "Asteroids", css: "--fx-ast", exp: "≈0.001 ″/cy", note: "IAS15 only" },
+    { bit: B.EIH, term: "eih", label: "EIH 1PN, all bodies (adv.)", short: "EIH", css: "--fx-gr", exp: "≈42.98 ″/cy", note: "IAS15 only; replaces GR 1PN" },
   ];
 
   // Reference values for the table (approx. literature; frame/window caveats in `src`).
@@ -136,6 +136,9 @@
     badgeMode: $("badge-mode"),
     badgeEngine: $("badge-engine"),
     badgeNominal: $("badge-nominal"),
+    badgeNominalText: $("badge-nominal-text"),
+    badgeModeTip: $("badge-mode-tip"),
+    chartPlane: $("chart-plane"),
     orbit: $("orbit"),
     exag: $("exag"),
     exagOut: $("exag-out"),
@@ -310,15 +313,52 @@
     return span > 0 ? (t - pass.t[0]) / span : 1;
   }
 
-  // Fills a ".parts" container with one span per non-empty part (separated by CSS rules).
+  // Fills a ".parts" container with one span per non-empty part (separated by CSS rules). A part
+  // may be {text, term}: its text is then an inline glossary term (glossary-ui.js tooltip).
+  // The parts are updated in place: a span (and its term button) that already holds the same kind
+  // of part keeps its node and only its text changes. The readouts refresh twice a second while a
+  // run plays; rebuilding them would destroy a hovered or focused term button every refresh.
   function setParts(node, parts) {
-    node.textContent = "";
-    for (const p of parts) {
-      if (!p) continue;
-      const s = document.createElement("span");
-      s.textContent = p;
-      node.appendChild(s);
-    }
+    const want = parts.filter((p) => p && (typeof p !== "object" || p.text));
+    const spans = Array.from(node.children).filter((c) => c.tagName === "SPAN" && c.dataset.part !== undefined);
+    // Anything that is not one of our part spans (text from an earlier textContent write) goes.
+    for (const c of Array.from(node.childNodes)) if (!spans.includes(c)) node.removeChild(c);
+    want.forEach((p, i) => {
+      const term = typeof p === "object" ? p.term : "";
+      const text = typeof p === "object" ? p.text : p;
+      let s = spans[i];
+      if (!s || s.dataset.part !== term) {
+        const fresh = document.createElement("span");
+        fresh.dataset.part = term;
+        if (term) fresh.appendChild(termButton(term, text));
+        if (s) node.replaceChild(fresh, s);
+        else node.appendChild(fresh);
+        s = fresh;
+      }
+      const target = term ? s.querySelector("button.term") : s;
+      if (target && target.textContent !== text) target.textContent = text;
+    });
+    for (let i = want.length; i < spans.length; i++) spans[i].remove();
+  }
+  // Glossary hooks for generated markup (ids are keys of FA_GLOSSARY.entries, glossary.js).
+  function termButton(id, text) {
+    const b = document.createElement("button");
+    b.type = "button";
+    b.className = "term";
+    b.dataset.tip = id;
+    b.textContent = text;
+    return b;
+  }
+  function tipHtml(id) {
+    return '<button type="button" class="tip" data-tip="' + escapeHtml(id) + '"></button>';
+  }
+  function termHtml(id, html, cls) {
+    return '<button type="button" class="term' + (cls ? " " + cls : "") + '" data-tip="' + escapeHtml(id) + '">' + html + "</button>";
+  }
+  function effectTerm(key) {
+    if (key === "rung") return "rung";
+    const t = TOGGLES.find((x) => "b" + x.bit === key);
+    return t ? t.term : "effects-toggles";
   }
 
   function effectCss(key) {
@@ -459,8 +499,8 @@
       const sw = '<span class="swatch" aria-hidden="true" style="background:var(' + t.css + ')"></span>';
       const noteId = id + "-note";
       li.innerHTML =
-        '<label class="check" for="' + id + '"><input type="checkbox" id="' + id + '"' + (t.note ? ' aria-describedby="' + noteId + '"' : "") + ">" +
-        sw + "<span>" + t.label + "</span></label>" +
+        '<label class="check" for="' + id + '" data-term="' + t.term + '"><input type="checkbox" id="' + id + '"' + (t.note ? ' aria-describedby="' + noteId + '"' : "") + ">" +
+        sw + "<span>" + t.label + "</span></label>" + tipHtml(t.term) +
         '<span class="exp">' + t.exp + (t.note ? '<span class="req" id="' + noteId + '">' + t.note + "</span>" : "") + "</span>";
       el.toggles.appendChild(li);
       const input = li.querySelector("input");
@@ -518,6 +558,15 @@
     el.spin.disabled = (m & (1 << B.LENSE_THIRRING)) === 0;
     document.querySelector('[data-preset="planets"]').disabled = lab;
     el.badgeMode.textContent = lab ? "Rung lab: " + RUNG_NAMES[rung] : "System mode";
+    if (el.badgeModeTip) el.badgeModeTip.dataset.tip = lab ? "rung-lab" : "system-mode";
+    if (el.badgeModeTip) el.badgeModeTip.setAttribute("aria-label", "About: " + (lab ? "Rung lab" : "System mode"));
+    if (el.badgeModeTip && el.badgeModeTip.parentElement) el.badgeModeTip.parentElement.dataset.term = lab ? "rung-lab" : "system-mode";
+    // The fitted longitude's plane (engine metadata "frame"): Park17 in System mode, the test
+    // particle's initial osculating orbit plane in the Rung lab.
+    if (el.chartPlane) {
+      el.chartPlane.textContent = "";
+      el.chartPlane.appendChild(lab ? termButton("rung-lab", "initial orbit plane of the test particle") : termButton("park17-plane", "Park17 mean-Mercury-orbit plane"));
+    }
     buildLegend();
   }
 
@@ -657,7 +706,7 @@
     updateTransport();
     const nn = nonNominalText(state.applied);
     el.badgeNominal.hidden = !nn;
-    el.badgeNominal.textContent = nn ? "Exaggerated physics: " + nn : "";
+    el.badgeNominalText.textContent = nn ? "Exaggerated physics: " + nn : "";
     setStatus("Configuring…");
     writeHash(state.applied);
     state.live.postMessage({ op: "configure", mask: state.applied.mask, params: state.applied.params });
@@ -763,15 +812,18 @@
     const eng = meta.engine || FAV.ENGINE_NAME[state.engine] || "";
     el.badgeEngine.textContent = "engine: " + eng;
     el.tEngine.textContent = eng;
-    el.engineResolved.textContent = state.applied.params[P.ENGINE] === 0 && state.applied.params[P.MODE] === 0 ? "resolved: " + (FAV.ENGINE_NAME[state.engine] || "?") : "";
+    el.engineResolved.textContent = "";
+    if (state.applied.params[P.ENGINE] === 0 && state.applied.params[P.MODE] === 0) {
+      el.engineResolved.append("resolved: ", termButton(state.engine === FAV.ENGINE_RESOLVED.WHFAST ? "whfast" : "ias15", FAV.ENGINE_NAME[state.engine] || "?"));
+    }
     if (meta.nominal === false && el.badgeNominal.hidden) {
       el.badgeNominal.hidden = false;
-      el.badgeNominal.textContent = "Non-nominal run";
+      el.badgeNominalText.textContent = "Non-nominal run";
     }
     const bits = [];
-    if (meta.gauge) bits.push("gauge: " + meta.gauge);
-    if (meta.ic_hash) bits.push("IC " + String(meta.ic_hash).slice(0, 10));
-    if (meta.constants) bits.push("constants " + meta.constants);
+    if (meta.gauge) bits.push({ text: "gauge: " + meta.gauge, term: "gauge" });
+    if (meta.ic_hash) bits.push({ text: "IC " + String(meta.ic_hash).slice(0, 10), term: "ic-hash" });
+    if (meta.constants) bits.push({ text: "constants " + meta.constants, term: "constants-version" });
     setParts(el.metaLine, bits);
     el.metaLine.title = meta.model ? "Model: " + meta.model + (meta.ic_source ? "\nIC source: " + meta.ic_source : "") : "";
     el.copyScenario.disabled = !state.scenario;
@@ -916,12 +968,13 @@
     const meta = state.fitMeta || {};
     const fm = meta.fit && meta.fit.model ? meta.fit.model : "";
     const y0 = epochYear();
+    const labFit = state.applied && state.applied.params[P.MODE] === 1;
     setParts(el.rateSub, [
-      "± jack-knife σ",
-      f[F.N_PASSAGES] + " passages",
-      fmtNum(f[F.T_FIRST], 1) + "–" + fmtNum(f[F.T_LAST], 1) + " yr (" + Math.floor(y0 + f[F.T_FIRST]) + "–" + Math.floor(y0 + f[F.T_LAST]) + ")",
-      "Park17 plane",
-      state.applied && nonNominalText(state.applied) ? "non-nominal" : "",
+      { text: "± jack-knife σ", term: "jackknife" },
+      { text: f[F.N_PASSAGES] + " passages", term: "fit-passages" },
+      { text: fmtNum(f[F.T_FIRST], 1) + "–" + fmtNum(f[F.T_LAST], 1) + " yr (" + Math.floor(y0 + f[F.T_FIRST]) + "–" + Math.floor(y0 + f[F.T_LAST]) + ")", term: "fit-window" },
+      labFit ? { text: "initial orbit plane", term: "rung-lab" } : { text: "Park17 plane", term: "park17-plane" },
+      state.applied && nonNominalText(state.applied) ? { text: "non-nominal", term: "physical-exaggeration" } : "",
     ]);
     el.rate.title =
       "Fit model: " + (fm || "–") +
@@ -1072,13 +1125,13 @@
   function buildLegend() {
     const m = currentMask();
     const lab = mode() === 1;
-    let html = "";
+    let html = termHtml("sun", '<span class="dot" aria-hidden="true" style="background:var(--sun)"></span>Sun', "item");
     BODIES.forEach((b, i) => {
       const on = i === 0 || (!lab && (m & (1 << (i - 1))) !== 0);
-      html += '<span class="item' + (on ? "" : " off") + '"><span class="dot" aria-hidden="true" style="background:var(' + b.css + ')"></span>' + b.name +
-        (on ? "" : '<span class="sr-only"> (off)</span>') + "</span>";
+      html += termHtml(b.term, '<span class="dot" aria-hidden="true" style="background:var(' + b.css + ')"></span>' + b.name +
+        (on ? "" : '<span class="sr-only"> (off)</span>'), "item" + (on ? "" : " off"));
     });
-    html += '<span class="item"><span class="ramp-dot"></span>perihelion passages, by time</span>';
+    html += termHtml("perihelion-markers", '<span class="ramp-dot" aria-hidden="true"></span>perihelion passages, by time', "item");
     el.legend.innerHTML = html;
   }
 
@@ -1946,7 +1999,7 @@
       html +=
         '<tr class="' + (unresolved ? "unresolved" : "") + '"' + (unresolved ? ' title="Below resolution for this span: |value| < 3σ"' : "") + ">" +
         '<td class="effect"><span class="lbl"><span class="swatch" aria-hidden="true" style="background:var(' + effectCss(row.r.key) + ')"></span>' +
-        escapeHtml(row.label) + '</span><span class="ref-src">P-remove</span></td>' +
+        escapeHtml(row.label) + "</span> " + tipHtml(effectTerm(row.r.key)) + '<span class="ref-src">' + termHtml("p-remove", "P-remove") + "</span></td>" +
         '<td class="num val">' + fmtPm(row.v, row.s) + "</td>" +
         '<td class="num">' + (row.ref ? '<span title="' + escapeHtml(row.ref.src) + '">' + fmtNum(row.ref.v, refDigits(row.ref.v, d)) + '<span class="ref-src">' + escapeHtml(row.ref.src.split(/[(;]/)[0].trim()) + "</span></span>" : "–") + "</td>" +
         '<td class="num">' + (Number.isFinite(diff) ? (diff >= 0 ? "+" : "") + diff.toFixed(Math.max(2, d)) : "–") + "</td>" +
@@ -1967,10 +2020,10 @@
     const cross = ok && S && K ? S.v - sum - K.v : NaN;
     const pc = padd ? '<td class="padd-col"></td>' : '<td class="padd-col" hidden></td>';
     el.tFoot.innerHTML =
-      "<tr><td>Σ contributions</td><td class=\"num\">" + sumTxt + "</td><td></td><td></td>" + pc + "<td></td></tr>" +
-      "<tr><td>ϖ̇(S), all selected effects</td><td class=\"num\">" + sTxt + "</td><td></td><td></td>" + pc + '<td class="leg">' + legCell(table.plan.S) + "</td></tr>" +
-      "<tr><td>ϖ̇(Kepler only), integrator/estimator floor</td><td class=\"num\">" + kTxt + '</td><td class="num">0</td><td></td>' + pc + '<td class="leg">' + legCell(table.plan.K) + "</td></tr>" +
-      '<tr class="cross"><td>ϖ̇(S) − Σ − ϖ̇(Kepler): interaction (cross) terms; not an error</td><td class="num">' +
+      "<tr><td>Σ contributions " + tipHtml("sum-contributions") + "</td><td class=\"num\">" + sumTxt + "</td><td></td><td></td>" + pc + "<td></td></tr>" +
+      "<tr><td>ϖ̇(S), all selected effects " + tipHtml("varpi-s") + "</td><td class=\"num\">" + sTxt + "</td><td></td><td></td>" + pc + '<td class="leg">' + legCell(table.plan.S) + "</td></tr>" +
+      "<tr><td>ϖ̇(Kepler only), integrator/estimator floor " + tipHtml("integrator-floor") + "</td><td class=\"num\">" + kTxt + '</td><td class="num">0</td><td></td>' + pc + '<td class="leg">' + legCell(table.plan.K) + "</td></tr>" +
+      '<tr class="cross"><td>ϖ̇(S) − Σ − ϖ̇(Kepler): interaction (cross) terms; not an error ' + tipHtml("cross-terms") + '</td><td class="num">' +
       (Number.isFinite(cross) ? cross.toFixed(4) : "–") + '</td><td class="num" title="Park17 Table 3 Jupiter+Saturn cross row (PARK17-T3-X-JUPITER-SATURN), for scale">0.0411<span class="ref-src">Park17 J+S cross</span></td><td></td>' + pc + "<td></td></tr>";
 
     const meta = table.meta || {};
@@ -2030,8 +2083,7 @@
       sw.className = "swatch";
       sw.setAttribute("aria-hidden", "true");
       sw.style.background = "var(" + css + ")";
-      const name = document.createElement("span");
-      name.textContent = effectShort(row.r.key);
+      const name = termButton(effectTerm(row.r.key), effectShort(row.r.key));
       const v = document.createElement("span");
       v.className = "v";
       v.textContent = row.v >= 1 ? row.v.toFixed(1) : row.v.toPrecision(2);

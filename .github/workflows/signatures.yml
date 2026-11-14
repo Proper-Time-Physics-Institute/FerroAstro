@@ -1,0 +1,58 @@
+# SPDX-FileCopyrightText: 2026 Proper-Time Physics Institute
+# SPDX-License-Identifier: Apache-2.0
+#
+# Signed commits and delegation records (ORG-008, ADR-0005 revision 2026-11-14, ADR-0015). Every
+# non-merge commit of the PR must be signed by a key registered in .github/signing/ whose
+# delegation record names the operator in the commit's Signed-off-by. The DCO trailer check stays
+# in ci.yml (`dco`); this check is what makes the trailer trustworthy.
+# Mode (`report` or `enforce`) and the key registry are read from the BASE branch, so a PR cannot
+# register its own key or switch the mode (ORG-011). In the merge queue the job is skipped (which
+# counts as passing): the queue's own commits are made by GitHub, and the PR's commits were
+# checked on the PR.
+#
+# Security (STD-012): read-only token, no pull_request_target, actions pinned to commit SHAs,
+# checkouts without persisted credentials.
+name: signatures
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+  merge_group:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: signatures-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  signed-commits:
+    name: signed-commits
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.pull_request.base.sha }}
+          path: base
+          persist-credentials: false
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          path: head
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Verify signatures and delegation records (registry from the base SHA)
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          dir=base
+          if [ ! -f base/tools/verify_signatures.py ]; then
+            echo "::notice::bootstrap: the base has no tools/verify_signatures.py yet; running the head copy (ORG-011 review applies)"
+            dir=head
+          fi
+          python3 -I "$dir/tools/verify_signatures.py" --registry "$dir/.github/signing" \
+            --repo head --base-sha "$BASE_SHA" --head-sha "$HEAD_SHA"

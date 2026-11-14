@@ -1,0 +1,59 @@
+# SPDX-FileCopyrightText: 2026 Proper-Time Physics Institute
+# SPDX-License-Identifier: Apache-2.0
+#
+# The `hold` check (ORG-009 acceptance 4, ADR-0015). Fails while a PR is on hold. Any account can
+# put a PR on hold by adding the `hold` label (fail-safe), but only a maintainer listed in
+# .github/governance/maintainers.txt can clear a hold (tools/governance.py has the exact rule).
+# Re-evaluated on every label change, every push and, if the merge queue is enabled, in the queue.
+#
+# Base-SHA execution: the checker and the maintainer list come from a checkout of the base commit,
+# never from the PR head. Only on the bootstrap PR, when the base has no tools/governance.py yet,
+# the head copy runs (that PR is on the meta surface, so a maintainer reviews it; ORG-011).
+#
+# Security (STD-012): read-only token (contents, issues and pull-requests: read), no
+# pull_request_target, no third-party code runs, checkout without persisted credentials.
+name: hold
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, labeled, unlabeled]
+  merge_group:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: hold-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  hold:
+    name: hold
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      issues: read
+      pull-requests: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha }}
+          path: base
+          persist-credentials: false
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        if: hashFiles('base/tools/governance.py') == ''
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.event.merge_group.head_sha }}
+          path: head
+          persist-credentials: false
+      - name: hold (checker and maintainer list from the base SHA)
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          dir=base
+          if [ ! -f base/tools/governance.py ]; then
+            echo "::notice::bootstrap: the base has no tools/governance.py yet; running the head copy (ORG-011 review applies)"
+            dir=head
+          fi
+          python3 -I "$dir/tools/governance.py" hold --maintainers "$dir/.github/governance/maintainers.txt"

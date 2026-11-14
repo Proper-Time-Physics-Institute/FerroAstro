@@ -23,4 +23,5 @@ Every ADR names its **Confirmation**, meaning the CI check or test that enforces
 | [0012](0012-special-relativity-rungs.md) | Special-relativity rung definitions | accepted |
 | [0013](0013-benchmark-and-long-run-infrastructure.md) | Benchmark and long-run infrastructure | accepted |
 | [0014](0014-per-body-contribution-protocol.md) | Per-body contribution protocol (P-remove) | accepted (provisional until OI-38) |
+| [0015](0015-evidence-gated-merges.md) | Evidence-gated merges with a human-owned meta surface | proposed |
 | [0016](0016-comparison-models.md) | Comparison models outside the GR ladder (conformal gravity) | accepted |

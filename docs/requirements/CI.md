@@ -145,22 +145,26 @@ notes: >-
 
 ```yaml
 id: CI-004
-title: "Goldens regenerated only by explicit dispatch or nightly drift job; changes need a reviewed PR"
+title: "Goldens regenerated only by explicit dispatch or nightly drift job; changes need a maintainer-reviewed PR"
 status: draft
 criticality: high
 verification: inspection
 statement: >-
   Goldens SHALL be (re)generated only by explicit workflow_dispatch or by the
-  nightly drift job. Changing a golden SHALL require a reviewed PR.
+  nightly drift job. Changing a golden SHALL require a PR with a maintainer
+  review, which ORG-011 requires because ci/ and tests/goldens/ are on the
+  meta surface; golden vectors follow TST-004 and the ratchet (TST-006).
 acceptance: >-
   No workflow other than the dispatch and nightly-drift workflows writes to
-  ci/golden/; branch rules require review for changes there.
+  ci/golden/; .github/CODEOWNERS covers ci/ and tests/goldens/ and the main
+  ruleset requires Code Owner review (ORG-011).
 source: >-
   docs/strategy/journal/03-reference-implementations-ci.md §4 and CI-004.
 parent: null
-related: [TST-004, CI-003]
+related: [TST-004, CI-003, ORG-011]
 notes: >-
-  BUILD EVIDENCE on golden regeneration (sync 2026-10-20; WP8–WP10, WP15–WP17
+  Review wording revised by ADR-0015 (#12): "reviewed PR" now means the
+  ORG-011 maintainer review. BUILD EVIDENCE on golden regeneration (sync 2026-10-20; WP8–WP10, WP15–WP17
   on m3-newtonian-nbody). Where goldens live: oracle-container outputs are
   under ci/golden/<tool>/<scenario>/ with MANIFEST.json (rebound, swiftest
   and mercury6 stage A, orekit stage B, jpl ref001-pins); reader and library

@@ -98,26 +98,38 @@ related: [CI-003]
 notes: null
 ```
 
-### TST-004 — Golden changes need label and CODEOWNERS review
+### TST-004 — Golden changes need maintainer label, new evidence and meta-surface review (revised)
 
 ```yaml
 id: TST-004
-title: "Changes to golden values or tolerances carry golden-change label and CODEOWNERS review"
+title: "Golden value or tolerance changes carry the maintainer-applied golden-change label, new evidence and an ORG-011 review"
 status: draft
 criticality: high
-verification: inspection
+verification: test
 statement: >-
-  Changes to golden values or tolerances SHALL carry the golden-change label
-  and a review from a CODEOWNERS owner of tests/vectors/.
+  A change to a golden value or tolerance SHALL carry the golden-change label
+  applied by a maintainer, SHALL bring new evidence for the changed vector in
+  the same PR, and SHALL have a maintainer review, which ORG-011 requires
+  because tests/vectors/ is on the meta surface. A computed-reference vector
+  whose generated_by SHA is a commit of the same PR SHALL be rejected.
 acceptance: >-
-  The branch ruleset requires CODEOWNERS review for tests/vectors/; a CI check
-  fails a PR that modifies a value or tolerance without the golden-change
-  label.
+  The ratchet check (tools/ratchet.py) fails a PR that changes a vector value
+  or tolerance unless the golden-change label is on it and its most recent
+  application was by a maintainer, and unless one of source, citation,
+  retrieved, verified_by or generated_by of that vector also changed. It fails
+  without override a computed-reference vector whose generated_by SHA is in
+  the PR's commits. The ruleset requires Code Owner review for tests/vectors/.
 source: >-
-  docs/strategy/journal/05-organization-standards.md §7 rule 3 and TST-004.
+  docs/strategy/journal/05-organization-standards.md §7 rule 3 and TST-004;
+  GitHub issue #12 §3; ADR-0015.
 parent: null
-related: [CI-004]
-notes: null
+related: [CI-004, ORG-011, TST-006]
+notes: >-
+  REVISED by ADR-0015 (#12). The CODEOWNERS review of goldens is kept, now
+  through the ORG-011 meta surface. "New evidence" is checked mechanically as
+  a change to an evidence field of the same vector; whether that evidence is
+  adequate is the reviewer's call. Labels set by non-maintainers have no
+  effect (tools/governance.py).
 ```
 
 ### TST-005 — Deterministic results
@@ -143,4 +155,182 @@ notes: >-
   FMA policy matters: NUM-021 requires an explicit mul_add policy, while
   Journal #5 §6 says "no implicit FMA". These are consistent: FMA only where
   written explicitly.
+```
+
+### TST-006 — The evidence ratchet
+
+```yaml
+id: TST-006
+title: "A base-branch ratchet fails a PR that weakens the evidence in one of a closed list of detected forms, unless a maintainer approves"
+status: draft
+criticality: high
+verification: test
+statement: >-
+  A check executed from the base branch SHALL fail a PR, unless a maintainer
+  approves the PR's current head, when: a vector tolerance widens; a vector's
+  oracle kind is downgraded (analytic or defined, then measured, then
+  computed-reference); |Δvalue| exceeds k times the old effective tolerance
+  (k in ci/ratchet.toml); a vector is deleted; a vector gains blocked_by; a
+  requirement field owned by ORG-011 changes; or the PR weakens a test in one
+  of the forms the ratchet detects. The ratchet is a heuristic,
+  non-adversarial scanner: it detects these forms of test weakening when
+  they are written in ordinary syntax (defined in the notes), and claims
+  nothing else: detects_rs_test_deleted,
+  detects_rs_gate_attr, detects_rs_executed_count, detects_py_test_deleted,
+  detects_py_gate_name, detects_py_exit, detects_py_collection_target,
+  detects_py_hook_def, detects_py_unparsable and detects_pytest_config, as
+  defined in the notes. Any other way of skipping, deselecting, hiding or
+  neutering a test is NOT detected, and this requirement claims nothing
+  about it; deliberately obfuscated or adversarially encoded code may evade
+  the scanner and is the reviewer's responsibility. From milestone M2, mutation testing (cargo-mutants) SHALL run on
+  changed physics functions, with a ratchet on surviving mutants.
+acceptance: >-
+  The `ratchet` and `ratchet (test count)` checks of
+  .github/workflows/ratchet.yml are required on main and run tools/ratchet.py
+  and ci/ratchet.toml from a base-SHA checkout, comparing the PR head with
+  git merge-base(base, head), in jobs that never build or run PR code.
+  pytest shows that each listed vector and requirement weakening and each
+  detects_* form is detected (DETECTED_FORMS in tools/tests/test_ratchet.py
+  maps each form to its tests); that each example of an undetected form
+  named in the notes is not detected (one test_known_gap_* per example,
+  asserting no finding); that the notes, the ratchet.py docstring and those
+  tests name the same detects_* forms and the same examples, and that every
+  document stating the guarantee calls the scanner heuristic and
+  non-adversarial, limits the detected list to ordinary syntax, calls the
+  examples non-exhaustive and promises no exactness; that a maintainer's approval of the head SHA lets
+  an approval finding pass; that the repository compared with itself has no
+  finding; and that a branch behind main gets no finding for what main
+  gained after the branch point. From M2: a cargo-mutants job is required
+  and fails when the number of surviving mutants in changed physics
+  functions rises.
+source: >-
+  GitHub issue #12 §3 (maintainer decisions 2026-10-14, including mutation
+  testing from M2); red-team review, Journal #9; ADR-0015.
+parent: TST-002
+related: [TST-004, ORG-009, ORG-011, TST-005]
+notes: >-
+  NEW (ADR-0015). Approval means a review in state APPROVED by a login in
+  .github/governance/maintainers.txt on the current head SHA; a later push
+  needs a new approval. The ratchet is a HEURISTIC, NON-ADVERSARIAL
+  scanner. Ordinary syntax means: Rust attributes written directly on the
+  item as plain paths (#[ignore], #[cfg(...)], #[tokio::test]; no r#, not
+  produced by a macro, a use alias or include!) in a file whose comments and
+  string, raw string and char literals are standard ones; Python tests,
+  gates and rebindings written as statement-level def/class, assignments,
+  del and imports in a module or class body, with pytest and unittest
+  imported by a plain import or from ... import and gates spelled as an
+  attribute path or an imported name. Deliberately obfuscated or
+  adversarially encoded code may evade it (e.g. raw identifiers such as
+  #[r#ignore], crafted '\u{...}' char literals, a lifetime named r before
+  a quote, := inside decorators or defaults, names bound by except ... as
+  or match, nested star imports, names built at run time); several of these
+  are handled on a best-effort basis and pinned by tests, but catching such
+  code is the reviewer's responsibility. In ordinary syntax the ratchet
+  detects these forms of test weakening (a closed list, each pinned by
+  tests, DETECTED_FORMS in tools/tests/test_ratchet.py):
+  detects_rs_test_deleted, a Rust test removed or renamed, where a test is
+  a fn in a .rs file under crates/ whose run of outer attributes holds test
+  or <path>::test, not inside a comment or a string, raw string or char
+  literal, counted by crate directory and function name;
+  detects_rs_gate_attr, a new ignore, cfg or cfg_attr attribute (outer or
+  inner) in a .rs file under crates/, not inside a comment or literal,
+  whitespace normalised (also across lines), new when its file, item (inline
+  mod path, kind and name) and text were not in the merge base, unless it
+  matches gate_allowlist in ci/ratchet.toml and names no Cargo feature
+  undeclared in the merge base; detects_rs_executed_count, fewer tests that
+  cargo nextest list --workspace (default profile, each tree with its own
+  .config/nextest.toml) reports as run, not ignored and not filtered out,
+  for the head than for the merge base (the head listing is produced by PR
+  code); detects_py_test_deleted, a Python test removed or renamed, where a
+  test is, in a file under tools/ named test_*.py or *_test.py, a
+  module-level def test* or a def test* in a (nested) class Test*, as a
+  direct statement of the parsed module not rebound later in its scope (one
+  put in a string or under if, try or with is not counted), where rebinding
+  is recognised as a later statement of that scope that binds or unbinds
+  the name (def or class; an assignment target: =, augmented, annotated, :=,
+  for, with ... as, type; del; import ... [as]) or a from m import *, which
+  removes every test bound before it; counted by file name and
+  Class::function; detects_py_gate_name,
+  in any .py file under tools/, a new call or reference <expr>.<name> with
+  <name> one of skip, skipif, xfail, importorskip, skipIf, skipUnless,
+  skipTest, expectedFailure, SkipTest (so pytest.mark decorators,
+  pytest.skip/xfail/importorskip calls and unittest skips), or a bare name
+  imported as one of those from pytest, _pytest or unittest (or their
+  submodules) under any alias; detects_py_exit, exit on a name bound by
+  import pytest or import _pytest[.sub] (any alias) or by from
+  pytest|_pytest[.sub] import ..., or a bare exit imported from those under
+  any alias; detects_py_collection_target, an assignment (plain, annotated
+  or augmented) whose target contains the name or attribute pytestmark,
+  __test__, collect_ignore or collect_ignore_glob, or append, extend, insert
+  or __setitem__ called on one of those names; detects_py_hook_def, a def
+  or async def named pytest_* at any scope; detects_py_unparsable, a .py
+  file under tools/ that does not parse; detects_pytest_config, pytest
+  configuration added, changed or removed in a file at any depth under
+  tools/: all of pytest.toml, .pytest.toml, pytest.ini and .pytest.ini, the
+  [pytest] section of tox.ini, [tool:pytest] of setup.cfg and [tool.pytest]
+  of pyproject.toml (unparsable: compared as text). Every Python form is
+  found in the module parsed from the file's bytes, so a PEP 263 coding
+  declaration is honoured as Python and pytest honour it. Python gates are keyed
+  by file, enclosing Class::function and unparsed text, so moving a gate
+  onto another test is new. Directories target, .venv, .git, node_modules,
+  __pycache__ and .mypy_cache are not scanned. A rename counts as a
+  deletion and needs approval. Any other way of skipping, deselecting,
+  hiding or neutering a test is NOT detected, including but not limited to
+  the examples below; reviewers must check for it. Non-exhaustive examples, each pinned by test_<id> in
+  tools/tests/test_ratchet.py asserting no finding (issue #55 collects
+  them): known_gap_py_runtime_gate, a skip, __test__ or rebinding of a test
+  done at run time or from another scope (getattr(pytest, "sk" + "ip"),
+  setattr(f, "__test__", False), globals()["__test__"] = False,
+  globals()["test_a"] = None, global test_a in a function that rebinds it); known_gap_py_existing_helper, a new call
+  to a helper that already existed and skips; known_gap_hollowed_test, a
+  Python or Rust test that returns early, whose body is emptied, or whose
+  assertions are under dead code (Rust if false { ... });
+  known_gap_py_nondefault_name, deleting a test pytest collects outside its
+  default naming (a unittest.TestCase method in a class not named Test*);
+  known_gap_py_no_count, there is no executed-test count for pytest, so
+  nothing backstops a Python gap; known_gap_rs_allowlisted_gate, an
+  allowlisted gate hiding a Rust test from the PR tier (cfg(feature = ...)
+  or cfg(not(feature = ...)) on a declared feature, e.g.
+  cfg(not(feature = "std")) with std on by default, or ignore =
+  "data..."/"network..." on a test that needs neither), visible only to the
+  test count, whose head listing is the PR's own;
+  known_gap_rs_uncompiled_file, a test file moved to a path cargo does not
+  compile, or a dropped mod line, visible only to the test count;
+  known_gap_rs_same_name_items, a gate moved between two same-named Rust
+  fns of one module (two impl blocks); known_gap_scan_scope, Rust outside
+  crates/ and Python outside tools/; known_gap_py_outcome_exception, raising
+  pytest's outcome exceptions directly (from _pytest.outcomes import
+  Skipped, XFailed, Exit or OutcomeException, then raise Skipped("x"));
+  known_gap_py_empty_parametrize, @pytest.mark.parametrize("x", []);
+  known_gap_py_process_exit, os._exit(0) or sys.exit(0) in a test file,
+  which stops pytest with exit 0 and no summary;
+  known_gap_py_uncollectable_class, __init__ or __new__ on a Test* class
+  (not collected, a warning only); known_gap_py_fixture_on_test,
+  @pytest.fixture on a test* function (not collected, still counted);
+  known_gap_py_assigned_hook, a pytest hook bound by assignment
+  (pytest_collection_modifyitems = lambda ...);
+  known_gap_rs_verdict_attribute, #[should_panic] on a failing Rust test,
+  which turns the failure into a pass (the test still runs, so the count
+  does not see it); known_gap_py_aliased_exit, exit through a rebound
+  module object (p = pytest; p.exit()) or one imported at run time
+  (importlib.import_module("pytest").exit()); known_gap_py_moved_out_of_testpaths,
+  a test file moved out of pytest's testpaths (tests are keyed by file
+  name); known_gap_py_replacing_decorator, a decorator that replaces the
+  test with a no-op; known_gap_py_imported_marker, pytestmark bound by from
+  m import pytestmark; known_gap_rs_macro_gate, a gate passed to a macro as
+  tokens (#[$a] in a macro_rules!, invoked as t!(ignore));
+  known_gap_adversarial_encoding, code written to defeat the scanner, e.g.
+  deleting a Rust test whose attribute is renamed by use (use
+  core::prelude::v1::test as check; #[check] fn t()), or replacing a Python
+  test's body through test_a.__code__ = ...; known_gap_rs_doctest, Rust
+  doctests are outside the ratchet: deleting one, marking it ignore, or
+  #[cfg(test)] (allowlisted) on the item that carries it, which drops it
+  from the cargo test --doc run, is not detected, and cargo nextest list
+  does not list doctests. Python gate
+  names are matched on any expression, so args.skip in non-test code also
+  needs approval (over-detection). tools/tests/conftest.py and the pytest
+  configuration files above (all seven names, at any depth under tools/)
+  are on the ORG-011 meta surface. A new Cargo feature that gates code needs
+  approval until it is in the base tree. The mutation-testing part is not
+  implemented before M2.
 ```

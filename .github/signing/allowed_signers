@@ -1,0 +1,8 @@
+# SPDX-FileCopyrightText: 2026 Proper-Time Physics Institute
+# SPDX-License-Identifier: Apache-2.0
+#
+# SSH commit-signing keys (ORG-008, ADR-0005 revision 2026-11-14, ADR-0015), in ssh-keygen
+# allowed-signers format:  <principal> namespaces="git" <key-type> <base64-key> [comment]
+# Every key here needs a [[delegation]] in delegations.toml. Read from the BASE branch by
+# tools/verify_signatures.py; meta surface (ORG-011): only a maintainer-reviewed PR adds a key.
+# No key is registered yet: the maintainer registers each agent's key (see ADR-0015).

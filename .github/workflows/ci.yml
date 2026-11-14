@@ -16,6 +16,8 @@ name: ci
 
 on:
   pull_request:
+  # Only fires if a maintainer enables the merge queue (ADR-0015); required checks must report there.
+  merge_group:
   push:
     branches: [main]
   schedule:
@@ -190,6 +192,7 @@ jobs:
         run: |
           cargo build -p ferroastro-viewer --release --target wasm32-unknown-unknown
           node crates/ferroastro-viewer/web/smoke.mjs --expect-no-header target/wasm32-unknown-unknown/release/ferroastro_viewer.wasm
+          node crates/ferroastro-viewer/web/check-glossary.mjs
       - uses: astral-sh/setup-uv@1c37ad07a6a961277cf70c0d37d6f313000f5884 # v10.3.0
       - name: Fetch the hash-pinned header.440 (viewer embed-header build only)
         run: cd tools && uv run python fetch_jpl.py de440-header
