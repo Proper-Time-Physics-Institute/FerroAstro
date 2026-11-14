@@ -124,11 +124,11 @@ fn direct_model(s: &ScenarioSpec, de: &De440, backend: SoaBackend) -> NBodyModel
 /// Verifies: CI-002, NUM-021
 #[test]
 fn soa_scenario_builds_the_soa_model() {
-    let (h, prov) = header();
-    let data = DataSources::none().with_header(&h, &prov);
     let Some(de) = De440::load_cached_or_skip("soa_scenario_builds_the_soa_model").unwrap() else {
         return;
     };
+    let (h, prov) = header();
+    let data = DataSources::none().with_header(&h, &prov);
     let s = abm_full(ForceKernel::Soa, P4_YEARS);
     let (ids, acc) = initial_accelerations(&s, &data).unwrap();
     let model = direct_model(&s, &de, SoaBackend::Scalar);
@@ -240,6 +240,12 @@ fn differing(a: &[RunOutput], b: &[RunOutput]) -> usize {
 /// Verifies: NUM-022, NUM-021, TST-005
 #[test]
 fn batch_thread_counts_are_bitwise_for_both_kernels() {
+    if De440::load_cached_or_skip("batch_thread_counts_are_bitwise_for_both_kernels")
+        .unwrap()
+        .is_none()
+    {
+        return;
+    }
     let (h, prov) = header();
     let data = DataSources::none().with_header(&h, &prov);
     let all = std::thread::available_parallelism().map_or(1, std::num::NonZero::get);

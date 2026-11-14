@@ -11,6 +11,7 @@
     reason = "test: a failed unwrap is a test failure"
 )]
 
+use ferroastro_constants::De440;
 use ferroastro_constants::header440::Header;
 use ferroastro_propagate::{DataSources, resume, run, run_until};
 use ferroastro_scenario::{EihScope, ScenarioSpec};
@@ -26,6 +27,12 @@ fn spec(file: &str) -> ScenarioSpec {
 /// Verifies: NUM-009, CI-002
 #[test]
 fn eih_scope_is_validated_recorded_and_defaults_to_all() {
+    if De440::load_cached_or_skip("eih_scope_is_validated_recorded_and_defaults_to_all")
+        .unwrap()
+        .is_none()
+    {
+        return;
+    }
     let base = spec("stage-c-sun-planets-moon-eih-100yr.toml");
     assert!(base.forces.gr_eih);
     assert_eq!(base.forces.eih_scope, EihScope::All);
@@ -89,6 +96,14 @@ fn eih_scope_is_validated_recorded_and_defaults_to_all() {
 #[test]
 fn digest_covers_the_effective_eih_scope_and_old_checkpoints_are_refused() {
     use sha2::{Digest, Sha256};
+    if De440::load_cached_or_skip(
+        "digest_covers_the_effective_eih_scope_and_old_checkpoints_are_refused",
+    )
+    .unwrap()
+    .is_none()
+    {
+        return;
+    }
     let base = spec("stage-c-sun-planets-moon-eih-100yr.toml");
     let json = serde_json::to_string(&base).unwrap();
     let bare = Sha256::digest(json.as_bytes())

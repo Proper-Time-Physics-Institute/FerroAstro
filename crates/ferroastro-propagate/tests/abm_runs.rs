@@ -18,6 +18,7 @@
     reason = "test: a failed unwrap is a test failure; indices are in range by construction"
 )]
 
+use ferroastro_constants::De440;
 use ferroastro_constants::header440::Header;
 use ferroastro_core::ErrorCode;
 use ferroastro_propagate::{
@@ -118,6 +119,12 @@ fn differences(a: &RunOutput, b: &RunOutput) -> (Vec<(i32, f64)>, f64) {
 /// Verifies: NUM-002, REF-011, CI-002
 #[test]
 fn scenario_selects_abm_and_refuses_mixed_keys() {
+    if De440::load_cached_or_skip("scenario_selects_abm_and_refuses_mixed_keys")
+        .unwrap()
+        .is_none()
+    {
+        return;
+    }
     let (h, prov) = header();
     let data = DataSources::none().with_header(&h, &prov);
     let mut s = spec(SCENARIO);
@@ -219,6 +226,14 @@ fn b2(s: &ScenarioSpec, data: &DataSources<'_>) -> (RunOutput, f64) {
 /// Verifies: NUM-002, CI-010, NUM-010
 #[test]
 fn abm_forty_years_vs_ias15_reported_and_checkpoint_resume_is_bitwise() {
+    if De440::load_cached_or_skip(
+        "abm_forty_years_vs_ias15_reported_and_checkpoint_resume_is_bitwise",
+    )
+    .unwrap()
+    .is_none()
+    {
+        return;
+    }
     let (h, prov) = header();
     let data = DataSources::none().with_header(&h, &prov);
     let s = spec(SCENARIO);
@@ -268,6 +283,12 @@ fn nightly_abm_vs_ias15_forty_year_mercury_bound() {
 /// Verifies: NUM-010, CI-010
 #[test]
 fn abm_span_not_a_multiple_of_the_step_ends_on_the_span() {
+    if De440::load_cached_or_skip("abm_span_not_a_multiple_of_the_step_ends_on_the_span")
+        .unwrap()
+        .is_none()
+    {
+        return;
+    }
     let (h, prov) = header();
     let data = DataSources::none().with_header(&h, &prov);
     let mut s = spec(SCENARIO);

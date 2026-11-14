@@ -114,6 +114,12 @@ fn residual(delta_s: f64, print: bool) -> f64 {
 /// Verifies: NUM-018
 #[test]
 fn mu_star_rate_matches_a_central_difference() {
+    if De440::load_cached_or_skip("mu_star_rate_matches_a_central_difference")
+        .unwrap()
+        .is_none()
+    {
+        return;
+    }
     let base = residual(DELTA_S, true);
     println!("C3b: max |mu*' - difference| / max |mu*'| at d = {DELTA_S} s: {base:.3e}");
     let mut last = base;
@@ -162,6 +168,12 @@ fn nightly_mu_star_rate_pre_registered_bound() {
 /// Verifies: NUM-018
 #[test]
 fn mu_star_rate_within_the_corrected_truncation_bound() {
+    if De440::load_cached_or_skip("mu_star_rate_within_the_corrected_truncation_bound")
+        .unwrap()
+        .is_none()
+    {
+        return;
+    }
     let worst = residual(DELTA_S, false);
     println!("C3b (corrected bound): max |mu*' - difference| / max |mu*'| = {worst:.3e}");
     vectors()

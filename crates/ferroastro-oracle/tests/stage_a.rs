@@ -11,6 +11,7 @@
 
 mod common;
 
+use ferroastro_constants::De440;
 use ferroastro_constants::header440::Header;
 use ferroastro_core::ErrorCode;
 use ferroastro_oracle::{GoldenStates, MANIFEST_NAME, Manifest, compare_states, sha256_hex};
@@ -203,6 +204,12 @@ fn stage_a_against(tool: &str) -> ferroastro_oracle::StateComparison {
 /// Verifies: CI-005, REF-005, CI-002
 #[test]
 fn stage_a_ferroastro_ias15_matches_the_rebound_ias15_golden() {
+    if De440::load_cached_or_skip("stage_a_ferroastro_ias15_matches_the_rebound_ias15_golden")
+        .unwrap()
+        .is_none()
+    {
+        return;
+    }
     let cmp = stage_a_against("rebound");
     VectorSet::load_canonical()
         .unwrap()
@@ -220,6 +227,12 @@ fn stage_a_ferroastro_ias15_matches_the_rebound_ias15_golden() {
 /// Verifies: REF-007, CI-002, CI-005
 #[test]
 fn stage_a_ferroastro_ias15_matches_the_swiftest_whm_golden() {
+    if De440::load_cached_or_skip("stage_a_ferroastro_ias15_matches_the_swiftest_whm_golden")
+        .unwrap()
+        .is_none()
+    {
+        return;
+    }
     let cmp = stage_a_against("swiftest");
     VectorSet::load_canonical()
         .unwrap()
@@ -235,6 +248,12 @@ fn stage_a_ferroastro_ias15_matches_the_swiftest_whm_golden() {
 /// Verifies: REF-008, CI-002, CI-005
 #[test]
 fn stage_a_ferroastro_ias15_matches_the_mercury6_ra15_golden() {
+    if De440::load_cached_or_skip("stage_a_ferroastro_ias15_matches_the_mercury6_ra15_golden")
+        .unwrap()
+        .is_none()
+    {
+        return;
+    }
     let cmp = stage_a_against("mercury6");
     VectorSet::load_canonical()
         .unwrap()

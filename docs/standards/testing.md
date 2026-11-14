@@ -41,3 +41,21 @@
 7. **UNVERIFIED and secondary-source [S] values** may not be oracles until they are closed in
    [OPEN-ITEMS.md](../requirements/OPEN-ITEMS.md) (PHY-018).
 8. **Compile-fail tests** (`trybuild`) prove that type-level physics guards work (API-001).
+9. **Cached JPL data and local runs** (maintainer decision 2026-11-14). Tests that need the pinned
+   `header.440` read it from the data cache (`$FA_DATA_DIR`, default `target/fa-data`; fill it with
+   `(cd tools && uv run python fetch_jpl.py de440-header)`, or plain `fetch_jpl.py` for every
+   PR-fast product). They go through `De440::load_cached_or_skip` (or
+   `ferroastro_testdata::skip_if_absent`):
+   - **header absent, `FA_REQUIRE_DATA` unset:** the test prints
+     `SKIP <test>: skipped: header.440 not cached at <path> (set FA_DATA_DIR or run tools/fetch_jpl.py de440-header); FA_REQUIRE_DATA=1 makes this fail`
+     and returns, so `cargo test` passes on a machine without the data. The line is test output:
+     see it with `cargo test -- --nocapture` or `cargo nextest run --success-output immediate`.
+   - **`FA_REQUIRE_DATA=1` (or `CI=true`):** a missing header fails the test loudly. CI sets it
+     in every job that fetches the data and runs tests, and the guard
+     `required_data_means_the_header_loads` fails if the header does not load, so CI can never
+     pass by skipping.
+   - **header present:** every test runs, with or without `FA_REQUIRE_DATA`. A file that does not
+     match its pinned SHA-256 is always an error, never a skip.
+   Only the header is skipped this way; a test that also reads another product (`de440.bsp`,
+   `testpo.440`) still fails when that product is missing and the header is present. The orbit
+   viewer's System-mode and Rung-lab tests skip separately when built without `embed-header`.

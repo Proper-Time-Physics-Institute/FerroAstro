@@ -115,6 +115,12 @@ fn wp12_model_run(years: f64, samples: u32) -> (Vec<f64>, u64, f64) {
 /// Verifies: NUM-019, TST-005
 #[test]
 fn momentum_is_conserved_with_j2_and_runs_are_bitwise_reproducible() {
+    if De440::load_cached_or_skip("momentum_is_conserved_with_j2_and_runs_are_bitwise_reproducible")
+        .unwrap()
+        .is_none()
+    {
+        return;
+    }
     let years = 100.0; // lint: allow-literal(run span, WP12 plan 1a)
     let started = std::time::Instant::now();
     let (a, steps, worst) = wp12_model_run(years, 100);
@@ -257,6 +263,12 @@ fn residuals(with_pluto: bool, spk: &Spk<'_>) -> (Vec<(NaifId, Row)>, Row, u64) 
 /// Verifies: NUM-019, NUM-009, NUM-008
 #[test]
 fn newtonian_j2_ten_years_from_header_ics_vs_de440_bsp() {
+    if De440::load_cached_or_skip("newtonian_j2_ten_years_from_header_ics_vs_de440_bsp")
+        .unwrap()
+        .is_none()
+    {
+        return;
+    }
     let (bsp, _) = cached("de440-bsp");
     let spk = Spk::parse(&bsp).unwrap();
     let outer = [

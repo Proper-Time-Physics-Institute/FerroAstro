@@ -25,7 +25,19 @@ const JACKKNIFE_BLOCKS: usize = 20; // lint: allow-literal(jack-knife blocks, as
 
 /// Verifies: NUM-013, CI-009
 #[test]
+#[expect(
+    clippy::too_many_lines,
+    reason = "the header.440 skip gate, then one run read top to bottom"
+)]
 fn single_body_toggles_through_the_harness_match_their_analytic_rates() {
+    if De440::load_cached_or_skip(
+        "single_body_toggles_through_the_harness_match_their_analytic_rates",
+    )
+    .unwrap()
+    .is_none()
+    {
+        return;
+    }
     let vs = VectorSet::load_canonical().unwrap();
     let (h, prov) = common::header();
     let data = DataSources::none().with_header(&h, &prov);

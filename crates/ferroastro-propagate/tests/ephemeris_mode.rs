@@ -115,7 +115,17 @@ fn code(e: &ferroastro_propagate::PropagateError) -> &'static str {
 ///
 /// Verifies: NUM-007, NUM-009, REF-011, CI-002
 #[test]
+#[expect(
+    clippy::too_many_lines,
+    reason = "the header.440 skip gate, then one run read top to bottom"
+)]
 fn mixed_mode_refusals_tiers_and_shared_initial_conditions() {
+    if De440::load_cached_or_skip("mixed_mode_refusals_tiers_and_shared_initial_conditions")
+        .unwrap()
+        .is_none()
+    {
+        return;
+    }
     let (h, prov) = header();
     let file = small_body_file();
     let data = DataSources::none()
@@ -233,6 +243,12 @@ fn mixed_mode_refusals_tiers_and_shared_initial_conditions() {
 /// Verifies: NUM-007, CI-010
 #[test]
 fn mixed_mode_checkpoint_resume_is_bitwise() {
+    if De440::load_cached_or_skip("mixed_mode_checkpoint_resume_is_bitwise")
+        .unwrap()
+        .is_none()
+    {
+        return;
+    }
     let (h, prov) = header();
     let data = DataSources::none().with_header(&h, &prov);
     let mut s = with(&spec(MAJOR_SYSTEM), Precision::Mixed, false);
@@ -256,6 +272,12 @@ fn mixed_mode_checkpoint_resume_is_bitwise() {
 /// Verifies: NUM-018
 #[test]
 fn relativistic_rebarycentring_residual_in_double_double() {
+    if De440::load_cached_or_skip("relativistic_rebarycentring_residual_in_double_double")
+        .unwrap()
+        .is_none()
+    {
+        return;
+    }
     let vs = VectorSet::load_canonical().unwrap();
     let (h, prov) = header();
     let file = small_body_file();
@@ -357,6 +379,12 @@ fn relativistic_rebarycentring_residual_in_double_double() {
 /// Verifies: NUM-007, DEP-007
 #[test]
 fn mixed_mode_round_off_is_far_below_f64() {
+    if De440::load_cached_or_skip("mixed_mode_round_off_is_far_below_f64")
+        .unwrap()
+        .is_none()
+    {
+        return;
+    }
     let vs = VectorSet::load_canonical().unwrap();
     let want = vs.get("EPH-MIXED-SHORT-RATIO").unwrap().value().unwrap();
     let (h, prov) = header();
@@ -391,6 +419,12 @@ fn mixed_mode_round_off_is_far_below_f64() {
 /// Verifies: DEP-007, NUM-007
 #[test]
 fn nbody_forces_agree_in_double_double_and_f64() {
+    if De440::load_cached_or_skip("nbody_forces_agree_in_double_double_and_f64")
+        .unwrap()
+        .is_none()
+    {
+        return;
+    }
     let vs = VectorSet::load_canonical().unwrap();
     let tol = vs.get("EPH-FORCES-DD-F64-REL").unwrap();
     let (h, prov) = header();

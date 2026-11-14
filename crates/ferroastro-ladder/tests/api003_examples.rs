@@ -78,53 +78,107 @@ fn every_implemented_phy_rung_has_an_example() {
 /// Verifies: API-003
 #[test]
 fn example_phy001_runs() {
+    if De440::load_cached_or_skip("example_phy001_runs")
+        .unwrap()
+        .is_none()
+    {
+        return;
+    }
     phy001_n2b::main().unwrap();
 }
 
 /// Verifies: API-003
 #[test]
 fn example_phy004_runs() {
+    if De440::load_cached_or_skip("example_phy004_runs")
+        .unwrap()
+        .is_none()
+    {
+        return;
+    }
     phy004_gr_analytic::main().unwrap();
 }
 
 /// Verifies: API-003
 #[test]
 fn example_phy005_runs() {
+    if De440::load_cached_or_skip("example_phy005_runs")
+        .unwrap()
+        .is_none()
+    {
+        return;
+    }
     phy005_gr_schw::main().unwrap();
 }
 
 /// Verifies: API-003
 #[test]
 fn example_phy006_runs() {
+    if De440::load_cached_or_skip("example_phy006_runs")
+        .unwrap()
+        .is_none()
+    {
+        return;
+    }
     phy006_ppn::main().unwrap();
 }
 
 /// Verifies: API-003
 #[test]
 fn example_phy007_runs() {
+    if De440::load_cached_or_skip("example_phy007_runs")
+        .unwrap()
+        .is_none()
+    {
+        return;
+    }
     phy007_sr_a::main().unwrap();
 }
 
 /// Verifies: API-003
 #[test]
 fn example_phy008_runs() {
+    if De440::load_cached_or_skip("example_phy008_runs")
+        .unwrap()
+        .is_none()
+    {
+        return;
+    }
     phy008_sr_b::main().unwrap();
 }
 
 /// Verifies: API-003
 #[test]
 fn example_phy009_runs() {
+    if De440::load_cached_or_skip("example_phy009_runs")
+        .unwrap()
+        .is_none()
+    {
+        return;
+    }
     phy009_coefficients::main().unwrap();
 }
 
 /// Verifies: API-003
 #[test]
 fn example_phy010_runs() {
+    if De440::load_cached_or_skip("example_phy010_runs")
+        .unwrap()
+        .is_none()
+    {
+        return;
+    }
     phy010_j2::main().unwrap();
 }
 
 /// Verifies: API-003
 #[test]
 fn example_phy011_runs() {
+    if De440::load_cached_or_skip("example_phy011_runs")
+        .unwrap()
+        .is_none()
+    {
+        return;
+    }
     phy011_lt::main().unwrap();
 }

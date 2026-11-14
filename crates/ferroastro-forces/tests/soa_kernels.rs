@@ -133,6 +133,12 @@ fn groups(sys: &FlatSystem, pair: bool) -> Vec<usize> {
 /// Verifies: NUM-021
 #[test]
 fn exact_inverse_cube_is_within_one_ulp() {
+    if De440::load_cached_or_skip("exact_inverse_cube_is_within_one_ulp")
+        .unwrap()
+        .is_none()
+    {
+        return;
+    }
     let (lo, hi) = (-6.0, 30.0); // lint: allow-literal(log10 range of r^2 in km^2, test design)
     let cases = 100_000; // lint: allow-literal(case count, test design)
     let mut rng = SplitMix(26);
@@ -298,6 +304,12 @@ fn simd_and_scalar_models_are_bitwise_identical_with_the_geocentric_pair() {
 /// Verifies: NUM-021, DEP-007
 #[test]
 fn soa_newtonian_error_is_within_the_forward_bound() {
+    if De440::load_cached_or_skip("soa_newtonian_error_is_within_the_forward_bound")
+        .unwrap()
+        .is_none()
+    {
+        return;
+    }
     let mut worst = 0.0_f64;
     for sys in &flat_systems() {
         let n = sys.ids.len();
@@ -420,6 +432,12 @@ fn soa_and_pairwise_agree_with_the_geocentric_pair() {
 /// Verifies: API-002
 #[test]
 fn coinciding_bodies_are_a_coded_error() {
+    if De440::load_cached_or_skip("coinciding_bodies_are_a_coded_error")
+        .unwrap()
+        .is_none()
+    {
+        return;
+    }
     let sys = &flat_systems()[0];
     let mut x = sys.x.clone();
     let n = sys.ids.len();

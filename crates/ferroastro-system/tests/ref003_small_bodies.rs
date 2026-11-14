@@ -55,6 +55,14 @@ fn open_items() -> String {
 /// Verifies: REF-003
 #[test]
 fn ref003_sampled_file_covers_every_header_asteroid_and_records_its_source() {
+    if De440::load_cached_or_skip(
+        "ref003_sampled_file_covers_every_header_asteroid_and_records_its_source",
+    )
+    .unwrap()
+    .is_none()
+    {
+        return;
+    }
     let v = VectorSet::load_canonical().unwrap();
     let (h, hprov) = header();
     let s = small_bodies();
@@ -119,6 +127,12 @@ fn ref003_sampled_file_covers_every_header_asteroid_and_records_its_source() {
 /// Verifies: REF-003
 #[test]
 fn kbo_identification_follows_from_the_rule() {
+    if De440::load_cached_or_skip("kbo_identification_follows_from_the_rule")
+        .unwrap()
+        .is_none()
+    {
+        return;
+    }
     let v = VectorSet::load_canonical().unwrap();
     let (h, hprov) = header();
     let cat = Catalogue::from_header(&h, &hprov).unwrap();
@@ -186,6 +200,12 @@ fn kbo_identification_follows_from_the_rule() {
     reason = "test oracle arithmetic kept bit-identical across the toolchain bump: fused multiply-add would alter rounding (gh #23)"
 )]
 fn kbo_ring_points_are_fixed_on_the_44_au_ecliptic_circle() {
+    if De440::load_cached_or_skip("kbo_ring_points_are_fixed_on_the_44_au_ecliptic_circle")
+        .unwrap()
+        .is_none()
+    {
+        return;
+    }
     let v = VectorSet::load_canonical().unwrap();
     v.get("DE440-KBO-RING-RADIUS")
         .unwrap()
@@ -252,12 +272,12 @@ fn kbo_ring_points_are_fixed_on_the_44_au_ecliptic_circle() {
 /// Verifies: NUM-018, REF-003
 #[test]
 fn ssb_of_the_full_placed_body_set_at_jdepoc() {
-    let v = VectorSet::load_canonical().unwrap();
-    let (h, hprov) = header();
     let Some(de) = De440::load_cached_or_skip("ssb_of_the_full_placed_body_set_at_jdepoc").unwrap()
     else {
         return;
     };
+    let v = VectorSet::load_canonical().unwrap();
+    let (h, hprov) = header();
     let s = small_bodies();
     let ic = InitialConditions::<f64>::from_header(&h, &hprov).unwrap();
     let mut cat = Catalogue::from_header(&h, &hprov).unwrap();
@@ -328,6 +348,12 @@ fn ssb_of_the_full_placed_body_set_at_jdepoc() {
 /// Verifies: REF-003
 #[test]
 fn small_bodies_are_placed_relative_to_the_header_sun() {
+    if De440::load_cached_or_skip("small_bodies_are_placed_relative_to_the_header_sun")
+        .unwrap()
+        .is_none()
+    {
+        return;
+    }
     let (h, hprov) = header();
     let s = small_bodies();
     let ic = InitialConditions::<f64>::from_header(&h, &hprov).unwrap();

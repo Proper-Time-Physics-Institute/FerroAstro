@@ -25,6 +25,29 @@ fn check(id: &str, measured: f64, vectors: &VectorSet) -> Result<(), VectorError
     Ok(())
 }
 
+/// CI guard for the skip gate (maintainer decision 2026-11-14): when `FA_REQUIRE_DATA=1` (or
+/// `CI`) is set, the pinned header.440 must load, so a run that requires the data can never pass
+/// by skipping every header-dependent test. Without the requirement it only reports.
+///
+/// Verifies: CI-005
+#[test]
+fn required_data_means_the_header_loads() {
+    if !ferroastro_testdata::data_required() {
+        println!(
+            "{} unset: header-dependent tests may skip in this run",
+            ferroastro_testdata::REQUIRE_DATA_ENV
+        );
+        return;
+    }
+    if let Err(e) = De440::load_cached() {
+        panic!(
+            "{}=1 (or CI) but the pinned header.440 does not load: {e}",
+            ferroastro_testdata::REQUIRE_DATA_ENV
+        );
+    }
+    println!("data required and header.440 loaded: no header-dependent test skips in this run");
+}
+
 /// Verifies: PHY-002
 #[test]
 fn asserted_de440_constants() {

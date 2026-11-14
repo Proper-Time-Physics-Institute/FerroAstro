@@ -11,6 +11,7 @@
 
 mod common;
 
+use ferroastro_constants::De440;
 use ferroastro_core::ErrorCode;
 use ferroastro_diffrun::{
     BodyToggle, Combination, PassageSource, Plan, Protocol, RunOptions, check_identical_ics,
@@ -69,6 +70,12 @@ fn quadratic() -> FitModel {
     reason = "one plan run, then every assertion on its result"
 )]
 fn plan_shares_identical_ics_and_rows_are_signed_sums() {
+    if De440::load_cached_or_skip("plan_shares_identical_ics_and_rows_are_signed_sums")
+        .unwrap()
+        .is_none()
+    {
+        return;
+    }
     let (h, prov) = common::header();
     let data = DataSources::none().with_header(&h, &prov);
     let plan = small_plan();
@@ -323,6 +330,12 @@ fn malformed_plans_are_refused() {
 /// Verifies: CI-010, NUM-013
 #[test]
 fn interrupted_leg_resumes_from_its_store_bitwise() {
+    if De440::load_cached_or_skip("interrupted_leg_resumes_from_its_store_bitwise")
+        .unwrap()
+        .is_none()
+    {
+        return;
+    }
     let (h, prov) = common::header();
     let data = DataSources::none().with_header(&h, &prov);
     let mut spec = template();
@@ -403,6 +416,12 @@ fn interrupted_leg_resumes_from_its_store_bitwise() {
 /// Verifies: CI-009, NUM-011
 #[test]
 fn fit_window_selects_exactly_the_passages_inside_it() {
+    if De440::load_cached_or_skip("fit_window_selects_exactly_the_passages_inside_it")
+        .unwrap()
+        .is_none()
+    {
+        return;
+    }
     let (h, prov) = common::header();
     let data = DataSources::none().with_header(&h, &prov);
     let mut spec = template();

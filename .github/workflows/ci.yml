@@ -44,6 +44,10 @@ jobs:
     timeout-minutes: 30
     env:
       FA_DATA_DIR: ${{ github.workspace }}/.fa-data
+      # Maintainer decision 2026-11-14: a test whose cached header.440 (or other pinned product)
+      # is missing skips locally, but fails here, so CI never passes by skipping (CI=true implies
+      # the same; this states it explicitly).
+      FA_REQUIRE_DATA: '1'
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -101,6 +105,10 @@ jobs:
     timeout-minutes: 30
     env:
       FA_DATA_DIR: ${{ github.workspace }}/.fa-data
+      # Maintainer decision 2026-11-14: a test whose cached header.440 (or other pinned product)
+      # is missing skips locally, but fails here, so CI never passes by skipping (CI=true implies
+      # the same; this states it explicitly).
+      FA_REQUIRE_DATA: '1'
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -286,6 +294,8 @@ jobs:
     timeout-minutes: 60
     env:
       FA_DATA_DIR: ${{ github.workspace }}/target/fa-data
+      # Missing data fails instead of skipping (maintainer decision 2026-11-14).
+      FA_REQUIRE_DATA: '1'
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:

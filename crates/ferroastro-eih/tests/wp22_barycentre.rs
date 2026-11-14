@@ -69,12 +69,12 @@ fn newtonian<R: Real>(b: &[BarycentreBody<R>]) -> Vec<[R; 3]> {
 /// Verifies: NUM-018
 #[test]
 fn mu_star_rate_matches_a_central_difference_of_mu_star() {
-    let (h, prov) = header();
     let Some(de) =
         De440::load_cached_or_skip("mu_star_rate_matches_a_central_difference_of_mu_star").unwrap()
     else {
         return;
     };
+    let (h, prov) = header();
     let cat = Catalogue::de440_major(&de);
     let ic = InitialConditions::<Dd>::from_header(&h, &prov).unwrap();
     let bodies: Vec<BarycentreBody<Dd>> = ids()
@@ -250,6 +250,12 @@ fn drift(with_rate: bool) -> f64 {
 /// Verifies: NUM-018
 #[test]
 fn the_mu_star_rate_term_stops_the_barycentre_drift() {
+    if De440::load_cached_or_skip("the_mu_star_rate_term_stops_the_barycentre_drift")
+        .unwrap()
+        .is_none()
+    {
+        return;
+    }
     let with = drift(true);
     let without = drift(false);
     println!("E6: drift ratio without / with = {:.3e}", without / with);
