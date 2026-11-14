@@ -18,6 +18,7 @@ ferroastro-scenario.workspace = true
 postcard.workspace = true
 serde.workspace = true
 serde_json.workspace = true
+sha2.workspace = true
 thiserror.workspace = true
 
 [dev-dependencies]
@@ -26,6 +27,7 @@ ferroastro-analytic.workspace = true
 ferroastro-constants.workspace = true
 ferroastro-ephem.workspace = true
 ferroastro-frames.workspace = true
+ferroastro-integrators = { workspace = true, features = ["serde"] }
 ferroastro-system.workspace = true
 ferroastro-testdata.workspace = true
 ferroastro-vectors.workspace = true
