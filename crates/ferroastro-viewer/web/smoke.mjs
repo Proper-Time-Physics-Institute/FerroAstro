@@ -20,7 +20,8 @@
 // from tests/vectors (AGENTS.md rule 1); the metadata JSON has every documented key; bit 12 (the
 // conformal-gravity comparison model, ABI v2) runs, a Sun-centred exaggerated gamma0 gives a
 // retrograde advance matching the engine's own Gauss reference, and the default uniform centring
-// gives ~0 (no oracle beyond the engine's analytic value; the fit values of OI-79 are never used).
+// gives ~0 (no oracle beyond the engine's analytic value; the fit values of OI-79 are never used);
+// the metadata's comparison dashboard carries the M5 evidence and the INPOP15a bound from tests/vectors.
 // Verifies: API-004 (proposed in DESIGN.md section 9)
 
 import { readFileSync } from "node:fs";
@@ -140,10 +141,22 @@ let cfg = eng.configure(0, kParams);
 check(cfg.engine === FAV.ENGINE_RESOLVED.WHFAST, "mask 0 with ENGINE=WHFAST resolves to WHFast", cfg.engine);
 check(cfg.epochJd === 2440400.5, "System-mode epoch is JDEPOC 2440400.5", cfg.epochJd);
 const keys = ["abi", "mode", "engine", "nominal", "toggles", "params", "model", "gauge", "frame", "display_frame",
-  "epoch_jd_tdb", "time_scale", "ic_source", "ic_hash", "constants", "scenario_digest", "estimator", "fit", "j2_nominal", "conformal"];
+  "epoch_jd_tdb", "time_scale", "ic_source", "ic_hash", "constants", "scenario_digest", "estimator", "fit", "j2_nominal", "conformal", "dashboard"];
 const missing = keys.filter((k) => !cfg.meta || !(k in cfg.meta));
 check(missing.length === 0, "metadata JSON has every documented key", missing.join(", ") || "all present");
 check(cfg.scenario.length > 0, "fav_scenario returns the ScenarioSpec TOML", cfg.scenario.length + " bytes");
+// The comparison dashboard (F4): the M5 evidence and the INPOP15a bound reach the page through the
+// metadata unchanged from tests/vectors (the page carries none of them), and the engine's analytic
+// GR estimate is PHY004-GR-RATE within that vector's own tolerance.
+const dash = cfg.meta && cfg.meta.dashboard;
+const m5v = loadVector("m5-evidence.toml", "M5-EIH-FULL-RATE");
+check(dash && dash.m5 && dash.m5.kind === "computed-reference" && dash.m5.rows.total.value === m5v,
+  "metadata dashboard carries the M5 total from tests/vectors/m5-evidence.toml (computed, not observed)", dash && dash.m5 ? dash.m5.rows.total.value : "missing");
+const bw = loadVector("comparison-bounds.toml", "INPOP15A-MERCURY-SUPPLEMENTARY-ADVANCE-INTERVAL");
+check(dash && dash.bound && dash.bound.half_width === bw && dash.bound.applies_to.join() === "b" + FAV.BIT.CONFORMAL,
+  "metadata dashboard carries the INPOP15a bound for the comparison model only", dash && dash.bound ? dash.bound.half_width + " " + dash.bound.applies_to : "missing");
+const grAn = dash && dash.analytic && dash.analytic.rows.b8 ? dash.analytic.rows.b8.value : NaN;
+check(Math.abs(grAn - loadVector("phy004-gr-analytic.toml", "PHY004-GR-RATE")) <= 1e-4, "engine analytic GR estimate matches PHY004-GR-RATE (+/- 1e-4)", grAn);
 
 let t0 = performance.now();
 const chunked = runChunked(eng, KEPLER_SPAN_YEARS, 0.25);

@@ -61,81 +61,29 @@
     { bit: B.CONFORMAL, term: "conformal-gravity", label: "Conformal gravity (comparison model)", short: "CG", css: "--fx-cg", exp: "comparison model", note: "outside the GR ladder", comparison: true },
   ];
 
-  // Reference values for the table (approx. literature; frame/window caveats in `src`).
-  function referenceFor(effect, cfg, meta) {
-    const p = cfg.params;
-    switch (effect) {
-      case "b0":
-        return { v: 277.4176, src: "Park17 Table 3 (PARK17-T3-VENUS), 2000-yr window centred on J2000" };
-      case "b1":
-        return { v: 90.8881, src: "Park17 Table 3 (PARK17-T3-EARTH-MOON)" };
-      case "b2":
-        return { v: 2.4814, src: "Park17 Table 3 (PARK17-T3-MARS)" };
-      case "b3":
-        return { v: 153.9899, src: "Park17 Table 3 (PARK17-T3-JUPITER)" };
-      case "b4":
-        return { v: 7.3227, src: "Park17 Table 3 (PARK17-T3-SATURN)" };
-      case "b5":
-        return { v: 0.1425, src: "Park17 Table 3 (PARK17-T3-URANUS)" };
-      case "b6":
-        return { v: 0.0424, src: "Park17 Table 3 (PARK17-T3-NEPTUNE)" };
-      case "b7": {
-        const j2 = p[P.J2_OVERRIDE];
-        // J2(DE440) comes from the engine's metadata (j2_nominal), never from a copied header value (#22).
-        const j2n = nominalJ2();
-        const scaled = Number.isFinite(j2);
-        const k = scaled ? (Number.isFinite(j2n) ? j2 / j2n : NaN) : 1;
-        return {
-          v: 0.02845 * k,
-          src:
-            "FerroAstro J2-REAL 0.02845 (real solar pole, DE440 J2); planar analytic 0.02792 (PHY010-J2-DE440-ANALYTIC-RATE)" +
-            (scaled ? (Number.isFinite(k) ? "; scaled ×J2/J2(DE440)" : "; J2(DE440) not yet reported by the engine") : ""),
-        };
-      }
-      case "b8":
-      case "b11": {
-        const f = (2 + 2 * p[P.PPN_GAMMA] - p[P.PPN_BETA]) / 3;
-        return {
-          v: 42.9805 * f,
-          src:
-            "PHY004-GR-RATE 42.9805" + (f !== 1 ? " × (2+2γ−β)/3 (PHY-006)" : "") +
-            (effect === "b11" ? "; EIH adds the planets' 1PN terms on top of the Sun's" : ""),
-        };
-      }
-      case "b9": {
-        const k = p[P.SPIN_SCALE];
-        return { v: -0.002 * k, src: "Park17 (PARK17-LT-RATE); FerroAstro LT-REAL −0.002015" + (k !== 1 ? "; scaled ×spin" : "") };
-      }
-      case "b10":
-        return { v: 0.0012, src: "Park17 343 asteroids (PARK17-T3-ASTEROIDS); first 16 ≈ 0.001 (PHY-019)" };
-      case "b12": {
-        // The engine's analytic Gauss rate for these settings (metadata "conformal.reference"); the
-        // page evaluates no formula. Comparison model, never part of the 575.31 ″/cy ladder.
-        const r = cgReference(meta);
-        if (!r) return null;
-        return {
-          v: r.total_arcsec_per_cy,
-          src: "engine Gauss reference, comparison model (ADR-0016, PHY-020); first-order secular average for Mercury's SW92 mean a, e; not a ladder value",
-        };
-      }
-      case "rung": {
-        const r = p[P.RUNG];
-        const v = [0, 7.1634, 50.144, 35.817, 42.9805][r];
-        const ids = ["", "PHY007-SRA-NUM-RATE", "PHY008-SRB-HARMONIC-RATE", "PHY008-SRB-AREAL-RATE", "PHY004-GR-RATE"];
-        let vv = v;
-        let s = ids[r] + " (ADR-0012)";
-        if (r === 4) {
-          const f = (2 + 2 * p[P.PPN_GAMMA] - p[P.PPN_BETA]) / 3;
-          vv = v * f;
-          if (f !== 1) s += " × (2+2γ−β)/3";
-        }
-        return { v: vv, src: s };
-      }
-      case "kepler":
-        return { v: 0, src: "two-body Newtonian (PHY-001)" };
-      default:
-        return null;
-    }
+  // Reference columns of the contribution table (the comparison dashboard, API-004 / F4): every
+  // number comes from the engine's metadata object "dashboard" (engine analytic estimates, M5
+  // evidence from tests/vectors/m5-evidence.toml, Park17 literature rows, the INPOP15a bound). The
+  // page only selects and formats them; it evaluates no formula and carries no physics value.
+  function dashboardOf(meta) {
+    return meta && meta.dashboard && typeof meta.dashboard === "object" ? meta.dashboard : null;
+  }
+  function dashRow(meta, column, key) {
+    const d = dashboardOf(meta);
+    const c = d && d[column];
+    const r = c && c.rows && c.rows[key];
+    return r && Number.isFinite(r.value) ? r : null;
+  }
+  // The observational bound if it applies to this row (comparison models only), else null.
+  function boundFor(meta, key) {
+    const d = dashboardOf(meta);
+    const b = d && d.bound;
+    if (!b || !Array.isArray(b.applies_to) || !b.applies_to.includes(key)) return null;
+    return Number.isFinite(b.value) && Number.isFinite(b.half_width) ? b : null;
+  }
+  // "frame · window · protocol" of one reference column, from the engine's labels.
+  function columnLabel(c) {
+    return c ? [c.frame, c.window, c.protocol].filter(Boolean).join(" · ") : "";
   }
 
   const RUNG_NAMES = ["Newton", "SR-a (SR, no PN gauge)", "SR-b harmonic", "SR-b areal (pedagogical)", "GR PPN"];
@@ -798,6 +746,7 @@
         state.epochJd = m.epochJd;
         state.meta = m.meta;
         noteMeta(m.meta);
+        renderColumnLabels();
         state.scenario = m.scenario || "";
         state.lastChunkWall = performance.now();
         onConfiguredMeta();
@@ -917,9 +866,10 @@
       termButton("cg-gauss-reference", "Gauss reference"),
       " " + fmtRate(r.total_arcsec_per_cy) + " ″/cy for Mercury (γ terms " + fmtRate(r.linear_arcsec_per_cy) + ", κ term " + fmtRate(r.quadratic_arcsec_per_cy) + "; γ0 share " +
         (uniform ? "0, uniform" : fmtRate(r.gamma0_arcsec_per_cy)) + "). ",
-      termButton("inpop15a-bound", "INPOP15a"),
-      " allows 0.0 ± 0.0031 ″/cy.",
     );
+    // The bound's numbers come from the engine (metadata "dashboard.bound", tests/vectors).
+    const b = boundFor(meta, "b" + B.CONFORMAL);
+    if (b) el.cgRef.append(termButton("inpop15a-bound", "INPOP15a"), " allows " + b.value + " ± " + b.half_width + " ″/cy.");
     if (uniform) {
       const note = document.createElement("span");
       note.className = "cg-caveat";
@@ -2096,10 +2046,20 @@
     return String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
   }
 
+  // The full viewer model (planets, solar J2, Lense–Thirring and GR 1PN or EIH): the only table
+  // configuration for which the M5 total (a full EIH model) is shown beside ϖ̇(S); never with a
+  // comparison model switched on, since the M5 total is a GR-ladder result.
+  const FULL_MODEL_BITS = (1 << B.VENUS) | (1 << B.EMB) | (1 << B.MARS) | (1 << B.JUPITER) | (1 << B.SATURN) | (1 << B.URANUS) | (1 << B.NEPTUNE) | (1 << B.SUN_J2) | (1 << B.LENSE_THIRRING);
+  function isFullModel(cfg) {
+    return cfg.params[P.MODE] !== 1 && (cfg.mask & FULL_MODEL_BITS) === FULL_MODEL_BITS && (cfg.mask & ((1 << B.GR_1PN) | (1 << B.EIH))) !== 0 &&
+      (cfg.mask & (1 << B.CONFORMAL)) === 0;
+  }
+
   function computeRows() {
     const S = legRate(table.plan.S);
     const K = legRate(table.plan.K);
     const kAdd = K;
+    const meta = table.meta || state.meta;
     const out = [];
     for (const r of table.rows) {
       const W = legRate(r.without);
@@ -2118,29 +2078,115 @@
           addS = Math.hypot(A.s, kAdd.s);
         }
       }
-      const ref = referenceFor(r.key, table.cfg, table.meta || state.meta);
-      out.push({ r, label: effectLabel(r.key, table.cfg), v, s, ref, addV, addS });
+      const an = dashRow(meta, "analytic", r.key);
+      const m5 = dashRow(meta, "m5", r.key);
+      const lit = dashRow(meta, "literature", r.key);
+      // Difference: against Park17 where its row applies to these parameters, otherwise against
+      // the engine's analytic estimate; never against the M5 evidence (a computed reference).
+      let diff = NaN;
+      let diffVs = "";
+      if (Number.isFinite(v) && lit && lit.applies !== false) {
+        diff = v - lit.value;
+        diffVs = "literature";
+      } else if (Number.isFinite(v) && an) {
+        diff = v - an.value;
+        diffVs = "analytic";
+      }
+      const bound = boundFor(meta, r.key);
+      out.push({ r, label: effectLabel(r.key, table.cfg), v, s, an, m5, lit, diff, diffVs, bound, addV, addS });
     }
-    return { S, K, out };
+    return { S, K, out, meta };
+  }
+
+  // Pass/fail of a rate against the observational bound (display only; criterion in the metadata):
+  // within when |rate − centre| ≤ half-width, exceeds otherwise, and unresolved when the live σ is
+  // itself wider than the bound (the run cannot test it at this span).
+  function boundVerdict(v, s, b) {
+    if (!b || !Number.isFinite(v)) return null;
+    if (Number.isFinite(s) && s > b.half_width) return { cls: "unres", mark: "?", text: "unresolved", title: "σ " + s.toExponential(1) + " ″/cy is wider than the bound: this span cannot test it" };
+    const off = Math.abs(v - b.value);
+    if (off <= b.half_width) return { cls: "pass", mark: "✓", text: "within", title: "|rate| " + off.toExponential(2) + " ≤ " + b.half_width + " ″/cy" };
+    const k = off / b.half_width;
+    return { cls: "fail", mark: "✗", text: "exceeds ×" + (k >= 10 ? k.toFixed(0) : k.toFixed(1)), title: "|rate| " + off.toExponential(2) + " > " + b.half_width + " ″/cy" };
+  }
+  function verdictHtml(who, vd) {
+    if (!vd) return "";
+    return '<span class="verdict ' + vd.cls + '" title="' + escapeHtml(who + ": " + vd.title) + '"><span aria-hidden="true">' + vd.mark + "</span> " + escapeHtml(who) + " " + escapeHtml(vd.text) + "</span>";
+  }
+  // A reference value at its own precision (not the live σ's): `sig` significant digits with
+  // trailing zeros dropped, so 42.9805, 42.980114 and 42.9799 stay distinguishable.
+  function fmtRef(v, sig) {
+    if (!Number.isFinite(v)) return "–";
+    if (v === 0) return "0";
+    if (Math.abs(v) < 1e-4) return v.toExponential(2);
+    return String(Number(v.toPrecision(sig)));
+  }
+  function m5Cell(m5) {
+    if (!m5) return '<td class="num col-m5 muted">–</td>';
+    const t = m5.id + ": " + m5.protocol + (m5.note ? "; " + m5.note : "") + ". Computed, not observed.";
+    return '<td class="num col-m5" title="' + escapeHtml(t) + '">' + escapeHtml(fmtRef(m5.value, 9)) +
+      (Number.isFinite(m5.sigma) ? '<span class="pm"> ± ' + escapeHtml(m5.sigma < 1e-5 ? m5.sigma.toExponential(1) : m5.sigma.toFixed(Math.min(6, decimalsFor(m5.sigma)))) + "</span>" : "") +
+      '<span class="ref-src">' + escapeHtml(m5.id) + "</span></td>";
+  }
+
+  // The column sub-labels (frame · window · protocol) from the engine's metadata and the table's
+  // own span; called whenever metadata or the table changes.
+  function renderColumnLabels() {
+    const meta = table.meta || state.meta;
+    const d = dashboardOf(meta);
+    const set = (id, text, title) => {
+      const n = document.getElementById(id);
+      if (!n) return;
+      if (n.textContent !== text) n.textContent = text;
+      n.title = title || text;
+    };
+    const span = table.plan ? table.span : Number(el.tSpan && el.tSpan.value) || 200;
+    const lab = table.cfg ? table.cfg.params[P.MODE] === 1 : state.applied && state.applied.params[P.MODE] === 1;
+    set("col-live-sub", (lab ? "initial orbit plane" : "Park17 plane") + " · " + span + " yr forward from JD " + (meta && meta.epoch_jd_tdb ? meta.epoch_jd_tdb : state.epochJd || "epoch") + " · P-remove, this run");
+    const col = (c) => (c ? [c.short || columnLabel(c), columnLabel(c) + (c.run ? " · " + c.run : "") + (c.criterion ? " · " + c.criterion : "")] : ["–", ""]);
+    const [anS, anT] = d && d.analytic ? col(d.analytic) : ["needs the engine's DE440 constants", ""];
+    set("col-an-sub", anS, anT);
+    set("col-m5-sub", ...col(d && d.m5));
+    set("col-lit-sub", ...col(d && d.literature));
+    set("col-diff-sub", "live − literature, or − analytic where no literature value applies");
+    set("col-bound-sub", ...col(d && d.bound));
   }
 
   function renderTable() {
     if (!table.plan) return;
-    const { S, K, out } = computeRows();
+    const { S, K, out, meta } = computeRows();
     const padd = !!table.rows.find((r) => r.add);
+    renderColumnLabels();
     let html = "";
-    if (out.length === 0) html = '<tr><td colspan="6" class="muted">No effects are switched on: S is the Kepler-only baseline.</td></tr>';
+    if (out.length === 0) html = '<tr><td colspan="9" class="muted">No effects are switched on: S is the Kepler-only baseline.</td></tr>';
     for (const row of out) {
       const unresolved = Number.isFinite(row.v) && Number.isFinite(row.s) && Math.abs(row.v) < 3 * row.s;
-      const diff = row.ref && Number.isFinite(row.v) ? row.v - row.ref.v : NaN;
       const d = decimalsFor(row.s);
+      const comparison = row.r.key === "b" + B.CONFORMAL;
+      const anTxt = row.an ? fmtRef(row.an.value, 6) : "–";
+      const litApplies = row.lit && row.lit.applies !== false;
+      const litTitle = row.lit ? row.lit.id + (row.lit.note ? "; " + row.lit.note : "") + (litApplies ? "" : ". Not applied: this run overrides the effect's parameter, so the difference uses the analytic estimate.") : "";
+      let boundCell = '<td class="col-bound muted" title="The bound limits anomalous (non-GR) advances; it does not apply to a ladder term.">n/a</td>';
+      if (row.bound) {
+        const vLive = boundVerdict(row.v, row.s, row.bound);
+        const vAn = row.an ? boundVerdict(row.an.value, NaN, row.bound) : null;
+        boundCell = '<td class="col-bound">' + "<span class=\"num\">" + escapeHtml((row.bound.value === 0 ? "0" : String(row.bound.value)) + " ± " + row.bound.half_width) + "</span>" +
+          verdictHtml("analytic", vAn) + verdictHtml("live", vLive) +
+          (comparison && meta && meta.conformal && meta.conformal.gamma0_centre === "uniform"
+            ? '<span class="ref-src cg-caveat">Uniform ' + termHtml("gamma0-centring", "γ0") + ": exactly 0 only with velocity-independent forces; EIH and Lense–Thirring add a tiny O(v·Δv/c²) drift.</span>"
+            : "") +
+          "</td>";
+      }
       html +=
-        '<tr class="' + (unresolved ? "unresolved" : "") + '"' + (unresolved ? ' title="Below resolution for this span: |value| < 3σ"' : "") + ">" +
-        '<td class="effect"><span class="lbl"><span class="swatch" aria-hidden="true" style="background:var(' + effectCss(row.r.key) + ')"></span>' +
-        escapeHtml(row.label) + "</span> " + tipHtml(effectTerm(row.r.key)) + '<span class="ref-src">' + termHtml("p-remove", "P-remove") + "</span></td>" +
-        '<td class="num val">' + fmtPm(row.v, row.s) + "</td>" +
-        '<td class="num">' + (row.ref ? '<span title="' + escapeHtml(row.ref.src) + '">' + fmtNum(row.ref.v, refDigits(row.ref.v, d)) + '<span class="ref-src">' + escapeHtml(row.ref.src.split(/[(;]/)[0].trim()) + "</span></span>" : "–") + "</td>" +
-        '<td class="num">' + (Number.isFinite(diff) ? (diff >= 0 ? "+" : "") + diff.toFixed(Math.max(2, d)) : "–") + "</td>" +
+        '<tr class="' + (unresolved ? "unresolved" : "") + (comparison ? " comparison" : "") + '"' + (unresolved ? ' title="Below resolution for this span: |value| < 3σ"' : "") + ">" +
+        '<th scope="row" class="effect"><span class="lbl"><span class="swatch" aria-hidden="true" style="background:var(' + effectCss(row.r.key) + ')"></span>' +
+        escapeHtml(row.label) + "</span> " + tipHtml(effectTerm(row.r.key)) + '<span class="ref-src">' + termHtml("p-remove", "P-remove") + (comparison ? " · " + termHtml("comparison-model", "comparison model") : "") + "</span></th>" +
+        '<td class="num val col-live">' + fmtPm(row.v, row.s) + "</td>" +
+        '<td class="num col-an"' + (row.an ? ' title="' + escapeHtml(row.an.basis) + '"' : "") + ">" + escapeHtml(anTxt) + (row.an && comparison ? '<span class="ref-src">Gauss, comparison model</span>' : "") + "</td>" +
+        m5Cell(row.m5) +
+        '<td class="num col-lit' + (row.lit && !litApplies ? " muted" : "") + '"' + (row.lit ? ' title="' + escapeHtml(litTitle) + '"' : "") + ">" + (row.lit ? escapeHtml(fmtRef(row.lit.value, 7)) + '<span class="ref-src">' + escapeHtml(row.lit.id) + (litApplies ? "" : " · not applied") + "</span>" : "–") + "</td>" +
+        '<td class="num col-diff">' + (Number.isFinite(row.diff) ? (row.diff >= 0 ? "+" : "") + row.diff.toFixed(Math.max(2, d)) + '<span class="ref-src">vs ' + row.diffVs + "</span>" : "–") + "</td>" +
+        boundCell +
         (padd ? '<td class="num padd-col">' + (row.r.add ? fmtPm(row.addV, row.addS) + legCellInline(row.r.add) : "–") + "</td>" : '<td class="padd-col" hidden></td>') +
         '<td class="leg">' + legCell(row.r.without) + "</td></tr>";
     }
@@ -2157,23 +2203,31 @@
     const kTxt = K ? fmtPm(K.v, K.s) : "–";
     const cross = ok && S && K ? S.v - sum - K.v : NaN;
     const pc = padd ? '<td class="padd-col"></td>' : '<td class="padd-col" hidden></td>';
+    const blank = (cls) => '<td class="' + cls + '"></td>';
+    const refBlanks = blank("col-an") + blank("col-m5") + blank("col-lit") + blank("col-diff") + blank("col-bound");
+    const m5Total = dashRow(meta, "m5", "total");
+    const m5S = m5Total && isFullModel(table.cfg)
+      ? m5Cell(m5Total)
+      : '<td class="num col-m5 muted" title="The M5 total is a full EIH model (planets, J2, LT, 1PN, 343 asteroids, KBOs), a GR-ladder result: shown only beside the viewer\'s full model without a comparison model.">–</td>';
+    const xRow = dashRow(meta, "literature", "cross_js");
     el.tFoot.innerHTML =
-      "<tr><td>Σ contributions " + tipHtml("sum-contributions") + "</td><td class=\"num\">" + sumTxt + "</td><td></td><td></td>" + pc + "<td></td></tr>" +
-      "<tr><td>ϖ̇(S), all selected effects " + tipHtml("varpi-s") + "</td><td class=\"num\">" + sTxt + "</td><td></td><td></td>" + pc + '<td class="leg">' + legCell(table.plan.S) + "</td></tr>" +
-      "<tr><td>ϖ̇(Kepler only), integrator/estimator floor " + tipHtml("integrator-floor") + "</td><td class=\"num\">" + kTxt + '</td><td class="num">0</td><td></td>' + pc + '<td class="leg">' + legCell(table.plan.K) + "</td></tr>" +
-      '<tr class="cross"><td>ϖ̇(S) − Σ − ϖ̇(Kepler): interaction (cross) terms; not an error ' + tipHtml("cross-terms") + '</td><td class="num">' +
-      (Number.isFinite(cross) ? cross.toFixed(4) : "–") + '</td><td class="num" title="Park17 Table 3 Jupiter+Saturn cross row (PARK17-T3-X-JUPITER-SATURN), for scale">0.0411<span class="ref-src">Park17 J+S cross</span></td><td></td>' + pc + "<td></td></tr>";
+      '<tr><th scope="row">Σ contributions ' + tipHtml("sum-contributions") + '</th><td class="num col-live">' + sumTxt + "</td>" + refBlanks + pc + "<td></td></tr>" +
+      '<tr><th scope="row">ϖ̇(S), all selected effects ' + tipHtml("varpi-s") + '</th><td class="num col-live">' + sTxt + "</td>" + blank("col-an") + m5S + blank("col-lit") + blank("col-diff") + blank("col-bound") + pc + '<td class="leg">' + legCell(table.plan.S) + "</td></tr>" +
+      '<tr><th scope="row">ϖ̇(Kepler only), integrator/estimator floor ' + tipHtml("integrator-floor") + '</th><td class="num col-live">' + kTxt + '</td><td class="num col-an" title="two-body Newtonian orbit (PHY-001)">0</td>' + blank("col-m5") + blank("col-lit") + blank("col-diff") + blank("col-bound") + pc + '<td class="leg">' + legCell(table.plan.K) + "</td></tr>" +
+      '<tr class="cross"><th scope="row">ϖ̇(S) − Σ − ϖ̇(Kepler): interaction (cross) terms; not an error ' + tipHtml("cross-terms") + '</th><td class="num col-live">' +
+      (Number.isFinite(cross) ? cross.toFixed(4) : "–") + "</td>" + blank("col-an") + blank("col-m5") +
+      (xRow ? '<td class="num col-lit" title="' + escapeHtml(xRow.id + ": " + (xRow.note || "") + "; for scale") + '">' + escapeHtml(fmtRef(xRow.value, 7)) + '<span class="ref-src">Park17 J+S cross</span></td>' : blank("col-lit")) +
+      blank("col-diff") + blank("col-bound") + pc + "<td></td></tr>";
 
-    const meta = table.meta || {};
     const parts = [
-      "span " + table.span + " yr forward from JD " + (meta.epoch_jd_tdb || state.epochJd) + " " + (meta.time_scale || "TDB"),
-      "engine " + (meta.engine || FAV.ENGINE_NAME[state.engine] || "?") + " (one engine for every leg)",
-      meta.frame ? "frame: " + meta.frame : "",
-      meta.fit && meta.fit.model ? "fit: " + meta.fit.model : "",
-      meta.estimator ? "estimator: " + meta.estimator : "",
-      meta.constants ? "constants " + meta.constants : "",
+      "span " + table.span + " yr forward from JD " + ((meta && meta.epoch_jd_tdb) || state.epochJd) + " " + ((meta && meta.time_scale) || "TDB"),
+      "engine " + ((meta && meta.engine) || FAV.ENGINE_NAME[state.engine] || "?") + " (one engine for every leg)",
+      meta && meta.frame ? "frame: " + meta.frame : "",
+      meta && meta.fit && meta.fit.model ? "fit: " + meta.fit.model : "",
+      meta && meta.estimator ? "estimator: " + meta.estimator : "",
+      meta && meta.constants ? "constants " + meta.constants : "",
       table.running ? table.done + "/" + table.legs.length + " legs done" : "",
-      "Literature references use Park's 2000-yr window centred on J2000; a forward window from 1969 differs (DESIGN.md §8 E6).",
+      "Literature (Park17) and M5 evidence use windows centred on J2000 (2000 yr); this forward window from 1969 differs (DESIGN.md §8 E6).",
     ];
     const kept = parts.filter(Boolean);
     // The engine's model/estimator descriptions are long: show a clipped line, keep the full text in
@@ -2269,8 +2323,8 @@
 
   function exportCsv() {
     if (!table.plan) return;
-    const { S, K, out } = computeRows();
-    const meta = table.meta || {};
+    const { S, K, out, meta: rowsMeta } = computeRows();
+    const meta = rowsMeta || {};
     const q = (s) => '"' + String(s).replace(/"/g, '""') + '"';
     const lines = [
       "# FerroAstro orbit viewer: per-effect perihelion-rate contributions (ADR-0014 P-remove)",
@@ -2282,23 +2336,37 @@
       if (meta[k] !== undefined) lines.push("# " + k + " " + String(meta[k]).replace(/\n/g, " "));
     }
     if (meta.fit) lines.push("# fit " + JSON.stringify(meta.fit));
-    lines.push("effect,protocol,rate_arcsec_per_cy,sigma_jackknife,reference,reference_source,difference,padd_info_only,padd_sigma,leg_ic_hash");
+    const d = dashboardOf(meta);
+    for (const [k, c] of [["analytic", d && d.analytic], ["m5", d && d.m5], ["literature", d && d.literature], ["bound", d && d.bound]]) {
+      if (c) lines.push("# column " + k + ": " + (c.label ? c.label + "; " : "") + columnLabel(c) + (c.run ? "; " + c.run : ""));
+    }
+    lines.push("# m5 values are computed references (FerroAstro's own nightly results), not observations");
+    lines.push("effect,protocol,rate_arcsec_per_cy,sigma_jackknife,analytic,analytic_basis,m5_evidence,m5_sigma,m5_id,literature,literature_id,literature_applies,difference,difference_vs,bound_centre,bound_half_width,bound_live,bound_analytic,padd_info_only,padd_sigma,leg_ic_hash");
+    const blank = (n) => new Array(n).fill("");
     for (const row of out) {
       const leg = table.plan.legs.get(row.r.without);
+      const vl = boundVerdict(row.v, row.s, row.bound);
+      const va = row.an ? boundVerdict(row.an.value, NaN, row.bound) : null;
       lines.push(
         [
-          q(row.label), "P-remove", row.v, row.s, row.ref ? row.ref.v : "", q(row.ref ? row.ref.src : ""),
-          row.ref && Number.isFinite(row.v) ? row.v - row.ref.v : "", Number.isFinite(row.addV) ? row.addV : "",
-          Number.isFinite(row.addS) ? row.addS : "", q(leg && leg.meta ? leg.meta.ic_hash || "" : ""),
+          q(row.label), "P-remove", row.v, row.s,
+          row.an ? row.an.value : "", q(row.an ? row.an.basis : ""),
+          row.m5 ? row.m5.value : "", row.m5 ? row.m5.sigma : "", q(row.m5 ? row.m5.id : ""),
+          row.lit ? row.lit.value : "", q(row.lit ? row.lit.id : ""), row.lit ? row.lit.applies !== false : "",
+          Number.isFinite(row.diff) ? row.diff : "", row.diffVs,
+          row.bound ? row.bound.value : "", row.bound ? row.bound.half_width : "", vl ? vl.text : "", va ? va.text : "",
+          Number.isFinite(row.addV) ? row.addV : "", Number.isFinite(row.addS) ? row.addS : "", q(leg && leg.meta ? leg.meta.ic_hash || "" : ""),
         ].join(","),
       );
     }
     let sum = 0;
     for (const row of out) sum += row.v;
-    lines.push(["sum", "", sum, "", "", "", "", "", "", ""].join(","));
-    if (S) lines.push(["rate(S)", "", S.v, S.s, "", "", "", "", "", q(S.leg.meta ? S.leg.meta.ic_hash || "" : "")].join(","));
-    if (K) lines.push(["rate(Kepler only)", "", K.v, K.s, 0, "", "", "", "", q(K.leg.meta ? K.leg.meta.ic_hash || "" : "")].join(","));
-    if (S && K) lines.push([q("interaction (cross) terms; not an error"), "", S.v - sum - K.v, "", "", "", "", "", "", ""].join(","));
+    lines.push(["sum", "", sum, ...blank(18)].join(","));
+    const m5Total = dashRow(meta, "m5", "total");
+    const m5S = m5Total && isFullModel(table.cfg) ? [m5Total.value, m5Total.sigma, q(m5Total.id)] : ["", "", ""];
+    if (S) lines.push(["rate(S)", "", S.v, S.s, "", "", ...m5S, ...blank(11), q(S.leg.meta ? S.leg.meta.ic_hash || "" : "")].join(","));
+    if (K) lines.push(["rate(Kepler only)", "", K.v, K.s, 0, q("two-body Newtonian (PHY-001)"), ...blank(14), q(K.leg.meta ? K.leg.meta.ic_hash || "" : "")].join(","));
+    if (S && K) lines.push([q("interaction (cross) terms; not an error"), "", S.v - sum - K.v, ...blank(18)].join(","));
     download("ferroastro-contributions.csv", lines.join("\n") + "\n", "text/csv");
   }
 
@@ -2395,6 +2463,31 @@
       setStatus("Contribution table cancelled.");
     });
     el.tCsv.addEventListener("click", exportCsv);
+    // Reference-column chooser: hides columns by class so the table narrows on a phone; the choice
+    // is a per-viewer convenience kept in localStorage when the browser allows it.
+    const contrib = document.getElementById("contrib");
+    let hidden = [];
+    try {
+      hidden = JSON.parse(localStorage.getItem("fav-hidden-cols") || "[]");
+    } catch (_) {
+      hidden = [];
+    }
+    for (const box of document.querySelectorAll("input[data-col]")) {
+      const col = box.dataset.col;
+      if (Array.isArray(hidden) && hidden.includes(col)) box.checked = false;
+      const apply = () => contrib && contrib.classList.toggle("hide-col-" + col, !box.checked);
+      apply();
+      box.addEventListener("change", () => {
+        apply();
+        try {
+          const off = Array.from(document.querySelectorAll("input[data-col]")).filter((b) => !b.checked).map((b) => b.dataset.col);
+          localStorage.setItem("fav-hidden-cols", JSON.stringify(off));
+        } catch (_) {
+          /* storage unavailable: the choice lasts for this page only */
+        }
+      });
+    }
+    renderColumnLabels();
     el.copyScenario.addEventListener("click", async () => {
       if (!state.scenario) return;
       try {

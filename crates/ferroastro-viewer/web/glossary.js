@@ -807,7 +807,7 @@
   E["contribution-table"] = {
     term: "Per-effect contributions", group: "table",
     short: "Runs one extra integration per switched-on effect with that effect removed; each difference in rate is that effect's contribution.",
-    long: "Pressing Compute runs the current set S, a Kepler-only leg and one leg S∖X for every effect X in S, all with the same engine, span, estimator and initial conditions, in parallel workers. Each row is ϖ̇(S) − ϖ̇(S∖X) ([[p-remove]]) with its σ, a literature [[reference-value]] and the [[diff]]. The footer adds the [[sum-contributions|sum]], ϖ̇(S), the [[integrator-floor]] and the [[cross-terms]].",
+    long: "Pressing Compute runs the current set S, a Kepler-only leg and one leg S∖X for every effect X in S, all with the same engine, span, estimator and initial conditions, in parallel workers. Each row is ϖ̇(S) − ϖ̇(S∖X) ([[p-remove]]) with its σ, the [[reference-value|reference columns]] (analytic, M5 evidence, literature, bound) and the [[diff]]. The footer adds the [[sum-contributions|sum]], ϖ̇(S), the [[integrator-floor]] and the [[cross-terms]].",
     mercury: "Turns one total rate into the familiar budget: Venus 277, Jupiter 154, Earth–Moon 91, GR 43, …",
     see: ["p-remove", "leg", "table-span", "budget"],
   };
@@ -834,18 +834,60 @@
     see: ["contribution-table", "three-sigma", "reference-value"],
   };
   E["reference-value"] = {
-    term: "Reference value", group: "table",
-    short: "The published or analytic value for each effect, for comparison. Hover a value to see its source.",
-    long: "Planets use Park et al. (2017) Table 3, measured over a 2000-year window centred on J2000 on the Park17 plane. GR uses 42.9805 ″/cy (PHY-004) times (2 + 2γ − β)/3; J2 uses FerroAstro's 0.02845 ″/cy; Lense–Thirring −0.002 ″/cy; asteroids 0.0012 ″/cy. Overrides scale the J2 and spin references. The viewer runs forward from 1969, not over Park's centred window, so small differences are expected.",
-    mercury: "Agreement within the stated tolerances shows the simulation reproduces the literature budget.",
-    see: ["diff", "park17", "contribution-table"],
+    term: "Reference columns", group: "table",
+    short: "Four columns sit beside each live value: the engine's analytic estimate, FerroAstro's M5 evidence, the Park17 literature value and, for comparison models, the INPOP15a bound. Each header names its frame, window and protocol.",
+    long: "Every reference number comes from the engine's metadata (\"dashboard\"), which reads it from the repository's test vectors; the page holds none itself. [[engine-analytic]] is a closed-form secular rate for the current parameters. [[m5-evidence]] is a FerroAstro nightly result, computed, not observed. [[literature-value]] is Park et al. (2017) Table 3. [[observational-bound]] applies only to a [[comparison-model]]. The [[diff]] uses the literature value where it applies and the analytic estimate otherwise. The columns differ in window and protocol, so small mismatches are expected; use the checkboxes above the table to hide columns on a narrow screen.",
+    mercury: "For Venus the live 200-year row, Park17's 277.4176 and the difference sit side by side; for GR the analytic 42.9805, M5's 42.980114 and Park17's 42.9799 bracket the live value.",
+    see: ["live-value", "engine-analytic", "m5-evidence", "literature-value", "diff", "observational-bound"],
+  };
+  E["live-value"] = {
+    term: "Live value ± jack-knife σ", group: "table",
+    short: "This run's contribution, ϖ̇(S) − ϖ̇(S∖X), with the two legs' jack-knife σ combined in quadrature. Frame, span and epoch are in the column header.",
+    long: "Computed in your browser from two legs of the [[contribution-table]] ([[p-remove]]), each fitted by the same [[estimator]] on the [[park17-plane]] (the initial orbit plane in the [[rung-lab]]), over the table's [[table-span|span]] forward from the run epoch. The σ is the [[jackknife]] estimate of each leg, combined as if independent; the legs share initial conditions, so it is an upper estimate.",
+    mercury: "Over 200 years σ is about 0.01–0.02 ″/cy: enough for the planets and GR, not for Lense–Thirring.",
+    see: ["p-remove", "jackknife", "table-span", "three-sigma"],
+  };
+  E["engine-analytic"] = {
+    term: "Engine analytic estimate", group: "table",
+    short: "A closed-form secular rate the engine evaluates for the current parameters: GR 1PN with the PPN factor, planar solar J2, Lense–Thirring, the Rung-lab rungs, and the conformal-gravity Gauss rate. No window: a secular average.",
+    long: "First-order formulas from FerroAstro's analytic crate, for Mercury's SW92 J2000 mean a and e with the DE440 constants: GR 6πGM/(c²p) per orbit × (2 + 2γ − β)/3 ([[ppn]]); J2 3πJ₂R²/p² per orbit for an orbit in the solar equator (the real 3.4° tilt lowers it slightly); Lense–Thirring −2(1 + γ)GS/(c²a³(1 − e²)^1.5) with the spin axis normal to the orbit; SR-a, SR-b in 1PN units (ADR-0012); and the [[cg-gauss-reference]] for conformal gravity, labelled comparison model. Overrides (J2, spin, β, γ, CG coefficients) are applied. Planets and asteroids have no closed form here. EIH shows the Sun's term only.",
+    mercury: "GR 42.9805, J2 0.0279 at DE440's J2, LT −0.0020 ″/cy; the engine's tests check each against the ladder's analytic vectors.",
+    see: ["reference-value", "cg-gauss-reference", "ppn", "solar-j2", "lense-thirring"],
+  };
+  E["m5-evidence"] = {
+    term: "M5 evidence (computed, not observed)", group: "table",
+    short: "FerroAstro's own long nightly results from milestone M5, committed as computed references with their run, commit and toolchain: the full EIH total and the GR, J2 and Lense–Thirring contributions over 1000–3000 CE.",
+    long: "Recorded in tests/vectors/m5-evidence.toml (kind \"computed-reference\"): one nightly run at commit d1ccbae with rustc 1.95.0, IAS15, the Park2017 estimator on the [[park17-plane]] over a 2000-year window centred on J2000. They are what FerroAstro computed, not observations, and they are never oracles for the ladder. Each row states its protocol: J2 and LT are [[p-remove]] under EIH (J2 at Park17's 2.25×10⁻⁷, not DE440's); GR is Sun + Mercury with 1PN on minus off. The total (a 393-body EIH model with asteroids and KBOs) is shown beside ϖ̇(S) only for the viewer's full model.",
+    mercury: "Full EIH 575.309161 ± 0.0015 ″/cy against PHY-014's 575.3093 ± 0.005; GR 42.980114; J2 +0.02845; LT −0.00201.",
+    see: ["reference-value", "computed-reference", "literature-value", "p-remove"],
+  };
+  E["computed-reference"] = {
+    term: "Computed reference", group: "data",
+    short: "A test-vector value that FerroAstro (or another code) computed, recorded with the generating script and commit, the engine version and its settings. Not a measurement.",
+    long: "ADR-0004 distinguishes defined, measured, analytic and computed-reference vectors. A computed reference records how to reproduce it (generated_by script@commit, engine name, version and settings). It documents what a run gave; it cannot confirm the physics it came from. The [[m5-evidence]] column shows such values.",
+    mercury: "The M5 total 575.309161 ″/cy is a computed reference; Park17's 575.3100 is measured.",
+    see: ["m5-evidence", "reference-ids"],
+  };
+  E["literature-value"] = {
+    term: "Literature value (Park17)", group: "table",
+    short: "Park et al. (2017) Table 3: each effect's contribution from JPL's DE430 fit, P-remove over a 2000-year window centred on J2000, on the Park17 plane. Greyed with \"not applied\" when you override that effect's parameter.",
+    long: "Planets, solar oblateness (at Park's J2 = 2.25×10⁻⁷, 2.4 % above DE440's), the gravitoelectric GR row, Lense–Thirring and the asteroids, read from the repository's vectors. Park's values describe nominal physics, so a J2, spin or β/γ override stops the row from being used for the [[diff]]; the analytic estimate is used instead. There is no literature value for a [[comparison-model]]. The window differs from the viewer's forward window from 1969, so short spans differ by the periodic terms (DESIGN §8 E6).",
+    mercury: "Venus 277.4176, Jupiter 153.9899, Earth–Moon 90.8881, GR 42.9799 ″/cy.",
+    see: ["park17", "reference-value", "diff", "p-remove"],
+  };
+  E["observational-bound"] = {
+    term: "Observational bound", group: "table",
+    short: "A published limit on an anomalous (non-GR) perihelion advance, shown only for comparison models: INPOP15a allows 0.0 ± 3.1 mas/cy at Mercury. Marked ✓ within, ✗ exceeds, or ? unresolved when the run's σ is wider than the bound.",
+    long: "The [[inpop15a-bound]] limits any supplementary advance on top of GR, so it applies to a [[comparison-model]] such as [[conformal-gravity]], never to a ladder term (those are part of GR or Newtonian physics, shown as n/a). The cell gives two markers: the engine's analytic Gauss rate and the live value; the live marker reads unresolved when its σ exceeds 3.1 mas/cy, because the run cannot test the bound at that span. The criterion |rate| ≤ 3.1 mas/cy comes with the bound in the metadata. With the default uniform [[gamma0-centring]] the rate is exactly zero only with velocity-independent forces; EIH and Lense–Thirring add a tiny O(v·Δv/c²) drift.",
+    mercury: "At the fit values a uniform γ0 passes (≈ 0); a Sun-centred γ0 gives −0.183 ″/cy and exceeds the bound about 59-fold.",
+    see: ["inpop15a-bound", "comparison-model", "gamma0-centring", "reference-value"],
   };
   E["diff"] = {
-    term: "Diff", group: "table",
-    short: "This run's contribution minus the reference value, in ″/cy.",
-    long: "Expect differences of order the [[jackknife]] σ plus the effect of the different window. Large differences on short spans are normal: the periodic perturbations have not averaged out.",
+    term: "Difference", group: "table",
+    short: "Live value minus the literature value where Park17's row applies, otherwise minus the engine's analytic estimate; the cell says which. Never against the M5 evidence.",
+    long: "Expect differences of order the [[jackknife]] σ plus the effect of the different window and protocol (the header of each column names them). Large differences on short spans are normal: the periodic perturbations have not averaged out. The M5 evidence is a computed reference with its own window, so it is shown for comparison but not subtracted.",
     mercury: "DESIGN.md §8 E6 expects the planetary diffs within about ±0.05 ″/cy each over a forward 1000-year window, and provisionally ±0.05 to ±2 ″/cy (largest for Venus, Earth–Moon and Jupiter) over 100–200 years.",
-    see: ["reference-value", "jackknife", "table-span"],
+    see: ["reference-value", "literature-value", "engine-analytic", "jackknife", "table-span"],
   };
   E["three-sigma"] = {
     term: "Below resolution (3σ)", group: "table",
