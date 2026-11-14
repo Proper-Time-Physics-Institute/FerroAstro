@@ -13,6 +13,7 @@
 
 mod common;
 
+use ferroastro_constants::De440;
 use ferroastro_constants::header440::Header;
 use ferroastro_oracle::{GoldenStates, Manifest, StateComparison, compare_states, sha256_hex};
 use ferroastro_propagate::{DataSources, run};
@@ -98,6 +99,12 @@ fn mercury(cmp: &StateComparison) -> f64 {
 /// Verifies: REF-005, CI-005, CI-009, NUM-017
 #[test]
 fn stage_c_ferroastro_eih_matches_the_reboundx_gr_full_golden() {
+    if De440::load_cached_or_skip("stage_c_ferroastro_eih_matches_the_reboundx_gr_full_golden")
+        .unwrap()
+        .is_none()
+    {
+        return;
+    }
     let cmp = against_golden(EIH, "gr_full");
     let dr = mercury(&cmp);
     println!("stage C: Mercury max |dr| = {dr:.6e} km");
@@ -116,6 +123,12 @@ fn stage_c_ferroastro_eih_matches_the_reboundx_gr_full_golden() {
 /// Verifies: REF-005, CI-005
 #[test]
 fn stage_c_newtonian_control_against_the_rebound_golden() {
+    if De440::load_cached_or_skip("stage_c_newtonian_control_against_the_rebound_golden")
+        .unwrap()
+        .is_none()
+    {
+        return;
+    }
     let cmp = against_golden(NEWTON, "none");
     println!(
         "stage C control: Mercury max |dr| = {:.6e} km; all bodies {:.6e} km",

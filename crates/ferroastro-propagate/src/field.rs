@@ -316,6 +316,14 @@ mod tests {
     /// Verifies: REF-006, CI-002
     #[test]
     fn field_bodies_and_gms_equal_the_scenario_and_header440() {
+        if ferroastro_constants::De440::load_cached_or_skip(
+            "field_bodies_and_gms_equal_the_scenario_and_header440",
+        )
+        .unwrap()
+        .is_none()
+        {
+            return;
+        }
         let s = spec();
         let hf = ferroastro_testdata::locate_product("de440-header").unwrap();
         println!("de440-header: {}", hf.provenance());

@@ -44,6 +44,12 @@ fn run(years: f64, reaction: LtReaction) -> (f64, u64) {
 /// Verifies: NUM-019
 #[test]
 fn momentum_is_conserved_with_solar_j2_and_lense_thirring() {
+    if De440::load_cached_or_skip("momentum_is_conserved_with_solar_j2_and_lense_thirring")
+        .unwrap()
+        .is_none()
+    {
+        return;
+    }
     let years = 100.0; // lint: allow-literal(run span, WP20 plan L3 = WP12 plan 1a)
     let t0 = std::time::Instant::now();
     let (worst, steps) = run(years, LtReaction::On);

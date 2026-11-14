@@ -14,6 +14,7 @@
     reason = "test: a failed unwrap is a test failure"
 )]
 
+use ferroastro_constants::De440;
 use ferroastro_constants::header440::Header;
 use ferroastro_core::ErrorCode;
 use ferroastro_core::time::SECONDS_PER_DAY;
@@ -46,6 +47,12 @@ fn spec(file: &str) -> ScenarioSpec {
 /// Verifies: CI-009, REF-007
 #[test]
 fn test_particle_cadence_samples_lie_on_the_exact_grid() {
+    if De440::load_cached_or_skip("test_particle_cadence_samples_lie_on_the_exact_grid")
+        .unwrap()
+        .is_none()
+    {
+        return;
+    }
     let (h, prov) = header();
     let data = DataSources::none().with_header(&h, &prov);
     let mut s = spec("oracle-clite-sun-mercury-tp-gr1pn-252yr.toml");
@@ -88,6 +95,12 @@ fn test_particle_cadence_samples_lie_on_the_exact_grid() {
 /// Verifies: REF-011
 #[test]
 fn test_particle_cadence_refusals_name_the_option() {
+    if De440::load_cached_or_skip("test_particle_cadence_refusals_name_the_option")
+        .unwrap()
+        .is_none()
+    {
+        return;
+    }
     let (h, prov) = header();
     let data = DataSources::none().with_header(&h, &prov);
     let mut s = spec("oracle-clite-sun-mercury-tp-newton-252yr.toml");
@@ -110,6 +123,12 @@ fn test_particle_cadence_refusals_name_the_option() {
 #[test]
 fn output_grid_past_the_cap_is_refused_without_panic_or_hang() {
     use ferroastro_scenario::{DAYS_PER_JULIAN_YEAR, MAX_OUTPUT_SAMPLES};
+    if De440::load_cached_or_skip("output_grid_past_the_cap_is_refused_without_panic_or_hang")
+        .unwrap()
+        .is_none()
+    {
+        return;
+    }
     let (h, prov) = header();
     let data = DataSources::none().with_header(&h, &prov);
     let cap = f64::from(MAX_OUTPUT_SAMPLES);

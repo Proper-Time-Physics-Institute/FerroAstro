@@ -162,6 +162,12 @@ fn equatorial_pole() -> [f64; 3] {
 /// Verifies: NUM-019, NUM-013, PHY-010, PHY-011
 #[test]
 fn equatorial_nbody_j2_and_lt_match_their_analytic_rates() {
+    if De440::load_cached_or_skip("equatorial_nbody_j2_and_lt_match_their_analytic_rates")
+        .unwrap()
+        .is_none()
+    {
+        return;
+    }
     let vs = VectorSet::load_canonical().unwrap();
     let oracle = vs.get("NUM019-ISOLATION-NBODY-DIFF").unwrap();
     let (h, prov) = common::header();
@@ -258,6 +264,12 @@ fn equatorial_nbody_j2_and_lt_match_their_analytic_rates() {
 /// Verifies: PHY-010, PHY-011, NUM-019
 #[test]
 fn inclined_nbody_j2_and_lt_are_reported_with_the_pole_used() {
+    if De440::load_cached_or_skip("inclined_nbody_j2_and_lt_are_reported_with_the_pole_used")
+        .unwrap()
+        .is_none()
+    {
+        return;
+    }
     let vs = VectorSet::load_canonical().unwrap();
     let (h, prov) = common::header();
     let park_j2 = vs.get("PARK17-J2SUN").unwrap().value().unwrap();

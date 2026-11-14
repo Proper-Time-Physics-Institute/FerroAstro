@@ -305,6 +305,12 @@ fn eih_run(rhs: RhsAcceleration) -> (Vec<f64>, Vec<SystemState<Icrf, Barycentric
 /// Verifies: NUM-018
 #[test]
 fn iterated_and_default_runs_agree_over_ten_years() {
+    if De440::load_cached_or_skip("iterated_and_default_runs_agree_over_ten_years")
+        .unwrap()
+        .is_none()
+    {
+        return;
+    }
     let (_, a, steps_a) = eih_run(RhsAcceleration::Newtonian);
     let (_, b, steps_b) = eih_run(RhsAcceleration::Iterated);
     let mut worst: f64 = 0.0;

@@ -105,11 +105,17 @@ fn fa_data_dir_override_is_reverified() {
 /// * run on its own (the PR-fast tier, with the cache `tools/fetch_jpl.py` fills): the lookup
 ///   through the same [`locate_product`](ferroastro_testdata::locate_product) path succeeds, the
 ///   located file is the one under [`data_dir`](ferroastro_testdata::data_dir), and an
-///   independent re-hash of its bytes equals the `tests/data/MANIFEST.toml` pin.
+///   independent re-hash of its bytes equals the `tests/data/MANIFEST.toml` pin. Without a
+///   cached header.440 it prints a `SKIP` line and returns, unless `FA_REQUIRE_DATA=1` or `CI`
+///   is set ([`skip_if_absent`](ferroastro_testdata::skip_if_absent)), so CI never passes it
+///   unchecked.
 ///
 /// Verifies: CI-005, REF-002
 #[test]
 fn child_locate_probe() {
+    if ferroastro_testdata::skip_if_absent("de440-header", "child_locate_probe").unwrap() {
+        return;
+    }
     let dir = ferroastro_testdata::data_dir();
     let p = product("de440-header").unwrap();
     let located = ferroastro_testdata::locate_product("de440-header");

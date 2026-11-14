@@ -20,6 +20,7 @@
 )]
 
 use ferroastro_analytic::drift::kepler_drift;
+use ferroastro_constants::De440;
 use ferroastro_constants::header440::Header;
 use ferroastro_core::ErrorCode;
 use ferroastro_core::frames::Icrf;
@@ -137,6 +138,12 @@ fn norm(a: [f64; 3]) -> f64 {
 /// Verifies: NUM-004
 #[test]
 fn w1_two_body_wh_equals_the_kepler_drift() {
+    if De440::load_cached_or_skip("w1_two_body_wh_equals_the_kepler_drift")
+        .unwrap()
+        .is_none()
+    {
+        return;
+    }
     let (h, prov) = header();
     let data = DataSources::none().with_header(&h, &prov);
     let s = with_bodies(
@@ -204,6 +211,14 @@ fn wh_energy(sys: &System, step_days: f64, corrector: CorrectorOrder, years: f64
 /// Verifies: NUM-004
 #[test]
 fn w2_w3_energy_error_scales_as_h_squared_and_the_corrector_removes_it() {
+    if De440::load_cached_or_skip(
+        "w2_w3_energy_error_scales_as_h_squared_and_the_corrector_removes_it",
+    )
+    .unwrap()
+    .is_none()
+    {
+        return;
+    }
     let (h, prov) = header();
     let data = DataSources::none().with_header(&h, &prov);
     let s = spec("stage-a-sun-8planets-newton-100yr.toml");
@@ -232,6 +247,12 @@ fn w2_w3_energy_error_scales_as_h_squared_and_the_corrector_removes_it() {
 /// Verifies: NUM-004, PHY-005
 #[test]
 fn g1_gr_potential_rung_gives_the_phy005_rate() {
+    if De440::load_cached_or_skip("g1_gr_potential_rung_gives_the_phy005_rate")
+        .unwrap()
+        .is_none()
+    {
+        return;
+    }
     let (h, prov) = header();
     let data = DataSources::none().with_header(&h, &prov);
     let s = spec("wh-sun-mercury-grpotential-100yr.toml");
@@ -324,6 +345,12 @@ const P1_STOP_YEARS: f64 = 5.0; // lint: allow-literal(test design: checkpoint t
 /// Verifies: NUM-003, NUM-004, CI-010, CI-002
 #[test]
 fn p1_scenarios_run_whfast_and_irk16_and_resume_bit_for_bit() {
+    if De440::load_cached_or_skip("p1_scenarios_run_whfast_and_irk16_and_resume_bit_for_bit")
+        .unwrap()
+        .is_none()
+    {
+        return;
+    }
     let (h, prov) = header();
     let data = DataSources::none().with_header(&h, &prov);
     let mut ias = spec("stage-a-sun-8planets-newton-100yr.toml");

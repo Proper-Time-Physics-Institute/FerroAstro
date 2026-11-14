@@ -24,6 +24,12 @@ use std::collections::BTreeMap;
 /// Verifies: REF-001, DEP-011
 #[test]
 fn every_testpo440_body_point_is_within_the_testeph_threshold() {
+    if De440::load_cached_or_skip("every_testpo440_body_point_is_within_the_testeph_threshold")
+        .unwrap()
+        .is_none()
+    {
+        return;
+    }
     let v = vectors();
     let bytes = cached_product("de440-bsp");
     let spk = Spk::parse(&bytes).unwrap();

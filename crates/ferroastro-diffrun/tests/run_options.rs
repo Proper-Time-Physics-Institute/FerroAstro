@@ -7,6 +7,7 @@
 
 mod common;
 
+use ferroastro_constants::De440;
 use ferroastro_core::ErrorCode;
 use ferroastro_diffrun::{MAX_SEGMENTS, PassageSource, RunOptions, run_leg};
 use ferroastro_precession::park2017::FitModel;
@@ -15,6 +16,12 @@ use ferroastro_propagate::DataSources;
 /// Verifies: API-002, CI-009
 #[test]
 fn invalid_segment_lengths_are_refused_before_running() {
+    if De440::load_cached_or_skip("invalid_segment_lengths_are_refused_before_running")
+        .unwrap()
+        .is_none()
+    {
+        return;
+    }
     let spec = common::scenario("sun-planets-moon-newton-j2-10yr.toml");
     let ok = RunOptions::default();
     ok.validate().unwrap();

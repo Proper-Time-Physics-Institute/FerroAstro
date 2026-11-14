@@ -214,6 +214,64 @@ pub fn fetch_product(name: &str) -> Result<Fetched, DataError> {
     fetch_url(&p.url, &p.file, Some(&p.sha256))
 }
 
+/// Environment variable that makes a missing cached product fail a test instead of skipping it
+/// (also implied by `CI=true`); see [`data_required`].
+pub const REQUIRE_DATA_ENV: &str = "FA_REQUIRE_DATA";
+
+/// True when a test must fail rather than skip on a missing cached product: `CI` or
+/// [`REQUIRE_DATA_ENV`] is set to something other than empty, `0` or `false` (maintainer
+/// decision 2026-11-14: local runs without the data skip, CI never passes by skipping).
+#[must_use]
+pub fn data_required() -> bool {
+    let set = |name: &str| {
+        std::env::var(name).is_ok_and(|v| {
+            let v = v.trim();
+            !v.is_empty() && v != "0" && !v.eq_ignore_ascii_case("false")
+        })
+    };
+    set(REQUIRE_DATA_ENV) || set("CI")
+}
+
+/// The `SKIP` line printed by a test that returns early because the pinned product `name` is
+/// not cached at `path` (see [`skip_if_absent`] and `De440::load_cached_or_skip`).
+#[must_use]
+pub fn skip_notice(context: &str, name: &str, path: &Path) -> String {
+    let file = path.file_name().map_or_else(
+        || path.display().to_string(),
+        |f| f.to_string_lossy().into_owned(),
+    );
+    format!(
+        "SKIP {context}: skipped: {file} not cached at {} (set FA_DATA_DIR or run \
+         tools/fetch_jpl.py {name}); {REQUIRE_DATA_ENV}=1 makes this fail",
+        path.display()
+    )
+}
+
+/// **Test gate.** `Ok(true)` (after printing [`skip_notice`]) when the file of the pinned product
+/// `name` does not exist in [`data_dir`] and [`data_required`] is false, so the test can return
+/// early. A present file gives `Ok(false)`: the test's own [`locate_product`] then re-verifies its
+/// SHA-256, so a wrong file is never skipped.
+///
+/// # Errors
+/// [`DataError::Manifest`] for an unknown product; [`DataError::Missing`] if the file is absent
+/// while [`data_required`] is true (CI never passes a test it did not run).
+pub fn skip_if_absent(name: &str, context: &str) -> Result<bool, DataError> {
+    let p = product(name)?;
+    let path = data_dir().join(&p.file);
+    if path.exists() {
+        return Ok(false);
+    }
+    if data_required() {
+        return Err(DataError::Missing {
+            name: name.to_owned(),
+            path: path.display().to_string(),
+            problem: format!("missing, and {REQUIRE_DATA_ENV}=1 (or CI) requires it"),
+        });
+    }
+    println!("{}", skip_notice(context, name, &path));
+    Ok(true)
+}
+
 /// Locate a manifest product in the cache **without network access** and re-verify its pinned
 /// SHA-256 (REF-001, DEP-017). This is the lookup used by PR-tier tests that read cached JPL
 /// products (CI-005): a missing or mismatching file is an error that names the `fetch_jpl.py`

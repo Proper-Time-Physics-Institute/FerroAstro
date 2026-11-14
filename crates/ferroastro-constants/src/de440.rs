@@ -224,8 +224,14 @@ impl De440 {
     pub fn load_cached_or_skip(context: &str) -> Result<Option<Self>, ConstantsError> {
         match Self::load_cached() {
             Ok(de) => Ok(Some(de)),
-            Err(e @ ConstantsError::HeaderNotFound { .. }) if !data_required() => {
-                println!("SKIP {context}: {e}");
+            Err(ConstantsError::HeaderNotFound { path, .. })
+                if !ferroastro_testdata::data_required() =>
+            {
+                let path = std::path::Path::new(&path);
+                println!(
+                    "{}",
+                    ferroastro_testdata::skip_notice(context, "de440-header", path)
+                );
                 Ok(None)
             }
             Err(e) => Err(e),
@@ -378,18 +384,6 @@ fn parse_bytes(bytes: &[u8]) -> Result<Header, ConstantsError> {
         problem: format!("not UTF-8: {e}"),
     })?;
     Header::parse(text)
-}
-
-/// True when a missing header must fail rather than skip (`CI=true` or `FA_REQUIRE_DATA`).
-#[cfg(feature = "fs")]
-fn data_required() -> bool {
-    let set = |name: &str| {
-        std::env::var(name).is_ok_and(|v| {
-            let v = v.trim();
-            !v.is_empty() && v != "0" && !v.eq_ignore_ascii_case("false")
-        })
-    };
-    set(REQUIRE_DATA_ENV) || set("CI")
 }
 
 /// Path and bytes of the cached `de440-header` product (no network, no checksum yet).

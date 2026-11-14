@@ -77,6 +77,12 @@ fn planets(years: f64, precision: Precision) -> ScenarioSpec {
 /// Verifies: CI-010
 #[test]
 fn checkpoint_round_trip_and_mismatch_refusal() {
+    if De440::load_cached_or_skip("checkpoint_round_trip_and_mismatch_refusal")
+        .unwrap()
+        .is_none()
+    {
+        return;
+    }
     let (h, prov) = header();
     let data = DataSources::none().with_header(&h, &prov);
     for precision in [Precision::F64, Precision::Dd] {
@@ -120,6 +126,12 @@ fn checkpoint_round_trip_and_mismatch_refusal() {
 /// Verifies: TST-005, NUM-022
 #[test]
 fn same_scenario_twice_and_batch_thread_counts_are_bitwise() {
+    if De440::load_cached_or_skip("same_scenario_twice_and_batch_thread_counts_are_bitwise")
+        .unwrap()
+        .is_none()
+    {
+        return;
+    }
     let (h, prov) = header();
     let data = DataSources::none().with_header(&h, &prov);
     let s = planets(TWICE_YEARS, Precision::F64);
@@ -204,6 +216,12 @@ fn run_refuses_unimplemented_switches_by_name() {
 /// Verifies: NUM-010
 #[test]
 fn nbody_perihelion_events_match_analytic_kepler_times() {
+    if De440::load_cached_or_skip("nbody_perihelion_events_match_analytic_kepler_times")
+        .unwrap()
+        .is_none()
+    {
+        return;
+    }
     let (h, prov) = header();
     let data = DataSources::none().with_header(&h, &prov);
     let s = spec("sun-mercury-newton-header440.toml");
@@ -274,6 +292,12 @@ fn nbody_perihelion_events_match_analytic_kepler_times() {
 /// Verifies: CI-002, NUM-013
 #[test]
 fn ic_hash_depends_on_the_initial_conditions_only() {
+    if De440::load_cached_or_skip("ic_hash_depends_on_the_initial_conditions_only")
+        .unwrap()
+        .is_none()
+    {
+        return;
+    }
     let (h, prov) = header();
     let data = DataSources::none().with_header(&h, &prov);
     let short = |s: &mut ScenarioSpec| s.span.years = HASH_YEARS;
@@ -301,6 +325,12 @@ fn ic_hash_depends_on_the_initial_conditions_only() {
 /// Verifies: CI-002, TST-005
 #[test]
 fn scenario_run_equals_the_direct_api_bitwise() {
+    if De440::load_cached_or_skip("scenario_run_equals_the_direct_api_bitwise")
+        .unwrap()
+        .is_none()
+    {
+        return;
+    }
     let (h, prov) = header();
     let data = DataSources::none().with_header(&h, &prov);
     let s = spec("sun-planets-moon-newton-j2-10yr.toml");
@@ -391,6 +421,12 @@ fn scenario_run_equals_the_direct_api_bitwise() {
 /// Verifies: CI-010, NUM-013
 #[test]
 fn chained_segments_equal_the_uninterrupted_run_in_both_directions() {
+    if De440::load_cached_or_skip("chained_segments_equal_the_uninterrupted_run_in_both_directions")
+        .unwrap()
+        .is_none()
+    {
+        return;
+    }
     let (h, prov) = header();
     let data = DataSources::none().with_header(&h, &prov);
     let total = SEGMENT_YEARS * f64::from(SEGMENTS);
@@ -455,6 +491,14 @@ fn bits(p: &[ferroastro_scenario::Parts; 3]) -> Vec<u64> {
 /// Verifies: NUM-009, REF-003, TST-005
 #[test]
 fn small_body_switches_add_minor_and_ring_bodies_without_touching_the_majors() {
+    if De440::load_cached_or_skip(
+        "small_body_switches_add_minor_and_ring_bodies_without_touching_the_majors",
+    )
+    .unwrap()
+    .is_none()
+    {
+        return;
+    }
     let (h, prov) = header();
     let file = small_body_file();
     let data = DataSources::none()
@@ -557,6 +601,12 @@ fn small_body_switches_add_minor_and_ring_bodies_without_touching_the_majors() {
     reason = "test oracle arithmetic kept bit-identical across the toolchain bump: fused multiply-add would alter rounding (gh #23)"
 )]
 fn small_bodies_carry_their_gm_and_conserve_total_momentum() {
+    if De440::load_cached_or_skip("small_bodies_carry_their_gm_and_conserve_total_momentum")
+        .unwrap()
+        .is_none()
+    {
+        return;
+    }
     let (h, prov) = header();
     let file = small_body_file();
     let data = DataSources::none()
@@ -631,11 +681,21 @@ fn small_bodies_carry_their_gm_and_conserve_total_momentum() {
 ///
 /// Verifies: NUM-009, REF-003
 #[test]
+#[expect(
+    clippy::too_many_lines,
+    reason = "the header.440 skip gate, then one run read top to bottom"
+)]
 fn small_body_gms_equal_their_header_values_bitwise() {
     use ferroastro_system::{
         ASTEROID_NAIF_BASE, KBO_IDENTIFICATION, KBO_RING, MA_UNIDENTIFIED_FROM,
     };
     use std::collections::BTreeMap;
+    if De440::load_cached_or_skip("small_body_gms_equal_their_header_values_bitwise")
+        .unwrap()
+        .is_none()
+    {
+        return;
+    }
     let (h, prov) = header();
     let file = small_body_file();
     let data = DataSources::none()
@@ -746,6 +806,12 @@ const ENERGY_ULPS: f64 = 64.0; // lint: allow-literal(round-off allowance of two
     reason = "test oracle arithmetic kept bit-identical across the toolchain bump: fused multiply-add would alter rounding (gh #23)"
 )]
 fn run_with_energy_returns_the_run_and_the_model_energy() {
+    if De440::load_cached_or_skip("run_with_energy_returns_the_run_and_the_model_energy")
+        .unwrap()
+        .is_none()
+    {
+        return;
+    }
     let (h, prov) = header();
     let data = DataSources::none().with_header(&h, &prov);
     let mut s = spec("stage-a-sun-8planets-newton-100yr.toml");
@@ -791,6 +857,14 @@ fn run_with_energy_returns_the_run_and_the_model_energy() {
 /// Verifies: NUM-019, CI-010
 #[test]
 fn nbody_lense_thirring_and_solar_overrides_are_recorded_and_checked() {
+    if De440::load_cached_or_skip(
+        "nbody_lense_thirring_and_solar_overrides_are_recorded_and_checked",
+    )
+    .unwrap()
+    .is_none()
+    {
+        return;
+    }
     let (h, prov) = header();
     let plain = DataSources::none().with_header(&h, &prov);
     let ov = SolarOverrides {

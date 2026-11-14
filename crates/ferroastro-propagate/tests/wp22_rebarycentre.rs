@@ -97,14 +97,14 @@ fn residuals(b: &[BarycentreBody], c: Velocity) -> (f64, f64) {
 /// Verifies: NUM-018
 #[test]
 fn relativistic_barycentre_key_moves_the_initial_conditions_to_the_relativistic_ssb() {
-    let (h, prov) = header();
-    let data = DataSources::none().with_header(&h, &prov);
     let Some(de) = De440::load_cached_or_skip(
         "relativistic_barycentre_key_moves_the_initial_conditions_to_the_relativistic_ssb",
     )
     .unwrap() else {
         return;
     };
+    let (h, prov) = header();
+    let data = DataSources::none().with_header(&h, &prov);
     let c = de.speed_of_light();
     let vs = VectorSet::load_canonical().unwrap();
     let (bound_r, bound_v) = (
