@@ -253,6 +253,8 @@ miss): sha256 `0f4636b663e6f00af9efa2b605ef23635489f56b23dd1a5e3821d3acc6ac3359`
   the proposed step is < 0.25·Δt, cap growth at 4×). The growth cap and the 0.25 threshold are this WP's reading
   of the paper ("If dt_trial > dt_required the step is rejected"); R&S reject whenever dt_required < dt_trial.
   **NEEDS HUMAN REVIEW:** whether to adopt R&S's stricter rejection rule; with ours, steps are rarely rejected.
+  *Resolved 2026-11-14 (issue #20): the principal decided to keep the 0.25·Δt rule. See "IAS15 rejection rule
+  decision (issue #20)" at the end of this file.*
 - PC loop: Gauss–Seidel order (gₙ updated as soon as aₙ is known); stops when `max|ΔB₇|/max|a| ≤ 1e-16`
   (at least 2 iterations, because with a zero predictor B₇ can look converged after one pass), when the
   correction stops decreasing after the 2nd iteration (R&S "begins to oscillate"), or at 12 iterations
@@ -5613,3 +5615,34 @@ deny; doc `-D warnings`; ruff, ruff format, mypy, pytest (86 passed, 4 skipped);
   - Mutation probes: dropping the checkpoint check, or the settings from the file name, fails the tests.
 - **Not changed (open):** the `RunOutput::model` string still does not name the predictor (issue #31's second
   point). Changing it alters every report and the committed speed tables, so it is left for a separate change.
+
+## IAS15 rejection rule decision (issue #20)
+
+Recorded 2026-11-14. **Decided by the principal on 2026-11-14:** keep the current step-rejection rule
+`|Δt_required| < safety·|Δt_trial|` (safety = 0.25, `crates/ferroastro-integrators/src/ias15.rs`). Rein & Spiegel
+2015's stated condition, reject whenever `Δt_required < Δt_trial`, is **not** adopted. This closes the WP1 "NEEDS
+HUMAN REVIEW" item and the "IAS15 rejection rule" entry in the human queues of the WP5/WP6 reviews. No code
+behaviour, golden value or tolerance changed, so the golden-change process does not apply.
+
+- **Where the rules differ.** Only when `safety·Δt_trial ≤ Δt_required < Δt_trial`. The current rule accepts the step
+  as tried and takes `Δt_required` as the next trial step. The stricter rule redoes the step.
+- **Constructing such a step from the paper's formulas only (clean-room, DEP-008).** Eq. 11 gives
+  `Δt_required = Δt_trial·(ε/b̃)^{1/7}`, and `b̃ ∝ Δt_trial⁷`, so from a fixed state `Δt_required` does not depend on
+  `Δt_trial` (dead-beat, already pinned by `step_proposal_is_dead_beat`). If the controller's own step from
+  pericentre of the e = 0.5 Kepler orbit is `h`, a trial step of `(1 + 1/safety)/2 · h = 2.5h` gets
+  `Δt_required ≈ h`. That is a ratio of about 0.4, in the middle of the band [0.25, 1).
+- **Tests** (`crates/ferroastro-integrators/tests/ias15_step_control.rs`, `Verifies: NUM-001`):
+  - `step_between_safety_and_full_trial_step_is_accepted` checks that the step lands in the band. Measured:
+    h = 1.964e-2, Δt_trial = 4.910e-2, Δt_required = 1.995e-2, ratio 0.406. It then asserts no rejection and
+    `dt_done == Δt_trial` bit for bit.
+  - `step_below_safety_times_trial_step_is_rejected` takes a trial step of `2h/safety = 8h`, which both rules reject.
+    Measured: 1 rejection, `dt_done` = 2.016e-2. This keeps a controller that never rejects from passing the band
+    test.
+  - No vector was added: the assertions are structural (a count and bitwise equality to the trial step), and the
+    band is computed from `Ias15Config::default().safety`.
+- **Negative controls** (each run on a throw-away copy of the worktree under `/tmp`, deleted afterwards; the worktree
+  was not modified):
+  1. Substituting the stricter rule (`if dt_new.abs() < dt.abs()`) makes the band test fail with 4 rejections and
+     `dt_done` = 1.968e-2. The two existing Eq. 11 tests fail as well: their helper asserts that a first step at the
+     controller's own `h` (or 2h) is not rejected. The companion test still passes.
+  2. A controller that never rejects (`if dt_new.abs() < R::ZERO`) makes only the companion test fail.
