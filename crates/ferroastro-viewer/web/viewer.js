@@ -20,6 +20,9 @@
   const MAX_ELEM_POINTS = 20000;
   const FIT_INTERVAL_MS = 500;
   const MARKERS = 48;
+  // Input ranges of the conformal-gravity coefficients (DESIGN §4.3); the engine re-checks them.
+  const CG_MAX_GAMMA = 1e-25; // cm^-1
+  const CG_MAX_KAPPA = 1e-40; // cm^-2
 
   // ------------------------------------------------------------------------------------------------
   // Static descriptions (display text and literature reference values, never used for physics)
@@ -55,10 +58,11 @@
     { bit: B.LENSE_THIRRING, term: "lense-thirring", label: "Lense–Thirring", short: "LT", css: "--fx-lt", exp: "≈−0.002 ″/cy", note: "IAS15 only" },
     { bit: B.ASTEROIDS, term: "asteroids", label: "Big asteroids", short: "Asteroids", css: "--fx-ast", exp: "≈0.001 ″/cy", note: "IAS15 only" },
     { bit: B.EIH, term: "eih", label: "EIH 1PN, all bodies (adv.)", short: "EIH", css: "--fx-gr", exp: "≈42.98 ″/cy", note: "IAS15 only; replaces GR 1PN" },
+    { bit: B.CONFORMAL, term: "conformal-gravity", label: "Conformal gravity (comparison model)", short: "CG", css: "--fx-cg", exp: "comparison model", note: "outside the GR ladder", comparison: true },
   ];
 
   // Reference values for the table (approx. literature; frame/window caveats in `src`).
-  function referenceFor(effect, cfg) {
+  function referenceFor(effect, cfg, meta) {
     const p = cfg.params;
     switch (effect) {
       case "b0":
@@ -104,6 +108,16 @@
       }
       case "b10":
         return { v: 0.0012, src: "Park17 343 asteroids (PARK17-T3-ASTEROIDS); first 16 ≈ 0.001 (PHY-019)" };
+      case "b12": {
+        // The engine's analytic Gauss rate for these settings (metadata "conformal.reference"); the
+        // page evaluates no formula. Comparison model, never part of the 575.31 ″/cy ladder.
+        const r = cgReference(meta);
+        if (!r) return null;
+        return {
+          v: r.total_arcsec_per_cy,
+          src: "engine Gauss reference, comparison model (ADR-0016, PHY-020); first-order secular average for Mercury's SW92 mean a, e; not a ladder value",
+        };
+      }
       case "rung": {
         const r = p[P.RUNG];
         const v = [0, 7.1634, 50.144, 35.817, 42.9805][r];
@@ -177,6 +191,13 @@
     fitper: $("p-fitper"),
     j2: $("p-j2"),
     spin: $("p-spin"),
+    cgFs: $("cg-fs"),
+    cgGamma0: $("p-cg-gamma0"),
+    cgGammaStar: $("p-cg-gamma-star"),
+    cgKappa: $("p-cg-kappa"),
+    cgCentre: $("p-cg-centre"),
+    cgRef: $("cg-ref"),
+    cgReset: $("cg-reset"),
     copyScenario: $("copy-scenario"),
     metaLine: $("meta-line"),
     tSpan: $("t-span"),
@@ -494,6 +515,13 @@
   const toggleInputs = {};
   function buildToggles() {
     for (const t of TOGGLES) {
+      if (t.comparison) {
+        // Comparison models sit apart from the GR ladder's effects (ADR-0016).
+        const sep = document.createElement("li");
+        sep.className = "toggles-sep";
+        sep.innerHTML = termHtml("comparison-model", "Comparison models") + ' <span class="muted small">outside the 575.31 ″/cy GR ladder</span>';
+        el.toggles.appendChild(sep);
+      }
       const li = document.createElement("li");
       const id = "tg-" + t.bit;
       const sw = '<span class="swatch" aria-hidden="true" style="background:var(' + t.css + ')"></span>';
@@ -501,7 +529,8 @@
       li.innerHTML =
         '<label class="check" for="' + id + '" data-term="' + t.term + '"><input type="checkbox" id="' + id + '"' + (t.note ? ' aria-describedby="' + noteId + '"' : "") + ">" +
         sw + "<span>" + t.label + "</span></label>" + tipHtml(t.term) +
-        '<span class="exp">' + t.exp + (t.note ? '<span class="req" id="' + noteId + '">' + t.note + "</span>" : "") + "</span>";
+        '<span class="exp"' + (t.comparison ? ' id="' + id + '-exp"' : "") + ">" + t.exp + (t.note ? '<span class="req" id="' + noteId + '">' + t.note + "</span>" : "") + "</span>";
+      if (t.comparison) li.classList.add("comparison");
       el.toggles.appendChild(li);
       const input = li.querySelector("input");
       toggleInputs[t.bit] = { input, li };
@@ -513,7 +542,7 @@
     return document.querySelector('input[name="mode"]:checked').value === "1" ? 1 : 0;
   }
   function labAllowed(bit) {
-    return bit === B.SUN_J2 || bit === B.LENSE_THIRRING;
+    return bit === B.SUN_J2 || bit === B.LENSE_THIRRING || bit === B.CONFORMAL;
   }
 
   function onToggle(bit, on) {
@@ -556,6 +585,9 @@
     el.gamma.disabled = !ppn;
     el.j2.disabled = (m & (1 << B.SUN_J2)) === 0;
     el.spin.disabled = (m & (1 << B.LENSE_THIRRING)) === 0;
+    const cgOn = (m & (1 << B.CONFORMAL)) !== 0;
+    for (const inp of [el.cgGamma0, el.cgGammaStar, el.cgKappa, el.cgCentre, el.cgReset]) inp.disabled = !cgOn;
+    el.cgFs.classList.toggle("off", !cgOn);
     document.querySelector('[data-preset="planets"]').disabled = lab;
     el.badgeMode.textContent = lab ? "Rung lab: " + RUNG_NAMES[rung] : "System mode";
     if (el.badgeModeTip) el.badgeModeTip.dataset.tip = lab ? "rung-lab" : "system-mode";
@@ -605,6 +637,10 @@
     params[P.J2_OVERRIDE] = numberField(el.j2, 0, 1e-3, { emptyNaN: true });
     params[P.SPIN_SCALE] = numberField(el.spin, 0, 1e6);
     params[P.FIT_PERIODIC] = Number(el.fitper.value);
+    params[P.CG_GAMMA0] = numberField(el.cgGamma0, -CG_MAX_GAMMA, CG_MAX_GAMMA);
+    params[P.CG_GAMMA_STAR] = numberField(el.cgGammaStar, -CG_MAX_GAMMA, CG_MAX_GAMMA);
+    params[P.CG_KAPPA] = numberField(el.cgKappa, -CG_MAX_KAPPA, CG_MAX_KAPPA);
+    params[P.CG_GAMMA0_CENTRE] = Number(el.cgCentre.value);
     return { mask: currentMask(), params };
   }
 
@@ -626,6 +662,10 @@
     el.j2.value = Number.isFinite(p[P.J2_OVERRIDE]) ? p[P.J2_OVERRIDE] : "";
     el.spin.value = p[P.SPIN_SCALE];
     el.fitper.value = String(p[P.FIT_PERIODIC]);
+    el.cgGamma0.value = p[P.CG_GAMMA0];
+    el.cgGammaStar.value = p[P.CG_GAMMA_STAR];
+    el.cgKappa.value = p[P.CG_KAPPA];
+    el.cgCentre.value = String(p[P.CG_GAMMA0_CENTRE]);
     for (const inp of document.querySelectorAll("[aria-invalid]")) inp.removeAttribute("aria-invalid");
     syncToggleUI();
   }
@@ -639,6 +679,13 @@
     }
     if (p[P.SPIN_SCALE] !== 1) parts.push("solar spin ×" + fmtK(p[P.SPIN_SCALE]));
     if (p[P.IAS15_EPSILON] > 1e-9) parts.push("IAS15 ε = " + p[P.IAS15_EPSILON] + " (fast, reduced accuracy)");
+    if ((cfg.mask & (1 << B.CONFORMAL)) !== 0) {
+      // Conformal gravity: any coefficient other than the published fit value (OI-79) is exaggerated.
+      for (const [id, name] of [[P.CG_GAMMA0, "γ0"], [P.CG_GAMMA_STAR, "γ*"], [P.CG_KAPPA, "κ"]]) {
+        const fit = FAV.PARAM_DEFAULTS[id];
+        if (p[id] !== fit) parts.push("CG " + name + " = " + fmtSci(p[id]) + (p[id] !== 0 && Math.sign(p[id]) === Math.sign(fit) ? " (×" + fmtK(p[id] / fit) + " fit)" : ""));
+      }
+    }
     return parts.join("; ");
   }
 
@@ -651,12 +698,19 @@
       } else if (name === "gr") {
         state.labMask = 0;
         el.rung.value = "4";
-      } else if (name === "full") {
-        state.labMask = (1 << B.SUN_J2) | (1 << B.LENSE_THIRRING);
+      } else if (name === "full" || name === "full-cg") {
+        state.labMask = (1 << B.SUN_J2) | (1 << B.LENSE_THIRRING) | (name === "full-cg" ? 1 << B.CONFORMAL : 0);
         el.rung.value = "4";
       }
     } else {
-      state.sysMask = { kepler: 0, planets: FAV.PLANET_MASK, gr: 1 << B.GR_1PN, full: FAV.DEFAULT_MASK }[name];
+      state.sysMask = {
+        kepler: 0,
+        planets: FAV.PLANET_MASK,
+        gr: 1 << B.GR_1PN,
+        full: FAV.DEFAULT_MASK,
+        // The comparison model on top of the full GR model (ADR-0016); never the default.
+        "full-cg": (FAV.DEFAULT_MASK | (1 << B.CONFORMAL)) >>> 0,
+      }[name];
     }
     syncToggleUI();
     requestReconfigure();
@@ -827,6 +881,51 @@
     setParts(el.metaLine, bits);
     el.metaLine.title = meta.model ? "Model: " + meta.model + (meta.ic_source ? "\nIC source: " + meta.ic_source : "") : "";
     el.copyScenario.disabled = !state.scenario;
+    showCgReference(meta);
+  }
+
+  // The engine's analytic reference for the conformal-gravity settings (metadata "conformal",
+  // ABI v2), or null. Display only: the page evaluates no formula.
+  function cgReference(meta) {
+    const c = meta && meta.conformal;
+    return c && c.reference && Number.isFinite(c.reference.total_arcsec_per_cy) ? c.reference : null;
+  }
+  function fmtRate(v) {
+    if (!Number.isFinite(v)) return "–";
+    if (v === 0) return "0";
+    const a = Math.abs(v);
+    return a >= 0.01 ? v.toFixed(a >= 10 ? 2 : 4) : v.toExponential(2);
+  }
+  function fmtSci(v) {
+    return v === 0 ? "0" : v.toExponential(2);
+  }
+  function showCgReference(meta) {
+    const r = cgReference(meta);
+    const c = meta && meta.conformal;
+    const exp = document.getElementById("tg-" + B.CONFORMAL + "-exp");
+    if (exp && exp.firstChild) exp.firstChild.textContent = r ? "Gauss " + fmtRate(r.total_arcsec_per_cy) + " ″/cy" : "comparison model";
+    if (!el.cgRef) return;
+    el.cgRef.textContent = "";
+    if (!r) {
+      el.cgRef.textContent = "Engine reference: available once the engine has loaded its DE440 constants.";
+      return;
+    }
+    const uniform = c.gamma0_centre === "uniform";
+    el.cgRef.append(
+      termButton("comparison-model", "Comparison model"),
+      ": engine ",
+      termButton("cg-gauss-reference", "Gauss reference"),
+      " " + fmtRate(r.total_arcsec_per_cy) + " ″/cy for Mercury (γ terms " + fmtRate(r.linear_arcsec_per_cy) + ", κ term " + fmtRate(r.quadratic_arcsec_per_cy) + "; γ0 share " +
+        (uniform ? "0, uniform" : fmtRate(r.gamma0_arcsec_per_cy)) + "). ",
+      termButton("inpop15a-bound", "INPOP15a"),
+      " allows 0.0 ± 0.0031 ″/cy.",
+    );
+    if (uniform) {
+      const note = document.createElement("span");
+      note.className = "cg-caveat";
+      note.textContent = " Uniform γ0 is exactly 0 only with velocity-independent forces; EIH and Lense–Thirring add a tiny O(v·Δv/c²) drift.";
+      el.cgRef.append(note);
+    }
   }
 
   // ------------------------------------------------------------------------------------------------
@@ -975,6 +1074,7 @@
       { text: fmtNum(f[F.T_FIRST], 1) + "–" + fmtNum(f[F.T_LAST], 1) + " yr (" + Math.floor(y0 + f[F.T_FIRST]) + "–" + Math.floor(y0 + f[F.T_LAST]) + ")", term: "fit-window" },
       labFit ? { text: "initial orbit plane", term: "rung-lab" } : { text: "Park17 plane", term: "park17-plane" },
       state.applied && nonNominalText(state.applied) ? { text: "non-nominal", term: "physical-exaggeration" } : "",
+      state.applied && (state.applied.mask & (1 << B.CONFORMAL)) !== 0 ? { text: "incl. comparison model (CG)", term: "comparison-model" } : "",
     ]);
     el.rate.title =
       "Fit model: " + (fm || "–") +
@@ -1558,8 +1658,15 @@
       }
     }
 
+    const fan = el.showFan.checked && !el.detrend.checked && pass.t.length ? fanWedges() : null;
     let ymin = Infinity;
     let ymax = -Infinity;
+    if (fan && fan.neg.length && series.length) {
+      // Keep the below-floor (negative) wedges in view: include the far end of their stack.
+      const v = ((fan.floor + fan.neg.reduce((acc, w) => acc + w.v, 0)) / 100) * (xmax - tRef);
+      ymin = Math.min(ymin, v);
+      ymax = Math.max(ymax, v);
+    }
     for (const s of series) for (const v of s.y) {
       if (v < ymin) ymin = v;
       if (v > ymax) ymax = v;
@@ -1617,33 +1724,64 @@
     ctx.beginPath();
     ctx.rect(L, T, pw, ph);
     ctx.clip();
-    const fan = el.showFan.checked && !el.detrend.checked && pass.t.length ? fanWedges() : null;
     if (fan) {
-      // Per-effect wedges: cumulative P-remove slopes from the Kepler floor, largest effect at the
-      // bottom, each in its effect colour. Indicative: the rates come from the table's own span.
+      // Per-effect wedges: cumulative P-remove slopes from the Kepler floor, each in its effect
+      // colour. Positive effects stack upwards (largest at the bottom); negative ones stack downwards
+      // below the floor, hatched; a dashed ray marks the net sum, which the passages should follow.
+      // Indicative: the rates come from the table's own span.
       const t0 = tRef;
-      let cum = fan.floor / 100;
+      const span = xmax - t0;
       const labels = [];
-      for (const w of fan.wedges) {
-        const lo = cum;
-        const hi = cum + w.v / 100;
-        cum = hi;
-        ctx.fillStyle = withAlpha(colors[w.css], 0.2);
-        ctx.beginPath();
-        ctx.moveTo(X(t0), Y(0));
-        ctx.lineTo(X(xmax), Y(lo * (xmax - t0)));
-        ctx.lineTo(X(xmax), Y(hi * (xmax - t0)));
-        ctx.closePath();
-        ctx.fill();
-        ctx.strokeStyle = withAlpha(colors[w.css], 0.6);
+      const drawStack = (list, sign) => {
+        let cum = fan.floor / 100;
+        for (const w of list) {
+          const lo = cum;
+          const hi = cum + w.v / 100;
+          cum = hi;
+          ctx.beginPath();
+          ctx.moveTo(X(t0), Y(0));
+          ctx.lineTo(X(xmax), Y(lo * span));
+          ctx.lineTo(X(xmax), Y(hi * span));
+          ctx.closePath();
+          ctx.fillStyle = withAlpha(colors[w.css], sign > 0 ? 0.2 : 0.12);
+          ctx.fill();
+          if (sign < 0) {
+            ctx.save();
+            ctx.clip();
+            ctx.strokeStyle = withAlpha(colors[w.css], 0.55);
+            ctx.lineWidth = 1 * dpr;
+            const step = 7 * dpr;
+            ctx.beginPath();
+            for (let x = L - ph; x < L + pw + ph; x += step) {
+              ctx.moveTo(x, T + ph);
+              ctx.lineTo(x + ph, T);
+            }
+            ctx.stroke();
+            ctx.restore();
+          }
+          ctx.strokeStyle = withAlpha(colors[w.css], 0.6);
+          ctx.lineWidth = 1 * dpr;
+          ctx.beginPath();
+          ctx.moveTo(X(t0), Y(0));
+          ctx.lineTo(X(xmax), Y(hi * span));
+          ctx.stroke();
+          const yLo = Y(lo * span);
+          const yHi = Y(hi * span);
+          if (Math.abs(yLo - yHi) > 13 * dpr) labels.push({ text: (sign < 0 ? "−" : "") + w.short, y: (yLo + yHi) / 2, css: w.css });
+        }
+      };
+      drawStack(fan.pos, 1);
+      drawStack(fan.neg, -1);
+      if (fan.neg.length) {
+        // The net ray: floor + every contribution, positive and negative.
+        ctx.strokeStyle = colors["--muted"];
+        ctx.setLineDash([4 * dpr, 4 * dpr]);
         ctx.lineWidth = 1 * dpr;
         ctx.beginPath();
         ctx.moveTo(X(t0), Y(0));
-        ctx.lineTo(X(xmax), Y(hi * (xmax - t0)));
+        ctx.lineTo(X(xmax), Y(((fan.floor + fan.net) / 100) * span));
         ctx.stroke();
-        const yLo = Y(lo * (xmax - t0));
-        const yHi = Y(hi * (xmax - t0));
-        if (yLo - yHi > 13 * dpr) labels.push({ text: w.short, y: (yLo + yHi) / 2, css: w.css });
+        ctx.setLineDash([]);
       }
       ctx.font = font(12, "600");
       ctx.textAlign = "right";
@@ -1980,7 +2118,7 @@
           addS = Math.hypot(A.s, kAdd.s);
         }
       }
-      const ref = referenceFor(r.key, table.cfg);
+      const ref = referenceFor(r.key, table.cfg, table.meta || state.meta);
       out.push({ r, label: effectLabel(r.key, table.cfg), v, s, ref, addV, addS });
     }
     return { S, K, out };
@@ -2046,55 +2184,79 @@
     dirty.chart = true;
   }
 
-  // Wedges for the chart: the finished positive P-remove rows of a table computed for the current
-  // configuration, largest first, and the Kepler-only floor they stack on. Null otherwise.
+  // Wedges for the chart: the finished P-remove rows of a table computed for the current
+  // configuration, and the Kepler-only floor they stack on. Positive rows stack upwards from the
+  // floor, largest first; negative rows (Lense–Thirring, a Sun-centred γ0) stack downwards below it,
+  // largest magnitude first. Null otherwise.
   function fanWedges() {
     if (!table.plan || !sameConfig(table.cfg, state.applied)) return null;
     const { K, out } = computeRows();
-    const wedges = out
-      .filter((row) => Number.isFinite(row.v) && row.v > 0)
-      .map((row) => ({ v: row.v, css: effectCss(row.r.key), short: effectShort(row.r.key) }))
-      .sort((a, b) => b.v - a.v);
-    if (!wedges.length) return null;
-    return { floor: K && Number.isFinite(K.v) ? K.v : 0, wedges };
+    const all = out
+      .filter((row) => Number.isFinite(row.v) && row.v !== 0)
+      .map((row) => ({ v: row.v, css: effectCss(row.r.key), short: effectShort(row.r.key) }));
+    const pos = all.filter((w) => w.v > 0).sort((a, b) => b.v - a.v);
+    const neg = all.filter((w) => w.v < 0).sort((a, b) => a.v - b.v);
+    if (!pos.length && !neg.length) return null;
+    const net = all.reduce((acc, w) => acc + w.v, 0);
+    return { floor: K && Number.isFinite(K.v) ? K.v : 0, pos, neg, net };
   }
 
-  // The budget strip above the table: positive contributions to scale, in the effect colours.
+  // The budget strip above the table: every finished contribution to one scale, in the effect
+  // colours. Positive ones run right of the zero mark, negative ones left of it (hatched, so the
+  // sign never rests on colour alone). Each segment keeps a sliver of width so even the tiny rows
+  // are visible; the key gives the signed values.
   function renderBudget(out) {
-    const pos = out.filter((row) => Number.isFinite(row.v) && row.v > 0).sort((a, b) => b.v - a.v);
-    const total = pos.reduce((acc, row) => acc + row.v, 0);
-    if (!pos.length || !(total > 0)) {
+    const rows = out.filter((row) => Number.isFinite(row.v) && row.v !== 0);
+    const pos = rows.filter((row) => row.v > 0).sort((a, b) => b.v - a.v);
+    const neg = rows.filter((row) => row.v < 0).sort((a, b) => a.v - b.v);
+    const sumPos = pos.reduce((acc, row) => acc + row.v, 0);
+    const sumNeg = neg.reduce((acc, row) => acc - row.v, 0);
+    if (!rows.length || !(sumPos + sumNeg > 0)) {
       el.budget.hidden = true;
       return;
     }
     el.budget.hidden = false;
     el.budgetBar.textContent = "";
     el.budgetKey.textContent = "";
-    for (const row of pos) {
+    const zone = (cls, list, sum) => {
+      const z = document.createElement("span");
+      z.className = "zone " + cls;
+      z.style.flexGrow = String(sum / (sumPos + sumNeg));
+      z.style.flexBasis = "0";
+      for (const row of list) {
+        const seg = document.createElement("span");
+        seg.className = "seg";
+        seg.style.setProperty("--c", "var(" + effectCss(row.r.key) + ")");
+        seg.style.flexGrow = String(Math.abs(row.v) / sum);
+        seg.style.flexBasis = "0";
+        seg.title = row.label + ": " + fmtPm(row.v, row.s) + " ″/cy";
+        z.appendChild(seg);
+      }
+      return z;
+    };
+    if (neg.length) el.budgetBar.appendChild(zone("neg", neg, sumNeg));
+    const zero = document.createElement("span");
+    zero.className = "zero";
+    zero.title = "zero";
+    el.budgetBar.appendChild(zero);
+    if (pos.length) el.budgetBar.appendChild(zone("pos", pos, sumPos));
+    el.budgetBar.classList.toggle("has-neg", neg.length > 0);
+    for (const row of pos.concat(neg)) {
       const css = effectCss(row.r.key);
-      const seg = document.createElement("span");
-      seg.style.background = "var(" + css + ")";
-      seg.style.flexGrow = String(row.v / total);
-      seg.style.flexBasis = "0";
-      seg.title = row.label + ": " + fmtPm(row.v, row.s) + " ″/cy";
-      el.budgetBar.appendChild(seg);
       const li = document.createElement("li");
+      if (row.v < 0) li.className = "neg";
       const sw = document.createElement("span");
-      sw.className = "swatch";
+      sw.className = "swatch" + (row.v < 0 ? " hatched" : "");
       sw.setAttribute("aria-hidden", "true");
-      sw.style.background = "var(" + css + ")";
+      sw.style.setProperty("--c", "var(" + css + ")");
+      sw.style.background = row.v < 0 ? "" : "var(" + css + ")";
       const name = termButton(effectTerm(row.r.key), effectShort(row.r.key));
       const v = document.createElement("span");
       v.className = "v";
-      v.textContent = row.v >= 1 ? row.v.toFixed(1) : row.v.toPrecision(2);
+      const a = Math.abs(row.v);
+      v.textContent = (row.v < 0 ? "−" : "+") + (a >= 1 ? a.toFixed(1) : a.toPrecision(2));
       li.append(sw, name, v);
-      el.budgetKey.appendChild(li);
-    }
-    const neg = out.filter((row) => Number.isFinite(row.v) && row.v <= 0);
-    if (neg.length) {
-      const li = document.createElement("li");
-      li.className = "muted";
-      li.textContent = "Not drawn (≤ 0): " + neg.map((row) => effectShort(row.r.key)).join(", ");
+      if (row.r.key === "b" + B.CONFORMAL) li.append(termButton("comparison-model", "comparison model"));
       el.budgetKey.appendChild(li);
     }
   }
@@ -2185,7 +2347,13 @@
       syncToggleUI();
       requestReconfigure();
     });
-    for (const inp of [el.beta, el.gamma, el.engine, el.whstep, el.eps, el.span, el.cadence, el.ast, el.fitper, el.j2, el.spin]) {
+    el.cgReset.addEventListener("click", () => {
+      el.cgGamma0.value = FAV.PARAM_DEFAULTS[P.CG_GAMMA0];
+      el.cgGammaStar.value = FAV.PARAM_DEFAULTS[P.CG_GAMMA_STAR];
+      el.cgKappa.value = FAV.PARAM_DEFAULTS[P.CG_KAPPA];
+      requestReconfigure();
+    });
+    for (const inp of [el.beta, el.gamma, el.engine, el.whstep, el.eps, el.span, el.cadence, el.ast, el.fitper, el.j2, el.spin, el.cgGamma0, el.cgGammaStar, el.cgKappa, el.cgCentre]) {
       inp.addEventListener("change", () => requestReconfigure());
     }
     document.querySelectorAll("[data-preset]").forEach((b) => b.addEventListener("click", () => applyPreset(b.dataset.preset)));
@@ -2320,8 +2488,10 @@
     const m = /^#m=(\d+)&p=([-+0-9.eEaN,]+)$/.exec(location.hash);
     if (!m) return null;
     const vals = m[2].split(",");
-    if (vals.length !== FAV.N_PARAMS) return null;
+    // ABI v1 fragments carry 13 parameters: ids 13-16 (conformal gravity) take their defaults.
+    if (vals.length !== FAV.N_PARAMS && vals.length !== FAV.N_PARAMS_V1) return null;
     const params = {};
+    for (let i = vals.length; i < FAV.N_PARAMS; i++) params[i] = FAV.PARAM_DEFAULTS[i];
     for (let i = 0; i < vals.length; i++) {
       const v = vals[i] === "NaN" ? NaN : Number(vals[i]);
       if (vals[i] !== "NaN" && !Number.isFinite(v)) return null;
@@ -2366,7 +2536,7 @@
       if (!resp.ok) throw new Error(WASM_URL + " not found (HTTP " + resp.status + "). Build it with crates/ferroastro-viewer/web/build.sh, which copies it next to index.html.");
       state.module = await FAV.compileResponse(resp);
       const imports = WebAssembly.Module.imports(state.module);
-      if (imports.length) throw new Error(WASM_URL + " has imports; ABI v1 requires none.");
+      if (imports.length) throw new Error(WASM_URL + " has imports; the ABI requires none.");
     } catch (err) {
       showError(String(err.message || err));
       setStatus("Engine not loaded.");

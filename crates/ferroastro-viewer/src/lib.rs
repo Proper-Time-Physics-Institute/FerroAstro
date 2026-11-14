@@ -4,7 +4,8 @@
 //!
 //! The engine of the FerroAstro orbit viewer (CRATE-PLAN L12, surfaces; API-004;
 //! `docs/viewer/DESIGN.md`): Mercury's orbit and perihelion, with the planets, solar J2, GR,
-//! Lense–Thirring and asteroids switched on and off, built only from FerroAstro crates and
+//! Lense–Thirring, asteroids and the conformal-gravity comparison model switched on and off,
+//! built only from FerroAstro crates and
 //! exported to the browser as a `wasm32-unknown-unknown` module with **no imports** and a small
 //! `extern "C"` ABI (§4 of the design; the UI lives in `web/`).
 //!
@@ -23,7 +24,12 @@
 //!
 //! No force model, integrator or estimator is written in this crate: it composes them.
 //!
-//! ## ABI version 1
+//! ## ABI version 2
+//!
+//! Version 2 (ADR-0016 decision D5) defines toggle bit 12 (conformal gravity, a **comparison
+//! model** outside the GR ladder) and parameters 13–16 (γ0, γ\*, κ and the γ0 centring); the
+//! metadata gains the `conformal` object with the engine's analytic reference. Everything else is
+//! as in version 1.
 //!
 //! Every export is `extern "C"`, prefixed `fav_`, and takes and returns `i32`, `u32` or `f64`;
 //! pointer results are `*const f64` / `*const u8` (on wasm32, byte offsets into the exported
@@ -34,14 +40,15 @@
 //! | [`FAV_OK`] | 0 | success |
 //! | [`FAV_DONE`] | 1 | the span is reached |
 //! | [`FAV_E_STATE`] | −1 | call out of order |
-//! | [`FAV_E_ARG`] | −2 | bad id, value out of range, reserved bit |
+//! | [`FAV_E_ARG`] | −2 | bad id, value out of range, reserved bit (13–31) |
 //! | [`FAV_E_UNSUPPORTED`] | −3 | propagate refused the combination (`FA-E1201`), or System mode in a build without `embed-header` (`FA-E0303`) |
 //! | [`FAV_E_RUN`] | −4 | propagation or model error |
 //! | [`FAV_E_FIT`] | −5 | too few passages (not fatal) |
 //!
 //! Toggle bits ([`config::bits`]): 0 Venus, 1 Earth–Moon barycentre, 2 Mars, 3 Jupiter,
 //! 4 Saturn, 5 Uranus, 6 Neptune, 7 solar J2, 8 GR 1PN (Sun), 9 Lense–Thirring, 10 asteroids,
-//! 11 EIH among all bodies; 12–31 reserved. Parameter ids: [`config::Param`].
+//! 11 EIH among all bodies, 12 conformal gravity (comparison model); 13–31 reserved. Parameter
+//! ids: [`config::Param`].
 //!
 //! Buffers (f64, row-major; `t` in TDB Julian years since [`Viewer::epoch_jd`]):
 //!
@@ -79,12 +86,13 @@ pub mod ic;
 mod lab;
 mod meta;
 mod observe;
+pub mod reference;
 
 pub use config::ViewerConfig;
 pub use engine::{Viewer, estimator};
 
-/// ABI version of the `fav_*` exports.
-pub const ABI_VERSION: u32 = 1;
+/// ABI version of the `fav_*` exports (2: bit 12 and parameters 13–16, ADR-0016).
+pub const ABI_VERSION: u32 = 2;
 /// Success.
 pub const FAV_OK: i32 = 0;
 /// The span is reached; nothing more to run.

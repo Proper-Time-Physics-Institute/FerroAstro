@@ -14,10 +14,13 @@
 // posts it to viewer.js's error banner) names FA-E0303 and "built without embed-header", and the
 // Rung lab is refused the same way (its DE440 constants come from the header too since #22/#53).
 //
-// Checks: zero imports; ABI version 1; error paths (E_STATE, E_ARG + FA-E message); Kepler-only
+// Checks: zero imports; ABI version 2; error paths (E_STATE, E_ARG + FA-E message); Kepler-only
 // (mask 0, WHFast) gives a near-zero rate; chunked and single-call runs give bitwise-identical
 // passages (CI-010); GR only (IAS15) is within a short-span bound of PHY004-GR-RATE, loaded by id
-// from tests/vectors (AGENTS.md rule 1); the metadata JSON has every documented key.
+// from tests/vectors (AGENTS.md rule 1); the metadata JSON has every documented key; bit 12 (the
+// conformal-gravity comparison model, ABI v2) runs, a Sun-centred exaggerated gamma0 gives a
+// retrograde advance matching the engine's own Gauss reference, and the default uniform centring
+// gives ~0 (no oracle beyond the engine's analytic value; the fit values of OI-79 are never used).
 // Verifies: API-004 (proposed in DESIGN.md section 9)
 
 import { readFileSync } from "node:fs";
@@ -35,6 +38,12 @@ const KEPLER_SPAN_YEARS = 6; // 20 passages minimum for a fit (section 6.3) is a
 const KEPLER_BOUND = 0.05; // arcsec/cy over 6 yr; E1's 1e-3 applies to 100 yr
 const GR_SPAN_YEARS = 10;
 const GR_BOUND = 1.0; // arcsec/cy over 10 yr (section 9)
+// Conformal gravity (bit 12): an exaggerated gamma0 (cm^-1), about -60 arcsec/cy Sun-centred, so a
+// 6-yr run resolves it; the bound is relative to the engine's Gauss reference (the native test,
+// tests/viewer_conformal.rs, checks it to 2e-3 over 100 yr).
+const CG_GAMMA0 = 1e-27;
+const CG_REL_BOUND = 0.02;
+const CG_UNIFORM_BOUND = 1e-6; // arcsec/cy: the P-remove of a uniform gamma0, Newtonian forces
 
 let failures = 0;
 function check(cond, what, detail) {
@@ -74,15 +83,19 @@ const wasmPath = args.find((a) => !a.startsWith("--")) || join(here, "ferroastro
 const module = await WebAssembly.compile(readFileSync(wasmPath));
 check(WebAssembly.Module.imports(module).length === 0, "module has no imports", WebAssembly.Module.imports(module).length);
 const eng = await FAV.instantiate(module);
-check(eng.abi === FAV.ABI_VERSION, "fav_abi_version() === 1", eng.abi);
+check(eng.abi === FAV.ABI_VERSION && eng.abi === 2, "fav_abi_version() === 2", eng.abi);
 
 // Error paths.
 eng.reset();
 let st = eng.x.fav_run(1.0) | 0;
 check(st === FAV.STATUS.E_STATE, "fav_run before fav_configure returns E_STATE", st);
-st = eng.x.fav_set_toggles(1 << 12) | 0;
+st = eng.x.fav_set_toggles(1 << 13) | 0;
 const msg = eng.errorMessage();
-check(st === FAV.STATUS.E_ARG, "reserved toggle bit returns E_ARG", st);
+check(st === FAV.STATUS.E_ARG, "reserved toggle bit 13 returns E_ARG", st);
+st = eng.x.fav_set_toggles(1 << FAV.BIT.CONFORMAL) | 0;
+check(st === FAV.STATUS.OK, "toggle bit 12 (conformal gravity, ABI v2) is accepted", st);
+check(eng.getParam(P.CG_GAMMA0) === FAV.PARAM_DEFAULTS[P.CG_GAMMA0] && eng.getParam(P.CG_GAMMA0_CENTRE) === 0,
+  "parameters 13-16 exist with the documented defaults (uniform centring)", eng.getParam(P.CG_GAMMA0));
 check(/^FA-E\d{4}/.test(msg), "error message starts with FA-Exxxx", JSON.stringify(msg.slice(0, 80)));
 st = eng.x.fav_set_param(999, 1) | 0;
 check(st === FAV.STATUS.E_ARG, "unknown param id returns E_ARG", st);
@@ -127,7 +140,7 @@ let cfg = eng.configure(0, kParams);
 check(cfg.engine === FAV.ENGINE_RESOLVED.WHFAST, "mask 0 with ENGINE=WHFAST resolves to WHFast", cfg.engine);
 check(cfg.epochJd === 2440400.5, "System-mode epoch is JDEPOC 2440400.5", cfg.epochJd);
 const keys = ["abi", "mode", "engine", "nominal", "toggles", "params", "model", "gauge", "frame", "display_frame",
-  "epoch_jd_tdb", "time_scale", "ic_source", "ic_hash", "constants", "scenario_digest", "estimator", "fit", "j2_nominal"];
+  "epoch_jd_tdb", "time_scale", "ic_source", "ic_hash", "constants", "scenario_digest", "estimator", "fit", "j2_nominal", "conformal"];
 const missing = keys.filter((k) => !cfg.meta || !(k in cfg.meta));
 check(missing.length === 0, "metadata JSON has every documented key", missing.join(", ") || "all present");
 check(cfg.scenario.length > 0, "fav_scenario returns the ScenarioSpec TOML", cfg.scenario.length + " bytes");
@@ -177,6 +190,45 @@ if (f.fit) {
   check(f.meta && f.meta.fit && typeof f.meta.fit.model === "string", "metadata carries the fit model after fav_fit", f.meta && f.meta.fit ? f.meta.fit.model : "null");
 }
 console.log("info IAS15 Sun+Mercury+GR: " + (GR_SPAN_YEARS / (gMs / 1000)).toFixed(1) + " sim yr/s");
+
+// Conformal gravity (bit 12), WHFast, Sun + Mercury: Sun-centred exaggerated gamma0 against the engine's
+// Gauss reference, then the default uniform centring against Kepler only (same span and engine).
+const cgSun = { [P.ENGINE]: FAV.ENGINE_PARAM.WHFAST, [P.SPAN_YEARS]: 100, [P.CG_GAMMA0]: CG_GAMMA0, [P.CG_GAMMA_STAR]: 0, [P.CG_KAPPA]: 0,
+  [P.CG_GAMMA0_CENTRE]: FAV.CG_CENTRE.SUN };
+cfg = eng.configure(1 << FAV.BIT.CONFORMAL, cgSun);
+const cgMeta = cfg.meta && cfg.meta.conformal;
+check(cgMeta && cgMeta.label === "comparison model" && cgMeta.enabled === true && cgMeta.gamma0_centre === "sun",
+  "metadata labels bit 12 as a comparison model with its centring", cgMeta ? cgMeta.label + ", " + cgMeta.gamma0_centre : "no conformal object");
+check(/comparison model/.test(cfg.meta.gauge || "") && /conformal = \{.*gamma0_centre = "sun"/.test(cfg.scenario),
+  "gauge and scenario carry the comparison model", cfg.meta.gauge);
+check(cfg.meta.nominal === false, "an exaggerated gamma0 marks the run non-nominal");
+const cgRef = cgMeta && cgMeta.reference ? cgMeta.reference.total_arcsec_per_cy : NaN;
+runChunked(eng, KEPLER_SPAN_YEARS, 1.0);
+f = eng.fit(NaN, NaN);
+const kepRate = (() => {
+  eng.configure(0, { [P.ENGINE]: FAV.ENGINE_PARAM.WHFAST, [P.SPAN_YEARS]: 100 });
+  runChunked(eng, KEPLER_SPAN_YEARS, 1.0);
+  const k = eng.fit(NaN, NaN);
+  return k.fit ? k.fit[FAV.FIT.RATE] : NaN;
+})();
+if (f.fit) {
+  const d = f.fit[FAV.FIT.RATE] - kepRate;
+  check(d < 0 && cgRef < 0, "Sun-centred exaggerated gamma0 gives a retrograde advance", d + " arcsec/cy");
+  check(Math.abs(d / cgRef - 1) <= CG_REL_BOUND, "Sun-centred gamma0 within " + CG_REL_BOUND * 100 + " % of the engine's Gauss reference " + cgRef,
+    d + " over " + KEPLER_SPAN_YEARS + " yr");
+} else {
+  check(false, "fav_fit for Sun-centred gamma0", f.status + " " + (f.message || ""));
+}
+cfg = eng.configure(1 << FAV.BIT.CONFORMAL, Object.assign({}, cgSun, { [P.CG_GAMMA0_CENTRE]: FAV.CG_CENTRE.UNIFORM }));
+check(cfg.meta.conformal.reference && cfg.meta.conformal.reference.gamma0_arcsec_per_cy === 0, "uniform centring: the reference's gamma0 share is 0");
+runChunked(eng, KEPLER_SPAN_YEARS, 1.0);
+f = eng.fit(NaN, NaN);
+if (f.fit) {
+  const d = f.fit[FAV.FIT.RATE] - kepRate;
+  check(Math.abs(d) <= CG_UNIFORM_BOUND, "uniform exaggerated gamma0 leaves the rate unchanged (|d| <= " + CG_UNIFORM_BOUND + " arcsec/cy)", d);
+} else {
+  check(false, "fav_fit for uniform gamma0", f.status + " " + (f.message || ""));
+}
 
 // A forced WHFast with an IAS15-only effect is refused with FA-E1201.
 eng.reset();

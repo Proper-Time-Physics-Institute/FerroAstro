@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2026 Proper-Time Physics Institute
 // SPDX-License-Identifier: Apache-2.0
 //
-// fav.js: constants of the ferroastro-viewer C ABI v1 (docs/viewer/DESIGN.md section 4) and a small
+// fav.js: constants of the ferroastro-viewer C ABI v2 (docs/viewer/DESIGN.md section 4) and a small
 // wrapper around the wasm exports. It is shared by worker.js (classic worker, importScripts) and
 // smoke.mjs (node, loaded with vm). It does no physics: it calls the fav_* exports, copies buffers out
 // of linear memory and decodes UTF-8.
@@ -15,7 +15,7 @@
 
   const FAV = {};
 
-  FAV.ABI_VERSION = 1;
+  FAV.ABI_VERSION = 2;
 
   FAV.STATUS = Object.freeze({
     OK: 0,
@@ -37,7 +37,8 @@
     "-5": "FAV_E_FIT",
   });
 
-  // Toggle mask bits (section 3.1). Bits 12-31 are reserved and must be 0.
+  // Toggle mask bits (section 3.1). Bit 12 (ABI v2) is the conformal-gravity comparison model,
+  // outside the GR ladder; bits 13-31 are reserved and must be 0.
   FAV.BIT = Object.freeze({
     VENUS: 0,
     EMB: 1,
@@ -51,11 +52,12 @@
     LENSE_THIRRING: 9,
     ASTEROIDS: 10,
     EIH: 11,
+    CONFORMAL: 12,
   });
-  FAV.N_BITS = 12;
+  FAV.N_BITS = 13;
   FAV.DEFAULT_MASK = 0x3ff; // bits 0-9
   FAV.PLANET_MASK = 0x7f; // bits 0-6
-  FAV.RESERVED_MASK = 0xfffff000;
+  FAV.RESERVED_MASK = 0xffffe000;
 
   // Parameter ids (section 4.3).
   FAV.PARAM = Object.freeze({
@@ -72,8 +74,14 @@
     J2_OVERRIDE: 10,
     SPIN_SCALE: 11,
     FIT_PERIODIC: 12,
+    CG_GAMMA0: 13,
+    CG_GAMMA_STAR: 14,
+    CG_KAPPA: 15,
+    CG_GAMMA0_CENTRE: 16,
   });
-  FAV.N_PARAMS = 13;
+  FAV.N_PARAMS = 17;
+  // ABI v1 had 13 parameters: a v1 URL fragment is read with ids 13-16 at their defaults.
+  FAV.N_PARAMS_V1 = 13;
 
   // Defaults as documented; the engine is the authority (fav_reset restores them).
   FAV.PARAM_DEFAULTS = Object.freeze({
@@ -90,7 +98,14 @@
     10: NaN,
     11: 1,
     12: 1,
+    // Conformal gravity (bit 12): the published galactic-fit values, UNVERIFIED (OI-79), display
+    // defaults only; the engine is the authority.
+    13: 3.06e-30,
+    14: 5.42e-41,
+    15: 9.54e-54,
+    16: 0,
   });
+  FAV.CG_CENTRE = Object.freeze({ UNIFORM: 0, SUN: 1 });
 
   FAV.MODE = Object.freeze({ SYSTEM: 0, RUNG_LAB: 1 });
   FAV.ENGINE_PARAM = Object.freeze({ AUTO: 0, WHFAST: 1, IAS15: 2 });

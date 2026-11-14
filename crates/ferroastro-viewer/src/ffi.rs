@@ -1,6 +1,6 @@
 // SPDX-FileCopyrightText: 2026 Proper-Time Physics Institute
 // SPDX-License-Identifier: Apache-2.0
-//! The C ABI, version 1 (DESIGN §4): `extern "C"` shims over one [`Viewer`] per instance (per
+//! The C ABI, version 2 (DESIGN §4): `extern "C"` shims over one [`Viewer`] per instance (per
 //! wasm module instance, i.e. per Web Worker; per thread on native).
 //!
 //! DESIGN §2.2 (NEEDS HUMAN REVIEW): this is the only module that allows the `unsafe_code`
@@ -37,7 +37,7 @@ fn len_u32(n: usize) -> u32 {
     u32::try_from(n).unwrap_or(u32::MAX)
 }
 
-/// ABI version (1). JS refuses any other value.
+/// ABI version (2). JS refuses any other value.
 #[unsafe(no_mangle)]
 pub extern "C" fn fav_abi_version() -> u32 {
     crate::ABI_VERSION

@@ -1,7 +1,9 @@
 // SPDX-FileCopyrightText: 2026 Proper-Time Physics Institute
 // SPDX-License-Identifier: Apache-2.0
 //! Analytic perihelion advances: rung GR-SCHW (PHY-004) and the single-body oracles of
-//! NUM-015 (SR exact, PPN scaling, 1PN unit, J2 planar and inclined, Lense–Thirring).
+//! NUM-015 (SR exact, PPN scaling, 1PN unit, J2 planar and inclined, Lense–Thirring), plus the
+//! Gauss secular rates of the conformal-gravity **comparison model** (ADR-0016, PHY-020), which is
+//! not a ladder rung.
 //!
 //! `Δϖ = 6πGM / (c² a (1 − e²))` per orbit (Will 2014, Living Rev. Relativ. 17, 4, Eq. 65 with
 //! β = γ = 1, test-particle limit). The orbital period that converts it to a rate is the
@@ -280,9 +282,75 @@ pub fn lense_thirring_rate<R: Real>(
     )
 }
 
+/// The conformal-gravity comparison model's linear term (ADR-0016, PHY-020; **comparison model**,
+/// outside the GR ladder): the Gauss secular advance per orbit of the radial acceleration
+/// `−(γc²/2) r̂`, `Δϖ = −πγa²√(1−e²)/β` with `β = GM/c²`. Negative (retrograde) for `γ > 0`.
+///
+/// `gamma` is the signed linear coefficient in km⁻¹, `gm` the central body's `GM` alone (the
+/// relative-orbit reaction factor cancels against the two-body μ of the average, PHY-020 notes)
+/// and `a`, `e` the relative orbit's elements. First order in the perturbation.
+///
+/// # Errors
+/// `FA-E0600` for a non-finite `γ`, non-positive `GM`, `c` or `a`, or `e` outside `[0, 1)`.
+pub fn conformal_linear_advance<R: Real>(
+    gamma: R,
+    gm: GravParam<R>,
+    c: Velocity<R>,
+    a: Length<R>,
+    e: R,
+) -> Result<Angle<R>, AnalyticError> {
+    if !gamma.is_finite() {
+        return Err(dom("conformal gamma (1/km)", gamma));
+    }
+    let beta = conformal_beta(gm, c)?;
+    let aa = positive("a (km)", a.km())?;
+    let root = eccentricity(e)?.mul_add(-e, R::ONE).sqrt();
+    angle(
+        "conformal linear advance",
+        -R::PI * gamma * aa * aa * root / beta,
+    )
+}
+
+/// The conformal-gravity comparison model's quadratic term (ADR-0016, PHY-020; **comparison
+/// model**): the Gauss secular advance per orbit of the radial acceleration `+κc² r`,
+/// `Δϖ = +3πκa³√(1−e²)/β` with `β = GM/c²`. Positive (prograde) for `κ > 0`, the repulsive sign
+/// of the `−κr²` term in the Mannheim–Kazanas `B`.
+///
+/// `kappa` is the signed quadratic coefficient in km⁻²; the other arguments are those of
+/// [`conformal_linear_advance`].
+///
+/// # Errors
+/// `FA-E0600` for a non-finite `κ`, non-positive `GM`, `c` or `a`, or `e` outside `[0, 1)`.
+pub fn conformal_quadratic_advance<R: Real>(
+    kappa: R,
+    gm: GravParam<R>,
+    c: Velocity<R>,
+    a: Length<R>,
+    e: R,
+) -> Result<Angle<R>, AnalyticError> {
+    if !kappa.is_finite() {
+        return Err(dom("conformal kappa (1/km^2)", kappa));
+    }
+    let beta = conformal_beta(gm, c)?;
+    let aa = positive("a (km)", a.km())?;
+    let root = eccentricity(e)?.mul_add(-e, R::ONE).sqrt();
+    angle(
+        "conformal quadratic advance",
+        R::from_f64(3.0) * R::PI * kappa * aa * aa * aa * root / beta,
+    )
+}
+
+/// `β = GM/c²` (km) of the conformal-gravity Gauss rates.
+fn conformal_beta<R: Real>(gm: GravParam<R>, c: Velocity<R>) -> Result<R, AnalyticError> {
+    let m = positive("GM (km^3/s^2)", gm.km3_per_s2())?;
+    let cc = positive("c (km/s)", c.km_per_s())?;
+    Ok(m / (cc * cc))
+}
+
 #[cfg(test)]
 mod single_body_tests {
     use super::*;
+    use std::f64::consts::PI;
 
     fn gm(x: f64) -> GravParam {
         GravParam::from_km3_per_s2(x).unwrap()
@@ -323,5 +391,38 @@ mod single_body_tests {
         .unwrap()
         .rad_per_s();
         assert!((lt + 4.0e-6).abs() < 1e-20); // lint: allow-literal(-4 GS/(c^2 a^3) with c = 1000)
+    }
+
+    /// The conformal-gravity Gauss rates (comparison model, ADR-0016): with `GM = 1`, `c = 1000`
+    /// (so `β = 1e-6 km`), `a = 1` and `e = 0`, the linear term is `−πγ/β` and the quadratic term
+    /// `+3πκ/β`; both are linear in their coefficient, odd in its sign, and carry `√(1−e²)`.
+    ///
+    /// Verifies: PHY-020
+    #[test]
+    fn conformal_gauss_advances_have_the_closed_form_and_sign() {
+        let (mu, a) = (gm(1.0), len(1.0));
+        let c = Velocity::from_km_per_s(1.0e3).unwrap(); // lint: allow-literal(dimensionless test speed of light)
+        let beta = 1.0e-6; // lint: allow-literal(GM/c^2 of the dimensionless units)
+        let g = 1.0e-12; // lint: allow-literal(dimensionless test coefficient)
+        let lin = conformal_linear_advance(g, mu, c, a, 0.0)
+            .unwrap()
+            .radians();
+        assert!((lin + PI * g / beta).abs() <= 8.0 * f64::EPSILON * (PI * g / beta));
+        let quad = conformal_quadratic_advance(g, mu, c, a, 0.0)
+            .unwrap()
+            .radians();
+        assert!((quad - 3.0 * PI * g / beta).abs() <= 8.0 * f64::EPSILON * (3.0 * PI * g / beta));
+        let neg = conformal_linear_advance(-g, mu, c, a, 0.0)
+            .unwrap()
+            .radians();
+        assert!(
+            (neg + lin).abs() <= f64::EPSILON * lin.abs(),
+            "odd in gamma"
+        );
+        let e = 0.6; // lint: allow-literal(test eccentricity with sqrt(1 - e^2) = 0.8)
+        let ecc = conformal_linear_advance(g, mu, c, a, e).unwrap().radians();
+        assert!((ecc / lin - 0.8).abs() <= 8.0 * f64::EPSILON); // lint: allow-literal(sqrt(1 - 0.36))
+        assert!(conformal_linear_advance(f64::NAN, mu, c, a, 0.0).is_err());
+        assert!(conformal_quadratic_advance(g, mu, c, a, 1.0).is_err());
     }
 }
