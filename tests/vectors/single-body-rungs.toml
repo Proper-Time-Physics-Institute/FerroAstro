@@ -263,7 +263,7 @@ quantity = "analytic J2 perihelion rate 3 pi J2 R^2/p^2 per Keplerian orbit, DE4
 value = 0.02792
 unit = "arcsec/cy"
 kind = "analytic"
-source = "PHY-010 acceptance: 0.02792 arcsec/cy at the DE440 J2 = 2.19613915165298248e-7"
+source = "PHY-010 acceptance: 0.02792 arcsec/cy at the DE440 J2SUN (read from header.440 at run time; not reproduced here, #22)"
 citation = "FerroAstro docs/requirements/PHY.md PHY-010"
 retrieved = "2026-10-15"
 tolerance = { abs = 5.0e-6 }

@@ -9,6 +9,13 @@
 #   tools/oracles/run_oracles.sh orekit  <scenario.toml> <out-dir>
 #   tools/oracles/run_oracles.sh erfa    <out-dir>
 #   tools/oracles/run_oracles.sh jpl     <out-dir>
+#   tools/oracles/run_oracles.sh header-constants  <out-dir>
+#   tools/oracles/run_oracles.sh header-crosscheck <out-dir>
+#
+# header-constants runs Orekit's reading of the DE440 header constants (HeaderConstants.java) on
+# the orekit-data DE440 binary; header-crosscheck also builds FerroAstro on the HOST (never in a
+# container), prints its run-time header.440 parse and that of tools/oracles/header440.py, and
+# compares all three bit for bit (SYSTEM-HEADER-LIVE-CROSSCHECK-MAX-ULP, #22). Nothing is committed.
 #
 # Rules this script enforces:
 # * Images are built locally from a staged context that holds ONLY ci/oracles/<tool>/ and
@@ -28,7 +35,7 @@ root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 cd "$root"
 data="${FA_DATA_DIR:-$root/target/fa-data}"
 
-usage() { sed -n '6,11p' "${BASH_SOURCE[0]}" | sed 's/^# *//' >&2; exit 2; }
+usage() { sed -n '6,13p' "${BASH_SOURCE[0]}" | sed 's/^# *//' >&2; exit 2; }
 
 runner_sha() {
   local sha
@@ -104,6 +111,27 @@ case "$cmd" in
       -v "$out:/out" \
       "$(image_tag orekit)" \
       --scenario "/in/$(basename "$scenario")" --jpl-dir /jpl --out-dir /out
+    ;;
+  header-constants)
+    [[ $# == 1 ]] || usage
+    out="$1"; mkdir -p "$out"; out="$(realpath "$out")"
+    meta="$root/crates/ferroastro-constants/data/de440-metadata.toml"
+    run_container orekit --network none --entrypoint python \
+      -v "$meta:/in/de440-metadata.toml:ro" \
+      -v "$out:/out" \
+      "$(image_tag orekit)" -m oracles.orekit_constants --metadata /in/de440-metadata.toml --out-dir /out
+    ;;
+  header-crosscheck)
+    [[ $# == 1 ]] || usage
+    out="$1"
+    "$root/tools/oracles/run_oracles.sh" header-constants "$out/orekit"
+    out="$(realpath "$out")"
+    cargo run -q -p ferroastro-constants --example header_constants_json -- "$data/header.440" \
+      > "$out/ferroastro-header-constants.json"
+    (cd tools && uv run python -m oracles.header440 --header "$data/header.440" \
+      --names-from "$out/ferroastro-header-constants.json" > "$out/header440py-constants.json" \
+      && uv run python -m oracles.header_crosscheck "$out/ferroastro-header-constants.json" \
+        "$out/header440py-constants.json" "$out/orekit/orekit-header-constants.json")
     ;;
   erfa)
     [[ $# == 1 ]] || usage

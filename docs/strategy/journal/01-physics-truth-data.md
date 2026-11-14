@@ -106,7 +106,7 @@ Result: Δϖ = 6πGM/(c²a(1−e²)) = 5.01866×10⁻⁷ rad/orbit = **42.9805�
 | J2☉ | (2.2057 ± 0.007)×10⁻⁷. SOHO 2.22 ± 0.009, GONG 2.18 ± 0.005. | Helioseismology | ACG08, as quoted in INPOP21a [P] |
 | J2☉ | (2.010 ± 0.010)×10⁻⁷, fitted **without** Lense–Thirring | Ephemeris fit | INPOP19a Table 3 [P] |
 | J2☉ | (2.2180 ± 0.010)×10⁻⁷, fitted **with** LT and S = 1.90×10⁴⁸ g cm² s⁻¹ | Ephemeris fit | INPOP21a Table 1 [P] |
-| J2☉ (DE440 adopted) | 2.19613915165298248×10⁻⁷ | Ephemeris | DE440hdr [P] |
+| J2☉ (DE440 adopted) | J2SUN (value read from header.440 at run time; not reproduced, #22) | Ephemeris | DE440hdr [P] |
 | β − 1, γ − 1 limits | about 7.16×10⁻⁵ and 7.49×10⁻⁵ (conservative; INPOP20a) | Ephemeris | Fien21 abstract [P] |
 | EPM: β, γ, J2 | β = 0.99998 ± 0.00003, γ = 1.00004 ± 0.00006, J2 = (2.0 ± 0.2)×10⁻⁷ (EPM2011). EPM2013 J2 = (2.22 ± 0.23)×10⁻⁷. | Ephemeris | PP14 / Pitjeva 2013. **UNVERIFIED** (secondary sources only) |
 
@@ -118,19 +118,19 @@ Result: Δϖ = 6πGM/(c²a(1−e²)) = 5.01866×10⁻⁷ rad/orbit = **42.9805�
 
 | Constant | Value | Source |
 |---|---|---|
-| GM☉ (dynamical, TDB-compatible) | 132712440041.279419 km³ s⁻² = 2.95912208284119561×10⁻⁴ au³ d⁻² | Park21 [P], DE440hdr GMS [P] |
-| dGM☉/dt | GMSDOT = −9.0×10⁻¹⁴ (header units, presumably au³/d² per year; **UNVERIFIED units**) | DE440hdr [P] |
+| GM☉ (dynamical, TDB-compatible) | 132712440041.279419 km³ s⁻² (the au³ d⁻² header GMS (value read from header.440 at run time; not reproduced, #22)) | Park21 [P], DE440hdr GMS [P] |
+| dGM☉/dt | GMSDOT (value read from header.440 at run time; not reproduced, #22; header units, presumably au³/d² per year; **UNVERIFIED units**) | DE440hdr [P] |
 | GM☉ − 132712440000 km³ s⁻² in other ephemerides | INPOP21a 41.8453 ± 0.11. INPOP19a 40.042 ± 0.01 (S109) **but** 42.0322 ± 0.13 (as listed in S110: an inconsistency between the two IMCCE notes). DE440 41.27942. | INPOP19a/21a [P] |
 | au | 149597870.700 km (exact; IAU 2012 Res. B2, resolution text **UNVERIFIED**) | DE440hdr AU [P]. Horizons output [P] |
 | c | 299792.458 km/s (exact, SI) | DE440hdr CLIGHT [P] |
 | R☉ (used for J2) | 696000 km (ASUN). This is not the IAU nominal radius of 695700 km. | DE440hdr [P] |
 | C☉/(M☉R☉²) | 0.06884 | DE440hdr MOISUN, Park21 [P] |
-| Ω☉ | 0.247564432907 rad/day (14.1844°/day) | DE440hdr OMGSUN, Park21 [P] |
+| Ω☉ | 14.1844°/day (the rad/day header OMGSUN (value read from header.440 at run time; not reproduced, #22)) | DE440hdr OMGSUN, Park21 [P] |
 | S☉ implied by the line above | 0.06884 · M☉R☉²Ω☉ = 1.900×10⁴¹ kg m² s⁻¹ | [C]. Matches Park17's 190×10³⁹. |
 | GM (km³ s⁻²): Mercury, Venus, Earth, Moon | 22031.868551, 324858.592, 398600.435507, 4902.800118 | Park21 [P] |
 | GM (km³ s⁻²): Mars, Jupiter, Saturn, Uranus, Neptune systems | 42828.375816, 126712764.1, 37940584.8418, 5794556.4, 6836527.10058 | Park21 [P] |
 | GM (km³ s⁻²): Pluto system | 975.5 | Park21 [P] |
-| EMRAT | 81.3005682214972154 | DE440hdr [P] |
+| EMRAT | value read from header.440 at run time; not reproduced, #22; Park21 Table 2 GMEarth/GMMoon agrees to 1e-10 | DE440hdr [P] |
 | β, γ in DE440 | 1, 1 (fixed) | DE440hdr, Park21 [P] |
 | DE440 / DE441 span | 1550–2650 / −13200 to +17191 | Park21 [P] |
 | DE440 small bodies | 343 asteroids, 30 KBOs, and a 36-point ring at 44 au | Park21 [P] |

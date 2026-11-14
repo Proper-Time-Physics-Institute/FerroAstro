@@ -67,7 +67,7 @@ fn single_body_toggles_through_the_harness_match_their_analytic_rates() {
     // RATE_CONVENTION: the per-orbit advance is that of the integrated test particle (mu =
     // GM_sun: elements, Schwarzschild GM, J2 mean motion, period of the advance), and every
     // arcsec/cy conversion uses n = sqrt((GM_sun + GM_Mercury)/a^3).
-    let de = De440::load().unwrap();
+    let de = De440::from_header(&h).unwrap();
     let sp = plan.configs[0].legs[0].clone();
     let ic = ferroastro_propagate::initial_conditions(&sp, &data).unwrap();
     let particle = ferroastro_scenario::BodyName::Mercury.naif();

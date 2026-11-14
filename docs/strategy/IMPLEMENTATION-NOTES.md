@@ -143,7 +143,15 @@ Crate `crates/ferroastro-constants` (new; ARCHITECTURE.md name). Error codes `FA
   independent reader of the same groups (it agrees: 645 names, CLIGHT and AU exact).
 
 ### Versioned constants table (PHY-002)
-- `crates/ferroastro-constants/data/de440-constants.toml` is **generated** by
+- **Superseded by #22 (maintainer decision 2026-11-14):** the value table and its generator were removed. The
+  repository now commits only `crates/ferroastro-constants/data/de440-metadata.toml` (names, units,
+  `unit_basis`, `open_item`, citations, and the header's URL, size and SHA-256; no value). `De440` reads the
+  values at run time from the SHA-256-verified header.440 (`from_header_bytes`, `from_header`, `load_cached`
+  behind the default `fs` feature, `embedded` behind the opt-in `embed-header` feature; FA-E0303 header not
+  found, FA-E0304 SHA-256 mismatch). The byte-for-byte `data` test became the metadata-consistency test, and
+  the exactness of the parse is the live cross-check `SYSTEM-HEADER-LIVE-CROSSCHECK-MAX-ULP` against
+  `tools/oracles/header440.py` (data tier) and Orekit (oracle tier). The bullets below describe WP2 as built.
+- `crates/ferroastro-constants/data/de440-constants.toml` was **generated** by
   `cargo run -p ferroastro-constants --example gen_de440_table`, which fetches the pinned product, parses it
   and calls `table::render`. It carries `table_version = 1`, the header's URL, SHA-256, size, retrieval date and
   Last-Modified, the GROUP 1010 title and the counts (645 constants, 409 `MA*`). It is embedded with
@@ -155,8 +163,8 @@ Crate `crates/ferroastro-constants` (new; ARCHITECTURE.md name). Error codes `FA
 - The header states no units. Units and their basis are metadata in `table::DE440_SELECTION` (strings only):
   GMs au³/d² (because converting with AU and 86400 s/d reproduces Park21 Table 2 in km³/s², which the tests
   check), CLIGHT km/s and AU km (equal the SI / IAU 2012 defined values), ASUN km and MOISUN from Park21 §3.4,
-  OMGSUN rad/d (Park21 §3.4 quotes 14.1844 deg/day; the header value converts to 14.1843972 deg/day; a test
-  checks it), JDEPOC as a Julian date on TDB.
+  OMGSUN rad/d (Park21 §3.4 quotes 14.1844 deg/day; the header value reproduces it to the printed digits; a
+  test checks it), JDEPOC as a Julian date on TDB.
 - Citation keys are `DE440hdr` (header URL + SHA-256) and `Park21` (AJ 161, 105). Every entry has ≥ 1.
 - Staleness: an offline unit test asserts that each entry's unit, quantity, unit basis and citations equal the
   generator selection, so a hand edit of metadata fails PR CI. Exactness of the **tokens** is enforced by the
@@ -173,15 +181,15 @@ Crate `crates/ferroastro-constants` (new; ARCHITECTURE.md name). Error codes `FA
   (GMSun and the planetary/system GMs, Earth and Moon), §3.4 after Eq. 39 (696,000 km, C/MR² = 0.06884,
   14.1844 deg/day). Header-only values (GMS in au³/d², EMRAT, J2SUN, JDEPOC, BETA, GAMMA, counts) are pinned
   from header.440 / the requirement text. These are regression pins, not independent checks; their vectors say so.
-- `DE440-GMS-KM3S2` tolerance `rel = 1e-15`: the 18-digit au³/d² header value converted exactly gives
-  132712440041.2794478 km³/s², 2.2e-16 relative from Park21's 132712440041.279419; f64 conversion adds a few
-  roundings. Measured |diff| = 0 in f64.
+- `DE440-GMS-KM3S2` tolerance `rel = 1e-15`: the 18-digit au³/d² header value converted exactly lands 2.2e-16
+  relative from Park21's 132712440041.279419; f64 conversion adds a few roundings. Measured |diff| = 0 in f64.
 - Planetary GMs tolerance `abs = 5e-7 km³/s²` = half a unit in Park21's 6th printed decimal. Measured diffs:
   Moon 4.58e-7, Mercury 4.00e-7, Neptune 3.99e-7, Mars 2.44e-7, Earth 2.3e-8, Jupiter 1.5e-8, Uranus 1.9e-9,
   Venus/Saturn/Pluto 0. These are the rounding of Park21's printed values, not FerroAstro error. The Moon sits at
   92 % of the tolerance; that is the arithmetic of rounding, not a fit.
-- `DE440-OMGSUN-RADD` `abs = 5e-13 rad/d` (PHY-002 quotes 12 decimals; measured 2.9e-15).
-  `PARK21-OMGSUN-DEGD` `abs = 5e-5 deg/d` (Park21 prints 4 decimals; measured 2.8e-6).
+- `DE440-OMGSUN-RADD` `abs = 5e-13 rad/d` (PHY-002 quotes 12 decimals; measured 2.9e-15). Removed by #22
+  together with `DE440-GMS-AU3D2` and `DE440-J2SUN` (header-only values; now the live cross-check), and
+  `DE440-EMRAT` was re-sourced to Park21 Table 2 (GMEarth/GMMoon, rel 1.04e-10). `PARK21-OMGSUN-DEGD` `abs = 5e-5 deg/d` (Park21 prints 4 decimals; measured 2.8e-6).
 - ADR-0004 has no kind for "a fact read from a data product" (the 645 and 409 counts); they use `measured`
   with a note. BETA/GAMMA use `defined` (DE440 adopts GR).
 - Rule 8: GMSDOT (OI-04) and CENTER (OI-23) appear in the table with `open_item` and `unit = "unverified"`
@@ -214,8 +222,8 @@ miss): sha256 `0f4636b663e6f00af9efa2b605ef23635489f56b23dd1a5e3821d3acc6ac3359`
 `Tue, 22 Dec 2020 00:51:11 GMT`, URL https://ssd.jpl.nasa.gov/ftp/eph/planets/ascii/de440/header.440.
 - `data_de440_table_matches_header`: 23/23 entries equal (token and f64), re-render byte-identical. PASS.
 - `data_de440_header_ref002_acceptance`: JDEPOC 2440400.5, CLIGHT 299792.458, BETA 1, GAMMA 1, AU 149597870.7,
-  J2SUN 2.1961391516529825e-7, ASUN 696000, GMS 2.95912208284119561e-4, EMRAT 81.3005682214972154 all |diff| = 0;
-  645 constants, 409 MA entries. PASS.
+  ASUN 696000, and the header-only J2SUN, GMS (au³/d²) and EMRAT pins (values no longer reproduced here, #22)
+  all |diff| = 0; 645 constants, 409 MA entries. PASS.
 - `data_de440_header_defined_constants` (WP1): PASS.
 
 ## WP3 — IAS15 integrator, Newtonian two-body, analytic GR (PHY-001, PHY-004, NUM-001 subset, NUM-023)
@@ -2177,7 +2185,7 @@ Every number above equals the builders' WP7–WP10 reports, and the WP5/WP6 numb
    - 6πGM☉/(c²a(1−e²)), with n from GM☉ + GM☿, gives **42.980101000 ″/cy**. FerroAstro's D5 "analytic (same osculating orbit)" prints 42.980097432.
    - The −3.57e-6 difference is exactly the μ-in-n convention: the single-body `analytic_per_orbit` uses GM☉ in the period, while the Horizons GR helper uses GM☉ + GM☿. See finding F5.
    - The numerical D5 rate, 42.980085160, is 1.6e-5 below the analytic value. That is the anomalistic-vs-Keplerian period effect already reported, inside PHY-005's ±1e-3.
-4. **PHY-014 shift.** 0.0286·(J2SUN/2.25e-7 − 1), with J2SUN = 2.196139151652982e-7 from the fresh header, is −0.000685. That gives **575.309315**, confirming the maintainer's oracle of 575.3093.
+4. **PHY-014 shift.** 0.0286·(J2SUN/2.25e-7 − 1), with J2SUN from the fresh header (value not reproduced here, #22), is −0.000685. That gives **575.309315**, confirming the maintainer's oracle of 575.3093.
 
 ### 3. Drift audit
 - **`git log -p -- tests/vectors`, `e23c9ef..ba357d8`:** 13 commits. Only two of them remove any line:
@@ -4550,7 +4558,7 @@ R1, R2, R3, R4, R6 and R8 were applied in WP19 (commits `e6ca3c9`…`746fc95`, `
 | L2 | sympy (`tools/lt_forms.py`): DE440 Eq. 37–38 ≡ INPOP21a Eq. 1 ≡ R3b, general γ; a negative control (sign of −J flipped) is detected | PR (pytest) | ≡ 0 | exact algebra |
 | L3 | Sun + 8 planets + geocentric Moon, Newtonian + J2 + LT with reactions, header.440, 100 yr: max \|P(t) − P(0)\|/(Σ GM\|v\|)/(ε√N) | PR | ≤ 64 (`NBODY-MOMENTUM-ROUNDOFF-ULPS`, existing) | NUM-019 acceptance. Stated limit: this run cannot see a missing LT reaction (its momentum effect over 100 yr is ~1e-12 relative and mostly periodic); L1a is the discriminating check. |
 | I2 | **isolation, N-body, equatorial**: Sun + Mercury N-body from header.440, 1001 passages, pole = Mercury's initial heliocentric orbit normal; J2 = 2.25e-7 (`PARK17-J2SUN`) and LT (DE440 spin) each toggled against the Newtonian run through the harness (one IC hash, asserted), Park2017 estimator on the passages | PR | \|Δrate − analytic\| ≤ 1e-4 ″/cy for J2 and LT (`NUM019-ISOLATION-NBODY-DIFF`, new, bound copied from NUM-013(a)); analytic = 3πJ₂R²/p² per orbit and −4GS′/(c²a³(1−e²)^{3/2}) for the initial osculating orbit with μ′ = GM☉ + GM_Me, GS′ = GS(1 + GM_Me/GM☉) (the relative motion with reactions); the same bound against the requirement's printed 0.0286 (`PHY010-J2-PARK-ANALYTIC-RATE`) and −0.00202 (`PHY011-LT-ANALYTIC-RATE`) | NUM-013(a). The base run's rate is the estimator floor and cancels in the difference. |
-| I5 | as I2 with the DE440 J2 = 2.19613915165298248e-7 | PR | \|Δrate − 0.02792\| ≤ 5e-4 (`PHY010-J2-NUM-MINUS-ANALYTIC` around `PHY010-J2-DE440-ANALYTIC-RATE`) and ≤ 1e-4 against the osculating analytic (`NUM019-ISOLATION-NBODY-DIFF`) | PHY-010 |
+| I5 | as I2 with the DE440 J2SUN (read from header.440) | PR | \|Δrate − 0.02792\| ≤ 5e-4 (`PHY010-J2-NUM-MINUS-ANALYTIC` around `PHY010-J2-DE440-ANALYTIC-RATE`) and ≤ 1e-4 against the osculating analytic (`NUM019-ISOLATION-NBODY-DIFF`) | PHY-010 |
 | I4 | as I2 with the real WGCCRE 2015 solar pole (J2 2.25e-7 and LT) | PR | reported, not asserted: Δrate, the planar analytic, the inclined analytic (`j2_inclined_rate`; its citation is OI-37, UNVERIFIED, so it is not an oracle), the inclination, the pole (RA, Dec, ICRF unit vector) | PHY-010 metadata, red-team NUM-015 note (0.02846 vs 0.02860) |
 | N3 | **nightly**: the PHY-012 full system (Sun, 8 planets with Earth and Moon resolved, Pluto) under EIH (β = γ = 1), header.440, legs back and forward over 1000–3000 CE, Park2017 estimator (daily samples, mean-orbit plane, quadratic + 14 Table-2 terms); toggles J2 (2.25e-7, WGCCRE pole) and LT (DE440 spin, which is Park17's S = 190e39 kg m²/s to 0.01%); P-add, P-remove and the J2×LT cross term; one IC hash | nightly | J2 P-add within 0.0286 ± 0.0011 (`PARK17-J2-RATE`, gating); LT P-add within −0.0020 ± 0.0002 (`NUM019-NBODY-LT-CONTRIBUTION`, new, `blocked_by = "OI-35"`: reported, gating only once OI-35 is closed); P-remove and cross term reported | NUM-019, PHY-010, PHY-011. Expected: J2 ≈ 0.0285 (inclined geometry, Park's mean-orbit frame), LT ≈ −0.0020, cross term ≲ 1e-6. |
 

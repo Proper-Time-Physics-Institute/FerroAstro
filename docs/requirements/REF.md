@@ -69,15 +69,19 @@ statement: >-
 acceptance: >-
   A test parses header.440 (pinned SHA-256) and asserts JDEPOC = 2440400.5,
   CLIGHT = 299792.458, BETA = 1.0, GAMMA = 1.0, AU = 149597870.7,
-  J2SUN = 2.1961391516529825e-7, ASUN = 696000, and 409 MA entries. No
-  constants or state literals are hand-entered in source.
+  ASUN = 696000, and 409 MA entries; J2SUN and every other constant FerroAstro
+  uses equal independent readers of the same JPL data bit for bit (live
+  cross-check SYSTEM-HEADER-LIVE-CROSSCHECK-MAX-ULP; #22). No constants or
+  state literals are hand-entered in source, and no header.440 value is
+  committed.
 source: >-
   docs/strategy/journal/03-reference-implementations-ci.md §2.4 and REF-002.
 parent: null
 related: [PHY-002, TST-002, TST-003]
 notes: >-
-  AUTHORITATIVE over PHY-002 for the loading mechanism; PHY-002's versioned
-  constants table SHALL be generated from header.440. 645 constants in the
+  AUTHORITATIVE over PHY-002 for the loading mechanism; PHY-002's constants
+  SHALL be read from the SHA-256-pinned header.440 at run time, with only
+  their metadata committed (maintainer decision 2026-11-14, #22). 645 constants in the
   header. STATE FRAME AND UNITS (OI-23 closed 2026-10-20 by maintainer
   decision): with CENTER = 0 the header states are SSB-centred, ICRF-aligned
   (the DE frame, NAIF frame 1), positions in au and velocities in au/day

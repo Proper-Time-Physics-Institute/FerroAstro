@@ -130,11 +130,28 @@ jobs:
       # ferroastro-real also as no_std with the pure-Rust libm (no default features).
       - name: Build for wasm32-unknown-unknown
         run: cargo build -p ferroastro-real -p ferroastro-core -p ferroastro-erfa -p ferroastro-time -p ferroastro-integrators -p ferroastro-forces -p ferroastro-eih -p ferroastro-analytic -p ferroastro-frames -p ferroastro-ephem -p ferroastro-system -p ferroastro-scenario -p ferroastro-propagate -p ferroastro-diffrun --target wasm32-unknown-unknown
+      # #22: the default wasm32 build above is offline. ferroastro-constants is linked without its
+      # `fs` feature (workspace default-features = false), so wasm32 code gets the DE440 constants
+      # only from header.440 bytes it is handed (De440::from_header_bytes, SHA-256 checked).
+      - name: Build ferroastro-constants offline (bytes API only) for wasm32-unknown-unknown
+        run: cargo build -p ferroastro-constants --no-default-features --target wasm32-unknown-unknown
       - name: Build ferroastro-real and ferroastro-erfa no_std (libm) for wasm32-unknown-unknown
         run: cargo build -p ferroastro-real -p ferroastro-erfa --no-default-features --features libm --target wasm32-unknown-unknown
       # DEP-010 / WP8: the optional hifitime (UTC) feature must build for wasm32 too.
       - name: Build ferroastro-time with hifitime for wasm32-unknown-unknown
         run: cargo build -p ferroastro-time --features hifitime --target wasm32-unknown-unknown
+      # #22, separate from the offline build: fetch the hash-pinned header.440 (never committed;
+      # fetch_jpl.py verifies the MANIFEST SHA-256) and build with the opt-in `embed-header`
+      # feature, which includes it at build time (De440::embedded re-checks the SHA-256).
+      - uses: astral-sh/setup-uv@1c37ad07a6a961277cf70c0d37d6f313000f5884 # v10.3.0
+      - name: Fetch the hash-pinned header.440 (embed-header build only)
+        run: cd tools && uv run python fetch_jpl.py de440-header
+        env:
+          FA_DATA_DIR: ${{ github.workspace }}/.fa-data-embed
+      - name: Build ferroastro-constants with embed-header for wasm32-unknown-unknown
+        run: cargo build -p ferroastro-constants --no-default-features --features embed-header --target wasm32-unknown-unknown
+        env:
+          FA_DATA_DIR: ${{ github.workspace }}/.fa-data-embed
 
   python:
     name: python (ruff, mypy, pytest, trace)
@@ -212,6 +229,19 @@ jobs:
           tool: cargo-nextest@0.9.148
       - name: Run data_* tests (prints URL, retrieval date, SHA-256 per product)
         run: cargo nextest run --workspace --profile data --run-ignored only
+      # #22 live cross-check, oracle (a): FerroAstro's run-time parse of the pinned header.440 vs
+      # the independent Python reader tools/oracles/header440.py, bit for bit
+      # (SYSTEM-HEADER-LIVE-CROSSCHECK-MAX-ULP). No value is committed; only names and ulp
+      # distances are printed. Orekit, oracle (b), runs in oracles.yml.
+      - uses: astral-sh/setup-uv@1c37ad07a6a961277cf70c0d37d6f313000f5884 # v10.3.0
+      - name: Live cross-check of the header.440 constants (FerroAstro vs header440.py)
+        run: |
+          (cd tools && uv run python fetch_jpl.py de440-header)
+          cargo run -q -p ferroastro-constants --example header_constants_json > "$RUNNER_TEMP/fa.json"
+          cd tools
+          uv run python -m oracles.header440 --header "$FA_DATA_DIR/header.440" \
+            --names-from "$RUNNER_TEMP/fa.json" > "$RUNNER_TEMP/py.json"
+          uv run python -m oracles.header_crosscheck "$RUNNER_TEMP/fa.json" "$RUNNER_TEMP/py.json"
 
   long:
     name: long runs (nightly_* tier, release build; manual only, normally run locally)

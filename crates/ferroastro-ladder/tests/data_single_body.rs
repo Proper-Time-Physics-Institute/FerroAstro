@@ -37,7 +37,9 @@ use ferroastro_testdata::fetch_product;
 #[test]
 #[ignore = "data: downloads a JPL Horizons DE441 state (network); run with --profile data"]
 fn data_gr_rung_from_horizons_de441_state() {
-    let c = common::ctx();
+    let Some(c) = common::ctx() else {
+        return;
+    };
     let h = horizons::mercury_state("ECLIPTIC", "horizons-199-sun-j2000-vectors-wp4.json");
     println!("{}", h.provenance());
     let setup = SingleBody::<EclipticJ2000>::from_state(
@@ -128,7 +130,9 @@ fn iau_sun_setup(c: &common::Ctx) -> (SingleBody<SunEquatorIau>, horizons::Horiz
 #[test]
 #[ignore = "data: downloads a JPL Horizons DE441 state in the IAU_SUN frame (network); run with --profile data"]
 fn data_j2_and_lt_rungs_in_real_solar_equator_geometry() {
-    let c = common::ctx();
+    let Some(c) = common::ctx() else {
+        return;
+    };
     let (setup, _h) = iau_sun_setup(&c);
     let pole = PoleSpec::Fixed([0.0, 0.0, 1.0]);
     let mut j2 = Rung::custom(
@@ -165,7 +169,9 @@ fn data_j2_and_lt_rungs_in_real_solar_equator_geometry() {
 #[test]
 #[ignore = "data: downloads JPL DE440 header.440 (network); run with --profile data"]
 fn data_solar_spin_from_fresh_header_440() {
-    let c = common::ctx();
+    let Some(c) = common::ctx() else {
+        return;
+    };
     let fetched = fetch_product("de440-header").unwrap();
     println!("de440-header {}", fetched.provenance());
     let h = Header::parse(&std::fs::read_to_string(&fetched.path).unwrap()).unwrap();
@@ -175,7 +181,7 @@ fn data_solar_spin_from_fresh_header_440() {
     let gs = gms * v("MOISUN") * v("ASUN") * v("ASUN") * v("OMGSUN") / day;
     let committed = de440_solar_spin(&c.de).unwrap().km5_per_s3();
     println!(
-        "G S from header.440: {gs:.16e} km^5/s^3 (tokens GMS {}, MOISUN {}, ASUN {}, OMGSUN {}); committed table: {committed:.16e}; rel. diff {:.2e}",
+        "G S from header.440: {gs:.16e} km^5/s^3 (tokens GMS {}, MOISUN {}, ASUN {}, OMGSUN {}); De440: {committed:.16e}; rel. diff {:.2e}",
         h.token("GMS").unwrap(),
         h.token("MOISUN").unwrap(),
         h.token("ASUN").unwrap(),
@@ -192,7 +198,9 @@ fn data_solar_spin_from_fresh_header_440() {
 #[test]
 #[ignore = "data: downloads a JPL Horizons DE441 state in the IAU_SUN frame (network); run with --profile data"]
 fn data_isolation_and_estimator_spread_from_horizons_de441_state() {
-    let c = common::ctx();
+    let Some(c) = common::ctx() else {
+        return;
+    };
     let (setup, _h) = iau_sun_setup(&c);
     let pole = PoleSpec::Fixed([0.0, 0.0, 1.0]);
     let zero = PnCoefficients {
@@ -281,7 +289,9 @@ fn data_isolation_and_estimator_spread_from_horizons_de441_state() {
 fn data_gr_schw_f64_and_double_double_from_header440_initial_conditions() {
     use ferroastro_core::frames::Icrf;
     use ferroastro_real::DoubleDouble;
-    let c = common::ctx();
+    let Some(c) = common::ctx() else {
+        return;
+    };
     let fetched = fetch_product("de440-header").unwrap();
     println!("de440-header {}", fetched.provenance());
     let h = Header::parse(&std::fs::read_to_string(&fetched.path).unwrap()).unwrap();

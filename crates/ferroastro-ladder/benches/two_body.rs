@@ -28,7 +28,7 @@ use std::hint::black_box;
 type Model = NewtonianPointMasses<EclipticJ2000, Barycentric>;
 
 fn setup() -> (Model, Vec<f64>, Vec<f64>) {
-    let de = De440::load().unwrap();
+    let de = De440::load_cached().unwrap();
     let vs = VectorSet::load_workspace().unwrap();
     let val = |id: &str| vs.get(id).unwrap().value().unwrap();
     let deg = |id: &str| Angle::from_radians(val(id).to_radians()).unwrap();

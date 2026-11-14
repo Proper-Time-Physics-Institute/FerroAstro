@@ -11,7 +11,9 @@ use ferroastro_forces::Gauge;
 /// Verifies: PHY-005, NUM-015, NUM-017
 #[test]
 fn gr_schw_numerical_reproduces_42_980() {
-    let c = common::ctx();
+    let Some(c) = common::ctx() else {
+        return;
+    };
     let r = c.setup.run(&c.rung("GR-SCHW")).unwrap();
     common::show(&r);
     assert_eq!(
@@ -49,7 +51,9 @@ fn gr_schw_numerical_reproduces_42_980() {
 #[test]
 fn gr_schw_in_double_double_matches_f64() {
     use ferroastro_real::DoubleDouble;
-    let c = common::ctx();
+    let Some(c) = common::ctx() else {
+        return;
+    };
     let rung = c.rung("GR-SCHW");
     let f = c.setup.run(&rung).unwrap();
     let d = c.setup.run_in::<DoubleDouble>(&rung).unwrap();

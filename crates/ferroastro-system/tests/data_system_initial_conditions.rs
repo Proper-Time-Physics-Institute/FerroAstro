@@ -157,7 +157,7 @@ fn data_sb441_asteroids_at_jdepoc_barycentre_report() {
     let (h, hprov) = header();
     let (bsp, _) = fetch("sb441-n373s-bsp");
     let spk = Spk::parse(&bsp).unwrap();
-    let de = De440::load().unwrap();
+    let de = De440::load_cached().unwrap();
     let c = de.speed_of_light();
     let cat = Catalogue::from_header(&h, &hprov).unwrap();
     let ic = InitialConditions::<f64>::from_header(&h, &hprov).unwrap();

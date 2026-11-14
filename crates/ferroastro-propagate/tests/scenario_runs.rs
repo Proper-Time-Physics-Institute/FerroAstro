@@ -204,7 +204,11 @@ fn nbody_perihelion_events_match_analytic_kepler_times() {
     let data = DataSources::none().with_header(&h, &prov);
     let s = spec("sun-mercury-newton-header440.toml");
     let out = run(&s, &data).unwrap();
-    let de = De440::load().unwrap();
+    let Some(de) =
+        De440::load_cached_or_skip("nbody_perihelion_events_match_analytic_kepler_times").unwrap()
+    else {
+        return;
+    };
     let mu = de.gm_sun().km3_per_s2() + de.gm(ferroastro_constants::Body::Mercury).km3_per_s2();
     // Initial relative state from the header ICs (the run's own k = 0 values).
     let ic = InitialConditions::<f64>::from_header(&h, &prov).unwrap();
@@ -298,7 +302,11 @@ fn scenario_run_equals_the_direct_api_bitwise() {
     let s = spec("sun-planets-moon-newton-j2-10yr.toml");
     let out = run(&s, &data).unwrap();
     // Direct API, as crates/ferroastro-forces/tests/common/mod.rs (WP12).
-    let de = De440::load().unwrap();
+    let Some(de) =
+        De440::load_cached_or_skip("scenario_run_equals_the_direct_api_bitwise").unwrap()
+    else {
+        return;
+    };
     let cat = Catalogue::de440_major(&de);
     let bodies: Vec<NBody> = s
         .bodies

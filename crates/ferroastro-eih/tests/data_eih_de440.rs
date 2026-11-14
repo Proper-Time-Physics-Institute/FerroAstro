@@ -44,7 +44,7 @@ struct Row {
 
 /// One 10-yr run; per-body rows (order of `ids()`), the geocentric Moon row and the step count.
 fn residuals(h: &Header, prov: &str, spk: &Spk<'_>, gr: Gr) -> (Vec<(NaifId, Row)>, Row, u64) {
-    let de = De440::load().unwrap();
+    let de = De440::load_cached().unwrap();
     let ic = InitialConditions::<f64>::from_header(h, prov).unwrap();
     let body_ids = ids();
     let m = model(&de, &body_ids, true, gr, true);

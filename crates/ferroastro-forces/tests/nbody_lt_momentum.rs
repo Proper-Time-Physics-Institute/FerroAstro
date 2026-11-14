@@ -22,7 +22,7 @@ use ferroastro_integrators::Ias15Config;
 use ferroastro_system::InitialConditions;
 
 fn run(years: f64, reaction: LtReaction) -> (f64, u64) {
-    let de = De440::load().unwrap();
+    let de = De440::load_cached().unwrap();
     let (h, prov) = header();
     let ic = InitialConditions::<f64>::from_header(&h, &prov).unwrap();
     let m = model_lt::<f64>(&de, &ids(false), Moon::Geocentric, true, Some(reaction));

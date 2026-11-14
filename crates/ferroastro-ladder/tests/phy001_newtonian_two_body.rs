@@ -20,7 +20,11 @@ const SPAN_YEARS: f64 = 1000.0; // lint: allow-literal(PHY-001 minimum span, fro
 /// Verifies: PHY-001, NUM-001
 #[test]
 fn n2b_sun_mercury_has_no_perihelion_precession() {
-    let de = De440::load().unwrap();
+    let Some(de) =
+        De440::load_cached_or_skip("n2b_sun_mercury_has_no_perihelion_precession").unwrap()
+    else {
+        return;
+    };
     let vs = VectorSet::load_workspace().unwrap();
     let (gm_sun, gm_me) = two_body::gms(&de);
     // Caveat C7, documented: the relative orbit has mu = GM_sun + GM_Mercury (both bodies move).

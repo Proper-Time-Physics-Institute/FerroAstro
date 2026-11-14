@@ -61,7 +61,12 @@ fn vel<C: ferroastro_core::frames::Center>(s: &State<Icrf, C>) -> [f64; 3] {
 /// Verifies: NUM-017
 #[test]
 fn eih_reduces_to_the_schwarzschild_test_particle_numerically() {
-    let de = De440::load().unwrap();
+    let Some(de) =
+        De440::load_cached_or_skip("eih_reduces_to_the_schwarzschild_test_particle_numerically")
+            .unwrap()
+    else {
+        return;
+    };
     let (h, _) = header();
     let v = |n: &str| h.value(n).unwrap();
     let au = v("AU");
@@ -201,7 +206,12 @@ fn snapshot(de: &De440) -> Snapshot {
 /// Verifies: NUM-018
 #[test]
 fn rhs_iteration_changes_the_accelerations_at_order_c_minus_four() {
-    let de = De440::load().unwrap();
+    let Some(de) =
+        De440::load_cached_or_skip("rhs_iteration_changes_the_accelerations_at_order_c_minus_four")
+            .unwrap()
+    else {
+        return;
+    };
     let s = snapshot(&de);
     let c = de.speed_of_light().km_per_s();
     let c2 = c * c;
@@ -271,7 +281,7 @@ fn rhs_iteration_changes_the_accelerations_at_order_c_minus_four() {
 /// A 10-yr EIH run (β = γ = 1, geocentric Moon, no J2) from header.440; the barycentric system
 /// state at the epoch and at every sample.
 fn eih_run(rhs: RhsAcceleration) -> (Vec<f64>, Vec<SystemState<Icrf, Barycentric>>, u64) {
-    let de = De440::load().unwrap();
+    let de = De440::load_cached().unwrap();
     let (h, prov) = header();
     let ic = InitialConditions::<f64>::from_header(&h, &prov).unwrap();
     let m = model(&de, &ids(), true, Gr::Eih(1.0, 1.0, rhs), false);
@@ -340,7 +350,10 @@ fn max_linear_deviation(t: &[f64], p: &[[f64; 3]]) -> f64 {
 /// Verifies: NUM-018, NUM-017
 #[test]
 fn eih_conserves_the_relativistic_barycentre() {
-    let de = De440::load().unwrap();
+    let Some(de) = De440::load_cached_or_skip("eih_conserves_the_relativistic_barycentre").unwrap()
+    else {
+        return;
+    };
     let cat = Catalogue::de440_major(&de);
     let c = de.speed_of_light();
     let (t, states, steps) = eih_run(RhsAcceleration::Newtonian);
@@ -417,7 +430,7 @@ fn binary(beta: f64, gamma: f64) -> (f64, f64, usize) {
     use ferroastro_core::units::{Length, TimeSpan, Velocity};
     use ferroastro_forces::NBodyPropagator;
 
-    let de = De440::load().unwrap();
+    let de = De440::load_cached().unwrap();
     let gm = de.gm_sun().km3_per_s2();
     let m_tot = 2.0 * gm; // lint: allow-literal(two equal masses)
     let c = de.speed_of_light().km_per_s();
@@ -566,6 +579,13 @@ fn binary(beta: f64, gamma: f64) -> (f64, f64, usize) {
 /// Verifies: NUM-017, NUM-020
 #[test]
 fn equal_mass_binary_advance_is_mass_ratio_independent() {
+    // `binary` reads the DE440 constants from the cached header.440 (#22).
+    if De440::load_cached_or_skip("equal_mass_binary_advance_is_mass_ratio_independent")
+        .unwrap()
+        .is_none()
+    {
+        return;
+    }
     let (worst_energy, rel_dev, n) = binary(1.0, 1.0);
     assert!(n >= BINARY_ORBITS as usize);
     vectors()
@@ -594,6 +614,15 @@ const BINARY_PPN: (f64, f64) = (1.1, 0.9); // lint: allow-literal(PPN test point
 /// Verifies: NUM-017, NUM-020, PHY-006
 #[test]
 fn equal_mass_binary_at_general_beta_gamma_conserves_the_ppn_energy() {
+    // `binary` reads the DE440 constants from the cached header.440 (#22).
+    if De440::load_cached_or_skip(
+        "equal_mass_binary_at_general_beta_gamma_conserves_the_ppn_energy",
+    )
+    .unwrap()
+    .is_none()
+    {
+        return;
+    }
     let (beta, gamma) = BINARY_PPN;
     let (worst_energy, rel_dev, n) = binary(beta, gamma);
     println!(

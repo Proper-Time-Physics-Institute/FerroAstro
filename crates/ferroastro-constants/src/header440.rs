@@ -10,7 +10,12 @@
 //!
 //! Every value is kept twice: the verbatim token (so a future double-double consumer can parse all
 //! 18 printed digits, NUM-006) and the nearest `f64`. Units are **not** stated in the header; the
-//! constants table ([`crate::table`]) attaches them with a citation per entry.
+//! constants metadata ([`crate::table`]) attaches them with a citation per entry.
+//!
+//! [`Header::parse`] also records the SHA-256 of the text it was given ([`Header::sha256`]), so
+//! that [`crate::De440::from_header`] can refuse any header other than the pinned JPL file
+//! (FA-E0304). Nothing from the header is committed to this repository (#22): it is fetched by
+//! `tools/fetch_jpl.py` and read at run time.
 //!
 //! ```
 //! use ferroastro_constants::header440::Header;
@@ -26,7 +31,27 @@
 //! ```
 
 use crate::ConstantsError;
+use sha2::{Digest, Sha256};
 use std::collections::BTreeMap;
+use std::fmt::Write as _;
+
+/// The bytes of the fetched `header.440`, included at build time by the opt-in `embed-header`
+/// feature (`build.rs` copies it from `$FA_DATA_DIR`). The file is never committed and the
+/// feature is never enabled for published builds; [`crate::De440::embedded`] verifies its
+/// SHA-256 before use.
+#[cfg(feature = "embed-header")]
+pub const EMBEDDED: &[u8] = include_bytes!(concat!(env!("OUT_DIR"), "/header.440"));
+
+/// Lowercase hex SHA-256 of `bytes`.
+#[must_use]
+pub fn sha256_hex(bytes: &[u8]) -> String {
+    Sha256::digest(bytes)
+        .iter()
+        .fold(String::with_capacity(64), |mut s, b| {
+            let _ = write!(s, "{b:02x}");
+            s
+        })
+}
 
 /// One constant of GROUP 1040/1041.
 #[derive(Debug, Clone, PartialEq)]
@@ -45,6 +70,7 @@ pub struct Header {
     title: Vec<String>,
     constants: Vec<HeaderConstant>,
     index: BTreeMap<String, usize>,
+    sha256: String,
 }
 
 fn parse_err(problem: impl Into<String>) -> ConstantsError {
@@ -80,7 +106,7 @@ fn groups(text: &str) -> Result<BTreeMap<u32, String>, ConstantsError> {
     Ok(out)
 }
 
-/// Parse a Fortran real such as `0.295912208284119561D-03` (also accepts `E`/`e`/`d`).
+/// Parse a Fortran real such as `0.125000000000000000D-02` (also accepts `E`/`e`/`d`).
 ///
 /// # Errors
 /// [`ConstantsError::HeaderParse`] if the token is not a finite real number.
@@ -161,7 +187,14 @@ impl Header {
             title,
             constants,
             index,
+            sha256: sha256_hex(text.as_bytes()),
         })
+    }
+
+    /// Lowercase hex SHA-256 of the text this header was parsed from.
+    #[must_use]
+    pub fn sha256(&self) -> &str {
+        &self.sha256
     }
 
     /// The non-empty title lines of GROUP 1010.
@@ -236,7 +269,7 @@ mod tests {
     // Synthetic headers below are structural fixtures, not physics: names and tokens are strings.
     const OK: &str = "KSIZE= 8    NCOEFF= 4\n \nGROUP   1010\n \nTest Ephemeris\nStart Epoch\n \n\
         GROUP   1040\n \n     3\n  AA      BB      MA0001\n \n\
-        GROUP   1041\n \n     3\n  0.100000000000000000D+01  -0.250000000000000000D+00\n  \
+        GROUP   1041\n \n     3\n  0.300000000000000000D+01  -0.250000000000000000D+00\n  \
         0.500000000000000000d-01\n \nGROUP   1050\n \n     3   171\n";
 
     /// Verifies: REF-002
@@ -252,7 +285,9 @@ mod tests {
             (-0.25_f64).to_bits(),
             "D exponent parsed"
         );
-        assert_eq!(h.value("AA").unwrap().to_bits(), 1.0_f64.to_bits());
+        assert_eq!(h.value("AA").unwrap().to_bits(), 3.0_f64.to_bits());
+        assert_eq!(h.sha256(), sha256_hex(OK.as_bytes()));
+        assert_eq!(h.sha256().len(), 64);
         assert_eq!(
             h.value("MA0001").unwrap().to_bits(),
             "0.05".parse::<f64>().unwrap().to_bits(),
@@ -279,7 +314,7 @@ mod tests {
             ("no 1041", OK.replace("GROUP   1041", "GROUP   1042")),
             (
                 "count mismatch",
-                OK.replace("     3\n  0.1", "     2\n  0.1"),
+                OK.replace("     3\n  0.3", "     2\n  0.3"),
             ),
             (
                 "short value list",

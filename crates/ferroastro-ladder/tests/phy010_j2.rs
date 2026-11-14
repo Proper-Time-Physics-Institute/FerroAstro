@@ -10,7 +10,9 @@ use ferroastro_core::units::Length;
 /// Verifies: PHY-010
 #[test]
 fn j2_analytic_values_with_phy004_inputs() {
-    let c = common::ctx();
+    let Some(c) = common::ctx() else {
+        return;
+    };
     let el = c.scn.kepler_elements(c.de.au()).unwrap();
     let p = Length::from_km(el.a.km() * el.e.mul_add(-el.e, 1.0)).unwrap();
     let mu_total = c.de.gm_sun() + c.de.gm(ferroastro_constants::Body::Mercury);
@@ -27,7 +29,9 @@ fn j2_analytic_values_with_phy004_inputs() {
 /// Verifies: PHY-010, NUM-015
 #[test]
 fn j2_numerical_matches_planar_oracle_in_equatorial_geometry() {
-    let c = common::ctx();
+    let Some(c) = common::ctx() else {
+        return;
+    };
     for id in ["J2", "J2-DE440"] {
         let r = c.setup.run(&c.rung(id)).unwrap();
         common::show(&r);
@@ -54,7 +58,9 @@ fn j2_numerical_matches_planar_oracle_in_equatorial_geometry() {
 /// Verifies: PHY-010, NUM-015
 #[test]
 fn j2_numerical_matches_park17_eq3_for_inclined_orbit() {
-    let c = common::ctx();
+    let Some(c) = common::ctx() else {
+        return;
+    };
     let r = c.setup.run(&c.rung("J2-INCL")).unwrap();
     common::show(&r);
     let tilt = c.value("PARK17-SOLAR-EQUATOR-TILT");

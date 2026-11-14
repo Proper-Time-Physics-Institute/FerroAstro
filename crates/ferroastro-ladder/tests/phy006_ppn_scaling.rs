@@ -27,7 +27,9 @@ fn rate(c: &common::Ctx, beta: f64, gamma: f64) -> f64 {
 /// Verifies: PHY-006, NUM-015
 #[test]
 fn ppn_rate_scales_as_two_plus_two_gamma_minus_beta_over_three() {
-    let c = common::ctx();
+    let Some(c) = common::ctx() else {
+        return;
+    };
     let base = rate(&c, 1.0, 1.0);
     // Test points at the edge of PHY-006's range |beta - 1|, |gamma - 1| <= 1e-3.
     let d = 1.0e-3; // lint: allow-literal(PHY-006 range bound, from the requirement text)

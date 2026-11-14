@@ -88,7 +88,7 @@ fn time(label: &'static str, model: &NBodyModel<Icrf>, x0: &[f64], v0: &[f64]) -
 fn nightly_num009_tiered_minor_bodies_cost() {
     let v = common::vectors();
     let (h, prov) = common::header();
-    let de = ferroastro_constants::De440::load().unwrap();
+    let de = ferroastro_constants::De440::load_cached().unwrap();
     let root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../..");
     let file = SmallBodyStates::parse(
         &std::fs::read_to_string(root.join("tests/goldens/sb441-n373s-jdepoc-states.csv")).unwrap(),

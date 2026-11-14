@@ -1,6 +1,6 @@
 // SPDX-FileCopyrightText: 2026 Proper-Time Physics Institute
 // SPDX-License-Identifier: Apache-2.0
-//! Shared set-up of the per-rung examples (API-003): DE440 from the committed table, the cited
+//! Shared set-up of the per-rung examples (API-003): DE440 from the cached header.440 (#22), the cited
 //! Mercury scenario, the test vectors, and a check that prints the vector it compares with.
 
 #![allow(
@@ -30,7 +30,7 @@ pub(crate) struct Ctx {
 
 /// Load DE440, the scenario and the vectors; a Mercury test particle run for [`ORBITS`] orbits.
 pub(crate) fn ctx() -> Res<Ctx> {
-    let de = De440::load()?;
+    let de = De440::load_cached()?;
     let scn = Scenario::mercury_single_body()?;
     let vs = VectorSet::load_canonical()?;
     let mut setup = SingleBody::mercury(&scn, &de)?;
