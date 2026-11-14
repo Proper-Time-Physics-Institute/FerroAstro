@@ -34,7 +34,7 @@ fn scenario_files() -> Vec<PathBuf> {
 #[test]
 fn every_committed_scenario_validates() {
     let files = scenario_files();
-    assert!(!files.is_empty());
+    assert_ne!(files.len(), 0);
     for f in &files {
         let text = std::fs::read_to_string(f).unwrap();
         match ScenarioSpec::parse(&text) {

@@ -14,7 +14,7 @@ mod common;
 use ferroastro_core::ErrorCode;
 use ferroastro_diffrun::{
     BodyToggle, Combination, PassageSource, Plan, Protocol, RunOptions, check_identical_ics,
-    evaluate, run_leg, run_plan,
+    evaluate, run_leg, run_plan, store_file,
 };
 use ferroastro_precession::park2017::FitModel;
 use ferroastro_propagate::{DataSources, initial_conditions};
@@ -359,7 +359,7 @@ fn interrupted_leg_resumes_from_its_store_bitwise() {
             .unwrap()
             .is_none()
     );
-    let file = dir.join(format!("{}.leg", spec.digest()));
+    let file = store_file(&dir, &spec).unwrap();
     assert!(file.exists());
     let resumed = run_leg(&spec, &data, &est, &opts, None).unwrap().unwrap();
     assert!(resumed.resumed_from_store);
@@ -385,7 +385,7 @@ fn interrupted_leg_resumes_from_its_store_bitwise() {
     );
     let mut other = spec.clone();
     other.span.years += 1.0;
-    std::fs::rename(&file, dir.join(format!("{}.leg", other.digest()))).unwrap();
+    std::fs::rename(&file, store_file(&dir, &other).unwrap()).unwrap();
     let e = run_leg(&other, &data, &est, &opts, None).unwrap_err();
     println!("refused: {e}");
     assert_eq!(e.code(), ErrorCode::DiffrunStore);
@@ -428,7 +428,10 @@ fn fit_window_selects_exactly_the_passages_inside_it() {
     // lint: allow-literal(passage indices that place the window edges between passages)
     let (k0, k1) = (5_usize, 30_usize);
     assert!(pjd.len() > k1 + 1, "{} passages", pjd.len());
-    let window = (0.5 * (pjd[k0] + pjd[k0 + 1]), 0.5 * (pjd[k1] + pjd[k1 + 1]));
+    let window = (
+        f64::midpoint(pjd[k0], pjd[k0 + 1]),
+        f64::midpoint(pjd[k1], pjd[k1 + 1]),
+    );
     let inside: Vec<f64> = pjd
         .iter()
         .copied()

@@ -100,7 +100,7 @@ fn system(s: &ScenarioSpec, data: &DataSources<'_>, gr_potential: bool) -> Syste
         .collect();
     let mut terms: Vec<Box<dyn ForceTerm<Icrf>>> = vec![Box::new(NewtonianMutual)];
     if gr_potential {
-        let de = ferroastro_constants::De440::load().unwrap();
+        let de = ferroastro_constants::De440::load_cached().unwrap();
         terms.push(Box::new(
             GrPotential::new(Velocity::from_km_per_s(de.speed_of_light().km_per_s()).unwrap())
                 .unwrap(),

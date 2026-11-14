@@ -37,7 +37,10 @@ fn check(vs: &VectorSet, id: &str, measured: f64) {
 /// Verifies: PHY-004
 #[test]
 fn gr_schw_analytic_rate_from_de440_and_sw92() {
-    let de = De440::load().unwrap();
+    let Some(de) = De440::load_cached_or_skip("gr_schw_analytic_rate_from_de440_and_sw92").unwrap()
+    else {
+        return;
+    };
     let vs = VectorSet::load_workspace().unwrap();
     let (a, e) = sw92_a_e(&vs, &de);
     let (gm_sun, gm_me) = gms(&de);
@@ -80,7 +83,9 @@ fn gr_schw_analytic_rate_from_de440_and_sw92() {
 /// Verifies: PHY-004, API-002
 #[test]
 fn analytic_rejects_unbound_orbits() {
-    let de = De440::load().unwrap();
+    let Some(de) = De440::load_cached_or_skip("analytic_rejects_unbound_orbits").unwrap() else {
+        return;
+    };
     let (gm_sun, _) = gms(&de);
     let err = schwarzschild_advance(gm_sun, de.speed_of_light(), de.au(), 1.0, gm_sun).unwrap_err();
     assert_eq!(err.code(), ferroastro_core::ErrorCode::OrbitDomain);
@@ -94,7 +99,10 @@ fn analytic_rejects_unbound_orbits() {
 #[test]
 fn gr_schw_analytic_rate_in_double_double() {
     use ferroastro_real::{DoubleDouble, Real};
-    let de = De440::load().unwrap();
+    let Some(de) = De440::load_cached_or_skip("gr_schw_analytic_rate_in_double_double").unwrap()
+    else {
+        return;
+    };
     let vs = VectorSet::load_canonical().unwrap();
     let (a, e) = sw92_a_e(&vs, &de);
     let (gm_sun, gm_me) = gms(&de);

@@ -79,7 +79,7 @@ fn radau_roots() -> [f64; TERMS] {
         if f_lo * f_hi < 0.0 {
             let (mut a, mut b, mut fa) = (lo, hi, f_lo);
             for _ in 0..200 {
-                let m = 0.5 * (a + b);
+                let m = f64::midpoint(a, b);
                 let fm = radau_poly(m).0;
                 if fm == 0.0 || (b - a) <= f64::EPSILON * m.abs().max(f64::MIN_POSITIVE) {
                     a = m;
@@ -93,7 +93,7 @@ fn radau_roots() -> [f64; TERMS] {
                     fa = fm;
                 }
             }
-            let mut x = 0.5 * (a + b);
+            let mut x = f64::midpoint(a, b);
             for _ in 0..3 {
                 let (f, df) = radau_poly(x);
                 if df != 0.0 {

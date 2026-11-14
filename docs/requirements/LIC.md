@@ -37,8 +37,8 @@ notes: >-
   scripts under ci/oracles/ are FerroAstro's own Apache-2.0 files; GPL source is
   never vendored there either. Mercury6's original license is UNVERIFIED and is
   treated as GPL. Python under tools/ SHALL NOT take GPL runtime dependencies
-  (e.g. rebound); a pip-licenses guard in the tools/ CI job enforces this
-  (STD-009).
+  (e.g. rebound); `tools/license_guard.py` (stdlib reading of installed
+  distribution metadata, run in the python CI job) enforces this (STD-009).
 ```
 
 ### LIC-002 — GPL oracle images are not release artifacts
@@ -168,5 +168,11 @@ related: [LIC-001, LIC-002, CI-001, CI-002, REF-005, REF-007]
 notes: >-
   The process-boundary argument of LIC-001 fails if one runner imports both
   rebound and a FerroAstro PyO3 wheel: that makes a combined GPLv3 work.
+  Licence-guard exemption: `tools/license_guard.py` scans only the locked
+  tools/ environment, so the ci/oracles/ images (where the GPL oracles live)
+  are exempt from it by construction; it still fails if rebound, reboundx,
+  assist or swiftest appear in tools/. The only in-environment exemptions are
+  the `reuse` CLI and its GPL dependency python-debian (never imported,
+  STD-009), listed with reasons in `EXEMPT` there.
   Engineering guidance, not legal advice.
 ```

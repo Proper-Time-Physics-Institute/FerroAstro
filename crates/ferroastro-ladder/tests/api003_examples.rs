@@ -44,7 +44,10 @@ const NON_CATALOGUE_RUNGS: [&str; 4] = ["PHY-001", "PHY-004", "PHY-006", "PHY-00
 /// Verifies: API-003
 #[test]
 fn every_implemented_phy_rung_has_an_example() {
-    let de = De440::load().unwrap();
+    let Some(de) = De440::load_cached_or_skip("every_implemented_phy_rung_has_an_example").unwrap()
+    else {
+        return;
+    };
     let scn = Scenario::mercury_single_body().unwrap();
     let mut wanted: BTreeSet<String> = NON_CATALOGUE_RUNGS.iter().map(|s| (*s).into()).collect();
     for rung in single_body_rungs(&scn, &de).unwrap() {

@@ -29,7 +29,7 @@ simd = ["ferroastro-propagate/simd"]
 
 [dev-dependencies]
 criterion.workspace = true
-ferroastro-constants.workspace = true
+ferroastro-constants = { workspace = true, features = ["fs"] }
 ferroastro-eih.workspace = true
 ferroastro-ephem.workspace = true
 ferroastro-forces.workspace = true

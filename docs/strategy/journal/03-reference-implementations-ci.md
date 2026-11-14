@@ -25,7 +25,7 @@
 | **Swiftest** (Modern Fortran + Python) | `2026.7.1` (PyPI, 2026-07-17) | **GPL-3.0-or-later** (LICENSE + COPYING) | Symplectic N-body | Full | `general_relativity` flag (default **True**); Quinn et al. 1991 / Saha & Tremaine 1994 single-central-body form; no β/γ | Central-body harmonics via SHTOOLS (`c_lm`) | WHM, RMVS, HELIO, SyMBA | `pip install swiftest==2026.7.1` |
 | **Mercury6** (Chambers, F77) | 6.x; manual "last modified 1 March 2001"; mirror `smirik/mercury`, last commit 2023-02-18 | Mirror is labeled GPL-3.0; **original upstream license UNVERIFIED** | Legacy cross-check | Full (central-body codes) | Manual: "This version of MERCURY does not include relativity"; must be added through `mfo_user` | Central-body J2, J4, J6 | MVS, BS (general and conservative), RA15 (RADAU), hybrid | `gfortran` + `make build` |
 | **SWIFT / Swifter** | Swifter page at boulder.swri.edu returned **404** on 2026-10-14 | **UNVERIFIED** | Historical only | Full | **UNVERIFIED** | **UNVERIFIED** | WHM, RMVS, HELIO, SyMBA (now continued in Swiftest) | Not recommended |
-| **JPL DE440 / DE441** | DE440 (1550–2650), DE441 (−13,200 to +17,191); files dated 2020-12-22 | JPL data; redistribution terms **UNVERIFIED**, so we fetch by URL + hash and do not vendor the files | **Ground truth** | 343 asteroids + 30 KBOs + 36-point KBO ring | PPN EIH with β = γ = 1 (header), plus solar Lense–Thirring | `J2SUN = 2.1961391516529825e-7` | Not published as a reusable code | `curl` + `sha256sum` |
+| **JPL DE440 / DE441** | DE440 (1550–2650), DE441 (−13,200 to +17,191); files dated 2020-12-22 | JPL data; redistribution terms **UNVERIFIED**, so we fetch by URL + hash and do not vendor the files | **Ground truth** | 343 asteroids + 30 KBOs + 36-point KBO ring | PPN EIH with β = γ = 1 (header), plus solar Lense–Thirring | `J2SUN` (read from header.440; not reproduced, #22) | Not published as a reusable code | `curl` + `sha256sum` |
 | **jplephem** (Python) | `2.24` (PyPI, 2026-01-23) | MIT | Reads `.bsp` files to make golden states | — | — | — | Chebyshev evaluation | `pip install jplephem==2.24` |
 | **ERFA** (C) / **pyerfa** | ERFA 2.0.1 (matches SOFA 20231011); pyerfa `2.0.1.5` | BSD-3-Clause | Time scales and frames oracle | — | — | — | — | `pip install pyerfa==2.0.1.5` or distro `liberfa` |
 | **IAU SOFA** (F77/C) | Release 2023-10-11 | SOFA license (SPDX `SOFA`): free use, derived works must be marked and renamed | Time scales and frames oracle (Fortran) | — | — | — | — | Download tarball, pin sha256, `gfortran` |
@@ -113,9 +113,10 @@
     - `JDEPOC = 2440400.5` (1969-06-28 TDB), `CENTER = 0`. Barycentric is our reading and is **UNVERIFIED**.
     - Planet states `X1…ZD1` (Mercury), `X2…`, `XB…` (EMB), `X4…X9`. Units: au and au/day (inferred, consistent with Mercury `X1 = 0.36176…`).
     - Moon `XM…`, Sun `XS…`, `XC…` (meaning **UNVERIFIED**). Lunar libration `PHI, THT, PSI, OMEGA*` and core `OMGC*, PHIC, THTC, PSIC`.
-    - `CLIGHT = 299792.458`, `BETA = 1.0`, `GAMMA = 1.0`, `AU = 149597870.7` km, `EMRAT = 81.30056822149722`.
-    - `GMS = 2.9591220828411956e-4` au³/d², `GMSDOT = -9e-14`. `GM1 = 4.912500194889318e-11`, `GM2`, `GMB`, `GM4…GM9`.
-    - `ASUN = 696000` km, `J2SUN = 2.1961391516529825e-7`, `MOISUN = 0.06884`, `OMGSUN = 0.24756443290699712`.
+    - `CLIGHT = 299792.458`, `BETA = 1.0`, `GAMMA = 1.0`, `AU = 149597870.7` km, `EMRAT`.
+    - `GMS` (au³/d²), `GMSDOT`, `GM1`, `GM2`, `GMB`, `GM4…GM9`.
+    - `ASUN = 696000` km, `J2SUN`, `MOISUN = 0.06884`, `OMGSUN`. (Header-only values are not reproduced in the
+      repository; FerroAstro reads them from the hash-pinned file at run time, #22.)
     - `MA0001…`: **409** mass entries = 343 asteroids + `MA8001–MA8030` (30 KBOs) + `MA8201–MA8236` (36-point KBO ring).
   - **Asteroid initial states are not in the header (masses only).** They have to be sampled from `sb441-n373.bsp` at `JDEPOC`; how JPL actually supplied them is **UNVERIFIED**.
 - **DE440 dynamical model** (Park 2021 §3):

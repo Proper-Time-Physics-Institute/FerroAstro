@@ -118,6 +118,10 @@ fn initial(ic: &InitialConditions, scale: f64) -> SystemState<Icrf, Barycentric>
     s
 }
 
+#[expect(
+    clippy::suboptimal_flops,
+    reason = "test oracle arithmetic kept bit-identical across the toolchain bump: fused multiply-add would alter rounding (gh #23)"
+)]
 fn angular_momentum(m: &NBodyModel<Icrf>, x: &[f64], v: &[f64]) -> [f64; 3] {
     let n = m.layout().len();
     let mut l = [0.0; 3];
@@ -217,7 +221,7 @@ fn nightly_nbody_brouwer_energy_slope_with_solar_j2() {
         .ok()
         .and_then(|s| s.parse::<u32>().ok())
         .unwrap_or(RUNS);
-    let de = De440::load().unwrap();
+    let de = De440::load_cached().unwrap();
     let (h, prov) = header();
     let ic = InitialConditions::<f64>::from_header(&h, &prov).unwrap();
     // Mercury's period from its heliocentric header state (vis-viva, GM_Sun + GM_Mercury).

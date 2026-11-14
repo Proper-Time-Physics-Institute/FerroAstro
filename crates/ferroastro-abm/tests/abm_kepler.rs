@@ -790,9 +790,7 @@ fn compensated_update_gain_with_a_shared_start_up_history() {
     for p in &mut snap.y {
         round(p);
     }
-    for p in &mut snap.y_comp {
-        *p = [0.0, 0.0];
-    }
+    snap.y_comp.fill([0.0, 0.0]);
     for row in snap
         .history
         .iter_mut()

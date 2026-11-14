@@ -54,7 +54,7 @@ fn golden_dirs() -> Vec<PathBuf> {
 #[test]
 fn every_committed_golden_has_a_complete_manifest() {
     let dirs = golden_dirs();
-    assert!(!dirs.is_empty());
+    assert_ne!(dirs.len(), 0);
     for d in &dirs {
         let m = Manifest::verify_dir(d).unwrap_or_else(|e| panic!("{}: {e}", d.display()));
         for e in &m.entries {

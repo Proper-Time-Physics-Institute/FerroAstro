@@ -35,7 +35,7 @@ impl Timing {
         let median_s = if n % 2 == 1 {
             mid(n / 2)?
         } else {
-            0.5 * (mid(n / 2 - 1)? + mid(n / 2)?)
+            f64::midpoint(mid(n / 2 - 1)?, mid(n / 2)?)
         };
         Some(Self {
             min_s: *s.first()?,

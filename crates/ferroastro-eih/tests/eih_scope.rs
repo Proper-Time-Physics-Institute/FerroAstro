@@ -90,7 +90,11 @@ fn epm16() -> FlatSystem {
 /// Verifies: NUM-009
 #[test]
 fn majors_scope_leaves_minor_bodies_newtonian() {
-    let de = De440::load().unwrap();
+    let Some(de) =
+        De440::load_cached_or_skip("majors_scope_leaves_minor_bodies_newtonian").unwrap()
+    else {
+        return;
+    };
     let sys = epm16();
     let n = sys.ids.len();
     let bodies = tiered(&sys);
@@ -133,8 +137,17 @@ fn majors_scope_leaves_minor_bodies_newtonian() {
 ///
 /// Verifies: NUM-021, NUM-009
 #[test]
+#[expect(
+    clippy::suboptimal_flops,
+    reason = "test oracle arithmetic kept bit-identical across the toolchain bump: fused multiply-add would alter rounding (gh #23)"
+)]
 fn soa_kernel_under_majors_and_scalar_fallback_under_all() {
-    let de = De440::load().unwrap();
+    let Some(de) =
+        De440::load_cached_or_skip("soa_kernel_under_majors_and_scalar_fallback_under_all")
+            .unwrap()
+    else {
+        return;
+    };
     let sys = epm16();
     let n = sys.ids.len();
     let bodies = tiered(&sys);
@@ -202,7 +215,11 @@ fn soa_kernel_under_majors_and_scalar_fallback_under_all() {
 /// Verifies: NUM-009
 #[test]
 fn majors_scope_does_not_constrain_the_minor_reaction() {
-    let de = De440::load().unwrap();
+    let Some(de) =
+        De440::load_cached_or_skip("majors_scope_does_not_constrain_the_minor_reaction").unwrap()
+    else {
+        return;
+    };
     let sys = epm16();
     let bodies = tiered(&sys);
     let build = |scope: EihScope, minor: MinorReaction| {

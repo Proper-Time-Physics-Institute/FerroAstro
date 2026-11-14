@@ -14,7 +14,7 @@ This checklist collects every claim in Journals #0–#6 (plus items raised by th
 - [ ] **OI-01** Clemence 1947 (Rev. Mod. Phys. 19, 361) Table II values are [S]: observed 5599.74 ± 0.41, general precession 5025.645 ± 0.50, theory sum 5557.18 ± 0.85, residual 42.56 ± 0.94, GR 43.03 ± 0.03, and the per-planet values. Obtain the scan. **Blocks:** PHY-017, PHY-018. **Qualifies:** PHY-012, PHY-013 (informational comparison only).
 - [ ] **OI-02** IAU 2006 general precession p_A linear term 5028.796195 ″/cy (Capitaine, Wallace & Chapront 2003) is UNVERIFIED; it was seen only in a search snippet. Journal #4 repeats it as UNVERIFIED. **Blocks:** PHY-017. *Update (build-evidence sync 2026-10-20, WP9 on `m3-newtonian-nbody`):* NUM-014 no longer depends on this item. Its check takes p_A from `ferroastro-erfa`'s port of ERFA `p06e`, verified against ERFA's `t_erfa_c` reference values and the pyerfa 2.0.1.5 goldens (bitwise in f64), never from the snippet. The item stays open because PHY-017 still needs the published coefficient. **Qualifies:** NUM-014 (historical note only).
 - [ ] **OI-03** EPM β, γ, J2 (β = 0.99998 ± 0.00003, γ = 1.00004 ± 0.00006, J2 = (2.0 ± 0.2)×10⁻⁷ for EPM2011; J2 = (2.22 ± 0.23)×10⁻⁷ for EPM2013) come from secondary sources only. Read PP14 / EPM2017 (Pitjeva & Pitjev 2018). **Qualifies:** PHY-018.
-- [ ] **OI-04** The units of DE440 GMSDOT = −9.0×10⁻¹⁴ are not stated in any public primary source. **Research 2026-10-20 (Journal #11):**
+- [ ] **OI-04** The units of DE440 GMSDOT (header value not reproduced in the repository, #22) are not stated in any public primary source. **Research 2026-10-20 (Journal #11):**
   - It is absent from the DE440 paper (Park et al. 2021) and from JPL's DE440 web page.
   - The header and the NAIF tech-comments list it without units. It first appears in DE440; it is absent from DE421–DE438 and present in DE441 and DE442.
   - The probable primary source is JPL IOM 392R-20-002, which is not public.
@@ -87,7 +87,7 @@ This checklist collects every claim in Journals #0–#6 (plus items raised by th
 - [ ] **OI-52** ECSS-Q-ST-80C Table D-1 criticality definitions, and whether Q-ST-80C is now at Rev.2. **Qualifies:** ORG-007.
 - [ ] **OI-53** Effort needed for the OpenSSF Best Practices "passing" badge. **Qualifies:** STD-012.
 - [ ] **OI-54** Maintenance status of `EndBug/label-sync`. **Qualifies:** ORG-006.
-- [ ] **OI-55** Toolchain channel: 1.95.0 is a placeholder (ADR-0006), bumped to the then-current stable at M0; stabilisation of rustfmt `imports_granularity` / `group_imports`. **Qualifies:** STD-001, STD-005.
+- [ ] **OI-55** Toolchain channel: bumped from the 1.95.0 placeholder to 1.99.0, the then-current stable (ADR-0006, gh #23); stabilisation of rustfmt `imports_granularity` / `group_imports`. **Qualifies:** STD-001, STD-005.
 - [ ] **OI-56** `#[expect]` stabilisation version (1.81), and the clippy group membership of float_cmp_const, lossy_float_literal, suboptimal_flops, imprecise_flops, unwrap_used and indexing_slicing. **Qualifies:** STD-002, TST-001.
 - [ ] **OI-57** Whether nextest still skips doctests. **Qualifies:** STD-008.
 - [ ] **OI-58** The orekit-jpype packaging choice for `tools/`, and the pre-commit hook IDs and revisions. **Qualifies:** STD-009, STD-010.

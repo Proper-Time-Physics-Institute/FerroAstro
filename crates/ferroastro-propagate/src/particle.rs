@@ -100,7 +100,7 @@ pub(crate) fn assemble(
     data: &DataSources<'_>,
 ) -> Result<ParticleIc, PropagateError> {
     let n = spec.name.as_str();
-    let de = De440::load()?;
+    let de = data.de440(n)?;
     let (_, jd) = epoch::<f64>(spec, data)?;
     let (r0, v0, source) = relative_state(spec, data, jd)?;
     let central = spec.central_body.naif();

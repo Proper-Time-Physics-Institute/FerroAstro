@@ -148,6 +148,24 @@ impl<'a> DataSources<'a> {
         self.header
     }
 
+    /// The DE440 constants of the supplied header. They are read at run time from the
+    /// hash-verified JPL file (no value is committed to the repository, #22), so every run needs
+    /// the pinned `header.440`, whatever its initial-condition source.
+    ///
+    /// # Errors
+    /// `FA-E1300` without a header; the constants error (FA-E0304 for any header other than
+    /// the pinned one) otherwise.
+    pub fn de440(&self, scenario: &str) -> Result<De440, PropagateError> {
+        let (h, _) = self.header.ok_or_else(|| {
+            setup(
+                scenario,
+                "no header.440 supplied: the DE440 constants (GMs, AU, J2SUN, ...) are read from it at run time",
+                "pass DataSources::with_header with the pinned header.440 (tools/fetch_jpl.py de440-header)",
+            )
+        })?;
+        Ok(De440::from_header(h)?)
+    }
+
     /// With barycentric ICRF states at the scenario epoch (e.g. JPL Horizons, centre `500@0`,
     /// TDB) and their provenance line.
     #[must_use]
@@ -315,7 +333,10 @@ pub(crate) fn refuse_integrator_combinations(spec: &ScenarioSpec) -> Result<(), 
     Ok(())
 }
 
-/// The constants version that enters the IC hash: the DE440 table and the header it came from.
+/// The constants version that enters the IC hash: the DE440 constants and the header they are
+/// read from. The wording ("constants table") predates #22 and is kept so that IC hashes, and the
+/// checkpoints and goldens that record them, do not change: the product and its SHA-256 are the
+/// same.
 #[must_use]
 pub fn constants_version(de: &De440) -> String {
     let s = de.table().source();
@@ -383,7 +404,13 @@ pub fn de440_solar_spin(de: &De440, scenario: &str) -> Result<SpinGm, PropagateE
         * r
         * r
         * de.sun_rotation_rate().rad_per_s();
-    SpinGm::from_km5_per_s3(gs).map_err(|e| setup(scenario, e.to_string(), "check the DE440 table"))
+    SpinGm::from_km5_per_s3(gs).map_err(|e| {
+        setup(
+            scenario,
+            e.to_string(),
+            "check the DE440 constants of header.440",
+        )
+    })
 }
 
 pub(crate) fn setup(

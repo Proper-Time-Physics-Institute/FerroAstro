@@ -9,15 +9,24 @@ use crate::estimator::{Estimate, Estimator, PassageSource};
 use crate::plan::{Combination, Plan, Protocol};
 use crate::track::Track;
 use ferroastro_propagate::{
-    Checkpoint, DataSources, InitialRecords, initial_conditions, resume_until, run, run_until,
+    Checkpoint, DataSources, InitialRecords, IntegratorSnapshot, abm_config, ias15_config,
+    initial_conditions, irk16_config, resume_until, run, run_until, wh_config,
 };
-use ferroastro_scenario::{IcRecord, Mode, ScenarioSpec, ic_hash};
+use ferroastro_scenario::{IcRecord, IntegratorName, Mode, ScenarioSpec, ic_hash};
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 
 /// Format tag of a store file.
-pub const STORE_FORMAT: &str = "ferroastro-diffrun store v1";
+///
+/// v2 (issue #31) records the integrator settings of the leg and keys the file name by them (see
+/// [`store_file`]). A file of any other format, including v1 (keyed by the scenario digest only,
+/// so it could resume a leg under other integrator settings), is refused with `FA-E1402` and
+/// never resumed: delete it to run that leg from the start.
+pub const STORE_FORMAT: &str = "ferroastro-diffrun store v2";
+
+/// Format tag of the store files written before issue #31 (`<scenario digest>.leg`).
+const STORE_FORMAT_V1: &str = "ferroastro-diffrun store v1";
 
 /// How legs are run.
 #[derive(Debug, Clone, PartialEq)]
@@ -118,8 +127,11 @@ pub struct LegResult {
 /// What a store file holds.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 struct Stored {
+    /// [`STORE_FORMAT`]; first, so another version is recognised before the rest is decoded.
     format: String,
     scenario_digest: String,
+    /// [`integrator_settings`] of the leg (v2, issue #31).
+    integrator: String,
     segment: u32,
     checkpoint: Vec<u8>,
     track: Track,
@@ -133,29 +145,149 @@ fn store_err(path: &Path, problem: impl std::fmt::Display) -> DiffrunError {
     }
 }
 
-fn store_path(dir: &Path, spec: &ScenarioSpec) -> PathBuf {
+fn hex_sha256(text: &str) -> String {
+    use sha2::{Digest, Sha256};
+    Sha256::digest(text.as_bytes())
+        .iter()
+        .fold(String::with_capacity(64), |mut s, b| {
+            use std::fmt::Write as _;
+            let _ = write!(s, "{b:02x}");
+            s
+        })
+}
+
+/// The integrator settings that decide a leg's result beyond its scenario: the JSON of the whole
+/// configuration of the leg's integrator (for IAS15 `ferroastro_propagate::ias15_config`, e.g.
+/// the predictor `pc_b_from_g`, which the scenario digest does not cover; issue #31). The whole
+/// struct is serialised, so a field added to `Ias15Config` (or to `AbmConfig`, `WhConfig` or
+/// `Irk16Config`) is keyed without a change here.
+fn integrator_settings(cfg: &impl Serialize) -> Result<String, DiffrunError> {
+    serde_json::to_string(cfg).map_err(|e| store_err(Path::new("-"), e))
+}
+
+/// The settings a fresh N-body leg of `spec` runs with: the configuration of the scenario's
+/// integrator as the driver builds it (IAS15 with dense output on).
+fn leg_settings(spec: &ScenarioSpec) -> Result<String, DiffrunError> {
+    match spec.integrator.name {
+        IntegratorName::Ias15 => integrator_settings(&ias15_config(spec, true)),
+        IntegratorName::Abm => integrator_settings(&abm_config(spec)),
+        IntegratorName::Whfast => integrator_settings(&wh_config(spec)),
+        IntegratorName::Irk16 => integrator_settings(&irk16_config(spec)),
+    }
+}
+
+/// The settings a checkpointed integrator state continues with (its own configuration).
+fn snapshot_settings(snap: &IntegratorSnapshot) -> Result<String, DiffrunError> {
+    match snap {
+        IntegratorSnapshot::Ias15(s) => integrator_settings(&s.config),
+        IntegratorSnapshot::Abm(s) => integrator_settings(&s.config),
+        IntegratorSnapshot::Whfast(s) => integrator_settings(&s.config),
+        IntegratorSnapshot::Irk16(s) => integrator_settings(&s.config),
+    }
+}
+
+fn store_path(dir: &Path, spec: &ScenarioSpec, settings: &str) -> PathBuf {
+    dir.join(format!("{}-{}.leg", spec.digest(), hex_sha256(settings)))
+}
+
+/// Where the store of format v1 kept a leg of `spec` (scenario digest only).
+fn legacy_store_path(dir: &Path, spec: &ScenarioSpec) -> PathBuf {
     dir.join(format!("{}.leg", spec.digest()))
 }
 
-fn load(path: &Path, spec: &ScenarioSpec) -> Result<Option<Stored>, DiffrunError> {
-    let bytes = match std::fs::read(path) {
-        Ok(b) => b,
-        Err(e) if e.kind() == std::io::ErrorKind::NotFound => return Ok(None),
-        Err(e) => return Err(store_err(path, e)),
+/// The store file of an N-body leg of `spec` in `dir`:
+/// `<scenario digest>-<SHA-256 of the integrator settings>.leg`. A leg is resumed only from the
+/// file written under the same scenario **and** the same IAS15 settings (issue #31); under other
+/// settings it runs from the start, and the other file is left untouched.
+///
+/// # Errors
+/// `FA-E1402` if the integrator settings cannot be serialised.
+pub fn store_file(dir: &Path, spec: &ScenarioSpec) -> Result<PathBuf, DiffrunError> {
+    Ok(store_path(dir, spec, &leg_settings(spec)?))
+}
+
+fn refuse_format(path: &Path, format: &str) -> DiffrunError {
+    let why = if format == STORE_FORMAT_V1 {
+        " (v1 did not record the integrator settings, so the leg could resume under other ones; \
+         issue #31)"
+    } else {
+        ""
     };
-    let s: Stored = postcard::from_bytes(&bytes).map_err(|e| store_err(path, e))?;
-    if s.format != STORE_FORMAT || s.scenario_digest != spec.digest() {
+    store_err(
+        path,
+        format!(
+            "holds {format:?}, not {STORE_FORMAT:?}{why}; a store file of another format is \
+             never resumed: delete it to run the leg from the start"
+        ),
+    )
+}
+
+/// The store file of this leg and its decoded checkpoint, if there is one; refuses a file of
+/// another format, scenario or integrator settings (header and checkpoint both checked).
+fn load(
+    dir: &Path,
+    spec: &ScenarioSpec,
+    settings: &str,
+) -> Result<Option<(Stored, Checkpoint)>, DiffrunError> {
+    let path = store_path(dir, spec, settings);
+    let bytes = match std::fs::read(&path) {
+        Ok(b) => b,
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => {
+            let legacy = legacy_store_path(dir, spec);
+            return if legacy.exists() {
+                Err(refuse_format(&legacy, STORE_FORMAT_V1))
+            } else {
+                Ok(None)
+            };
+        }
+        Err(e) => return Err(store_err(&path, e)),
+    };
+    let (format, _) =
+        postcard::take_from_bytes::<String>(&bytes).map_err(|e| store_err(&path, e))?;
+    if format != STORE_FORMAT {
+        return Err(refuse_format(&path, &format));
+    }
+    let s: Stored = postcard::from_bytes(&bytes).map_err(|e| store_err(&path, e))?;
+    if s.scenario_digest != spec.digest() {
         return Err(store_err(
-            path,
+            &path,
             format!(
-                "holds {} for scenario digest {}, not {STORE_FORMAT} for {}",
-                s.format,
+                "holds scenario digest {}, not {}",
                 s.scenario_digest,
                 spec.digest()
             ),
         ));
     }
-    Ok(Some(s))
+    check_settings(&path, "its header records", &s.integrator, settings)?;
+    let c = Checkpoint::decode(&s.checkpoint)?;
+    // The checkpoint's own settings are the ones the restored integrator continues with.
+    check_settings(
+        &path,
+        "its checkpoint holds",
+        &snapshot_settings(&c.integrator)?,
+        settings,
+    )?;
+    Ok(Some((s, c)))
+}
+
+fn check_settings(
+    path: &Path,
+    whose: &str,
+    stored: &str,
+    settings: &str,
+) -> Result<(), DiffrunError> {
+    if stored == settings {
+        Ok(())
+    } else {
+        Err(store_err(
+            path,
+            format!(
+                "{whose} integrator settings {stored}, this run uses {settings}; a leg is never \
+                 resumed under other integrator settings (issue #31): delete the file to run the \
+                 leg from the start"
+            ),
+        ))
+    }
 }
 
 fn save(path: &Path, s: &Stored) -> Result<(), DiffrunError> {
@@ -188,13 +320,15 @@ fn test_particle_leg(
 }
 
 /// Run one leg, in segments of `opts.segment_years` (N-body) through checkpoints, resuming from
-/// `opts.store` if a file for this scenario exists. With `stop_after_segments = Some(k)` the call
+/// `opts.store` if a file for this scenario and these integrator settings exists ([`store_file`]). With `stop_after_segments = Some(k)` the call
 /// returns `Ok(None)` after `k` new segments, leaving the store file for a later call (used to
 /// test interruption; requires a store).
 ///
 /// # Errors
 /// `FA-E1400` for invalid [`RunOptions`] (see [`RunOptions::segments`]); `FA-E1402` for store
-/// I/O or a foreign store file; `FA-E1302` from the driver; the run's own errors.
+/// I/O, a foreign store file, a store file of another format (including v1) or one whose
+/// recorded or checkpointed integrator settings differ from this run's; `FA-E1302` from the
+/// driver; the run's own errors.
 pub fn run_leg(
     spec: &ScenarioSpec,
     data: &DataSources<'_>,
@@ -210,14 +344,18 @@ pub fn run_leg(
     }
     opts.segments(spec)?;
     let sign = if spec.span.years < 0.0 { -1.0 } else { 1.0 };
-    let path = opts.store.as_deref().map(|d| store_path(d, spec));
-    let stored = match &path {
-        Some(p) => load(p, spec)?,
+    let settings = leg_settings(spec)?;
+    let path = opts
+        .store
+        .as_deref()
+        .map(|d| store_path(d, spec, &settings));
+    let stored = match opts.store.as_deref() {
+        Some(d) => load(d, spec, &settings)?,
         None => None,
     };
     let resumed_from_store = stored.is_some();
     let (mut track, mut segment, mut ck) = match stored {
-        Some(s) => (s.track, s.segment, Some(Checkpoint::decode(&s.checkpoint)?)),
+        Some((s, c)) => (s.track, s.segment, Some(c)),
         None => (Track::new(epoch), 0, None),
     };
     let mut segments_run = 0_u32;
@@ -265,6 +403,7 @@ pub fn run_leg(
                         &Stored {
                             format: STORE_FORMAT.into(),
                             scenario_digest: spec.digest(),
+                            integrator: settings.clone(),
                             segment,
                             checkpoint: c.encode()?,
                             track: track.clone(),
@@ -742,5 +881,273 @@ impl PlanResult {
             }
         }
         s
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    //! The store key covers the integrator settings (issue #31), on the real DE440 initial
+    //! conditions (PR tier: header.440 from the pinned JPL cache, CI-005). Unit tests, because
+    //! emulating a store file written under other settings needs the private store layout.
+    use super::*;
+    use ferroastro_constants::header440::Header;
+    use ferroastro_core::ErrorCode;
+    use ferroastro_core::frames::Icrf;
+    use ferroastro_integrators::Ias15Config;
+    use ferroastro_precession::park2017::{
+        FitModel, LongitudeDefinition, Park2017, PassageConfig, ReferencePlane,
+    };
+    use ferroastro_scenario::BodyName;
+
+    // Run controls (not physical values): PR-tier lengths and output cadence.
+    const LEG_YEARS: f64 = 3.0; // lint: allow-literal(run length, PR-tier cost)
+    const SEGMENT_YEARS: f64 = 1.0; // lint: allow-literal(checkpoint segment length)
+    const SEGMENTS: u32 = 3; // LEG_YEARS / SEGMENT_YEARS
+    const CADENCE_DAYS: f64 = 1.0; // lint: allow-literal(output cadence of the estimator samples)
+    const JACKKNIFE_BLOCKS: usize = 4;
+
+    fn header() -> (Header, String) {
+        let f = ferroastro_testdata::locate_product("de440-header").expect("cached header.440");
+        let prov = f.provenance();
+        (
+            Header::parse(&std::fs::read_to_string(&f.path).unwrap()).unwrap(),
+            prov,
+        )
+    }
+
+    fn spec() -> ScenarioSpec {
+        let p = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("../../ci/scenarios/sun-mercury-newton-header440.toml");
+        let mut s = ScenarioSpec::parse(&std::fs::read_to_string(p).unwrap()).unwrap();
+        s.output.cadence_days = Some(CADENCE_DAYS);
+        s.output.perihelion = vec![BodyName::Mercury];
+        s.bodies = vec![BodyName::Sun, BodyName::Mercury, BodyName::Venus];
+        s.span.years = LEG_YEARS;
+        s.name = "issue31-store-key".into();
+        s
+    }
+
+    fn estimator() -> Estimator {
+        Estimator {
+            park: Park2017 {
+                plane: ReferencePlane::<Icrf>::park2017_mean_orbit().unwrap(),
+                definition: LongitudeDefinition::Projected,
+                passages: PassageConfig::default(),
+                model: FitModel {
+                    quadratic: true,
+                    frequencies: vec![],
+                },
+                jackknife_blocks: JACKKNIFE_BLOCKS,
+            },
+            source: PassageSource::SampledStates,
+            body: BodyName::Mercury,
+            central: BodyName::Sun,
+            window_jd: None,
+        }
+    }
+
+    fn read(path: &Path) -> Stored {
+        postcard::from_bytes(&std::fs::read(path).unwrap()).unwrap()
+    }
+
+    /// The format v1 layout, to write a store file as the code before issue #31 did.
+    #[derive(Serialize)]
+    struct StoredV1 {
+        format: String,
+        scenario_digest: String,
+        segment: u32,
+        checkpoint: Vec<u8>,
+        track: Track,
+        steps: u64,
+    }
+
+    fn v1_of(s: &Stored) -> Vec<u8> {
+        postcard::to_allocvec(&StoredV1 {
+            format: STORE_FORMAT_V1.into(),
+            scenario_digest: s.scenario_digest.clone(),
+            segment: s.segment,
+            checkpoint: s.checkpoint.clone(),
+            track: s.track.clone(),
+            steps: s.steps,
+        })
+        .unwrap()
+    }
+
+    /// Every IAS15 setting changes the store key, and equal settings give the same file. The
+    /// exhaustive destructure stops compiling when `Ias15Config` gains a field, so the new field
+    /// must be added here (and is then checked to reach the key).
+    ///
+    /// Verifies: CI-010
+    #[test]
+    fn every_ias15_setting_changes_the_store_key() {
+        let s = spec();
+        let dir = Path::new("store");
+        let base = ias15_config(&s, true);
+        let key = |c: &Ias15Config| store_path(dir, &s, &integrator_settings(c).unwrap());
+        assert_eq!(key(&base), store_file(dir, &s).unwrap());
+        assert_eq!(key(&base), key(&ias15_config(&s, true)));
+        let Ias15Config {
+            epsilon,
+            safety,
+            max_iterations,
+            pc_tolerance,
+            min_dt,
+            max_rejections,
+            dense_output,
+            pc_b_from_g,
+        } = base;
+        let changed = [
+            Ias15Config {
+                epsilon: epsilon * 2.0,
+                ..base
+            },
+            Ias15Config {
+                safety: safety * 0.5,
+                ..base
+            },
+            Ias15Config {
+                max_iterations: max_iterations + 1,
+                ..base
+            },
+            Ias15Config {
+                pc_tolerance: pc_tolerance + 1.0,
+                ..base
+            },
+            Ias15Config {
+                min_dt: min_dt + 1.0,
+                ..base
+            },
+            Ias15Config {
+                max_rejections: max_rejections + 1,
+                ..base
+            },
+            Ias15Config {
+                dense_output: !dense_output,
+                ..base
+            },
+            Ias15Config {
+                pc_b_from_g: !pc_b_from_g,
+                ..base
+            },
+        ];
+        for c in &changed {
+            assert_ne!(c, &base);
+            assert_ne!(key(c), key(&base), "{c:?} must change the store key");
+        }
+    }
+
+    /// Issue #31: a leg interrupted under one IAS15 configuration is never resumed under another.
+    /// Same settings: the leg resumes from its store file and equals the one-piece leg bit for
+    /// bit. Other settings (the store file of a build with the other `pc_b_from_g` predictor,
+    /// emulated by flipping it in the stored checkpoint and header): the leg runs from the start,
+    /// equals the one-piece leg, and leaves that file alone. A file under this run's name whose
+    /// header or checkpoint records other settings, and a format-v1 file, are refused
+    /// (`FA-E1402`).
+    ///
+    /// Verifies: CI-010
+    #[test]
+    fn interrupted_leg_resumes_only_under_the_same_integrator_settings() {
+        let (h, prov) = header();
+        let data = DataSources::none().with_header(&h, &prov);
+        let spec = spec();
+        let est = estimator();
+        let dir = std::env::temp_dir().join(format!("fa-diffrun-key31-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let opts = RunOptions {
+            segment_years: SEGMENT_YEARS,
+            store: Some(dir.clone()),
+            threads: 1,
+        };
+        let one_piece = run_leg(
+            &spec,
+            &data,
+            &est,
+            &RunOptions {
+                segment_years: LEG_YEARS,
+                ..RunOptions::default()
+            },
+            None,
+        )
+        .unwrap()
+        .unwrap();
+        let file = store_file(&dir, &spec).unwrap();
+        let interrupt = || {
+            assert!(
+                run_leg(&spec, &data, &est, &opts, Some(1))
+                    .unwrap()
+                    .is_none()
+            );
+            assert!(file.exists());
+            read(&file)
+        };
+
+        // Same settings: resumed.
+        let stored = interrupt();
+        assert_eq!(stored.integrator, leg_settings(&spec).unwrap());
+        let resumed = run_leg(&spec, &data, &est, &opts, None).unwrap().unwrap();
+        assert!(resumed.resumed_from_store);
+        assert_eq!(resumed.segments_run, SEGMENTS - 1);
+        assert_eq!(one_piece.track.differing_words(&resumed.track), Some(0));
+        assert!(!file.exists());
+
+        // Other settings: the file of the other predictor is not reused.
+        let stored = interrupt();
+        let mut ck = Checkpoint::decode(&stored.checkpoint).unwrap();
+        let IntegratorSnapshot::Ias15(ias) = &mut ck.integrator else {
+            panic!("an IAS15 leg checkpoints an IAS15 state");
+        };
+        ias.config.pc_b_from_g = !ias.config.pc_b_from_g;
+        let other = Stored {
+            integrator: snapshot_settings(&ck.integrator).unwrap(),
+            checkpoint: ck.encode().unwrap(),
+            ..stored.clone()
+        };
+        let other_file = store_path(&dir, &spec, &other.integrator);
+        assert_ne!(other_file, file);
+        save(&other_file, &other).unwrap();
+        std::fs::remove_file(&file).unwrap();
+        let fresh = run_leg(&spec, &data, &est, &opts, None).unwrap().unwrap();
+        assert!(!fresh.resumed_from_store, "resumed under other settings");
+        assert_eq!(fresh.segments_run, SEGMENTS);
+        assert_eq!(one_piece.track.differing_words(&fresh.track), Some(0));
+        assert_eq!(one_piece.steps, fresh.steps);
+        assert!(
+            other_file.exists(),
+            "the other settings' file is left alone"
+        );
+        assert!(!file.exists());
+
+        // A file under this run's name recording other settings: refused, header or checkpoint.
+        let refused = |what: &str| {
+            let e = run_leg(&spec, &data, &est, &opts, None).unwrap_err();
+            println!("{what}: {e}");
+            assert_eq!(e.code(), ErrorCode::DiffrunStore, "{what}");
+            assert!(e.to_string().contains("issue #31"), "{what}: {e}");
+            assert!(file.exists(), "{what}: a refused file is kept");
+        };
+        std::fs::rename(&other_file, &file).unwrap();
+        refused("header with other settings");
+        save(
+            &file,
+            &Stored {
+                integrator: stored.integrator.clone(),
+                ..other
+            },
+        )
+        .unwrap();
+        refused("checkpoint with other settings");
+
+        // Format v1, at its own name or this run's: refused, never resumed.
+        std::fs::remove_file(&file).unwrap();
+        let legacy = legacy_store_path(&dir, &spec);
+        std::fs::write(&legacy, v1_of(&stored)).unwrap();
+        let e = run_leg(&spec, &data, &est, &opts, None).unwrap_err();
+        println!("v1 file: {e}");
+        assert_eq!(e.code(), ErrorCode::DiffrunStore);
+        assert!(e.to_string().contains(STORE_FORMAT_V1), "{e}");
+        assert!(!file.exists(), "nothing ran past the refusal");
+        std::fs::rename(&legacy, &file).unwrap();
+        refused("v1 file under the v2 name");
+        std::fs::remove_dir_all(&dir).unwrap();
     }
 }

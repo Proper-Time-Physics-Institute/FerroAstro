@@ -257,7 +257,12 @@ fn simd_and_scalar_newtonian_kernels_are_bitwise_identical() {
 #[cfg(feature = "simd")]
 #[test]
 fn simd_and_scalar_models_are_bitwise_identical_with_the_geocentric_pair() {
-    let de = De440::load().unwrap();
+    let Some(de) = De440::load_cached_or_skip(
+        "simd_and_scalar_models_are_bitwise_identical_with_the_geocentric_pair",
+    )
+    .unwrap() else {
+        return;
+    };
     let emrat = de.earth_moon_mass_ratio();
     for sys in &flat_systems() {
         let model = |backend: SoaBackend| {
@@ -364,7 +369,11 @@ fn soa_newtonian_error_is_within_the_forward_bound() {
 /// Verifies: NUM-021, NUM-008
 #[test]
 fn soa_and_pairwise_agree_with_the_geocentric_pair() {
-    let de = De440::load().unwrap();
+    let Some(de) =
+        De440::load_cached_or_skip("soa_and_pairwise_agree_with_the_geocentric_pair").unwrap()
+    else {
+        return;
+    };
     let emrat = de.earth_moon_mass_ratio();
     let mut worst = 0.0_f64;
     for sys in &flat_systems() {

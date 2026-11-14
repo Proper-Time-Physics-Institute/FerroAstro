@@ -23,7 +23,11 @@ type Dd = DoubleDouble;
 #[test]
 fn mixed_forces_is_the_compensated_model_widened() {
     let (h, prov) = header();
-    let de = De440::load().unwrap();
+    let Some(de) =
+        De440::load_cached_or_skip("mixed_forces_is_the_compensated_model_widened").unwrap()
+    else {
+        return;
+    };
     let ids = ids(true);
     let lt = Some(LtReaction::On);
     let m64 = model_lt::<f64>(&de, &ids, Moon::Geocentric, true, lt);

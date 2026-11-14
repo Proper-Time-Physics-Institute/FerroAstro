@@ -60,7 +60,10 @@ const PERIODS: [f64; 12] = [-3.0, -1.5, -0.37, -0.01, 0.01, 0.25, 0.5, 0.999, 1.
 #[test]
 fn kepler_drift_matches_the_element_solution() {
     let vs = VectorSet::load_workspace().unwrap();
-    let de = De440::load().unwrap();
+    let Some(de) = De440::load_cached_or_skip("kepler_drift_matches_the_element_solution").unwrap()
+    else {
+        return;
+    };
     let el0 = sw92(&vs, &de);
     let mu = de.gm_sun() + de.gm(Body::Mercury);
     let mu_km = mu.km3_per_s2();
@@ -100,7 +103,12 @@ const K2_PERIODS: f64 = 1.3; // lint: allow-literal(test design: drift length in
 #[test]
 fn kepler_drift_is_reversible_for_elliptic_and_hyperbolic_orbits() {
     let vs = VectorSet::load_workspace().unwrap();
-    let de = De440::load().unwrap();
+    let Some(de) =
+        De440::load_cached_or_skip("kepler_drift_is_reversible_for_elliptic_and_hyperbolic_orbits")
+            .unwrap()
+    else {
+        return;
+    };
     let el0 = sw92(&vs, &de);
     let mu: GravParam = de.gm_sun() + de.gm(Body::Mercury);
     let mu_km = mu.km3_per_s2();

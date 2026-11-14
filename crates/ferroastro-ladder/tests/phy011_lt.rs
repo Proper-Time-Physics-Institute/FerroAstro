@@ -11,7 +11,9 @@ use ferroastro_ladder::single_body::de440_solar_spin;
 /// Verifies: PHY-011, NUM-015
 #[test]
 fn lense_thirring_gives_minus_0_0020() {
-    let c = common::ctx();
+    let Some(c) = common::ctx() else {
+        return;
+    };
     let gs = de440_solar_spin(&c.de).unwrap();
     println!(
         "G S (DE440: GMS * MOISUN * ASUN^2 * OMGSUN) = {:.6e} km^5/s^3",

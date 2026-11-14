@@ -1,9 +1,12 @@
 # SPDX-FileCopyrightText: 2026 Proper-Time Physics Institute
 # SPDX-License-Identifier: Apache-2.0
 # DE440 constants asserted by PHY-002 and REF-002 (WP2). Schema: ADR-0004.
-# Oracles are the DE440 paper (Park21, independent of the header file) and, for values that only the
-# header states, the pinned header.440 itself; the latter are regression pins against loading a
-# different ephemeris, not independent checks. GMSDOT (OI-04) and CENTER (OI-23) are deliberately absent.
+# Oracles are the DE440 paper (Park21, independent of the header file), the SI/IAU definitions
+# (defined-constants.toml) and the REF-002 acceptance text. No header.440 value is reproduced here
+# (maintainer decision 2026-11-14, #22): FerroAstro reads the hash-pinned header at run time, and the
+# values only the header states (GMS in au^3/d^2, J2SUN, OMGSUN in rad/d, EMRAT to 18 digits) are
+# checked by the live cross-check SYSTEM-HEADER-LIVE-CROSSCHECK-MAX-ULP (data and oracle tiers),
+# not by committed numbers. GMSDOT (OI-04) and CENTER (OI-23) are deliberately absent.
 # IAU 2015 B3 nominal values live in iau2015-nominal.toml (PHY-003).
 schema_version = 1
 
@@ -18,36 +21,22 @@ source = "Park21 Table 2: GMSun 132712440041.279419 km3 s-2 (estimated from DE44
 citation = "Park, R. S., Folkner, W. M., Williams, J. G. & Boggs, D. H. 2021, AJ 161, 105, doi:10.3847/1538-3881/abd414, Table 2"
 retrieved = "2026-10-14"
 tolerance = { rel = 1.0e-15 }
-tolerance_rationale = "The header prints GMS in au^3/d^2 (0.295912208284119561D-03); converting that 18-digit decimal exactly with AU = 149597870.7 km and 86400 s/d gives 132712440041.2794478 km^3/s^2, 2.2e-16 relative from Park21's 18-digit print. The f64 path adds a few roundings (each <= 1.1e-16). 1e-15 covers both with ~4x headroom and is still 3e5 times tighter than the 3e-10 GM-vs-IAU-nominal difference."
+tolerance_rationale = "The header prints GMS in au^3/d^2 to 18 digits; converting that decimal exactly with AU (km) and 86400 s/d lands 2.2e-16 relative from Park21's 18-digit print. The f64 path adds a few roundings (each <= 1.1e-16). 1e-15 covers both with ~4x headroom and is still 3e5 times tighter than the 3e-10 GM-vs-IAU-nominal difference."
 verified_by = "WP2 builder agent, 2026-10-14: read in the published PDF (iopscience.iop.org/article/10.3847/1538-3881/abd414/pdf, sha256 96c3945deb12e0f0843c2bf0703d3542d950cf85ff903b1fe11a501634f68ee0); also equals PHY-002 acceptance."
-
-[[vector]]
-id = "DE440-GMS-AU3D2"
-requirement = ["PHY-002", "REF-002"]
-quantity = "GM of the Sun in ephemeris units (DE440 GMS)"
-value = "2.95912208284119561e-4"
-unit = "au^3/d^2"
-kind = "measured"
-source = "header.440 GROUP 1041 GMS = 0.295912208284119561D-03; PHY-002 acceptance quotes the same digits"
-citation = "JPL DE440 ASCII header header.440, GROUP 1041 (https://ssd.jpl.nasa.gov/ftp/eph/planets/ascii/de440/header.440, sha256 0f4636b663e6f00af9efa2b605ef23635489f56b23dd1a5e3821d3acc6ac3359)"
-retrieved = "2026-10-14"
-tolerance = { abs = 0.0 }
-tolerance_rationale = "Same 18 decimal digits as the header token, so both parse to the same f64; equality is required."
-verified_by = "WP2 builder agent, 2026-10-14: compared with the downloaded header.440 (sha256 above) and with PHY-002 acceptance text; independent check is DE440-GMS-KM3S2 (Park21)."
 
 [[vector]]
 id = "DE440-EMRAT"
 requirement = ["PHY-002", "REF-002"]
 quantity = "Earth/Moon mass ratio (DE440 EMRAT)"
-value = "81.3005682214972154"
+value = "81.3005682290799"
 unit = "1"
 kind = "measured"
-source = "header.440 GROUP 1041 EMRAT = 0.813005682214972154D+02; PHY-002 acceptance quotes the same digits"
-citation = "JPL DE440 ASCII header header.440, GROUP 1041 (https://ssd.jpl.nasa.gov/ftp/eph/planets/ascii/de440/header.440, sha256 0f4636b663e6f00af9efa2b605ef23635489f56b23dd1a5e3821d3acc6ac3359)"
-retrieved = "2026-10-14"
-tolerance = { abs = 0.0 }
-tolerance_rationale = "Same decimal digits as the header token, so both parse to the same f64; equality is required."
-verified_by = "WP2 builder agent, 2026-10-14: compared with the downloaded header.440 and PHY-002. Park21 Table 2 GMEarth/GMMoon = 81.3005682291, consistent to the 1e-10 relative precision of those printed GMs."
+source = "Park21 Table 2: GMEarth / GMMoon = 398600.435507 / 4902.800118 (km3 s-2 each), computed with 40-digit decimal arithmetic and rounded to 15 significant digits. DE440 EMRAT itself is read from header.440 at run time and is not reproduced here (#22)."
+citation = "Park, R. S., Folkner, W. M., Williams, J. G. & Boggs, D. H. 2021, AJ 161, 105, doi:10.3847/1538-3881/abd414, Table 2"
+retrieved = "2026-11-14"
+tolerance = { rel = 1.04e-10 }
+tolerance_rationale = "Worst case of the printed rounding of the two Park21 GMs (6 decimals each, i.e. +/- 5e-7 km^3/s^2): 5e-7/398600.435507 + 5e-7/4902.800118 = 1.0324e-10 relative, rounded up to 1.04e-10. Derived from the print precision before comparing with the header; it is not tuned to the header's value. The 15-digit rounding of the ratio adds < 1e-15."
+verified_by = "WP2 builder agent, 2026-10-14 (header comparison); re-sourced to Park21 Table 2 by the #22 author agent, 2026-11-14, ratio recomputed with Python decimal (prec 40). Re-sourced 2026-11-14 (#22, golden-change): the repository no longer reproduces header.440 values; the header is read at run time and its parse is cross-checked live (SYSTEM-HEADER-LIVE-CROSSCHECK-MAX-ULP)."
 
 [[vector]]
 id = "DE440-ASUN"
@@ -56,12 +45,12 @@ quantity = "solar equatorial radius used as the J2 reference radius (DE440 ASUN)
 value = 696000.0
 unit = "km"
 kind = "measured"
-source = "Park21 Sec. 3.4 (after Eq. 39): the Sun's equatorial radius (696,000 km); header ASUN = 0.696000000000000000D+06"
+source = "Park21 Sec. 3.4 (after Eq. 39): the Sun's equatorial radius (696,000 km); the header ASUN is read at run time and must equal it"
 citation = "Park, R. S., Folkner, W. M., Williams, J. G. & Boggs, D. H. 2021, AJ 161, 105, doi:10.3847/1538-3881/abd414, Sec. 3.4, p. 7"
 retrieved = "2026-10-14"
 tolerance = { abs = 0.0 }
 tolerance_rationale = "Exactly representable integer in both sources; equality is required."
-verified_by = "WP2 builder agent, 2026-10-14: read in the published PDF (iopscience.iop.org/article/10.3847/1538-3881/abd414/pdf, sha256 96c3945deb12e0f0843c2bf0703d3542d950cf85ff903b1fe11a501634f68ee0); header token agrees."
+verified_by = "WP2 builder agent, 2026-10-14: read in the published PDF (iopscience.iop.org/article/10.3847/1538-3881/abd414/pdf, sha256 96c3945deb12e0f0843c2bf0703d3542d950cf85ff903b1fe11a501634f68ee0); header value agrees (checked at run time). Re-sourced 2026-11-14 (#22, golden-change): the repository no longer reproduces header.440 values; the header is read at run time and its parse is cross-checked live (SYSTEM-HEADER-LIVE-CROSSCHECK-MAX-ULP)."
 
 [[vector]]
 id = "DE440-MOISUN"
@@ -70,26 +59,12 @@ quantity = "solar polar moment of inertia factor C/(M R^2) (DE440 MOISUN)"
 value = 0.06884
 unit = "1"
 kind = "measured"
-source = "Park21 Sec. 3.4 (after Eq. 39): C/(M R^2) = 0.06884; header MOISUN = 0.688399999999999984D-01"
+source = "Park21 Sec. 3.4 (after Eq. 39): C/(M R^2) = 0.06884; the header MOISUN is read at run time"
 citation = "Park, R. S., Folkner, W. M., Williams, J. G. & Boggs, D. H. 2021, AJ 161, 105, doi:10.3847/1538-3881/abd414, Sec. 3.4, p. 7"
 retrieved = "2026-10-14"
 tolerance = { abs = 0.0 }
-tolerance_rationale = "The header token is the 18-digit rendering of the f64 nearest 0.06884 and parses back to it; equality is required."
-verified_by = "WP2 builder agent, 2026-10-14: read in the published PDF (iopscience.iop.org/article/10.3847/1538-3881/abd414/pdf, sha256 96c3945deb12e0f0843c2bf0703d3542d950cf85ff903b1fe11a501634f68ee0); header token agrees."
-
-[[vector]]
-id = "DE440-OMGSUN-RADD"
-requirement = ["PHY-002"]
-quantity = "solar rotation rate (DE440 OMGSUN)"
-value = 0.247564432907
-unit = "rad/d"
-kind = "measured"
-source = "PHY-002 acceptance: OMGSUN = 0.247564432907 rad/day, rounded from header.440 OMGSUN = 0.247564432906997117D+00"
-citation = "JPL DE440 ASCII header header.440, GROUP 1041 (https://ssd.jpl.nasa.gov/ftp/eph/planets/ascii/de440/header.440, sha256 0f4636b663e6f00af9efa2b605ef23635489f56b23dd1a5e3821d3acc6ac3359)"
-retrieved = "2026-10-14"
-tolerance = { abs = 5.0e-13 }
-tolerance_rationale = "The oracle is quoted to 12 decimals; half a unit in the 12th decimal is 5e-13 rad/d. The header value differs from it by 2.9e-15 rad/d. FerroAstro stores the rate in rad/s and the test multiplies back by 86400 s/d (a few 1e-17 rad/d of rounding)."
-verified_by = "WP2 builder agent, 2026-10-14: compared with the downloaded header.440 and PHY-002. The unit rad/d is corroborated by PARK21-OMGSUN-DEGD."
+tolerance_rationale = "The header prints the 18-digit rendering of the f64 nearest 0.06884, which parses back to it; equality is required."
+verified_by = "WP2 builder agent, 2026-10-14: read in the published PDF (iopscience.iop.org/article/10.3847/1538-3881/abd414/pdf, sha256 96c3945deb12e0f0843c2bf0703d3542d950cf85ff903b1fe11a501634f68ee0); header value agrees (checked at run time). Re-sourced 2026-11-14 (#22, golden-change): the repository no longer reproduces header.440 values; the header is read at run time and its parse is cross-checked live (SYSTEM-HEADER-LIVE-CROSSCHECK-MAX-ULP)."
 
 [[vector]]
 id = "PARK21-OMGSUN-DEGD"
@@ -102,22 +77,8 @@ source = "Park21 Sec. 3.4 (after Eq. 39): the Sun's rotation rate (14.1844 deg/d
 citation = "Park, R. S., Folkner, W. M., Williams, J. G. & Boggs, D. H. 2021, AJ 161, 105, doi:10.3847/1538-3881/abd414, Sec. 3.4, p. 7"
 retrieved = "2026-10-14"
 tolerance = { abs = 5.0e-5 }
-tolerance_rationale = "Park21 prints 4 decimals; half a unit in the 4th decimal is 5e-5 deg/d. The header value 0.247564432907 rad/d is 14.1843972 deg/d (diff 2.8e-6). A wrong unit (rad/s, deg/d, rev/d) would miss by orders of magnitude, which is what this vector guards."
+tolerance_rationale = "Park21 prints 4 decimals; half a unit in the 4th decimal is 5e-5 deg/d. The header value (rad/d, read at run time) converted to deg/d lies 2.8e-6 from it. A wrong unit (rad/s, deg/d, rev/d) would miss by orders of magnitude, which is what this vector guards."
 verified_by = "WP2 builder agent, 2026-10-14: read in the published PDF (iopscience.iop.org/article/10.3847/1538-3881/abd414/pdf, sha256 96c3945deb12e0f0843c2bf0703d3542d950cf85ff903b1fe11a501634f68ee0)."
-
-[[vector]]
-id = "DE440-J2SUN"
-requirement = ["PHY-002", "REF-002"]
-quantity = "dynamical form factor J2 of the Sun (DE440 J2SUN)"
-value = "2.1961391516529825e-7"
-unit = "1"
-kind = "measured"
-source = "REF-002 acceptance J2SUN = 2.1961391516529825e-7, the shortest round-trip rendering of header.440 J2SUN = 0.219613915165298248D-06"
-citation = "JPL DE440 ASCII header header.440, GROUP 1041 (https://ssd.jpl.nasa.gov/ftp/eph/planets/ascii/de440/header.440, sha256 0f4636b663e6f00af9efa2b605ef23635489f56b23dd1a5e3821d3acc6ac3359)"
-retrieved = "2026-10-14"
-tolerance = { abs = 0.0 }
-tolerance_rationale = "Both decimals parse to the same f64 (checked); equality is required."
-verified_by = "WP2 builder agent, 2026-10-14: compared with the downloaded header.440 and REF-002."
 
 [[vector]]
 id = "DE440-JDEPOC"
@@ -126,12 +87,12 @@ quantity = "epoch of the DE440 initial conditions, Julian date (TDB)"
 value = 2440400.5
 unit = "d"
 kind = "measured"
-source = "REF-002 acceptance JDEPOC = 2440400.5; header.440 JDEPOC = 0.244040050000000000D+07"
-citation = "JPL DE440 ASCII header header.440, GROUP 1041 (https://ssd.jpl.nasa.gov/ftp/eph/planets/ascii/de440/header.440, sha256 0f4636b663e6f00af9efa2b605ef23635489f56b23dd1a5e3821d3acc6ac3359)"
+source = "REF-002 acceptance JDEPOC = 2440400.5, i.e. 1969 June 28 0h TDB as a Julian date; the header JDEPOC is read at run time and must equal it"
+citation = "FerroAstro docs/requirements/REF.md, REF-002 acceptance; compared at run time with JPL DE440 header.440 (sha256 0f4636b663e6f00af9efa2b605ef23635489f56b23dd1a5e3821d3acc6ac3359)"
 retrieved = "2026-10-14"
 tolerance = { abs = 0.0 }
 tolerance_rationale = "Exactly representable; equality is required."
-verified_by = "WP2 builder agent, 2026-10-14: compared with the downloaded header.440 and REF-002."
+verified_by = "WP2 builder agent, 2026-10-14: compared with the downloaded header.440 and REF-002. Re-sourced 2026-11-14 (#22, golden-change): the repository no longer reproduces header.440 values; the header is read at run time and its parse is cross-checked live (SYSTEM-HEADER-LIVE-CROSSCHECK-MAX-ULP)."
 
 [[vector]]
 id = "DE440-BETA"
@@ -140,12 +101,12 @@ quantity = "PPN parameter beta adopted by DE440"
 value = 1.0
 unit = "1"
 kind = "defined"
-source = "REF-002 acceptance BETA = 1.0; header.440 BETA = 0.100000000000000000D+01 (DE440 is built in general relativity)"
-citation = "JPL DE440 ASCII header header.440, GROUP 1041 (https://ssd.jpl.nasa.gov/ftp/eph/planets/ascii/de440/header.440, sha256 0f4636b663e6f00af9efa2b605ef23635489f56b23dd1a5e3821d3acc6ac3359)"
+source = "REF-002 acceptance BETA = 1.0: DE440 is built in general relativity (PPN beta = gamma = 1); the header BETA is read at run time and must equal it"
+citation = "FerroAstro docs/requirements/REF.md, REF-002 acceptance; compared at run time with JPL DE440 header.440 (sha256 0f4636b663e6f00af9efa2b605ef23635489f56b23dd1a5e3821d3acc6ac3359)"
 retrieved = "2026-10-14"
 tolerance = { abs = 0.0 }
 tolerance_rationale = "Exact; equality is required."
-verified_by = "WP2 builder agent, 2026-10-14: compared with the downloaded header.440 and REF-002."
+verified_by = "WP2 builder agent, 2026-10-14: compared with the downloaded header.440 and REF-002. Re-sourced 2026-11-14 (#22, golden-change): the repository no longer reproduces header.440 values; the header is read at run time and its parse is cross-checked live (SYSTEM-HEADER-LIVE-CROSSCHECK-MAX-ULP)."
 
 [[vector]]
 id = "DE440-GAMMA"
@@ -154,12 +115,12 @@ quantity = "PPN parameter gamma adopted by DE440"
 value = 1.0
 unit = "1"
 kind = "defined"
-source = "REF-002 acceptance GAMMA = 1.0; header.440 GAMMA = 0.100000000000000000D+01 (DE440 is built in general relativity)"
-citation = "JPL DE440 ASCII header header.440, GROUP 1041 (https://ssd.jpl.nasa.gov/ftp/eph/planets/ascii/de440/header.440, sha256 0f4636b663e6f00af9efa2b605ef23635489f56b23dd1a5e3821d3acc6ac3359)"
+source = "REF-002 acceptance GAMMA = 1.0: DE440 is built in general relativity (PPN beta = gamma = 1); the header GAMMA is read at run time and must equal it"
+citation = "FerroAstro docs/requirements/REF.md, REF-002 acceptance; compared at run time with JPL DE440 header.440 (sha256 0f4636b663e6f00af9efa2b605ef23635489f56b23dd1a5e3821d3acc6ac3359)"
 retrieved = "2026-10-14"
 tolerance = { abs = 0.0 }
 tolerance_rationale = "Exact; equality is required."
-verified_by = "WP2 builder agent, 2026-10-14: compared with the downloaded header.440 and REF-002."
+verified_by = "WP2 builder agent, 2026-10-14: compared with the downloaded header.440 and REF-002. Re-sourced 2026-11-14 (#22, golden-change): the repository no longer reproduces header.440 values; the header is read at run time and its parse is cross-checked live (SYSTEM-HEADER-LIVE-CROSSCHECK-MAX-ULP)."
 
 [[vector]]
 id = "DE440-CONSTANT-COUNT"

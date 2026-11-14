@@ -50,6 +50,9 @@ fn generic_kepler_solve_converges_in_each_backend() {
 
 /// The nightly-only binary128 backend agrees with double-double to double-double precision.
 ///
+/// Compiled out on stable; the `f128` job in `.github/workflows/ci.yml` runs it on a pinned
+/// nightly and fails if it is compiled out there (issue #37).
+///
 /// Verifies: DEP-007, NUM-006
 #[cfg(all(feature = "f128", fa_nightly))]
 #[test]

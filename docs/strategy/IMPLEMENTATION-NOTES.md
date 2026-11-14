@@ -143,7 +143,15 @@ Crate `crates/ferroastro-constants` (new; ARCHITECTURE.md name). Error codes `FA
   independent reader of the same groups (it agrees: 645 names, CLIGHT and AU exact).
 
 ### Versioned constants table (PHY-002)
-- `crates/ferroastro-constants/data/de440-constants.toml` is **generated** by
+- **Superseded by #22 (maintainer decision 2026-11-14):** the value table and its generator were removed. The
+  repository now commits only `crates/ferroastro-constants/data/de440-metadata.toml` (names, units,
+  `unit_basis`, `open_item`, citations, and the header's URL, size and SHA-256; no value). `De440` reads the
+  values at run time from the SHA-256-verified header.440 (`from_header_bytes`, `from_header`, `load_cached`
+  behind the default `fs` feature, `embedded` behind the opt-in `embed-header` feature; FA-E0303 header not
+  found, FA-E0304 SHA-256 mismatch). The byte-for-byte `data` test became the metadata-consistency test, and
+  the exactness of the parse is the live cross-check `SYSTEM-HEADER-LIVE-CROSSCHECK-MAX-ULP` against
+  `tools/oracles/header440.py` (data tier) and Orekit (oracle tier). The bullets below describe WP2 as built.
+- `crates/ferroastro-constants/data/de440-constants.toml` was **generated** by
   `cargo run -p ferroastro-constants --example gen_de440_table`, which fetches the pinned product, parses it
   and calls `table::render`. It carries `table_version = 1`, the header's URL, SHA-256, size, retrieval date and
   Last-Modified, the GROUP 1010 title and the counts (645 constants, 409 `MA*`). It is embedded with
@@ -155,8 +163,8 @@ Crate `crates/ferroastro-constants` (new; ARCHITECTURE.md name). Error codes `FA
 - The header states no units. Units and their basis are metadata in `table::DE440_SELECTION` (strings only):
   GMs au³/d² (because converting with AU and 86400 s/d reproduces Park21 Table 2 in km³/s², which the tests
   check), CLIGHT km/s and AU km (equal the SI / IAU 2012 defined values), ASUN km and MOISUN from Park21 §3.4,
-  OMGSUN rad/d (Park21 §3.4 quotes 14.1844 deg/day; the header value converts to 14.1843972 deg/day; a test
-  checks it), JDEPOC as a Julian date on TDB.
+  OMGSUN rad/d (Park21 §3.4 quotes 14.1844 deg/day; the header value reproduces it to the printed digits; a
+  test checks it), JDEPOC as a Julian date on TDB.
 - Citation keys are `DE440hdr` (header URL + SHA-256) and `Park21` (AJ 161, 105). Every entry has ≥ 1.
 - Staleness: an offline unit test asserts that each entry's unit, quantity, unit basis and citations equal the
   generator selection, so a hand edit of metadata fails PR CI. Exactness of the **tokens** is enforced by the
@@ -173,15 +181,15 @@ Crate `crates/ferroastro-constants` (new; ARCHITECTURE.md name). Error codes `FA
   (GMSun and the planetary/system GMs, Earth and Moon), §3.4 after Eq. 39 (696,000 km, C/MR² = 0.06884,
   14.1844 deg/day). Header-only values (GMS in au³/d², EMRAT, J2SUN, JDEPOC, BETA, GAMMA, counts) are pinned
   from header.440 / the requirement text. These are regression pins, not independent checks; their vectors say so.
-- `DE440-GMS-KM3S2` tolerance `rel = 1e-15`: the 18-digit au³/d² header value converted exactly gives
-  132712440041.2794478 km³/s², 2.2e-16 relative from Park21's 132712440041.279419; f64 conversion adds a few
-  roundings. Measured |diff| = 0 in f64.
+- `DE440-GMS-KM3S2` tolerance `rel = 1e-15`: the 18-digit au³/d² header value converted exactly lands 2.2e-16
+  relative from Park21's 132712440041.279419; f64 conversion adds a few roundings. Measured |diff| = 0 in f64.
 - Planetary GMs tolerance `abs = 5e-7 km³/s²` = half a unit in Park21's 6th printed decimal. Measured diffs:
   Moon 4.58e-7, Mercury 4.00e-7, Neptune 3.99e-7, Mars 2.44e-7, Earth 2.3e-8, Jupiter 1.5e-8, Uranus 1.9e-9,
   Venus/Saturn/Pluto 0. These are the rounding of Park21's printed values, not FerroAstro error. The Moon sits at
   92 % of the tolerance; that is the arithmetic of rounding, not a fit.
-- `DE440-OMGSUN-RADD` `abs = 5e-13 rad/d` (PHY-002 quotes 12 decimals; measured 2.9e-15).
-  `PARK21-OMGSUN-DEGD` `abs = 5e-5 deg/d` (Park21 prints 4 decimals; measured 2.8e-6).
+- `DE440-OMGSUN-RADD` `abs = 5e-13 rad/d` (PHY-002 quotes 12 decimals; measured 2.9e-15). Removed by #22
+  together with `DE440-GMS-AU3D2` and `DE440-J2SUN` (header-only values; now the live cross-check), and
+  `DE440-EMRAT` was re-sourced to Park21 Table 2 (GMEarth/GMMoon, rel 1.04e-10). `PARK21-OMGSUN-DEGD` `abs = 5e-5 deg/d` (Park21 prints 4 decimals; measured 2.8e-6).
 - ADR-0004 has no kind for "a fact read from a data product" (the 645 and 409 counts); they use `measured`
   with a note. BETA/GAMMA use `defined` (DE440 adopts GR).
 - Rule 8: GMSDOT (OI-04) and CENTER (OI-23) appear in the table with `open_item` and `unit = "unverified"`
@@ -214,8 +222,8 @@ miss): sha256 `0f4636b663e6f00af9efa2b605ef23635489f56b23dd1a5e3821d3acc6ac3359`
 `Tue, 22 Dec 2020 00:51:11 GMT`, URL https://ssd.jpl.nasa.gov/ftp/eph/planets/ascii/de440/header.440.
 - `data_de440_table_matches_header`: 23/23 entries equal (token and f64), re-render byte-identical. PASS.
 - `data_de440_header_ref002_acceptance`: JDEPOC 2440400.5, CLIGHT 299792.458, BETA 1, GAMMA 1, AU 149597870.7,
-  J2SUN 2.1961391516529825e-7, ASUN 696000, GMS 2.95912208284119561e-4, EMRAT 81.3005682214972154 all |diff| = 0;
-  645 constants, 409 MA entries. PASS.
+  ASUN 696000, and the header-only J2SUN, GMS (au³/d²) and EMRAT pins (values no longer reproduced here, #22)
+  all |diff| = 0; 645 constants, 409 MA entries. PASS.
 - `data_de440_header_defined_constants` (WP1): PASS.
 
 ## WP3 — IAS15 integrator, Newtonian two-body, analytic GR (PHY-001, PHY-004, NUM-001 subset, NUM-023)
@@ -253,6 +261,8 @@ miss): sha256 `0f4636b663e6f00af9efa2b605ef23635489f56b23dd1a5e3821d3acc6ac3359`
   the proposed step is < 0.25·Δt, cap growth at 4×). The growth cap and the 0.25 threshold are this WP's reading
   of the paper ("If dt_trial > dt_required the step is rejected"); R&S reject whenever dt_required < dt_trial.
   **NEEDS HUMAN REVIEW:** whether to adopt R&S's stricter rejection rule; with ours, steps are rarely rejected.
+  *Resolved 2026-11-14 (issue #20): the principal decided to keep the 0.25·Δt rule. See "IAS15 rejection rule
+  decision (issue #20)" at the end of this file.*
 - PC loop: Gauss–Seidel order (gₙ updated as soon as aₙ is known); stops when `max|ΔB₇|/max|a| ≤ 1e-16`
   (at least 2 iterations, because with a zero predictor B₇ can look converged after one pass), when the
   correction stops decreasing after the 2nd iteration (R&S "begins to oscillate"), or at 12 iterations
@@ -2177,7 +2187,7 @@ Every number above equals the builders' WP7–WP10 reports, and the WP5/WP6 numb
    - 6πGM☉/(c²a(1−e²)), with n from GM☉ + GM☿, gives **42.980101000 ″/cy**. FerroAstro's D5 "analytic (same osculating orbit)" prints 42.980097432.
    - The −3.57e-6 difference is exactly the μ-in-n convention: the single-body `analytic_per_orbit` uses GM☉ in the period, while the Horizons GR helper uses GM☉ + GM☿. See finding F5.
    - The numerical D5 rate, 42.980085160, is 1.6e-5 below the analytic value. That is the anomalistic-vs-Keplerian period effect already reported, inside PHY-005's ±1e-3.
-4. **PHY-014 shift.** 0.0286·(J2SUN/2.25e-7 − 1), with J2SUN = 2.196139151652982e-7 from the fresh header, is −0.000685. That gives **575.309315**, confirming the maintainer's oracle of 575.3093.
+4. **PHY-014 shift.** 0.0286·(J2SUN/2.25e-7 − 1), with J2SUN from the fresh header (value not reproduced here, #22), is −0.000685. That gives **575.309315**, confirming the maintainer's oracle of 575.3093.
 
 ### 3. Drift audit
 - **`git log -p -- tests/vectors`, `e23c9ef..ba357d8`:** 13 commits. Only two of them remove any line:
@@ -3902,6 +3912,7 @@ OI-25, OI-26, OI-27, OI-28 and OI-31 findings are recorded below without ticking
 - **`ci/oracles/swiftest/`** (REF-007): `python:3.12-slim-bookworm@sha256:34386ef0…` base, `swiftest==2026.7.1` and its 64-package closure pinned by `==` and the SHA-256 of the one manylinux wheel pip selects (each hash checked against the PyPI list uv produced; `--only-binary :all:`, no compiler). `settings.toml`: WHM, dt = 1/128 d. Runner `tools/oracles/swiftest_runner.py`: bodies added by `Gmass` in au³/d² with a mass unit chosen so that Swiftest's `GU` is exactly 1 (with MU2KG = 1 kg, Venus's GM came back **one ulp off**; with GU = 1 every output `Gmass` equals header.440 bitwise, checked on every run); heliocentric header.440 ICs; `general_relativity` = the scenario's `gr_1pn_central` (test-particle mode only); output heliocentric (`center_naif: 10`). The runner computes the total energy change from Swiftest's own output and records it.
 - **`ci/oracles/mercury6/`** (REF-008): source tarball of `smirik/mercury@aee9e0f6` pinned by `ADD --checksum` (fetched at build time, never vendored), built with `make build` (gfortran 12.2.0 pinned). Runner `tools/oracles/mercury6_runner.py` writes `param.in`/`big.in`/`small.in`/`files.in`/`element.in` from the manual, runs `mercury6` and `element6`, and reads x y z u v w (25-digit exponential columns). **Every GR switch is refused** (REF-008). k² is not read from the source: masses are entered as GM/k² with the Gaussian k, and a one-day calibration run before every integration checks that `element6`'s semi-major axis returns GM☉ + GM to < 1e-13 (measured misfit −7.8e-16).
 - **`ci/oracles/orekit/`** (REF-006): OpenJDK 17.0.20.1 (Debian, pinned), the Orekit 13.1.9 and seven Hipparchus 4.0.3 jars by URL + SHA-256 (each also matched its Maven Central `.sha1`), orekit-data at commit `2422a7d0` by archive SHA-256 (its `DE-440-ephemerides/lnxp1990.440` subset removed). `StageB.java` (ours, Apache-2.0, documented API only) propagates the particle with `NewtonianAttraction(GM☉)` + `ThirdBodyAttraction` per field body and `DormandPrince853Integrator`, with the field from the pinned JPL binary `linux_p1550p2650.440` (new `tests/data/MANIFEST.toml` product `de440-linux-binary`, 102 272 352 B, `29915576…9ad062`, Last-Modified 2021-03-04).
+  - **2026-11-13 (#32):** the image stopped building because Debian dropped the pinned JDK build and GitLab regenerated the orekit-data archive with different bytes for the same commit. The JDK pin is now `17.0.21+9-1~deb12u1`. orekit-data is fetched with BuildKit's git source at commit `2422a7d0` and checked against a SHA-256 of the installed data tree (`48b4dbca…3e83ac9a`) instead of an archive checksum. A stage B rerun with the new image (digest `623dbf9b…`) is byte-identical to the committed golden (7 316 rows, 535 s), so the golden and its MANIFEST are unchanged; the MANIFEST still records the JDK that generated it (17.0.20.1).
 - **FerroAstro side** (`ferroastro-propagate`, `ferroastro-scenario`): test-particle scenarios with `output.cadence_days` now return states on the exact grid (f64), so the C-lite pair goes through the same sampled-state estimator as Swiftest; new scenario mode **`ephemeris-field`** (stage B): massless particle about the central body with the direct + indirect Newtonian terms of the other bodies from the DE440 SPK (the physics of Orekit's `NewtonianAttraction` + `ThirdBodyAttraction`). Schema regenerated. New scenarios: `oracle-padd-sun-mercury{,-venus}-2000yr`, `oracle-clite-sun-mercury-tp-{newton,gr1pn}-252yr`, `oracle-stage-b-mercury-de440-field-100yr`.
 - **`ferroastro-oracle`**: heliocentric goldens (`center_naif`) in `compare_states`; PR-tier stage A tests for Swiftest and Mercury6 and a stage B test (FerroAstro vs Orekit golden, plus Orekit's GMs vs header.440); nightly differentials (`nightly_oracle_differentials.rs`: P-add Venus for every tool, C-lite GR for Swiftest); data test `data_de440_linux_binary.rs` (the binary file's 400 record-1 constants equal header.440 bitwise).
 - **Nightly job** (CI-006): `tools/oracles/nightly.sh` (local, cron) runs every N-body oracle on every scenario (refusals recorded), the ERFA and JPL images, the drift check `tools/oracles/drift.py` (every committed golden bit for bit; JSON goldens without their run-date keys; a missing candidate is drift), a **blocking issue** on drift (`gh issue create`, labels `golden-drift`, `blocking`, only with `--open-issue`; a dry run otherwise), the speed-table stub in the report, and the FerroAstro-side nightly differentials. `.github/workflows/oracle-nightly.yml`: the same on manual dispatch, the drift check in a separate files-only job with `issues: write`.
@@ -4549,7 +4560,7 @@ R1, R2, R3, R4, R6 and R8 were applied in WP19 (commits `e6ca3c9`…`746fc95`, `
 | L2 | sympy (`tools/lt_forms.py`): DE440 Eq. 37–38 ≡ INPOP21a Eq. 1 ≡ R3b, general γ; a negative control (sign of −J flipped) is detected | PR (pytest) | ≡ 0 | exact algebra |
 | L3 | Sun + 8 planets + geocentric Moon, Newtonian + J2 + LT with reactions, header.440, 100 yr: max \|P(t) − P(0)\|/(Σ GM\|v\|)/(ε√N) | PR | ≤ 64 (`NBODY-MOMENTUM-ROUNDOFF-ULPS`, existing) | NUM-019 acceptance. Stated limit: this run cannot see a missing LT reaction (its momentum effect over 100 yr is ~1e-12 relative and mostly periodic); L1a is the discriminating check. |
 | I2 | **isolation, N-body, equatorial**: Sun + Mercury N-body from header.440, 1001 passages, pole = Mercury's initial heliocentric orbit normal; J2 = 2.25e-7 (`PARK17-J2SUN`) and LT (DE440 spin) each toggled against the Newtonian run through the harness (one IC hash, asserted), Park2017 estimator on the passages | PR | \|Δrate − analytic\| ≤ 1e-4 ″/cy for J2 and LT (`NUM019-ISOLATION-NBODY-DIFF`, new, bound copied from NUM-013(a)); analytic = 3πJ₂R²/p² per orbit and −4GS′/(c²a³(1−e²)^{3/2}) for the initial osculating orbit with μ′ = GM☉ + GM_Me, GS′ = GS(1 + GM_Me/GM☉) (the relative motion with reactions); the same bound against the requirement's printed 0.0286 (`PHY010-J2-PARK-ANALYTIC-RATE`) and −0.00202 (`PHY011-LT-ANALYTIC-RATE`) | NUM-013(a). The base run's rate is the estimator floor and cancels in the difference. |
-| I5 | as I2 with the DE440 J2 = 2.19613915165298248e-7 | PR | \|Δrate − 0.02792\| ≤ 5e-4 (`PHY010-J2-NUM-MINUS-ANALYTIC` around `PHY010-J2-DE440-ANALYTIC-RATE`) and ≤ 1e-4 against the osculating analytic (`NUM019-ISOLATION-NBODY-DIFF`) | PHY-010 |
+| I5 | as I2 with the DE440 J2SUN (read from header.440) | PR | \|Δrate − 0.02792\| ≤ 5e-4 (`PHY010-J2-NUM-MINUS-ANALYTIC` around `PHY010-J2-DE440-ANALYTIC-RATE`) and ≤ 1e-4 against the osculating analytic (`NUM019-ISOLATION-NBODY-DIFF`) | PHY-010 |
 | I4 | as I2 with the real WGCCRE 2015 solar pole (J2 2.25e-7 and LT) | PR | reported, not asserted: Δrate, the planar analytic, the inclined analytic (`j2_inclined_rate`; its citation is OI-37, UNVERIFIED, so it is not an oracle), the inclination, the pole (RA, Dec, ICRF unit vector) | PHY-010 metadata, red-team NUM-015 note (0.02846 vs 0.02860) |
 | N3 | **nightly**: the PHY-012 full system (Sun, 8 planets with Earth and Moon resolved, Pluto) under EIH (β = γ = 1), header.440, legs back and forward over 1000–3000 CE, Park2017 estimator (daily samples, mean-orbit plane, quadratic + 14 Table-2 terms); toggles J2 (2.25e-7, WGCCRE pole) and LT (DE440 spin, which is Park17's S = 190e39 kg m²/s to 0.01%); P-add, P-remove and the J2×LT cross term; one IC hash | nightly | J2 P-add within 0.0286 ± 0.0011 (`PARK17-J2-RATE`, gating); LT P-add within −0.0020 ± 0.0002 (`NUM019-NBODY-LT-CONTRIBUTION`, new, `blocked_by = "OI-35"`: reported, gating only once OI-35 is closed); P-remove and cross term reported | NUM-019, PHY-010, PHY-011. Expected: J2 ≈ 0.0285 (inclined geometry, Park's mean-orbit frame), LT ≈ −0.0020, cross term ≲ 1e-6. |
 
@@ -5562,6 +5573,87 @@ deny; doc `-D warnings`; ruff, ruff format, mypy, pytest (86 passed, 4 skipped);
   pass)**, **C/D = 0.238 (< 1, pass)**, B/A = 47.1 (reported). Round-to-round scatter is ±20% (B 46.8–65.4 s), which
   is why the median of interleaved rounds is used. The earlier block measurement gave B/C = 3.37.
 - **Gates** (at `766e60b` + this notes commit): all exit 0. fmt, clippy `-D warnings`, nextest **302 passed, 49 skipped**, doctests, deny, doc `-D warnings`, ruff, ruff format, mypy, pytest (86 passed, 4 skipped), reuse, trace (121 requirements, 709 citing tests, 0 errors). Data tier: the combined E10 guard + E10b test passes (187 s); the diagnostic harness runs (Ceres row reproduced).
+
+### Test-honesty fixes #37, #38, #39 (PR #13 judge review follow-ups, 2026-11-13)
+- **#37, f128 runs in CI.** New `ci.yml` job `f128` on one pinned nightly (`nightly-2026-10-15`, bump via
+  PR): `cargo +nightly nextest run -p ferroastro-real --features f128 --no-tests=fail -E 'binary(num006_backends) &
+  test(=f128_backend_agrees_with_double_double)'`. `--no-tests=fail` turns a compiled-out test (no nightly detected,
+  feature lost) into a red job instead of a green one with nothing run. The other jobs are unchanged (stable keeps
+  compiling the backend out). Locally no nightly is installed (`RUSTUP_AUTO_INSTALL=0`), so the test was run on the
+  pinned 1.95.0 with `RUSTC_BOOTSTRAP=1 RUSTFLAGS="--cfg fa_nightly"` (demonstration only, not used in CI): 2 passed,
+  f128 vs DD ≤ 8.3e-33 (sqrt, exp, sin, ln). On stable `--list` shows only the generic test.
+- **#38, `child_locate_probe` no longer passes vacuously.** Run on its own it now locates `de440-header` through
+  `locate_product`, checks the path is under `data_dir()`, re-hashes the bytes and compares with the manifest pin;
+  spawned as the child it also asserts the refusal names the file under the `FA_DATA_DIR` override. Negative control:
+  with `FA_DATA_DIR` at a wrong-content or empty cache, the old test passes, the new one fails (FA-E0204).
+- **#39, speed-table nightly.** Every `$FA_BENCH_DIR/*/speed-table.json` (default `target/bench`; `FA_BENCH_DIR` is the
+  harness's own variable) must parse and validate, or the test fails naming each bad file; run directories without a
+  table are listed and passed over; a missing directory fails with the harness command instead of an `unwrap` panic;
+  `FA_BENCH_TABLES` errors name the file. Three PR-tier discovery tests use the committed run-1 table. Negative
+  control: two valid tables plus a newest truncated or schema-999 table pass the old test and fail the new one. On the
+  committed run1/run2 tables the test reaches E6 and fails on (d) only, as recorded (E6 unchanged; V3 partial-table
+  selection not addressed here). The maintainer's `FerroAstro-m0/target/bench` now fails on its schema-2
+  `wp28-20261021T0009Z` table, which the old test skipped silently.
+
+### Issue #31: the diffrun store key covers the integrator settings (2026-11-13)
+- **Bug.** The store file was `<scenario digest>.leg`. The scenario digest does not cover the IAS15 settings that live
+  only in `Ias15Config` (e.g. `pc_b_from_g`, whose default flipped in #13). A leg interrupted by one build could
+  therefore resume in a build with the other predictor, with no warning. `Ias15::restore` continues with the
+  checkpoint's own settings, while the model string names the new build's.
+- **Fix (`ferroastro-diffrun`, store format v2).** The file is now `<scenario digest>-<SHA-256 of the settings>.leg`
+  (`store_file`). "The settings" means the JSON of the whole `Ias15Config` that a fresh N-body leg uses
+  (`ferroastro_propagate::ias15_config(spec, true)`). Because the whole struct is serialised, a field added to
+  `Ias15Config` reaches the key without a code change. The header records the settings too. On resume, both the header
+  and the decoded checkpoint's `integrator.config` must equal this run's settings. If they differ, the file is refused
+  with `FA-E1402` and kept. A leg under other settings looks for its own file name, so it runs from the start and
+  leaves the other settings' file alone.
+- **Old stores.** A v1 file (`<scenario digest>.leg`, or any file whose format tag is not v2) is refused with
+  `FA-E1402`, and the message names the format and issue #31. It is never resumed. Delete it to rerun the leg. This
+  affects only interrupted nightly legs: completed legs are not kept.
+- **Tests** (unit tests in `run.rs`, because emulating another build's file needs the private store layout; PR tier,
+  header.440):
+  - `every_ias15_setting_changes_the_store_key` destructures `Ias15Config` exhaustively, so a new field breaks the
+    build until it is added. Changing any one field changes the file name.
+  - `interrupted_leg_resumes_only_under_the_same_integrator_settings`:
+    - Same settings: the leg resumes, with 0 differing words against the one-piece leg.
+    - The other predictor's file (`pc_b_from_g` flipped in the checkpoint and header): not reused. The leg runs all
+      segments, the result is bitwise equal and that file is untouched.
+    - Refused (`FA-E1402`): a header with other settings or a checkpoint with other settings under this run's name, and
+      a v1 file under either name.
+  - Mutation probes: dropping the checkpoint check, or the settings from the file name, fails the tests.
+- **Not changed (open):** the `RunOutput::model` string still does not name the predictor (issue #31's second
+  point). Changing it alters every report and the committed speed tables, so it is left for a separate change.
+
+## IAS15 rejection rule decision (issue #20)
+
+Recorded 2026-11-14. **Decided by the principal on 2026-11-14:** keep the current step-rejection rule
+`|Δt_required| < safety·|Δt_trial|` (safety = 0.25, `crates/ferroastro-integrators/src/ias15.rs`). Rein & Spiegel
+2015's stated condition, reject whenever `Δt_required < Δt_trial`, is **not** adopted. This closes the WP1 "NEEDS
+HUMAN REVIEW" item and the "IAS15 rejection rule" entry in the human queues of the WP5/WP6 reviews. No code
+behaviour, golden value or tolerance changed, so the golden-change process does not apply.
+
+- **Where the rules differ.** Only when `safety·Δt_trial ≤ Δt_required < Δt_trial`. The current rule accepts the step
+  as tried and takes `Δt_required` as the next trial step. The stricter rule redoes the step.
+- **Constructing such a step from the paper's formulas only (clean-room, DEP-008).** Eq. 11 gives
+  `Δt_required = Δt_trial·(ε/b̃)^{1/7}`, and `b̃ ∝ Δt_trial⁷`, so from a fixed state `Δt_required` does not depend on
+  `Δt_trial` (dead-beat, already pinned by `step_proposal_is_dead_beat`). If the controller's own step from
+  pericentre of the e = 0.5 Kepler orbit is `h`, a trial step of `(1 + 1/safety)/2 · h = 2.5h` gets
+  `Δt_required ≈ h`. That is a ratio of about 0.4, in the middle of the band [0.25, 1).
+- **Tests** (`crates/ferroastro-integrators/tests/ias15_step_control.rs`, `Verifies: NUM-001`):
+  - `step_between_safety_and_full_trial_step_is_accepted` checks that the step lands in the band. Measured:
+    h = 1.964e-2, Δt_trial = 4.910e-2, Δt_required = 1.995e-2, ratio 0.406. It then asserts no rejection and
+    `dt_done == Δt_trial` bit for bit.
+  - `step_below_safety_times_trial_step_is_rejected` takes a trial step of `2h/safety = 8h`, which both rules reject.
+    Measured: 1 rejection, `dt_done` = 2.016e-2. This keeps a controller that never rejects from passing the band
+    test.
+  - No vector was added: the assertions are structural (a count and bitwise equality to the trial step), and the
+    band is computed from `Ias15Config::default().safety`.
+- **Negative controls** (each run on a throw-away copy of the worktree under `/tmp`, deleted afterwards; the worktree
+  was not modified):
+  1. Substituting the stricter rule (`if dt_new.abs() < dt.abs()`) makes the band test fail with 4 rejections and
+     `dt_done` = 1.968e-2. The two existing Eq. 11 tests fail as well: their helper asserts that a first step at the
+     controller's own `h` (or 2h) is not rejected. The companion test still passes.
+  2. A controller that never rejects (`if dt_new.abs() < R::ZERO`) makes only the companion test fail.
 
 ## WP24 — [M5] `ferroastro-abm`: ABM PECE/PECEC order 8–14 with DP8 start-up
 Branch `m5-performance` (stacked on `m4-eih` at `78d5a4c`), draft PR (opened with the first push).
@@ -7068,3 +7160,12 @@ An agent session checked the WP29 symplectic-corrector table against published v
 - `lint_literals`: 0 findings.
 - `trace.py`: TRACE.md regenerated with the 4 new citing tests, then `--check` reports 0 errors.
 - `reuse lint`: compliant (625/625).
+
+### Sync of `m5-performance` with `main` (2026-11-14, before merging PR #18)
+`origin/main` (PRs #46–#53, including the 1.99.0 toolchain, #22 header.440 at run time and #31 diffrun store key) merged into `m5-performance`.
+- **#22 API.** Every M5 `De440::load()` call site moved to the #53 API: PR-tier tests use `De440::load_cached_or_skip("<test name>")` (skip with a message when the cache is absent, an error under `CI`/`FA_REQUIRE_DATA`); nightly tests, the WP26 bench and the shared WP29 test helpers (called only by tests that already read the cached header) use `De440::load_cached()`.
+- **Error codes.** No collision: main adds FA-E0303/E0304 (header not found / checksum), M5 has FA-E0406 (integrator no convergence); `ErrorCode::ALL` holds all 70.
+- **#31 with the M5 integrators.** The diffrun store key and the checkpoint check now serialise the configuration of the leg's own integrator (`ias15_config`, `abm_config`, `wh_config` or `irk16_config`; the restored snapshot's `config` per variant), instead of always the IAS15 configuration. IAS15 keys are unchanged, so v2 stores written by main stay valid.
+- **Speed-table nightly.** Main's discovery (`FA_BENCH_DIR`, invalid tables fail and are named, PR-tier discovery tests) kept; M5's completeness rule (partial tables skipped, a named precondition failure below two complete tables) and the NUM-024 table test layered on it.
+- **1.99 clippy.** `abm_kepler`: a manual slice fill became `fill` (no arithmetic). `irk16_checks` (`manual_midpoint`) and `eih_scope` (`suboptimal_flops`) keep their arithmetic under `#[expect]` with reasons, as #51 did.
+- **CI.** main's `ci.yml` is the base; M5's simd/parallel nextest step, the `ferroastro-abm` wasm32 build and the simd wasm32 build are added.

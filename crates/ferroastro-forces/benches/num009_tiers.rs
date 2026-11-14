@@ -40,7 +40,7 @@ fn models() -> Vec<Case> {
     let text = std::fs::read_to_string(&f.path).unwrap();
     let h = Header::parse(&text).unwrap();
     let prov = f.provenance();
-    let de = De440::load().unwrap();
+    let de = De440::load_cached().unwrap();
     let path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
         .join("../../tests/goldens/sb441-n373s-jdepoc-states.csv");
     let file = SmallBodyStates::parse(&std::fs::read_to_string(path).unwrap()).unwrap();

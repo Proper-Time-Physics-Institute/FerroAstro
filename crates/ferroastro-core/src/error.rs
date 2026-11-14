@@ -62,8 +62,14 @@ pub enum ErrorCode {
     HeaderParse,
     /// `FA-E0301`: a requested ephemeris constant is not in the table or header.
     ConstantMissing,
-    /// `FA-E0302`: the committed constants table is malformed or inconsistent.
+    /// `FA-E0302`: the committed constants metadata (or a table built from it) is malformed or
+    /// inconsistent.
     ConstantsTable,
+    /// `FA-E0303`: the JPL `header.440` file was not found (run `tools/fetch_jpl.py` or set
+    /// `FA_DATA_DIR`).
+    HeaderNotFound,
+    /// `FA-E0304`: the `header.440` bytes do not match the pinned SHA-256.
+    HeaderChecksum,
     /// `FA-E0400`: an integrator met a NaN or infinite state, acceleration or step.
     IntegratorNonFinite,
     /// `FA-E0401`: the adaptive step size collapsed below the configured minimum.
@@ -184,7 +190,7 @@ pub enum ErrorCode {
 
 impl ErrorCode {
     /// Every code, in numeric order (used to prove codes are unique).
-    pub const ALL: [ErrorCode; 68] = [
+    pub const ALL: [ErrorCode; 70] = [
         ErrorCode::NonFinite,
         ErrorCode::OutOfRange,
         ErrorCode::VectorIo,
@@ -202,6 +208,8 @@ impl ErrorCode {
         ErrorCode::HeaderParse,
         ErrorCode::ConstantMissing,
         ErrorCode::ConstantsTable,
+        ErrorCode::HeaderNotFound,
+        ErrorCode::HeaderChecksum,
         ErrorCode::IntegratorNonFinite,
         ErrorCode::IntegratorStepUnderflow,
         ErrorCode::IntegratorConfig,
@@ -276,6 +284,8 @@ impl ErrorCode {
             ErrorCode::HeaderParse => "FA-E0300",
             ErrorCode::ConstantMissing => "FA-E0301",
             ErrorCode::ConstantsTable => "FA-E0302",
+            ErrorCode::HeaderNotFound => "FA-E0303",
+            ErrorCode::HeaderChecksum => "FA-E0304",
             ErrorCode::IntegratorNonFinite => "FA-E0400",
             ErrorCode::IntegratorStepUnderflow => "FA-E0401",
             ErrorCode::IntegratorConfig => "FA-E0402",

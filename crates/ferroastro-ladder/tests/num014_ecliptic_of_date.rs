@@ -50,6 +50,10 @@ fn arcsec_per_rad() -> f64 {
 }
 
 /// Unwrap a sequence of angles (rad) so consecutive values differ by less than π.
+#[expect(
+    clippy::suboptimal_flops,
+    reason = "test oracle arithmetic kept bit-identical across the toolchain bump: fused multiply-add would alter rounding (gh #23)"
+)]
 fn unwrap(xs: &mut [f64]) {
     for k in 1..xs.len() {
         let d = xs[k] - xs[k - 1];
@@ -187,7 +191,9 @@ fn orbits_for_span(setup: &SingleBody<Icrf>) -> u32 {
 /// Verifies: NUM-014
 #[test]
 fn num014_ecliptic_of_date_minus_inertial_is_p_a_offline() {
-    let c = common::ctx();
+    let Some(c) = common::ctx() else {
+        return;
+    };
     let (r0, v0) = c.setup.initial_state();
     let to_icrf = icrf_to_ecliptic_j2000::<f64>().inverse();
     let mut setup = SingleBody::<Icrf>::from_state(
@@ -211,7 +217,9 @@ fn num014_ecliptic_of_date_minus_inertial_is_p_a_offline() {
 #[test]
 #[ignore = "data: downloads JPL header.440 (network); run with --profile data"]
 fn data_num014_ecliptic_of_date_minus_inertial_is_p_a_from_header440() {
-    let c = common::ctx();
+    let Some(c) = common::ctx() else {
+        return;
+    };
     let fetched = fetch_product("de440-header").unwrap();
     println!("de440-header {}", fetched.provenance());
     let h = Header::parse(&std::fs::read_to_string(&fetched.path).unwrap()).unwrap();

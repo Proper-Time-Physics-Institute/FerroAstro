@@ -318,7 +318,7 @@ fn nightly_wp25_subbotin_table1_mixed_mode() {
     );
 
     // N3: barycentre drift (mu* in DD over every body).
-    let de = De440::load().unwrap();
+    let de = De440::load_cached().unwrap();
     let c =
         Velocity::from_km_per_s(DoubleDouble::from_f64(de.speed_of_light().km_per_s())).unwrap();
     let gm: Vec<DoubleDouble> = ic.records.iter().map(|r| dd(r.gm)).collect();

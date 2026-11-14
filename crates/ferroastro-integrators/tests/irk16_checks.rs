@@ -286,6 +286,10 @@ fn irk16_snapshot_resumes_bit_for_bit() {
 ///
 /// Verifies: NUM-003, NUM-010
 #[test]
+#[expect(
+    clippy::manual_midpoint,
+    reason = "test arithmetic kept bit-identical across the toolchain bump: 0.5 * (t0 + t1) is the step midpoint as written (gh #23)"
+)]
 fn irk16_dense_output_and_events() {
     let (x0, v0) = pericentre();
     let h = TAU / f64::from(I3_STEPS);

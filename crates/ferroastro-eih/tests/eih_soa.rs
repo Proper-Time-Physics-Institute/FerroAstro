@@ -72,7 +72,11 @@ impl SplitMix {
 #[cfg(feature = "simd")]
 #[test]
 fn simd_and_scalar_eih_kernels_are_bitwise_identical() {
-    let de = De440::load().unwrap();
+    let Some(de) =
+        De440::load_cached_or_skip("simd_and_scalar_eih_kernels_are_bitwise_identical").unwrap()
+    else {
+        return;
+    };
     let diff = |a: &[f64], b: &[f64]| {
         a.iter()
             .zip(b)
@@ -142,7 +146,11 @@ fn simd_and_scalar_eih_kernels_are_bitwise_identical() {
 /// Verifies: NUM-021, DEP-007
 #[test]
 fn soa_eih_correction_agrees_with_double_double() {
-    let de = De440::load().unwrap();
+    let Some(de) =
+        De440::load_cached_or_skip("soa_eih_correction_agrees_with_double_double").unwrap()
+    else {
+        return;
+    };
     let mut worst = 0.0_f64;
     for sys in &flat_systems() {
         let n = sys.ids.len();

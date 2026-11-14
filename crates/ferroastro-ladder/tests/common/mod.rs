@@ -26,12 +26,18 @@ pub(crate) struct Ctx {
     pub(crate) setup: SingleBody<EclipticJ2000>,
 }
 
-pub(crate) fn ctx() -> Ctx {
-    let de = De440::load().unwrap();
+/// The shared context, or `None` (after a `SKIP` line) when the pinned header.440 that the DE440
+/// constants are read from is not in the data cache outside CI (#22).
+pub(crate) fn ctx() -> Option<Ctx> {
+    let test = std::thread::current()
+        .name()
+        .unwrap_or("ladder test")
+        .to_owned();
+    let de = De440::load_cached_or_skip(&test).unwrap()?;
     let scn = Scenario::mercury_single_body().unwrap();
     let vs = VectorSet::load_canonical().unwrap();
     let setup = SingleBody::mercury(&scn, &de).unwrap();
-    Ctx { de, scn, vs, setup }
+    Some(Ctx { de, scn, vs, setup })
 }
 
 impl Ctx {

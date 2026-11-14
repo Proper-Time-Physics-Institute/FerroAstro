@@ -126,7 +126,9 @@ fn direct_model(s: &ScenarioSpec, de: &De440, backend: SoaBackend) -> NBodyModel
 fn soa_scenario_builds_the_soa_model() {
     let (h, prov) = header();
     let data = DataSources::none().with_header(&h, &prov);
-    let de = De440::load().unwrap();
+    let Some(de) = De440::load_cached_or_skip("soa_scenario_builds_the_soa_model").unwrap() else {
+        return;
+    };
     let s = abm_full(ForceKernel::Soa, P4_YEARS);
     let (ids, acc) = initial_accelerations(&s, &data).unwrap();
     let model = direct_model(&s, &de, SoaBackend::Scalar);
@@ -187,7 +189,11 @@ fn simd_and_scalar_soa_models_integrate_bitwise() {
     use ferroastro_abm::{Abm, AbmConfig};
     use ferroastro_core::time::SECONDS_PER_DAY;
     let (h, prov) = header();
-    let de = De440::load().unwrap();
+    let Some(de) =
+        De440::load_cached_or_skip("simd_and_scalar_soa_models_integrate_bitwise").unwrap()
+    else {
+        return;
+    };
     let s = abm_full(ForceKernel::Soa, P4_YEARS);
     let ic = InitialConditions::<f64>::from_header(&h, &prov).unwrap();
     let ms = direct_model(&s, &de, SoaBackend::Scalar);

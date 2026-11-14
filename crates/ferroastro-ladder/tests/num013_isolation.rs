@@ -18,7 +18,9 @@ use ferroastro_ladder::single_body::{Model, Rung};
 /// Verifies: NUM-013
 #[test]
 fn single_body_terms_isolate_to_their_analytic_rates() {
-    let c = common::ctx();
+    let Some(c) = common::ctx() else {
+        return;
+    };
     let newton = c
         .setup
         .run(&Rung::custom(

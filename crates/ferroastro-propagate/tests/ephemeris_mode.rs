@@ -282,7 +282,12 @@ fn relativistic_rebarycentring_residual_in_double_double() {
             velocity: w.map(dd),
         })
         .collect();
-    let de = De440::load().unwrap();
+    let Some(de) =
+        De440::load_cached_or_skip("relativistic_rebarycentring_residual_in_double_double")
+            .unwrap()
+    else {
+        return;
+    };
     let c =
         Velocity::from_km_per_s(DoubleDouble::from_f64(de.speed_of_light().km_per_s())).unwrap();
     let norm = |a: [DoubleDouble; 3]| {

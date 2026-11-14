@@ -22,7 +22,12 @@
 //! use ferroastro_system::{Catalogue, Tier};
 //! use ferroastro_ephem::NaifId;
 //! # fn main() -> Result<(), Box<dyn std::error::Error>> {
-//! let mut cat = Catalogue::de440_major(&De440::load()?);
+//! // The DE440 constants are read at run time from the pinned header.440 (#22); here from the
+//! // data cache filled by `tools/fetch_jpl.py` (De440::from_header_bytes takes the bytes).
+//! let Some(de) = De440::load_cached_or_skip("ferroastro-system doc example")? else {
+//!     return Ok(());
+//! };
+//! let mut cat = Catalogue::de440_major(&de);
 //! assert_eq!(cat.ids_in(Tier::Major).count(), 11);
 //! cat.set_tier(NaifId::PLUTO_BARYCENTER, Tier::Ring)?;
 //! assert_eq!(cat.get(NaifId::PLUTO_BARYCENTER)?.tier(), Tier::Ring);

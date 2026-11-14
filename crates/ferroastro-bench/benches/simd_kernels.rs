@@ -130,7 +130,7 @@ fn backends() -> Vec<SoaBackend> {
 fn kernels(c: &mut Criterion) {
     let (ids, gm, x, v) = system();
     let n = ids.len();
-    let de = De440::load().unwrap();
+    let de = De440::load_cached().unwrap();
     let mut g = c.benchmark_group(format!("wp26-newtonian-n{n}"));
     let pw = model(&ids, &gm, Box::new(NewtonianMutual));
     bench_model(&mut g, "production-pairwise", &pw, &x, &v);

@@ -66,7 +66,7 @@ fn shifted(bodies: &[BarycentreBody<Dd>], acc: &[[Dd; 3]], s: Dd) -> Vec<Barycen
 /// body.
 fn residual(delta_s: f64, print: bool) -> f64 {
     let (h, prov) = header();
-    let de = De440::load().unwrap();
+    let de = De440::load_cached().unwrap();
     let cat = Catalogue::de440_major(&de);
     let ic = InitialConditions::<Dd>::from_header(&h, &prov).unwrap();
     let bodies: Vec<BarycentreBody<Dd>> = ids()

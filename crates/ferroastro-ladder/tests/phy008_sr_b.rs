@@ -12,7 +12,9 @@ use ferroastro_precession::report::RateReportBuilder;
 /// Verifies: PHY-008, NUM-015
 #[test]
 fn sr_b_harmonic_and_areal_give_seven_and_five_sixths() {
-    let c = common::ctx();
+    let Some(c) = common::ctx() else {
+        return;
+    };
     for (id, vector, gauge) in [
         (
             "SR-b/harmonic",

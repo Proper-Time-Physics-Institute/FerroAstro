@@ -526,7 +526,7 @@ impl<R: Real> NBodyRun<R> {
         restore: Option<(&IntegratorSnapshot, &DriverState, &str)>,
     ) -> Result<Self, PropagateError> {
         let name = spec.name.as_str();
-        let de = De440::load()?;
+        let de = data.de440(name)?;
         let (ep, jd) = epoch::<R>(spec, data)?;
         let (mut states, pair, mut source) = nbody_ics::<R>(spec, data, ep)?;
         let (small, small_states, small_source) = small_bodies::<R>(spec, data, &states, jd)?;

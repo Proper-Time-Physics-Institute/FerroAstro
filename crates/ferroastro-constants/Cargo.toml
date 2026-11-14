@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: Apache-2.0
 [package]
 name = "ferroastro-constants"
-description = "DE440 constants parsed from JPL header.440 (versioned, cited table) and quarantined IAU 2015 B3 nominal values"
+description = "DE440 constants read at run time from the hash-pinned JPL header.440 (committed metadata, no values) and quarantined IAU 2015 B3 nominal values"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
@@ -10,9 +10,22 @@ license.workspace = true
 authors.workspace = true
 repository.workspace = true
 
+[features]
+default = ["fs"]
+# De440::load_cached: the pinned header.440 from the FerroAstro data cache ($FA_DATA_DIR), located
+# through ferroastro-testdata (maintainer decision 2026-11-14, #22). Off for wasm32.
+fs = ["dep:ferroastro-testdata"]
+# De440::embedded: build.rs includes a fetched header.440 from $FA_DATA_DIR (never committed; the
+# build fails with FA-E0303 if it is absent). Never enable it for published builds.
+embed-header = []
+# De440::from_header_bytes_unchecked, for synthetic headers in tests only.
+unchecked-header = []
+
 [dependencies]
 ferroastro-core.workspace = true
+ferroastro-testdata = { workspace = true, optional = true }
 serde.workspace = true
+sha2.workspace = true
 thiserror.workspace = true
 toml.workspace = true
 

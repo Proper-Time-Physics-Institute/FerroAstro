@@ -10,7 +10,7 @@ members = ["crates/*"]
 version = "0.0.0"
 edition = "2024"
 # MSRV (STD-005, ADR-0006): the highest minimum of the adopted dependencies, here bounded by edition 2024
-# (Rust 1.85). ADR-0006 caps it at the pinned toolchain (1.95.0) minus two minors, i.e. <= 1.93.
+# (Rust 1.85). ADR-0006 caps it at the pinned toolchain (1.99.0) minus two minors, i.e. <= 1.97.
 rust-version = "1.85"
 license = "Apache-2.0"
 authors = ["Proper-Time Physics Institute"]
@@ -24,7 +24,9 @@ ferroastro-frames = { path = "crates/ferroastro-frames", version = "0.0.0" }
 ferroastro-time = { path = "crates/ferroastro-time", version = "0.0.0" }
 ferroastro-vectors = { path = "crates/ferroastro-vectors", version = "0.0.0" }
 ferroastro-testdata = { path = "crates/ferroastro-testdata", version = "0.0.0" }
-ferroastro-constants = { path = "crates/ferroastro-constants", version = "0.0.0" }
+# Default features off for dependents (#22): library crates take a De440 or header bytes and stay
+# offline (wasm32); binaries and tests that read the data cache add `features = ["fs"]`.
+ferroastro-constants = { path = "crates/ferroastro-constants", version = "0.0.0", default-features = false }
 ferroastro-ephem = { path = "crates/ferroastro-ephem", version = "0.0.0" }
 ferroastro-system = { path = "crates/ferroastro-system", version = "0.0.0" }
 ferroastro-analytic = { path = "crates/ferroastro-analytic", version = "0.0.0" }
