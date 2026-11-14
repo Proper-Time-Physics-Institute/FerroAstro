@@ -43,22 +43,33 @@ Each finding has a class:
 * ``reject``: never passes. A computed-reference vector whose ``generated_by`` SHA is a commit of
   this PR (TST-004): the generator must land, reviewed, before the golden it produces.
 
-What the ratchet guarantees about tests (TST-006). It detects exactly these forms of test
-weakening; each ``detects_*`` id is pinned by the tests listed for it in ``DETECTED_FORMS`` in
-tools/tests/test_ratchet.py, and nothing else is detected:
+What the ratchet does about tests (TST-006). It is a HEURISTIC, NON-ADVERSARIAL scanner: it
+detects the forms of test weakening listed below when they are written in ordinary syntax, and
+claims nothing else. Ordinary syntax means: Rust attributes written directly on the item as plain
+paths (``#[ignore]``, ``#[cfg(...)]``, ``#[tokio::test]``; no ``r#``, not produced by a macro,
+a ``use`` alias or ``include!``) in a file whose comments and string, raw string and char
+literals are standard ones; Python tests, gates and rebindings written as statement-level
+``def``/``class``, assignments, ``del`` and imports in a module or class body, with pytest and
+unittest imported by a plain ``import`` or ``from ... import`` and gates spelled as an attribute
+path or an imported name. Deliberately obfuscated or adversarially encoded code may evade it,
+e.g. raw identifiers (``#[r#ignore]``), crafted ``'\u{...}'`` char literals, a lifetime named
+``r`` before a quote, ``:=`` inside decorators or defaults, names bound by ``except ... as`` or
+``match``, nested star imports, names built at run time. Several of these are handled on a
+best-effort basis (the tests pin those that are), but catching such code is the reviewer's
+responsibility. The detected forms (closed list, each ``detects_*`` id pinned by the tests
+listed for it in ``DETECTED_FORMS`` in tools/tests/test_ratchet.py), in ordinary syntax:
 
 * ``detects_rs_test_deleted``: a Rust test removed or renamed. A test is a ``fn`` in a ``.rs``
-  file under ``crates/`` whose run of outer attributes holds ``#[test]`` or ``#[<path>::test]``
-  (any segment may be a raw identifier, ``#[r#test]``), outside comments and string, raw string
-  and char literals (``'\u{...}'`` lexed as rustc does); tests are counted by crate directory and
-  function name, a raw identifier's ``r#`` dropped (:func:`rust_scan`).
+  file under ``crates/`` whose run of outer attributes holds ``#[test]`` or ``#[<path>::test]``,
+  not inside a comment or a string, raw string or char literal; tests are counted by crate
+  directory and function name (:func:`rust_scan`).
 * ``detects_rs_gate_attr``: a new ``ignore``, ``cfg`` or ``cfg_attr`` attribute, outer or inner,
-  in a ``.rs`` file under ``crates/``, outside comments and literals as above, with whitespace and
-  raw-identifier ``r#`` normalised (``# [ignore]``, ``#[ ignore ]``, ``#[r#ignore]``, an attribute
-  split over lines). New means its (file, inline ``mod`` path + item kind + item name,
-  normalised text) was not in the merge base, so a gate moved onto another item is new. It passes
-  only if it matches ``gate_allowlist`` in ``ci/ratchet.toml`` and names no Cargo feature that is
-  undeclared in the merge base.
+  in a ``.rs`` file under ``crates/``, not inside a comment or literal, with whitespace
+  normalised (``# [ignore]``, ``#[ ignore ]``, an attribute split over lines). New means its
+  (file, inline ``mod`` path + item kind + item name, normalised text) was not in the merge
+  base, so a gate moved onto another item is new. It passes only if it matches
+  ``gate_allowlist`` in ``ci/ratchet.toml`` and names no Cargo feature that is undeclared in the
+  merge base.
 * ``detects_rs_executed_count``: the number of tests ``cargo nextest list --workspace`` (default
   profile, each tree with its own ``.config/nextest.toml``) reports as run, neither ignored nor
   filtered out, is lower for the head than for the merge base. The head listing is produced by
@@ -67,11 +78,10 @@ tools/tests/test_ratchet.py, and nothing else is detected:
   ``tools/`` named ``test_*.py`` or ``*_test.py``, a module-level ``def test*`` or a ``def
   test*`` in a (nested) ``class Test*``, as a direct statement of the parsed module and not
   rebound later in the same scope (so one put in a string or under ``if``/``try``/``with`` is
-  removed). Rebinding is recognised only as a later statement of that scope binding or unbinding
-  the name anywhere inside it: ``def``/``class``, any assignment target (``=``, augmented,
-  annotated, ``:=``, ``for``, ``with ... as``, ``type``), ``del``, ``import ... [as]``,
-  ``except ... as``, a ``match`` capture pattern; ``from m import *`` removes every test bound
-  before it. Tests are counted by file name, not directory, and ``Class::function``
+  removed). Rebinding is recognised as a later statement of that scope that binds or unbinds the
+  name: ``def``/``class``, an assignment target (``=``, augmented, annotated, ``:=``, ``for``,
+  ``with ... as``, ``type``), ``del``, ``import ... [as]``; ``from m import *`` removes every
+  test bound before it. Tests are counted by file name, not directory, and ``Class::function``
   (:func:`python_test_names`).
 * ``detects_py_gate_name``: in any ``.py`` file under ``tools/``, a new call or reference
   ``<expr>.<name>`` where ``<name>`` is ``skip``, ``skipif``, ``xfail``, ``importorskip``,
@@ -101,9 +111,10 @@ Python gates are keyed by (file path, enclosing ``Class::function`` or ``<module
 text), so a gate moved onto another test is new. Directories named ``target``, ``.venv``,
 ``.git``, ``node_modules``, ``__pycache__`` or ``.mypy_cache`` are not scanned.
 
-Any other way of skipping, deselecting, hiding or neutering a test is NOT detected; reviewers
-must check for it. The non-exhaustive examples below are each pinned by ``test_<id>`` in
-tools/tests/test_ratchet.py, asserting no finding (issue #55 collects them):
+Any other way of skipping, deselecting, hiding or neutering a test is NOT detected, including but
+not limited to the examples below; reviewers must check for it. The examples are a
+non-exhaustive list, each pinned by ``test_<id>`` in tools/tests/test_ratchet.py asserting no
+finding (issue #55 collects them):
 
 * ``known_gap_py_runtime_gate``: a skip, ``__test__`` or rebinding of a test done at run time or
   from another scope (``getattr(pytest, "sk" + "ip")``, ``setattr(f, "__test__", False)``,
@@ -148,6 +159,9 @@ tools/tests/test_ratchet.py, asserting no finding (issue #55 collects them):
 * ``known_gap_py_imported_marker``: ``pytestmark`` bound by ``from m import pytestmark``.
 * ``known_gap_rs_macro_gate``: a gate passed to a macro as tokens (``#[$a]`` in a
   ``macro_rules!``, invoked as ``t!(ignore)``).
+* ``known_gap_adversarial_encoding``: code written to defeat the scanner, e.g. deleting a Rust
+  test whose attribute is renamed by ``use`` (``use core::prelude::v1::test as check;
+  #[check] fn t()``), or replacing a Python test's body through ``test_a.__code__ = ...``.
 
 ``tools/tests/conftest.py``, and every file under ``tools/`` (at any depth) named like one of the
 seven pytest configuration files above, are also on the ORG-011 meta surface (CODEOWNERS).
@@ -177,13 +191,15 @@ EVIDENCE_KEYS = ("source", "citation", "retrieved", "verified_by", "generated_by
 SKIP_DIRS = {"target", ".venv", ".git", "node_modules", "__pycache__", ".mypy_cache"}
 YAML_BLOCK_RE = re.compile(r"^```yaml\n(.*?)^```", re.DOTALL | re.MULTILINE)
 # Rust lexing (see `rust_mask`): a char literal, and the opening of a raw (byte/C) string.
-# `\u{...}` is lexed exactly as rustc does: one to six hex digits, each optionally followed by
-# underscores (`'\u{0_0_0_0_2_2}'` is valid); a looser pattern can desynchronise the scanner.
+# `\u{...}` takes one to six hex digits, each optionally followed by underscores
+# (`'\u{0_0_0_0_2_2}'` is valid Rust); a looser pattern can desynchronise the scanner.
 RUST_CHAR_RE = re.compile(
     r"'(?:\\(?:x[0-9a-fA-F]{2}|u\{(?:[0-9a-fA-F]_*){1,6}\}|[^u\n])|[^'\\\n])'"
 )
 RUST_RAW_STR_RE = re.compile(r'[bc]?r(#*)"')
-# An outer or inner attribute anywhere in code (comments and literals already masked out);
+# A lifetime or label (`'a`, `'r`, `'r#a`): skipped whole, so `'r"` is not read as a raw string.
+RUST_LIFETIME_RE = re.compile(r"'(?:r#)?\w*")
+# An outer or inner attribute in code (comments and literals already masked out);
 # `#`, `!` and `[` may be separated by whitespace (`# [ignore]` is valid Rust).
 RUST_ATTR_RE = re.compile(r"#\s*(!)?\s*\[")
 RUST_TEST_ATTR_RE = re.compile(r"^(?:[\w:]+::)?test$")
@@ -424,7 +440,10 @@ def _rust_literal(text: str, i: int) -> tuple[int, int, int] | None:
         return i + 1, min(j, len(text)), j + 1
     if c == "'":
         m = RUST_CHAR_RE.match(text, i)
-        return None if m is None else (i + 1, m.end() - 1, m.end())  # None: a lifetime
+        if m is None:  # a lifetime or label: nothing to blank, resume after its name
+            end = RUST_LIFETIME_RE.match(text, i).end()  # type: ignore[union-attr]
+            return i, i, end
+        return i + 1, m.end() - 1, m.end()
     if c in "bcr" and (i == 0 or not (text[i - 1].isalnum() or text[i - 1] == "_")):
         raw = RUST_RAW_STR_RE.match(text, i)
         if raw:
@@ -612,17 +631,28 @@ def _py_bindings(body: list[ast.stmt], prefix: str) -> dict[str, list[str]]:
     """Map each name bound in ``body`` (one scope, in order) to the test ids it finally holds.
 
     Only direct statements count: a test under ``if``/``try``/``with`` or inside a string is not
-    collected here. A later statement of the same scope that binds or unbinds the name anywhere
-    inside it removes the test: ``def``/``class``, any assignment target (``=``, augmented,
-    annotated, ``:=``, ``for``, ``with ... as``, ``type``), ``del``, ``import ... [as]``,
-    ``except ... as`` and a ``match`` capture (``case name``, ``*name``, ``**name``, ``as
-    name``); a ``from m import *`` removes every test bound before it. Rebinding from another
-    scope (``global`` in a function, ``globals()``, ``setattr``) is not seen.
+    collected here. A later statement of the same scope that binds or unbinds the name removes
+    the test: ``def``/``class`` (also ``:=`` in its decorators, defaults, annotations or bases),
+    any assignment target in a simple or compound statement (``=``, augmented, annotated,
+    ``:=``, ``for``, ``with ... as``, ``type``), ``del``, ``import ... [as]``, ``except ... as``
+    and a ``match`` capture (``case name``, ``*name``, ``**name``, ``as name``); a ``from m
+    import *``, also nested in a compound statement, removes every test bound before it. This is
+    a heuristic: rebinding from another scope (``global`` in a function, ``globals()``,
+    ``setattr``) is not seen, and names bound in nested scopes (comprehensions, lambdas) also
+    count, which over-detects.
     """
     live: dict[str, list[str]] = {}
     for stmt in body:
-        if isinstance(stmt, ast.ImportFrom) and any(a.name == "*" for a in stmt.names):
-            live.clear()  # the star import may rebind any of them
+        if any(
+            isinstance(n, ast.ImportFrom) and any(a.name == "*" for a in n.names)
+            for n in ast.walk(stmt)
+        ):
+            live.clear()  # a star import, also nested (`if x: from m import *`), may rebind any
+        if isinstance(stmt, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
+            # Decorators, defaults, annotations and bases run in this scope (`:=` there binds).
+            for part in _py_header(stmt):
+                for name in _py_names_bound(part):
+                    live.pop(name, None)
         if isinstance(stmt, (ast.FunctionDef, ast.AsyncFunctionDef)):
             live.pop(stmt.name, None)
             if stmt.name.startswith("test"):
@@ -638,8 +668,20 @@ def _py_bindings(body: list[ast.stmt], prefix: str) -> dict[str, list[str]]:
     return live
 
 
-def _py_names_bound(stmt: ast.stmt) -> Iterable[str]:
-    """Every name that ``stmt`` binds or unbinds anywhere inside it (see :func:`_py_bindings`)."""
+def _py_header(stmt: ast.FunctionDef | ast.AsyncFunctionDef | ast.ClassDef) -> list[ast.AST]:
+    """Return the parts of a ``def``/``class`` evaluated in the enclosing scope (not the body)."""
+    parts: list[ast.AST] = list(stmt.decorator_list)
+    if isinstance(stmt, ast.ClassDef):
+        parts += [*stmt.bases, *stmt.keywords]
+    else:
+        parts.append(stmt.args)
+        if stmt.returns is not None:
+            parts.append(stmt.returns)
+    return parts
+
+
+def _py_names_bound(stmt: ast.AST) -> Iterable[str]:
+    """Names that ``stmt`` binds or unbinds, found by walking it (see :func:`_py_bindings`)."""
     for node in ast.walk(stmt):
         if isinstance(node, ast.Name) and isinstance(node.ctx, (ast.Store, ast.Del)):
             yield node.id
@@ -769,7 +811,8 @@ def python_gates(text: str | bytes) -> list[tuple[str, str]]:
     one of those names; any
     ``def pytest_*`` hook. A file that does not parse yields one gate. Any ``<expr>.skip`` counts,
     also in code that is not a test (``args.skip``): it over-detects, which only costs an approval.
-    Anything else is not detected; see the module docstring for the closed list and examples.
+    A heuristic: anything else is not detected; see the module docstring for the detected forms
+    and examples of undetected ones.
     Pass the file's bytes, so a PEP 263 coding declaration is honoured.
     """
     try:
@@ -871,7 +914,7 @@ def declared_features(root: Path) -> set[str]:
 def gate_attributes(root: Path) -> Counter[tuple[str, str, str]]:
     """Multiset of (file, item or scope, gate) for Rust attribute gates and Python gates.
 
-    See :func:`rust_scan` and :func:`python_gates` for exactly what counts.
+    See :func:`rust_scan` and :func:`python_gates` for what counts.
     """
     gates: Counter[tuple[str, str, str]] = Counter()
     for path in _sources(root, ".rs", "crates"):

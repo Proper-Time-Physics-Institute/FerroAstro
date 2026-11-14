@@ -9,24 +9,28 @@
 value_change_k = 1
 
 # New gates matching one of these regexes (searched in the gate text) pass without approval;
-# everything else needs a maintainer. The ratchet detects exactly these forms of test weakening
-# (TST-006 notes and the tools/ratchet.py docstring define each `detects_*` form): deleted Rust
-# and Python tests, new Rust `ignore`/`cfg`/`cfg_attr` attributes under crates/, a fall in the
-# nextest executed count, new Python skip/xfail/importorskip/unittest-skip names, pytest `exit`,
-# assignments to `pytestmark`/`__test__`/`collect_ignore`/`collect_ignore_glob`, `def pytest_*`
-# hooks and unparsable files under tools/, and pytest configuration changes under tools/. This
-# allowlist applies to the Rust attributes, in rustfmt spelling after tools/ratchet.py
-# normalises whitespace; it lists no Python gate. Any other way of skipping, deselecting, hiding
-# or neutering a test is NOT detected, e.g. `should_panic` on a failing test
+# everything else needs a maintainer. The ratchet is a heuristic, non-adversarial scanner (TST-006
+# notes and the tools/ratchet.py docstring define each `detects_*` form and what "ordinary
+# syntax" means): in ordinary syntax it detects these forms of test weakening and claims nothing
+# else: deleted Rust and Python tests, new Rust `ignore`/`cfg`/`cfg_attr` attributes under
+# crates/, a fall in the nextest executed count, new Python skip/xfail/importorskip/unittest-skip
+# names, pytest `exit`, assignments to `pytestmark`/`__test__`/`collect_ignore`/
+# `collect_ignore_glob`, `def pytest_*` hooks and unparsable files under tools/, and pytest
+# configuration changes under tools/. Deliberately obfuscated or adversarially encoded code may
+# evade it. This allowlist applies to the Rust attributes, in rustfmt spelling after
+# tools/ratchet.py normalises whitespace; it lists no Python gate. Any other way of skipping,
+# deselecting, hiding or neutering a test is NOT detected, e.g. `should_panic` on a failing test
 # (known_gap_rs_verdict_attribute; the `known_gap_*` list in TST-006 notes is non-exhaustive);
-# reviewers must check for it. A
-# gate is new when it is new on its item (file, Rust item or Python function/class, text), so an
-# allowlisted text moved onto another item is checked again, and a non-listed one fails.
+# reviewers must check for it. A gate is new when it is new on its item (file, Rust item or
+# Python function/class, text), so an allowlisted text moved onto another item is checked
+# again, and a non-listed one fails.
 # An allowlisted gate is NOT checked by the source scan, and some of the entries below CAN hide a
 # PR-tier test (known_gap_rs_allowlisted_gate in TST-006 notes and tools/ratchet.py): for those
 # the only backstop is `ratchet (test count)`, whose head listing is produced by PR code.
 # What is listed:
-# - cfg(test), cfg(doc): they select test or doc builds and hide nothing from CI.
+# - cfg(test): it selects the test build, which is the build nextest runs, so it hides nothing.
+#   cfg(doc) is NOT listed: nextest does not build with cfg(doc), so `#[cfg(doc)]` on a test
+#   removes it from the PR-tier run; it needs approval.
 # - One feature selection, `cfg(feature = "...")` or `cfg(not(feature = "..."))`, and only for a
 #   feature the base tree declares (ratchet.py turns an undeclared name into a finding).
 #   "Declares" means some crate under crates/ declares it (the union over crates); a feature
@@ -44,7 +48,6 @@ value_change_k = 1
 # Moving a test to the nightly tier is NOT listed: it leaves PR CI, so it needs approval.
 gate_allowlist = [
     '^cfg\(test\)$',
-    '^cfg\(doc\)$',
     '^cfg\((?:not\()?feature = "[A-Za-z0-9_-]+"\)?\)$',
     '^cfg\(not\(target_arch = "wasm32"\)\)$',
     '^cfg_attr\(feature = "serde", derive\(serde::Serialize, serde::Deserialize\)\)$',

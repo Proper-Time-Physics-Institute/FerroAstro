@@ -172,14 +172,17 @@ statement: >-
   computed-reference); |Δvalue| exceeds k times the old effective tolerance
   (k in ci/ratchet.toml); a vector is deleted; a vector gains blocked_by; a
   requirement field owned by ORG-011 changes; or the PR weakens a test in one
-  of the forms the ratchet detects. The ratchet detects exactly these forms
-  of test weakening, and no others: detects_rs_test_deleted,
+  of the forms the ratchet detects. The ratchet is a heuristic,
+  non-adversarial scanner: it detects these forms of test weakening when
+  they are written in ordinary syntax (defined in the notes), and claims
+  nothing else: detects_rs_test_deleted,
   detects_rs_gate_attr, detects_rs_executed_count, detects_py_test_deleted,
   detects_py_gate_name, detects_py_exit, detects_py_collection_target,
   detects_py_hook_def, detects_py_unparsable and detects_pytest_config, as
   defined in the notes. Any other way of skipping, deselecting, hiding or
   neutering a test is NOT detected, and this requirement claims nothing
-  about it. From milestone M2, mutation testing (cargo-mutants) SHALL run on
+  about it; deliberately obfuscated or adversarially encoded code may evade
+  the scanner and is the reviewer's responsibility. From milestone M2, mutation testing (cargo-mutants) SHALL run on
   changed physics functions, with a ratchet on surviving mutants.
 acceptance: >-
   The `ratchet` and `ratchet (test count)` checks of
@@ -192,8 +195,9 @@ acceptance: >-
   named in the notes is not detected (one test_known_gap_* per example,
   asserting no finding); that the notes, the ratchet.py docstring and those
   tests name the same detects_* forms and the same examples, and that every
-  document stating the guarantee calls the detected list exact and the
-  examples non-exhaustive; that a maintainer's approval of the head SHA lets
+  document stating the guarantee calls the scanner heuristic and
+  non-adversarial, limits the detected list to ordinary syntax, calls the
+  examples non-exhaustive and promises no exactness; that a maintainer's approval of the head SHA lets
   an approval finding pass; that the repository compared with itself has no
   finding; and that a branch behind main gets no finding for what main
   gained after the branch point. From M2: a cargo-mutants job is required
@@ -207,17 +211,30 @@ related: [TST-004, ORG-009, ORG-011, TST-005]
 notes: >-
   NEW (ADR-0015). Approval means a review in state APPROVED by a login in
   .github/governance/maintainers.txt on the current head SHA; a later push
-  needs a new approval. The ratchet detects exactly these forms of test
-  weakening (each pinned by tests, DETECTED_FORMS in
-  tools/tests/test_ratchet.py): detects_rs_test_deleted, a Rust test removed
-  or renamed, where a test is a fn in a .rs file under crates/ whose run of
-  outer attributes holds test or <path>::test (a segment may be a raw
-  identifier, r#test), outside comments and string, raw string and char
-  literals (char escapes lexed as rustc does), counted by crate directory and
-  function name (r# dropped); detects_rs_gate_attr, a new ignore, cfg or
-  cfg_attr attribute (outer or inner, also spelled r#ignore, r#cfg,
-  r#cfg_attr) in a .rs file under crates/, outside comments and literals as
-  above, whitespace normalised (also across lines), new when its file, item (inline
+  needs a new approval. The ratchet is a HEURISTIC, NON-ADVERSARIAL
+  scanner. Ordinary syntax means: Rust attributes written directly on the
+  item as plain paths (#[ignore], #[cfg(...)], #[tokio::test]; no r#, not
+  produced by a macro, a use alias or include!) in a file whose comments and
+  string, raw string and char literals are standard ones; Python tests,
+  gates and rebindings written as statement-level def/class, assignments,
+  del and imports in a module or class body, with pytest and unittest
+  imported by a plain import or from ... import and gates spelled as an
+  attribute path or an imported name. Deliberately obfuscated or
+  adversarially encoded code may evade it (e.g. raw identifiers such as
+  #[r#ignore], crafted '\u{...}' char literals, a lifetime named r before
+  a quote, := inside decorators or defaults, names bound by except ... as
+  or match, nested star imports, names built at run time); several of these
+  are handled on a best-effort basis and pinned by tests, but catching such
+  code is the reviewer's responsibility. In ordinary syntax the ratchet
+  detects these forms of test weakening (a closed list, each pinned by
+  tests, DETECTED_FORMS in tools/tests/test_ratchet.py):
+  detects_rs_test_deleted, a Rust test removed or renamed, where a test is
+  a fn in a .rs file under crates/ whose run of outer attributes holds test
+  or <path>::test, not inside a comment or a string, raw string or char
+  literal, counted by crate directory and function name;
+  detects_rs_gate_attr, a new ignore, cfg or cfg_attr attribute (outer or
+  inner) in a .rs file under crates/, not inside a comment or literal,
+  whitespace normalised (also across lines), new when its file, item (inline
   mod path, kind and name) and text were not in the merge base, unless it
   matches gate_allowlist in ci/ratchet.toml and names no Cargo feature
   undeclared in the merge base; detects_rs_executed_count, fewer tests that
@@ -229,10 +246,9 @@ notes: >-
   module-level def test* or a def test* in a (nested) class Test*, as a
   direct statement of the parsed module not rebound later in its scope (one
   put in a string or under if, try or with is not counted), where rebinding
-  is recognised only as a later statement of that scope that binds or
-  unbinds the name anywhere inside it (def or class; any assignment target:
-  =, augmented, annotated, :=, for, with ... as, type; del; import ... [as];
-  except ... as; a match capture pattern) or a from m import *, which
+  is recognised as a later statement of that scope that binds or unbinds
+  the name (def or class; an assignment target: =, augmented, annotated, :=,
+  for, with ... as, type; del; import ... [as]) or a from m import *, which
   removes every test bound before it; counted by file name and
   Class::function; detects_py_gate_name,
   in any .py file under tools/, a new call or reference <expr>.<name> with
@@ -259,8 +275,8 @@ notes: >-
   onto another test is new. Directories target, .venv, .git, node_modules,
   __pycache__ and .mypy_cache are not scanned. A rename counts as a
   deletion and needs approval. Any other way of skipping, deselecting,
-  hiding or neutering a test is NOT detected; reviewers must check for it.
-  Non-exhaustive examples, each pinned by test_<id> in
+  hiding or neutering a test is NOT detected, including but not limited to
+  the examples below; reviewers must check for it. Non-exhaustive examples, each pinned by test_<id> in
   tools/tests/test_ratchet.py asserting no finding (issue #55 collects
   them): known_gap_py_runtime_gate, a skip, __test__ or rebinding of a test
   done at run time or from another scope (getattr(pytest, "sk" + "ip"),
@@ -302,7 +318,11 @@ notes: >-
   name); known_gap_py_replacing_decorator, a decorator that replaces the
   test with a no-op; known_gap_py_imported_marker, pytestmark bound by from
   m import pytestmark; known_gap_rs_macro_gate, a gate passed to a macro as
-  tokens (#[$a] in a macro_rules!, invoked as t!(ignore)). Python gate
+  tokens (#[$a] in a macro_rules!, invoked as t!(ignore));
+  known_gap_adversarial_encoding, code written to defeat the scanner, e.g.
+  deleting a Rust test whose attribute is renamed by use (use
+  core::prelude::v1::test as check; #[check] fn t()), or replacing a Python
+  test's body through test_a.__code__ = .... Python gate
   names are matched on any expression, so args.skip in non-test code also
   needs approval (over-detection). tools/tests/conftest.py and the pytest
   configuration files above (all seven names, at any depth under tools/)

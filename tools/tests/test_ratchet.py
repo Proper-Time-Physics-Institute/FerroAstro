@@ -217,6 +217,7 @@ CARGO = '[package]\nname = "c"\n\n[features]\nstd = []\nserde = []\n'
         "#[r#cfg(any())]",
         "#[r#cfg_attr(all(), r#ignore)]",
         "#![r#cfg(any())]",
+        "#[cfg(doc)]",
     ],
 )
 def test_rust_gate_spellings_and_hiding_cfgs_need_approval(tmp_path: Path, attr: str) -> None:
@@ -333,7 +334,7 @@ def test_raw_identifiers_are_read_as_rustc_reads_them(tmp_path: Path) -> None:
 
 
 # Verifies: TST-006
-def test_char_escapes_are_lexed_exactly() -> None:
+def test_char_escapes_do_not_desynchronise_the_scanner() -> None:
     """A `\\u{...}` escape with underscores cannot desynchronise the scanner (referee B2)."""
     hidden = (
         "pub const A: [char; 2] = ['\\u{0_0_0_0_2_2}','\"'];\n"
@@ -347,6 +348,14 @@ def test_char_escapes_are_lexed_exactly() -> None:
         "pub const A: char = '\\u{1_0_F_F_F_F}';\nconst S: &str = \"\n#[test]\nfn t() {}\n\";\n"
     )
     assert ratchet.rust_scan(in_string) == ([], [])
+
+
+# Verifies: TST-006
+def test_a_lifetime_before_a_quote_is_not_a_raw_string() -> None:
+    """`'r"` is the lifetime `'r` and a string, not `'` and the raw string `r"` (PR #56 round 1)."""
+    text = 'm!(\'r"\\"");\n#[ignore]\n#[test]\nfn t() {}\n'
+    assert ratchet.rust_scan(text) == (["t"], [("fn t", "ignore")])
+    assert ratchet.rust_scan('m!(\'r#a "x");\n#[test]\nfn t() {}\n') == (["t"], [])
 
 
 # Verifies: TST-006
@@ -420,6 +429,21 @@ def test_moving_a_python_gate_onto_another_test_is_a_new_gate(tmp_path: Path) ->
             "deleted",
         ),
         ("tools/tests/test_a.py", PY_BASE + "\n\nfrom helpers import *\n", "deleted"),
+        (
+            "tools/tests/test_a.py",
+            PY_BASE + "\n\nif True:\n    from helpers import *\n",
+            "deleted",
+        ),
+        (
+            "tools/tests/test_a.py",
+            PY_BASE + "\n\ndef helper(x=(test_a := None)):\n    pass\n",
+            "deleted",
+        ),
+        (
+            "tools/tests/test_a.py",
+            PY_BASE + "\n\n@(test_a := (lambda f: f))\ndef helper():\n    pass\n",
+            "deleted",
+        ),
         ("tools/tests/test_a.py", PY_BASE + "\n\ntype test_a = int\n", "deleted"),
         ("tools/tests/test_a.py", PY_BASE + "\n\npytest.exit('stop')\n", "pytest.exit"),
         ("tools/tests/test_a.py", PY_BASE + "\nfrom pytest import exit as e\n\ne('x')\n", "e('x')"),
@@ -676,23 +700,26 @@ def test_cli_help(cmd: list[str]) -> None:
 
 
 # --- What is detected, and examples of what is not ---------------------------------------------
-# The ratchet's guarantee is the closed list DETECTED_FORMS: each `detects_*` id names one form
-# that TST-006 statement/notes and the ratchet.py docstring describe, mapped to the tests here that
-# pin it. Anything else is not detected. KNOWN_GAPS is a NON-EXHAUSTIVE list of examples of
-# undetected forms, each pinned by `test_<id>` asserting no finding, so a fix that closes one fails
-# its test: then move the form into DETECTED_FORMS and the docs, together. Issue #55 collects them.
+# The ratchet is a heuristic, non-adversarial scanner. What it detects, in ordinary syntax, is the
+# closed list DETECTED_FORMS: each `detects_*` id names one form that TST-006 statement/notes and
+# the ratchet.py docstring describe, mapped to the tests here that pin it. Anything else, and
+# deliberately obfuscated code, is not guaranteed to be detected. KNOWN_GAPS is a NON-EXHAUSTIVE
+# list of examples of undetected forms, each pinned by `test_<id>` asserting no finding, so a fix
+# that closes one fails its test: then move the form into DETECTED_FORMS and the docs, together.
+# Issue #55 collects them.
 
 DETECTED_FORMS = {
     "detects_rs_test_deleted": (
         "test_deleted_test_and_new_gates",
+        "test_a_lifetime_before_a_quote_is_not_a_raw_string",
         "test_rust_tests_hidden_on_one_line_or_in_comments_are_found",
         "test_raw_identifiers_are_read_as_rustc_reads_them",
-        "test_char_escapes_are_lexed_exactly",
+        "test_char_escapes_do_not_desynchronise_the_scanner",
     ),
     "detects_rs_gate_attr": (
         "test_rust_gate_spellings_and_hiding_cfgs_need_approval",
         "test_raw_identifiers_are_read_as_rustc_reads_them",
-        "test_char_escapes_are_lexed_exactly",
+        "test_char_escapes_do_not_desynchronise_the_scanner",
         "test_allowlisted_gates_pass",
         "test_moving_a_gate_onto_another_test_is_a_new_gate",
     ),
@@ -739,9 +766,12 @@ KNOWN_GAPS = (
     "known_gap_py_replacing_decorator",
     "known_gap_py_imported_marker",
     "known_gap_rs_macro_gate",
+    "known_gap_adversarial_encoding",
 )
 
-# Every document that states the guarantee says it is a closed list and that the examples are not.
+# Every document that states the guarantee calls the scanner heuristic and non-adversarial, limits
+# the detected list to ordinary syntax, calls the examples non-exhaustive, and promises no
+# exactness.
 GUARANTEE_DOCS = (
     "docs/requirements/TST.md",
     "tools/ratchet.py",
@@ -780,8 +810,10 @@ def test_known_gaps_are_documented() -> None:
 
     TST-006 and the ratchet.py docstring name exactly the `detects_*` ids of DETECTED_FORMS and
     the `known_gap_*` ids of KNOWN_GAPS; each id is pinned by a test here; every document that
-    states the guarantee calls the detected list exact and the example list non-exhaustive; and
-    the names the code matches (gate names, collection targets, config files) are all written out.
+    states the guarantee calls the scanner heuristic and non-adversarial, limits the detected
+    list to ordinary syntax, calls the example list non-exhaustive and makes no exactness promise
+    ("exactly", "anywhere inside", "no others"); and the names the code matches (gate names,
+    collection targets, config files) are all written out.
     """
     tst = (ROOT / "docs" / "requirements" / "TST.md").read_text(encoding="utf-8")
     tst006 = re.search(r"id: TST-006\n.*?```", tst, re.DOTALL)
@@ -800,11 +832,17 @@ def test_known_gaps_are_documented() -> None:
     for gap in KNOWN_GAPS:
         assert f"def test_{gap}(" in this, gap
     for rel in GUARANTEE_DOCS:
-        text = " ".join((ROOT / rel).read_text(encoding="utf-8").split())
+        text = (ROOT / rel).read_text(encoding="utf-8")
+        if rel == "docs/requirements/TST.md":
+            text = tst
+        text = " ".join(text.split())
         text = re.sub(r"^# |(?<= )# ", "", text)  # TOML comment markers
-        assert "detects exactly these forms" in text, rel
-        assert "non-exhaustive" in text, rel
+        low = text.lower()
+        for phrase in ("heuristic", "non-adversarial", "ordinary syntax", "non-exhaustive"):
+            assert phrase in low, (rel, phrase)
         assert "NOT detected" in text, rel
+        for promise in ("exactly", "anywhere inside", "no others", "nothing else is detected"):
+            assert promise not in low, (rel, promise)
     for rel in (".github/CODEOWNERS",):
         owners = (ROOT / rel).read_text(encoding="utf-8")
         for name in ratchet.PY_CONFIG_FILES:
@@ -1091,3 +1129,17 @@ def test_known_gap_rs_macro_gate(tmp_path: Path) -> None:
         {"crates/c/tests/t.rs": mac + "t!(ignore);\n"},
     )
     assert found == []
+
+
+# Verifies: TST-006
+def test_known_gap_adversarial_encoding(tmp_path: Path) -> None:
+    """Code written to defeat the scanner is the reviewer's job (two examples)."""
+    alias = "use core::prelude::v1::test as check;\n"
+    found = rs_gap(
+        tmp_path,
+        {"crates/c/tests/t.rs": alias + "#[check]\nfn t() {}\n"},
+        {"crates/c/tests/t.rs": alias},
+    )
+    assert found == []
+    hollow = PY_GAP_BASE + "\n\ntest_a.__code__ = (lambda: None).__code__\n"
+    assert py_gap(tmp_path / "py", hollow) == []
