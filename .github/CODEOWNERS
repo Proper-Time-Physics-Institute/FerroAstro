@@ -42,6 +42,7 @@
 /tools/**/.pytest.ini @temoTxt @Zorns-Lemmon
 /tools/**/tox.ini @temoTxt @Zorns-Lemmon
 /tools/**/setup.cfg @temoTxt @Zorns-Lemmon
+/tools/**/pyproject.toml @temoTxt @Zorns-Lemmon
 /tools/tests/conftest.py        @temoTxt @Zorns-Lemmon
 /tools/tests/test_trace.py      @temoTxt @Zorns-Lemmon
 /tools/tests/test_lints.py      @temoTxt @Zorns-Lemmon

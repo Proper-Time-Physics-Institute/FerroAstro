@@ -367,7 +367,8 @@ statement: >-
   `crates/ferroastro-vectors/`, `tools/canary/`, `tools/pyproject.toml`,
   `tools/uv.lock`, the pytest configuration files at any depth under tools/
   (`tools/**/pytest.toml`, `tools/**/.pytest.toml`, `tools/**/pytest.ini`,
-  `tools/**/.pytest.ini`, `tools/**/tox.ini`, `tools/**/setup.cfg`), `.config/nextest.toml`, `clippy.toml`, `rustfmt.toml`, `deny.toml`,
+  `tools/**/.pytest.ini`, `tools/**/tox.ini`, `tools/**/setup.cfg`,
+  `tools/**/pyproject.toml`), `.config/nextest.toml`, `clippy.toml`, `rustfmt.toml`, `deny.toml`,
   `rust-toolchain.toml`, `REUSE.toml`, `LICENSE*`, `LICENSES/`, `NOTICE`,
   `CONTRIBUTING.md`, every `AGENTS.md`, `CLAUDE.md` and `docs/adr/`. Changes
   to the `status` or `verified_by_gate` field of any requirement, and to the

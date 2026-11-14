@@ -213,6 +213,10 @@ CARGO = '[package]\nname = "c"\n\n[features]\nstd = []\nserde = []\n'
         '#[cfg(feature = "nope")]',
         '#[cfg(not(feature = "nope"))]',
         '#[cfg(all(feature = "std", fa_nightly))]',
+        "#[r#ignore]",
+        "#[r#cfg(any())]",
+        "#[r#cfg_attr(all(), r#ignore)]",
+        "#![r#cfg(any())]",
     ],
 )
 def test_rust_gate_spellings_and_hiding_cfgs_need_approval(tmp_path: Path, attr: str) -> None:
@@ -314,6 +318,38 @@ def test_rust_tests_hidden_on_one_line_or_in_comments_are_found(
 
 
 # Verifies: TST-006
+def test_raw_identifiers_are_read_as_rustc_reads_them(tmp_path: Path) -> None:
+    """`#[r#test]` is a test and `fn r#t` is named `t` (referee B1 on PR #56)."""
+    assert ratchet.rust_scan("#[r#test]\nfn r#t() {}\n") == (["t"], [])
+    assert ratchet.rust_scan("mod r#m {\n    #[r#ignore]\n    #[test]\n    fn t() {}\n}\n") == (
+        ["t"],
+        [("m::fn t", "ignore")],
+    )
+    base, head = tmp_path / "b", tmp_path / "h"
+    write(base, "crates/c/tests/t.rs", "#[r#test]\nfn r#a() {}\n\n#[test]\nfn r#b() {}\n")
+    write(head, "crates/c/tests/t.rs", "#[test]\nfn r#b() {}\n")
+    (found,) = ratchet.source_findings(base, head, CFG)
+    assert (found.where, found.what) == ("c::a", "test deleted or renamed")
+
+
+# Verifies: TST-006
+def test_char_escapes_are_lexed_exactly() -> None:
+    """A `\\u{...}` escape with underscores cannot desynchronise the scanner (referee B2)."""
+    hidden = (
+        "pub const A: [char; 2] = ['\\u{0_0_0_0_2_2}','\"'];\n"
+        '#[ignore]\n#[doc = "\\""]\n#[test]\nfn hidden_by_lexer() { panic!() }\n'
+    )
+    tests, gates = ratchet.rust_scan(hidden)
+    assert tests == ["hidden_by_lexer"]
+    assert gates == [("fn hidden_by_lexer", "ignore")]
+    # The phase flip the other way: test text inside a real string is not a test.
+    in_string = (
+        "pub const A: char = '\\u{1_0_F_F_F_F}';\nconst S: &str = \"\n#[test]\nfn t() {}\n\";\n"
+    )
+    assert ratchet.rust_scan(in_string) == ([], [])
+
+
+# Verifies: TST-006
 def test_rust_literals_and_comments_do_not_confuse_the_scanner() -> None:
     text = (
         "fn f<'a>(x: &'a str) -> char { let _ = \"#[ignore]\"; '\"' }\n"
@@ -358,6 +394,33 @@ def test_moving_a_python_gate_onto_another_test_is_a_new_gate(tmp_path: Path) ->
         ),
         ("tools/tests/test_a.py", PY_BASE + "\n\ndel test_a\n", "deleted"),
         ("tools/tests/test_a.py", PY_BASE + "\n\ntest_a = None\n", "deleted"),
+        (
+            "tools/tests/test_a.py",
+            PY_BASE + "\n\ntry:\n    raise KeyError\nexcept KeyError as test_a:\n    pass\n",
+            "deleted",
+        ),
+        (
+            "tools/tests/test_a.py",
+            PY_BASE + "\n\nmatch 0:\n    case test_a:\n        pass\n",
+            "deleted",
+        ),
+        (
+            "tools/tests/test_a.py",
+            PY_BASE + "\n\nmatch [0]:\n    case [*test_a]:\n        pass\n",
+            "deleted",
+        ),
+        (
+            "tools/tests/test_a.py",
+            PY_BASE + "\n\nmatch {}:\n    case {**test_a}:\n        pass\n",
+            "deleted",
+        ),
+        (
+            "tools/tests/test_a.py",
+            PY_BASE + "\n\nmatch 0:\n    case 0 as test_a:\n        pass\n",
+            "deleted",
+        ),
+        ("tools/tests/test_a.py", PY_BASE + "\n\nfrom helpers import *\n", "deleted"),
+        ("tools/tests/test_a.py", PY_BASE + "\n\ntype test_a = int\n", "deleted"),
         ("tools/tests/test_a.py", PY_BASE + "\n\npytest.exit('stop')\n", "pytest.exit"),
         ("tools/tests/test_a.py", PY_BASE + "\nfrom pytest import exit as e\n\ne('x')\n", "e('x')"),
         ("tools/tests/sub/conftest.py", 'collect_ignore = ["x.py"]\n', "collect_ignore"),
@@ -402,6 +465,37 @@ def test_python_collection_controls_are_found(
 def test_pytest_exit_under_any_import(stop: str) -> None:
     """`exit` reached through a name bound by importing pytest or _pytest is a gate."""
     assert ratchet.python_gates(stop), stop
+
+
+# Verifies: TST-006
+def test_python_rebinding_at_class_scope_removes_the_test() -> None:
+    """`except ... as` rebinds at class scope too (referee B3 on PR #56)."""
+    text = (
+        "class TestA:\n    def test_a(self):\n        assert False\n\n"
+        "    try:\n        raise KeyError\n    except KeyError as test_a:\n        pass\n"
+    )
+    assert ratchet.python_test_names(text) == []
+
+
+UTF7_SKIP = (
+    b"# coding: utf-7\nimport pytest\n\n\ndef test_a():\n"
+    b'    x = "+ACI-; pytest.skip(+ACI-hidden+ACI-); y = +ACI-"\n    assert False\n'
+)
+
+
+# Verifies: TST-006
+def test_python_files_are_decoded_by_their_coding_declaration(tmp_path: Path) -> None:
+    """A PEP 263 cookie is honoured as pytest honours it (referee B4 on PR #56)."""
+    base, head = tmp_path / "b", tmp_path / "h"
+    write(base, "tools/tests/test_p3.py", "import pytest\n\n\ndef test_a():\n    assert False\n")
+    write(head, "tools/tests/test_p3.py", "")
+    (head / "tools/tests/test_p3.py").write_bytes(UTF7_SKIP)
+    (skip,) = ratchet.source_findings(base, head, CFG)
+    assert "pytest.skip('hidden')" in skip.what, skip
+    # Bytes that do not decode under the declared (or default UTF-8) encoding do not parse.
+    (head / "tools/tests/test_p3.py").write_bytes(b"def test_a():\n    x = '\xff'\n")
+    found = ratchet.source_findings(base, head, CFG)
+    assert any("does not parse" in f.what for f in found), found
 
 
 # Verifies: TST-006
@@ -592,9 +686,13 @@ DETECTED_FORMS = {
     "detects_rs_test_deleted": (
         "test_deleted_test_and_new_gates",
         "test_rust_tests_hidden_on_one_line_or_in_comments_are_found",
+        "test_raw_identifiers_are_read_as_rustc_reads_them",
+        "test_char_escapes_are_lexed_exactly",
     ),
     "detects_rs_gate_attr": (
         "test_rust_gate_spellings_and_hiding_cfgs_need_approval",
+        "test_raw_identifiers_are_read_as_rustc_reads_them",
+        "test_char_escapes_are_lexed_exactly",
         "test_allowlisted_gates_pass",
         "test_moving_a_gate_onto_another_test_is_a_new_gate",
     ),
@@ -602,9 +700,11 @@ DETECTED_FORMS = {
     "detects_py_test_deleted": (
         "test_python_tests_come_from_the_ast",
         "test_python_collection_controls_are_found",
+        "test_python_rebinding_at_class_scope_removes_the_test",
     ),
     "detects_py_gate_name": (
         "test_every_detected_python_gate_needs_approval",
+        "test_python_files_are_decoded_by_their_coding_declaration",
         "test_moving_a_python_gate_onto_another_test_is_a_new_gate",
     ),
     "detects_py_exit": ("test_pytest_exit_under_any_import",),
@@ -707,7 +807,7 @@ def test_known_gaps_are_documented() -> None:
         assert "NOT detected" in text, rel
     for rel in (".github/CODEOWNERS",):
         owners = (ROOT / rel).read_text(encoding="utf-8")
-        for name in ratchet.PY_CONFIG_FILES - {"pyproject.toml"}:
+        for name in ratchet.PY_CONFIG_FILES:
             assert f"/tools/**/{name} " in owners, name
 
 
@@ -718,6 +818,8 @@ def test_known_gaps_are_documented() -> None:
         "getattr(pytest, 'sk' + 'ip')('x')\n",
         "setattr(test_a, '__test__', False)\n",
         "globals()['__test__'] = False\n",
+        "globals()['test_a'] = None\n",
+        "def unbind():\n    global test_a\n    test_a = None\n\n\nunbind()\n",
     ],
 )
 def test_known_gap_py_runtime_gate(tmp_path: Path, added: str) -> None:

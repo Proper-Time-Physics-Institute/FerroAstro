@@ -211,11 +211,13 @@ notes: >-
   weakening (each pinned by tests, DETECTED_FORMS in
   tools/tests/test_ratchet.py): detects_rs_test_deleted, a Rust test removed
   or renamed, where a test is a fn in a .rs file under crates/ whose run of
-  outer attributes holds test or <path>::test, outside comments and string
-  literals, counted by crate directory and function name;
-  detects_rs_gate_attr, a new ignore, cfg or cfg_attr attribute (outer or
-  inner) in a .rs file under crates/, outside comments and string literals,
-  whitespace normalised (also across lines), new when its file, item (inline
+  outer attributes holds test or <path>::test (a segment may be a raw
+  identifier, r#test), outside comments and string, raw string and char
+  literals (char escapes lexed as rustc does), counted by crate directory and
+  function name (r# dropped); detects_rs_gate_attr, a new ignore, cfg or
+  cfg_attr attribute (outer or inner, also spelled r#ignore, r#cfg,
+  r#cfg_attr) in a .rs file under crates/, outside comments and literals as
+  above, whitespace normalised (also across lines), new when its file, item (inline
   mod path, kind and name) and text were not in the merge base, unless it
   matches gate_allowlist in ci/ratchet.toml and names no Cargo feature
   undeclared in the merge base; detects_rs_executed_count, fewer tests that
@@ -225,9 +227,14 @@ notes: >-
   code); detects_py_test_deleted, a Python test removed or renamed, where a
   test is, in a file under tools/ named test_*.py or *_test.py, a
   module-level def test* or a def test* in a (nested) class Test*, as a
-  direct statement of the parsed module still bound at the end of its scope
-  (so one put in a string, under if, try or with, del-ed or rebound is
-  removed), counted by file name and Class::function; detects_py_gate_name,
+  direct statement of the parsed module not rebound later in its scope (one
+  put in a string or under if, try or with is not counted), where rebinding
+  is recognised only as a later statement of that scope that binds or
+  unbinds the name anywhere inside it (def or class; any assignment target:
+  =, augmented, annotated, :=, for, with ... as, type; del; import ... [as];
+  except ... as; a match capture pattern) or a from m import *, which
+  removes every test bound before it; counted by file name and
+  Class::function; detects_py_gate_name,
   in any .py file under tools/, a new call or reference <expr>.<name> with
   <name> one of skip, skipif, xfail, importorskip, skipIf, skipUnless,
   skipTest, expectedFailure, SkipTest (so pytest.mark decorators,
@@ -245,7 +252,9 @@ notes: >-
   configuration added, changed or removed in a file at any depth under
   tools/: all of pytest.toml, .pytest.toml, pytest.ini and .pytest.ini, the
   [pytest] section of tox.ini, [tool:pytest] of setup.cfg and [tool.pytest]
-  of pyproject.toml (unparsable: compared as text). Python gates are keyed
+  of pyproject.toml (unparsable: compared as text). Every Python form is
+  found in the module parsed from the file's bytes, so a PEP 263 coding
+  declaration is honoured as Python and pytest honour it. Python gates are keyed
   by file, enclosing Class::function and unparsed text, so moving a gate
   onto another test is new. Directories target, .venv, .git, node_modules,
   __pycache__ and .mypy_cache are not scanned. A rename counts as a
@@ -253,9 +262,10 @@ notes: >-
   hiding or neutering a test is NOT detected; reviewers must check for it.
   Non-exhaustive examples, each pinned by test_<id> in
   tools/tests/test_ratchet.py asserting no finding (issue #55 collects
-  them): known_gap_py_runtime_gate, a skip or __test__ built at run time
-  (getattr(pytest, "sk" + "ip"), setattr(f, "__test__", False),
-  globals()["__test__"] = False); known_gap_py_existing_helper, a new call
+  them): known_gap_py_runtime_gate, a skip, __test__ or rebinding of a test
+  done at run time or from another scope (getattr(pytest, "sk" + "ip"),
+  setattr(f, "__test__", False), globals()["__test__"] = False,
+  globals()["test_a"] = None, global test_a in a function that rebinds it); known_gap_py_existing_helper, a new call
   to a helper that already existed and skips; known_gap_hollowed_test, a
   Python or Rust test that returns early, whose body is emptied, or whose
   assertions are under dead code (Rust if false { ... });
@@ -294,9 +304,9 @@ notes: >-
   m import pytestmark; known_gap_rs_macro_gate, a gate passed to a macro as
   tokens (#[$a] in a macro_rules!, invoked as t!(ignore)). Python gate
   names are matched on any expression, so args.skip in non-test code also
-  needs approval (over-detection). tools/pyproject.toml,
-  tools/tests/conftest.py and the pytest configuration files above are on
-  the ORG-011 meta surface. A new Cargo feature that gates code needs
+  needs approval (over-detection). tools/tests/conftest.py and the pytest
+  configuration files above (all seven names, at any depth under tools/)
+  are on the ORG-011 meta surface. A new Cargo feature that gates code needs
   approval until it is in the base tree. The mutation-testing part is not
   implemented before M2.
 ```

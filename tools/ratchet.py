@@ -48,25 +48,31 @@ weakening; each ``detects_*`` id is pinned by the tests listed for it in ``DETEC
 tools/tests/test_ratchet.py, and nothing else is detected:
 
 * ``detects_rs_test_deleted``: a Rust test removed or renamed. A test is a ``fn`` in a ``.rs``
-  file under ``crates/`` whose run of outer attributes holds ``#[test]`` or ``#[<path>::test]``,
-  outside comments and string literals; tests are counted by crate directory and function name
-  (:func:`rust_scan`).
+  file under ``crates/`` whose run of outer attributes holds ``#[test]`` or ``#[<path>::test]``
+  (any segment may be a raw identifier, ``#[r#test]``), outside comments and string, raw string
+  and char literals (``'\u{...}'`` lexed as rustc does); tests are counted by crate directory and
+  function name, a raw identifier's ``r#`` dropped (:func:`rust_scan`).
 * ``detects_rs_gate_attr``: a new ``ignore``, ``cfg`` or ``cfg_attr`` attribute, outer or inner,
-  in a ``.rs`` file under ``crates/``, outside comments and string literals, with whitespace
-  normalised (``# [ignore]``, ``#[ ignore ]``, an attribute split over lines). New means its
-  (file, inline ``mod`` path + item kind + item name, normalised text) was not in the merge base,
-  so a gate moved onto another item is new. It passes only if it matches ``gate_allowlist`` in
-  ``ci/ratchet.toml`` and names no Cargo feature that is undeclared in the merge base.
+  in a ``.rs`` file under ``crates/``, outside comments and literals as above, with whitespace and
+  raw-identifier ``r#`` normalised (``# [ignore]``, ``#[ ignore ]``, ``#[r#ignore]``, an attribute
+  split over lines). New means its (file, inline ``mod`` path + item kind + item name,
+  normalised text) was not in the merge base, so a gate moved onto another item is new. It passes
+  only if it matches ``gate_allowlist`` in ``ci/ratchet.toml`` and names no Cargo feature that is
+  undeclared in the merge base.
 * ``detects_rs_executed_count``: the number of tests ``cargo nextest list --workspace`` (default
   profile, each tree with its own ``.config/nextest.toml``) reports as run, neither ignored nor
   filtered out, is lower for the head than for the merge base. The head listing is produced by
   PR code.
 * ``detects_py_test_deleted``: a Python test removed or renamed. A test is, in a file under
   ``tools/`` named ``test_*.py`` or ``*_test.py``, a module-level ``def test*`` or a ``def
-  test*`` in a (nested) ``class Test*``, as a direct statement of the parsed module and still
-  bound at the end of its scope (so one put in a string, under ``if``/``try``/``with``,
-  ``del``-ed or rebound is removed); tests are counted by file name, not directory, and
-  ``Class::function`` (:func:`python_test_names`).
+  test*`` in a (nested) ``class Test*``, as a direct statement of the parsed module and not
+  rebound later in the same scope (so one put in a string or under ``if``/``try``/``with`` is
+  removed). Rebinding is recognised only as a later statement of that scope binding or unbinding
+  the name anywhere inside it: ``def``/``class``, any assignment target (``=``, augmented,
+  annotated, ``:=``, ``for``, ``with ... as``, ``type``), ``del``, ``import ... [as]``,
+  ``except ... as``, a ``match`` capture pattern; ``from m import *`` removes every test bound
+  before it. Tests are counted by file name, not directory, and ``Class::function``
+  (:func:`python_test_names`).
 * ``detects_py_gate_name``: in any ``.py`` file under ``tools/``, a new call or reference
   ``<expr>.<name>`` where ``<name>`` is ``skip``, ``skipif``, ``xfail``, ``importorskip``,
   ``skipIf``, ``skipUnless``, ``skipTest``, ``expectedFailure`` or ``SkipTest`` (whatever
@@ -88,6 +94,9 @@ tools/tests/test_ratchet.py, and nothing else is detected:
   ``[tool.pytest]`` (with ``ini_options``) of ``pyproject.toml``; such a file that does not
   parse is compared as text (:func:`collect_pytest_configs`).
 
+Every Python form is found in the module parsed from the file's bytes, so a PEP 263 coding
+declaration is honoured as Python and pytest honour it (a file that does not decode does not
+parse).
 Python gates are keyed by (file path, enclosing ``Class::function`` or ``<module>``, unparsed
 text), so a gate moved onto another test is new. Directories named ``target``, ``.venv``,
 ``.git``, ``node_modules``, ``__pycache__`` or ``.mypy_cache`` are not scanned.
@@ -96,8 +105,10 @@ Any other way of skipping, deselecting, hiding or neutering a test is NOT detect
 must check for it. The non-exhaustive examples below are each pinned by ``test_<id>`` in
 tools/tests/test_ratchet.py, asserting no finding (issue #55 collects them):
 
-* ``known_gap_py_runtime_gate``: a skip or ``__test__`` built at run time (``getattr(pytest,
-  "sk" + "ip")``, ``setattr(f, "__test__", False)``, ``globals()["__test__"] = False``).
+* ``known_gap_py_runtime_gate``: a skip, ``__test__`` or rebinding of a test done at run time or
+  from another scope (``getattr(pytest, "sk" + "ip")``, ``setattr(f, "__test__", False)``,
+  ``globals()["__test__"] = False``, ``globals()["test_a"] = None``, ``global test_a`` in a
+  function that rebinds it).
 * ``known_gap_py_existing_helper``: a new call to a helper that already existed and skips.
 * ``known_gap_hollowed_test``: a Python or Rust test that returns early, whose body is emptied,
   or whose assertions are put under dead code (Rust ``if false { ... }``).
@@ -138,8 +149,8 @@ tools/tests/test_ratchet.py, asserting no finding (issue #55 collects them):
 * ``known_gap_rs_macro_gate``: a gate passed to a macro as tokens (``#[$a]`` in a
   ``macro_rules!``, invoked as ``t!(ignore)``).
 
-``tools/pyproject.toml``, ``tools/tests/conftest.py`` and the pytest configuration files above,
-at any depth under ``tools/``, are also on the ORG-011 meta surface (CODEOWNERS).
+``tools/tests/conftest.py``, and every file under ``tools/`` (at any depth) named like one of the
+seven pytest configuration files above, are also on the ORG-011 meta surface (CODEOWNERS).
 """
 
 from __future__ import annotations
@@ -166,7 +177,11 @@ EVIDENCE_KEYS = ("source", "citation", "retrieved", "verified_by", "generated_by
 SKIP_DIRS = {"target", ".venv", ".git", "node_modules", "__pycache__", ".mypy_cache"}
 YAML_BLOCK_RE = re.compile(r"^```yaml\n(.*?)^```", re.DOTALL | re.MULTILINE)
 # Rust lexing (see `rust_mask`): a char literal, and the opening of a raw (byte/C) string.
-RUST_CHAR_RE = re.compile(r"'(?:\\(?:x[0-9a-fA-F]{2}|u\{[0-9a-fA-F_]{1,8}\}|.)|[^'\\\n])'")
+# `\u{...}` is lexed exactly as rustc does: one to six hex digits, each optionally followed by
+# underscores (`'\u{0_0_0_0_2_2}'` is valid); a looser pattern can desynchronise the scanner.
+RUST_CHAR_RE = re.compile(
+    r"'(?:\\(?:x[0-9a-fA-F]{2}|u\{(?:[0-9a-fA-F]_*){1,6}\}|[^u\n])|[^'\\\n])'"
+)
 RUST_RAW_STR_RE = re.compile(r'[bc]?r(#*)"')
 # An outer or inner attribute anywhere in code (comments and literals already masked out);
 # `#`, `!` and `[` may be separated by whitespace (`# [ignore]` is valid Rust).
@@ -174,14 +189,15 @@ RUST_ATTR_RE = re.compile(r"#\s*(!)?\s*\[")
 RUST_TEST_ATTR_RE = re.compile(r"^(?:[\w:]+::)?test$")
 RUST_GATE_HEAD_RE = re.compile(r"^(?:ignore|cfg|cfg_attr)\b")
 # The item an outer attribute run stands on (in masked code), and a struct field.
+# Names may be raw identifiers (`fn r#t`); the `r#` is dropped, as rustc does.
 RUST_ITEM_RE = re.compile(
     r"(?:pub(?:\s*\([^)]*\))?\s+)?"
     r'(?:(?:default|const|async|unsafe|safe|extern(?:\s*"[^"]*")?)\s+)*'
     r"(?P<kind>fn|mod|struct|enum|union|trait|type|const|static|impl|use|macro_rules!|let)(?!\w)"
-    r"\s*(?P<name>\w+)?"
+    r"\s*(?:r#)?(?P<name>\w+)?"
 )
-RUST_FIELD_RE = re.compile(r"(?:pub(?:\s*\([^)]*\))?\s+)?(?P<name>\w+)\s*:(?!:)")
-RUST_MOD_OPEN_RE = re.compile(r"\bmod\s+(\w+)\s*\{")
+RUST_FIELD_RE = re.compile(r"(?:pub(?:\s*\([^)]*\))?\s+)?(?:r#)?(?P<name>\w+)\s*:(?!:)")
+RUST_MOD_OPEN_RE = re.compile(r"\bmod\s+(?:r#)?(\w+)\s*\{")
 RUST_WORD_RE = re.compile(r"\w+")
 FEATURE_REF_RE = re.compile(r'\bfeature = "([^"]*)"')
 # Python names that skip, xfail or conditionally drop a test (pytest and unittest).
@@ -447,7 +463,8 @@ def rust_mask(text: str) -> tuple[str, str]:
 def _normalise_attr(body: str) -> str:
     """Return the canonical spelling of an attribute body.
 
-    Whitespace outside strings is dropped, then ``a = b`` and ``a, b`` are spaced as rustfmt
+    Whitespace outside strings is dropped, the ``r#`` of a raw identifier is dropped
+    (``#[r#ignore]`` is ``#[ignore]`` to rustc), then ``a = b`` and ``a, b`` are spaced as rustfmt
     writes them (``ignore="x"`` -> ``ignore = "x"``).
     """
     out: list[str] = []
@@ -464,6 +481,13 @@ def _normalise_attr(body: str) -> str:
         elif c == '"':
             in_str = True
             out.append(c)
+        elif (
+            c == "r"
+            and body.startswith("#", i + 1)
+            and (body[i + 2 : i + 3].isalpha() or body[i + 2 : i + 3] == "_")
+            and not (i and (body[i - 1].isalnum() or body[i - 1] == "_"))
+        ):
+            i += 1  # raw identifier: skip `r#`
         elif c == "=":
             out.append(" = ")
         elif c == ",":
@@ -588,11 +612,17 @@ def _py_bindings(body: list[ast.stmt], prefix: str) -> dict[str, list[str]]:
     """Map each name bound in ``body`` (one scope, in order) to the test ids it finally holds.
 
     Only direct statements count: a test under ``if``/``try``/``with`` or inside a string is not
-    collected here, and a later ``del``, assignment, import or other definition of the same name
-    removes it.
+    collected here. A later statement of the same scope that binds or unbinds the name anywhere
+    inside it removes the test: ``def``/``class``, any assignment target (``=``, augmented,
+    annotated, ``:=``, ``for``, ``with ... as``, ``type``), ``del``, ``import ... [as]``,
+    ``except ... as`` and a ``match`` capture (``case name``, ``*name``, ``**name``, ``as
+    name``); a ``from m import *`` removes every test bound before it. Rebinding from another
+    scope (``global`` in a function, ``globals()``, ``setattr``) is not seen.
     """
     live: dict[str, list[str]] = {}
     for stmt in body:
+        if isinstance(stmt, ast.ImportFrom) and any(a.name == "*" for a in stmt.names):
+            live.clear()  # the star import may rebind any of them
         if isinstance(stmt, (ast.FunctionDef, ast.AsyncFunctionDef)):
             live.pop(stmt.name, None)
             if stmt.name.startswith("test"):
@@ -603,27 +633,46 @@ def _py_bindings(body: list[ast.stmt], prefix: str) -> dict[str, list[str]]:
                 inner = _py_bindings(stmt.body, f"{prefix}{stmt.name}::")
                 live[stmt.name] = [t for ids in inner.values() for t in ids]
         else:
-            for node in ast.walk(stmt):
-                if isinstance(node, ast.Name) and isinstance(node.ctx, (ast.Store, ast.Del)):
-                    live.pop(node.id, None)
-                elif isinstance(node, ast.alias):
-                    live.pop((node.asname or node.name).split(".")[0], None)
-                elif isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
-                    live.pop(node.name, None)
+            for name in _py_names_bound(stmt):
+                live.pop(name, None)
     return live
 
 
-def python_test_names(text: str) -> list[str]:
+def _py_names_bound(stmt: ast.stmt) -> Iterable[str]:
+    """Every name that ``stmt`` binds or unbinds anywhere inside it (see :func:`_py_bindings`)."""
+    for node in ast.walk(stmt):
+        if isinstance(node, ast.Name) and isinstance(node.ctx, (ast.Store, ast.Del)):
+            yield node.id
+        elif isinstance(node, ast.alias):
+            yield (node.asname or node.name).split(".")[0]
+        elif isinstance(
+            node,
+            (
+                ast.FunctionDef,
+                ast.AsyncFunctionDef,
+                ast.ClassDef,
+                ast.ExceptHandler,
+                ast.MatchAs,
+                ast.MatchStar,
+            ),
+        ):
+            yield node.name or ""
+        elif isinstance(node, ast.MatchMapping):
+            yield node.rest or ""
+
+
+def python_test_names(text: str | bytes) -> list[str]:
     """Return the tests pytest would collect from Python ``text`` (default naming rules).
 
     Module-level functions named ``test*`` and ``test*`` methods of module-level classes named
     ``Test*`` (nested ``Test*`` classes too), taken from the parsed module, not from the text. A
     test that is wrapped in a string, placed under ``if``/``try``/``with``, or ``del``-ed or
-    rebound later is not a test; a file that does not parse has none.
+    rebound later is not a test; a file that does not parse has none. Pass the file's bytes:
+    then a PEP 263 coding declaration is honoured, as Python and pytest honour it.
     """
     try:
         tree = ast.parse(text)
-    except SyntaxError:
+    except (SyntaxError, ValueError):  # ValueError: undecodable bytes, NUL
         return []
     return [t for ids in _py_bindings(tree.body, "").values() for t in ids]
 
@@ -704,7 +753,7 @@ class _PyGateFinder(ast.NodeVisitor):
     visit_Name = _ref  # noqa: N815
 
 
-def python_gates(text: str) -> list[tuple[str, str]]:
+def python_gates(text: str | bytes) -> list[tuple[str, str]]:
     """``(scope, gate)`` for each skip/xfail/collection gate in Python ``text``, found by parsing.
 
     ``scope`` is the ``Class::function`` the gate is in or decorates (``<module>`` at top level).
@@ -721,10 +770,11 @@ def python_gates(text: str) -> list[tuple[str, str]]:
     ``def pytest_*`` hook. A file that does not parse yields one gate. Any ``<expr>.skip`` counts,
     also in code that is not a test (``args.skip``): it over-detects, which only costs an approval.
     Anything else is not detected; see the module docstring for the closed list and examples.
+    Pass the file's bytes, so a PEP 263 coding declaration is honoured.
     """
     try:
         tree = ast.parse(text)
-    except SyntaxError:
+    except (SyntaxError, ValueError):  # ValueError: undecodable bytes, NUL
         return [("<module>", "<python file does not parse>")]
     aliases: set[str] = set()
     pytest_mods: set[str] = set()
@@ -795,7 +845,7 @@ def test_names(root: Path) -> Counter[str]:
             names[f"{crate}::{name}"] += 1
     for path in _sources(root, ".py", "tools"):
         if _py_is_test_file(path):
-            for name in python_test_names(path.read_text(encoding="utf-8")):
+            for name in python_test_names(path.read_bytes()):
                 names[f"tools/{path.name}::{name}"] += 1
     return names
 
@@ -830,7 +880,7 @@ def gate_attributes(root: Path) -> Counter[tuple[str, str, str]]:
             gates[(rel, item, gate)] += 1
     for path in _sources(root, ".py", "tools"):
         rel = path.relative_to(root).as_posix()
-        for scope, gate in python_gates(path.read_text(encoding="utf-8")):
+        for scope, gate in python_gates(path.read_bytes()):
             gates[(rel, scope, gate)] += 1
     return gates
 
