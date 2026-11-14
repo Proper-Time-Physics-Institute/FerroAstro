@@ -451,7 +451,7 @@ fn passage_in(
 ) -> (f64, [f64; 3], [f64; 3]) {
     let (mut lo, mut hi) = (a, b);
     for _ in 0..200 {
-        let mid = 0.5 * (lo + hi);
+        let mid = f64::midpoint(lo, hi);
         if mid <= lo || mid >= hi {
             break;
         }
@@ -462,7 +462,7 @@ fn passage_in(
             hi = mid;
         }
     }
-    let t = 0.5 * (lo + hi);
+    let t = f64::midpoint(lo, hi);
     (t, lagrange(ts, r, t), lagrange(ts, v, t))
 }
 
@@ -554,6 +554,10 @@ pub fn find_passages<F: Frame>(
 ///
 /// # Errors
 /// `FA-E0600` from [`ReferencePlane::dog_leg_angle`].
+#[expect(
+    clippy::suboptimal_flops,
+    reason = "bit-for-bit unchanged results on the toolchain bump: fused multiply-add would alter rounding (gh #23)"
+)]
 pub fn perihelion_longitudes<F: Frame>(
     passages: &[SampledPassage],
     plane: &ReferencePlane<F>,
@@ -837,6 +841,10 @@ fn sinusoid_rss(t: &[f64], y: &[f64], omega: f64) -> Result<f64, PrecessionError
 /// Minimise [`sinusoid_rss`] over `[lo, hi]` by golden-section search. Unlike the peak of the DFT
 /// power, the least-squares optimum is not pulled by the sinusoid's negative-frequency image or by
 /// the polynomial, which matters when a term has only a few cycles over the span.
+#[expect(
+    clippy::suboptimal_flops,
+    reason = "bit-for-bit unchanged results on the toolchain bump: fused multiply-add would alter rounding (gh #23)"
+)]
 fn refine_sinusoid(t: &[f64], y: &[f64], lo: f64, hi: f64) -> Result<f64, PrecessionError> {
     let g = (5.0_f64.sqrt() - 1.0) / 2.0;
     let (mut a, mut b) = (lo.max(0.0), hi);

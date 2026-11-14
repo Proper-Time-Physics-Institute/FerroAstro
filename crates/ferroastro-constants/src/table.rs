@@ -387,7 +387,7 @@ pub(crate) mod tests {
     fn committed_metadata_parses_and_every_entry_is_cited() {
         let m = Metadata::de440().unwrap();
         assert_eq!(m.ephemeris(), "DE440");
-        assert!(!m.entries().is_empty());
+        assert_ne!(m.entries().len(), 0);
         for e in m.entries() {
             assert!(!e.citation.is_empty(), "{} has no citation", e.name);
             for key in &e.citation {
@@ -396,7 +396,7 @@ pub(crate) mod tests {
                     "{}: citation {key} is neither DE440hdr nor Park21",
                     e.name
                 );
-                assert!(!m.citations()[key].trim().is_empty());
+                assert_ne!(m.citations()[key].trim(), "");
             }
         }
         assert!(m.citations()[CITE_HEADER].contains(&m.source().sha256));

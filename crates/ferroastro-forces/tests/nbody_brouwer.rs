@@ -118,6 +118,10 @@ fn initial(ic: &InitialConditions, scale: f64) -> SystemState<Icrf, Barycentric>
     s
 }
 
+#[expect(
+    clippy::suboptimal_flops,
+    reason = "test oracle arithmetic kept bit-identical across the toolchain bump: fused multiply-add would alter rounding (gh #23)"
+)]
 fn angular_momentum(m: &NBodyModel<Icrf>, x: &[f64], v: &[f64]) -> [f64; 3] {
     let n = m.layout().len();
     let mut l = [0.0; 3];

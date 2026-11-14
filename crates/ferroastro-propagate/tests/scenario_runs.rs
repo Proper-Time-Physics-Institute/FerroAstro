@@ -548,6 +548,10 @@ fn small_body_switches_add_minor_and_ring_bodies_without_touching_the_majors() {
 ///
 /// Verifies: NUM-009, REF-003, NUM-019
 #[test]
+#[expect(
+    clippy::suboptimal_flops,
+    reason = "test oracle arithmetic kept bit-identical across the toolchain bump: fused multiply-add would alter rounding (gh #23)"
+)]
 fn small_bodies_carry_their_gm_and_conserve_total_momentum() {
     let (h, prov) = header();
     let file = small_body_file();
@@ -733,6 +737,10 @@ const ENERGY_ULPS: f64 = 64.0; // lint: allow-literal(round-off allowance of two
 ///
 /// Verifies: NUM-023, CI-008
 #[test]
+#[expect(
+    clippy::suboptimal_flops,
+    reason = "test oracle arithmetic kept bit-identical across the toolchain bump: fused multiply-add would alter rounding (gh #23)"
+)]
 fn run_with_energy_returns_the_run_and_the_model_energy() {
     let (h, prov) = header();
     let data = DataSources::none().with_header(&h, &prov);

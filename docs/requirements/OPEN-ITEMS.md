@@ -87,7 +87,7 @@ This checklist collects every claim in Journals #0–#6 (plus items raised by th
 - [ ] **OI-52** ECSS-Q-ST-80C Table D-1 criticality definitions, and whether Q-ST-80C is now at Rev.2. **Qualifies:** ORG-007.
 - [ ] **OI-53** Effort needed for the OpenSSF Best Practices "passing" badge. **Qualifies:** STD-012.
 - [ ] **OI-54** Maintenance status of `EndBug/label-sync`. **Qualifies:** ORG-006.
-- [ ] **OI-55** Toolchain channel: 1.95.0 is a placeholder (ADR-0006), bumped to the then-current stable at M0; stabilisation of rustfmt `imports_granularity` / `group_imports`. **Qualifies:** STD-001, STD-005.
+- [ ] **OI-55** Toolchain channel: bumped from the 1.95.0 placeholder to 1.99.0, the then-current stable (ADR-0006, gh #23); stabilisation of rustfmt `imports_granularity` / `group_imports`. **Qualifies:** STD-001, STD-005.
 - [ ] **OI-56** `#[expect]` stabilisation version (1.81), and the clippy group membership of float_cmp_const, lossy_float_literal, suboptimal_flops, imprecise_flops, unwrap_used and indexing_slicing. **Qualifies:** STD-002, TST-001.
 - [ ] **OI-57** Whether nextest still skips doctests. **Qualifies:** STD-008.
 - [ ] **OI-58** The orekit-jpype packaging choice for `tools/`, and the pre-commit hook IDs and revisions. **Qualifies:** STD-009, STD-010.

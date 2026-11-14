@@ -66,7 +66,7 @@ fn test_particle_cadence_samples_lie_on_the_exact_grid() {
     // Every whole cadence interval of the span, and no more.
     assert!(f64::from(k - 1) * cadence <= span_days);
     assert!(f64::from(k) * cadence > span_days);
-    assert!(out.passages.is_empty());
+    assert_eq!(out.passages.len(), 0);
 
     // Same orbit in passage mode: the same IC hash and the same initial state.
     let mut p = spec("sun-mercury-gr1pn-header440.toml");

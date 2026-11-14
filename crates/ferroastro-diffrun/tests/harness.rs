@@ -428,7 +428,10 @@ fn fit_window_selects_exactly_the_passages_inside_it() {
     // lint: allow-literal(passage indices that place the window edges between passages)
     let (k0, k1) = (5_usize, 30_usize);
     assert!(pjd.len() > k1 + 1, "{} passages", pjd.len());
-    let window = (0.5 * (pjd[k0] + pjd[k0 + 1]), 0.5 * (pjd[k1] + pjd[k1 + 1]));
+    let window = (
+        f64::midpoint(pjd[k0], pjd[k0 + 1]),
+        f64::midpoint(pjd[k1], pjd[k1 + 1]),
+    );
     let inside: Vec<f64> = pjd
         .iter()
         .copied()

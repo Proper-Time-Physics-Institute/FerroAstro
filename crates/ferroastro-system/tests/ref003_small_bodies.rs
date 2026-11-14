@@ -181,6 +181,10 @@ fn kbo_identification_follows_from_the_rule() {
 ///
 /// Verifies: NUM-009
 #[test]
+#[expect(
+    clippy::suboptimal_flops,
+    reason = "test oracle arithmetic kept bit-identical across the toolchain bump: fused multiply-add would alter rounding (gh #23)"
+)]
 fn kbo_ring_points_are_fixed_on_the_44_au_ecliptic_circle() {
     let v = VectorSet::load_canonical().unwrap();
     v.get("DE440-KBO-RING-RADIUS")
