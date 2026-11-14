@@ -59,7 +59,7 @@ exactly. The design adds no dependencies, Rust or JS (§10).
   lower layer, so no `EXCEPTIONS` entry is needed. Update the matching pytest if it enumerates
   layers.
 
-### 2.2 The one unsafe-attribute deviation (NEEDS HUMAN REVIEW)
+### 2.2 The one unsafe-attribute deviation (maintainer-approved 2026-11-14)
 
 A wasm export needs `#[unsafe(no_mangle)]` (edition 2024). Verified on the host with rustc 1.95.0:
 under `#![forbid(unsafe_code)]` this fails with `error: declaration of a no_mangle function`, and a
@@ -78,7 +78,8 @@ wasm-bindgen is neither installed nor allowed (no new deps). So the crate cannot
 4. `tools/lint_canary.py`'s config check gets a documented exception for `ferroastro-viewer`. It
    requires the crate's lint tables to equal the root `[workspace.lints]` except for
    `unsafe_code = "deny"`, so drift in either direction fails CI. Add a pytest for the exception.
-5. AGENTS.md rule 5 ("No `unsafe`") and STD-003 need a maintainer's sign-off for this exception.
+5. AGENTS.md rule 5 ("No `unsafe`") and STD-003: **the maintainer signed off on this exception on 2026-11-14,
+   for this crate only** (PR #54). Any wider use of `unsafe` still needs its own sign-off.
    A rejected alternative is a separate shim crate: it needs the same exception, in one more crate.
 
 Pointers cross the ABI only as **return values** (`*const f64`, `*const u8`). Making a raw pointer
@@ -614,7 +615,7 @@ mean-orbit frame unless stated.
 
 ## 11. Open items for the maintainers (NEEDS HUMAN REVIEW)
 
-1. The `unsafe_code = "deny"` lint exception for the ABI shims (§2.2; AGENTS.md rule 5, STD-003).
+1. ~~The `unsafe_code = "deny"` lint exception for the ABI shims~~ approved by the maintainer on 2026-11-14 (§2.2).
 2. ~~Committing the verbatim header.440 excerpt~~ resolved by #22: the header is included at build
    time by the `embed-header` feature and never committed (§5); migrate to #53's API once merged.
 3. The provisional short-window tolerances of E6/E7. The validator measures and reports them; they
