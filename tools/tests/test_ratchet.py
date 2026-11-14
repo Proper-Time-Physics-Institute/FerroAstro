@@ -767,6 +767,7 @@ KNOWN_GAPS = (
     "known_gap_py_imported_marker",
     "known_gap_rs_macro_gate",
     "known_gap_adversarial_encoding",
+    "known_gap_rs_doctest",
 )
 
 # Every document that states the guarantee calls the scanner heuristic and non-adversarial, limits
@@ -779,6 +780,7 @@ GUARANTEE_DOCS = (
     "docs/adr/0015-evidence-gated-merges.md",
     "docs/standards/testing.md",
     ".github/PULL_REQUEST_TEMPLATE.md",
+    ".github/workflows/ratchet.yml",
 )
 
 PY_GAP_BASE = (
@@ -1143,3 +1145,26 @@ def test_known_gap_adversarial_encoding(tmp_path: Path) -> None:
     assert found == []
     hollow = PY_GAP_BASE + "\n\ntest_a.__code__ = (lambda: None).__code__\n"
     assert py_gap(tmp_path / "py", hollow) == []
+
+
+DOCTEST = "/// ```\n/// assert!(false);\n/// ```\n"
+
+
+# Verifies: TST-006
+@pytest.mark.parametrize(
+    "head",
+    [
+        DOCTEST + "#[cfg(test)]\npub fn f() {}\n",
+        DOCTEST.replace("```\n", "```ignore\n", 1) + "pub fn f() {}\n",
+        "pub fn f() {}\n",
+    ],
+)
+def test_known_gap_rs_doctest(tmp_path: Path, head: str) -> None:
+    """Doctests are outside the ratchet: hiding, ignoring or deleting one is not seen.
+
+    `cfg(test)` is allowlisted (it hides nothing from nextest), but it drops the item from the
+    doctest build, so its doctests no longer run under `cargo test --doc`; `cargo nextest list`
+    does not list doctests, so `test-count` does not see it either.
+    """
+    lib = "crates/c/src/lib.rs"
+    assert rs_gap(tmp_path, {lib: DOCTEST + "pub fn f() {}\n"}, {lib: head}) == []

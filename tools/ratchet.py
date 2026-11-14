@@ -162,6 +162,10 @@ finding (issue #55 collects them):
 * ``known_gap_adversarial_encoding``: code written to defeat the scanner, e.g. deleting a Rust
   test whose attribute is renamed by ``use`` (``use core::prelude::v1::test as check;
   #[check] fn t()``), or replacing a Python test's body through ``test_a.__code__ = ...``.
+* ``known_gap_rs_doctest``: Rust doctests are outside the ratchet. Deleting one, marking it
+  ``ignore``, or putting ``#[cfg(test)]`` (allowlisted) on the item that carries it, which drops
+  it from the ``cargo test --doc`` run, is not detected; ``cargo nextest list`` does not list
+  doctests, so ``test-count`` does not see it either.
 
 ``tools/tests/conftest.py``, and every file under ``tools/`` (at any depth) named like one of the
 seven pytest configuration files above, are also on the ORG-011 meta surface (CODEOWNERS).

@@ -36,8 +36,8 @@
    evade it. Any other way of skipping, deselecting, hiding or neutering a test is NOT detected, and pytest has
    no test-count backstop. TST-006 notes give a non-exhaustive list of examples (`known_gap_*`, e.g. a skip
    built at run time, an emptied test body, Rust `#[should_panic]` on a failing test, an empty `parametrize`, a
-   test file moved out of `testpaths`). Do not rely on CI for those: reviewers check for them, and authors
-   disclose them in the PR (TST-006, ADR-0015).
+   test file moved out of `testpaths`, a deleted or hidden Rust doctest). Do not rely on CI for those:
+   reviewers check for them, and authors disclose them in the PR (TST-006, ADR-0015).
 7. **UNVERIFIED and secondary-source [S] values** may not be oracles until they are closed in
    [OPEN-ITEMS.md](../requirements/OPEN-ITEMS.md) (PHY-018).
 8. **Compile-fail tests** (`trybuild`) prove that type-level physics guards work (API-001).

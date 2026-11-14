@@ -322,7 +322,11 @@ notes: >-
   known_gap_adversarial_encoding, code written to defeat the scanner, e.g.
   deleting a Rust test whose attribute is renamed by use (use
   core::prelude::v1::test as check; #[check] fn t()), or replacing a Python
-  test's body through test_a.__code__ = .... Python gate
+  test's body through test_a.__code__ = ...; known_gap_rs_doctest, Rust
+  doctests are outside the ratchet: deleting one, marking it ignore, or
+  #[cfg(test)] (allowlisted) on the item that carries it, which drops it
+  from the cargo test --doc run, is not detected, and cargo nextest list
+  does not list doctests. Python gate
   names are matched on any expression, so args.skip in non-test code also
   needs approval (over-detection). tools/tests/conftest.py and the pytest
   configuration files above (all seven names, at any depth under tools/)

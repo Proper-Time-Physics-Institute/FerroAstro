@@ -28,7 +28,10 @@ value_change_k = 1
 # PR-tier test (known_gap_rs_allowlisted_gate in TST-006 notes and tools/ratchet.py): for those
 # the only backstop is `ratchet (test count)`, whose head listing is produced by PR code.
 # What is listed:
-# - cfg(test): it selects the test build, which is the build nextest runs, so it hides nothing.
+# - cfg(test): it selects the test build, which is the build nextest runs, so it hides nothing
+#   from the nextest run. It does hide the item's doctests: rustdoc does not build doctests with
+#   cfg(test), so `cargo test --doc` no longer runs them. Doctests are outside the ratchet
+#   (known_gap_rs_doctest): `cargo nextest list` does not list them and the scan ignores them.
 #   cfg(doc) is NOT listed: nextest does not build with cfg(doc), so `#[cfg(doc)]` on a test
 #   removes it from the PR-tier run; it needs approval.
 # - One feature selection, `cfg(feature = "...")` or `cfg(not(feature = "..."))`, and only for a
