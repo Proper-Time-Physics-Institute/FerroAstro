@@ -24,6 +24,8 @@ pub struct NBodyModel<F: Frame, R: Real = f64> {
     layout: Layout<R>,
     terms: Vec<Box<dyn ForceTerm<F, R>>>,
     gauge: Gauge,
+    /// True if a term is a comparison model (ADR-0016, [`Gauge::is_comparison_model`]).
+    comparison: bool,
     compensated: bool,
     _frame: PhantomData<fn() -> F>,
 }
@@ -77,9 +79,11 @@ impl<F: Frame, R: Real> NBodyModel<F, R> {
             ));
         }
         let mut gauge = Gauge::Newtonian;
+        let mut comparison = false;
         for t in &mut terms {
             t.bind(&layout)?;
             let g = t.gauge();
+            comparison |= g.is_comparison_model();
             if g.is_relativistic() {
                 if gauge.is_relativistic() && gauge != g {
                     return Err(ForceError::GaugeMismatch {
@@ -90,10 +94,16 @@ impl<F: Frame, R: Real> NBodyModel<F, R> {
                 gauge = g;
             }
         }
+        // A comparison-model term alone gives the model its gauge (and label); beside a
+        // relativistic term the model keeps that gauge and `describe` names both (ADR-0016).
+        if comparison && !gauge.is_relativistic() {
+            gauge = Gauge::StaticWeakFieldPotential;
+        }
         Ok(Self {
             layout,
             terms,
             gauge,
+            comparison,
             compensated: false,
             _frame: PhantomData,
         })
@@ -118,13 +128,36 @@ impl<F: Frame, R: Real> NBodyModel<F, R> {
         &self.terms
     }
 
+    /// True if a term of the model is a beyond-GR comparison model (ADR-0016, PHY-020): its
+    /// rates carry the label "comparison model" (in [`NBodyModel::describe`]).
+    #[must_use]
+    pub const fn has_comparison_model(&self) -> bool {
+        self.comparison
+    }
+
+    /// The model's gauge label for reports (PHY-015): the gauge's label, followed, when a
+    /// comparison-model term sits beside a relativistic term, by `"; + "` and the comparison
+    /// model's label (ADR-0016, PHY-020 (f)).
+    #[must_use]
+    pub fn gauge_label(&self) -> String {
+        if self.comparison && self.gauge.is_relativistic() {
+            format!(
+                "{}; + {}",
+                self.gauge.label(),
+                Gauge::StaticWeakFieldPotential.label()
+            )
+        } else {
+            self.gauge.label().to_owned()
+        }
+    }
+
     /// A multi-line description: gauge, layout and each term with its tiers and parameters.
     #[must_use]
     pub fn describe(&self) -> String {
         let mut s = format!(
             "N-body model [{}]: {} bodies ({} Major, {} Minor, {} Ring), Moon variables: {}, \
              accumulation: {}",
-            self.gauge.label(),
+            self.gauge_label(),
             self.layout.len(),
             self.layout.indices(Tier::Major).len(),
             self.layout.indices(Tier::Minor).len(),

@@ -73,15 +73,21 @@ notes: >-
   Force switches: newton, sun_j2, gr_1pn_central, gr_eih, ppn{beta,gamma},
   lense_thirring, asteroids:N. IC sources: de440-header | de440-bsp@JD |
   horizons@JD.
-  PLANNED (ADR-0016, PHY-020, #59; decided 2026-11-14, not yet implemented):
-  an optional [forces.conformal] table { gamma0, gamma_star, kappa,
-  gamma0_centre = "sun" | "uniform" } plus the fixed direction for "uniform",
-  for the default-off conformal-gravity comparison model. It is skipped when
-  absent, so existing scenario digests do not change; the schema is
-  regenerated in the engine PR, which SHALL also fix the units of
-  gamma0, gamma_star and kappa (the published fit values are in cm⁻¹ and
-  cm⁻², the engine works in km). It is not a ladder switch, and no ci/scenarios
-  file that feeds an oracle comparison uses it.
+  CONFORMAL (ADR-0016, PHY-020, #59; decided 2026-11-14, implemented in the
+  F2 engine PR): the optional [forces.conformal] table { gamma0, gamma_star,
+  kappa, gamma0_centre = "sun" | "uniform", gamma0_direction = [x, y, z] }
+  for the default-off conformal-gravity comparison model, n-body mode only
+  (FA-E1201 otherwise). UNITS: gamma0 and gamma_star in cm⁻¹, kappa in cm⁻²
+  (the units of the published fits), all signed; the engine converts them to
+  km⁻¹ and km⁻² exactly (CM_PER_KM = 1e5). Omitted coefficients are 0 (the
+  unverified OI-79 fit values are never defaults); gamma0_centre defaults to
+  "uniform" and gamma0_direction (ICRF axes, normalised, non-zero) to
+  [1, 0, 0]. The table is skipped when absent, so every existing scenario
+  digest is byte-identical (crates/ferroastro-scenario/tests/digest_stability.rs
+  pins all 49 committed scenarios against digests recorded before the table
+  existed); once present every field is serialised, so the digest covers the
+  effective values, defaults included. Schema regenerated. It is not a ladder
+  switch, and no ci/scenarios file uses it.
   BUILD EVIDENCE (sync 2026-10-20; WP13, WP15, WP17, WP18 on
   m3-newtonian-nbody). Schema: ci/scenarios/scenario.schema.json is generated
   by ferroastro-scenario (schemars) and committed;

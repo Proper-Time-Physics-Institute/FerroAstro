@@ -29,6 +29,11 @@
 //! an exact `1/r³`, no fused multiply-add and a fixed reduction order, whose scalar and SIMD
 //! (feature `simd`, the safe `wide` crate) instantiations are bitwise identical.
 //!
+//! ADR-0016 (PHY-020) adds the conformal-gravity **comparison model**, outside the GR ladder and
+//! default off: [`ConformalPotential`] (Sun-sourced linear and quadratic potentials with reaction),
+//! [`ConformalUniformGamma0`] (γ0 as a uniform field) and the test-particle [`ConformalCentral`],
+//! all declaring [`Gauge::StaticWeakFieldPotential`], which combines with every relativistic gauge.
+//!
 //! Internal units: positions in km, velocities in km/s, time in TDB seconds, GM in km³/s². The
 //! typed constructors and [`NewtonianPointMasses::pack`] / [`NewtonianPointMasses::unpack`]
 //! convert from and to the [`ferroastro_core`] newtypes, so raw scalars only appear inside the
@@ -37,6 +42,7 @@
 //! model, `TestParticle<F, DoubleDouble>` the same physics in double-double.
 
 mod central;
+mod conformal;
 mod error;
 mod mixed;
 mod nbody;
@@ -46,14 +52,16 @@ mod relativity;
 pub mod soa;
 
 pub use central::{CentralTerm, Pole, TestParticle};
+pub use conformal::ConformalCentral;
 pub use error::ForceError;
 pub use ferroastro_integrators::SecondOrderSystem;
 pub use mixed::{F64Forces, MixedForces};
 pub use nbody::{
-    Accelerations, ForceTerm, GeocentricMoon, GrPotential, Layout, LtReaction, MOON_TAYLOR_Q_MAX,
-    MOON_TAYLOR_TERMS_DEFAULT, MOON_TAYLOR_TERMS_MIN, MinorFromMajors, MinorReaction, MoonPair,
-    MoonVariables, NBody, NBodyModel, NBodyPropagator, NewtonianMutual, RingMasses,
-    SolarJ2WithReaction, SolarLenseThirring, TermParameter, View,
+    Accelerations, ConformalPotential, ConformalUniformGamma0, ForceTerm, GeocentricMoon,
+    GrPotential, Layout, LtReaction, MOON_TAYLOR_Q_MAX, MOON_TAYLOR_TERMS_DEFAULT,
+    MOON_TAYLOR_TERMS_MIN, MinorFromMajors, MinorReaction, MoonPair, MoonVariables, NBody,
+    NBodyModel, NBodyPropagator, NewtonianMutual, RingMasses, SolarJ2WithReaction,
+    SolarLenseThirring, TermParameter, View,
 };
 pub use newtonian::NewtonianPointMasses;
 pub use oblateness::SolarJ2;
@@ -86,6 +94,14 @@ pub enum Gauge {
     /// (Nobili & Roxburgh 1986, `−3(GM)²/(c²r²)`): no metric and no PN gauge; the mean motion is
     /// off by O(GM/(ac²)). Used with the Wisdom–Holman map (NUM-004).
     GrEffectivePotential,
+    /// A static, velocity-independent weak-field potential added at Newtonian order: the
+    /// conformal-gravity **comparison model** of ADR-0016 (Mannheim–Kazanas linear and quadratic
+    /// terms, PHY-020; [`ConformalPotential`], [`ConformalUniformGamma0`], [`ConformalCentral`]).
+    /// It is not a metric written in a PN gauge, so it has no PN gauge to conflict with and
+    /// [`Gauge::is_relativistic`] excludes it (maintainer decision D1 of 2026-11-14): it combines
+    /// with any relativistic gauge (GR 1PN, EIH, the GR effective potential) without `FA-E0502`.
+    /// A model containing such a term reports it in its gauge label (PHY-015, PHY-020 (f)).
+    StaticWeakFieldPotential,
 }
 
 impl Gauge {
@@ -105,17 +121,32 @@ impl Gauge {
             Gauge::GrEffectivePotential => {
                 "GR effective potential -3(GM)^2/(c^2 r^2) (Nobili & Roxburgh 1986; no PN gauge)"
             }
+            Gauge::StaticWeakFieldPotential => COMPARISON_MODEL_LABEL,
         }
     }
 
     /// True for gauges that describe post-Newtonian (or special-relativistic) dynamics, i.e.
-    /// every gauge except [`Gauge::Newtonian`]. Terms of two different non-Newtonian gauges
-    /// cannot be combined in one model.
+    /// every gauge except [`Gauge::Newtonian`] and [`Gauge::StaticWeakFieldPotential`]. Terms of
+    /// two different relativistic gauges cannot be combined in one model (`FA-E0502`); a
+    /// non-relativistic term combines with any of them.
     #[must_use]
     pub const fn is_relativistic(self) -> bool {
-        !matches!(self, Gauge::Newtonian)
+        !matches!(self, Gauge::Newtonian | Gauge::StaticWeakFieldPotential)
+    }
+
+    /// True for the gauge of a beyond-GR comparison model (ADR-0016), whose rates are reported
+    /// with the label "comparison model" and never enter the GR ladder (PHY-020).
+    #[must_use]
+    pub const fn is_comparison_model(self) -> bool {
+        matches!(self, Gauge::StaticWeakFieldPotential)
     }
 }
+
+/// The report label of [`Gauge::StaticWeakFieldPotential`]: it names the comparison model
+/// (ADR-0016, PHY-020 (f)) so that every report whose model contains such a term carries it.
+pub const COMPARISON_MODEL_LABEL: &str = "comparison model (ADR-0016): conformal-gravity static \
+     weak-field potential (Mannheim-Kazanas; Newtonian order, no PN gauge; not part of the GR \
+     ladder)";
 
 /// A force model: a second-order system (in backend `R`, default `f64`) that declares its gauge
 /// and a stable name.

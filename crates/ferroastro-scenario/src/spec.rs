@@ -275,6 +275,93 @@ pub struct Ppn {
     pub gamma: f64,
 }
 
+/// Where the cosmological linear term γ0 of the conformal-gravity comparison model is centred
+/// (ADR-0016 decision D2).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "kebab-case")]
+pub enum Gamma0Centre {
+    /// γ0 is added to the Sun-sourced linear term (γ = γ* + γ0): a constant acceleration
+    /// towards the Sun, which changes heliocentric orbits.
+    Sun,
+    /// γ0 is a uniform field: the same acceleration γ0c²/2 on every moving body along
+    /// `gamma0_direction`. Relative motion is unchanged (the default).
+    #[default]
+    Uniform,
+}
+
+impl Gamma0Centre {
+    /// The spelling in scenario files.
+    #[must_use]
+    pub const fn label(self) -> &'static str {
+        match self {
+            Gamma0Centre::Sun => "sun",
+            Gamma0Centre::Uniform => "uniform",
+        }
+    }
+}
+
+fn default_gamma0_direction() -> [f64; 3] {
+    [1.0, 0.0, 0.0]
+}
+
+/// `[forces.conformal]`: Mannheim's weak-field conformal-gravity terms, a beyond-GR
+/// **comparison model** (ADR-0016, PHY-020): default off (absent), never part of the GR ladder,
+/// labelled "comparison model" in every report. The Sun-sourced acceleration on a body at
+/// heliocentric position r is −(γc²/2) r̂ + κc² r, with γ = γ* (the Sun's N* = 1) plus γ0 when
+/// `gamma0_centre = "sun"`; with `"uniform"` γ0 instead accelerates every body equally.
+///
+/// Units are those of the published fits: **γ0 and γ\* in cm⁻¹, κ in cm⁻²** (the engine
+/// converts them to km⁻¹ and km⁻² exactly, ×10⁵ and ×10¹⁰). All three are signed (decision D3):
+/// γ > 0 attracts, κ > 0 repels (B ⊃ −κr²). Every field is serialised once the table is present,
+/// so the scenario digest covers the effective values, defaults included; the table itself is
+/// skipped when absent, so existing digests do not change. The published fit values are
+/// unverified (OI-79) and are not defaults: an omitted coefficient is 0.
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct Conformal {
+    /// Cosmological linear coefficient γ0 (cm⁻¹, signed; default 0).
+    #[serde(default)]
+    pub gamma0: f64,
+    /// Linear coefficient per solar mass of the source, γ\* (cm⁻¹, signed; default 0). The
+    /// source is the Sun, N* = 1.
+    #[serde(default)]
+    pub gamma_star: f64,
+    /// Quadratic coefficient κ (cm⁻², signed, κ > 0 repulsive; default 0).
+    #[serde(default)]
+    pub kappa: f64,
+    /// Where γ0 is centred: `"sun"` or `"uniform"` (default `"uniform"`, decision D2).
+    #[serde(default)]
+    pub gamma0_centre: Gamma0Centre,
+    /// For `"uniform"`: the direction (any non-zero length; normalised) towards the uniform
+    /// field's distant centre, in the axes of the run's frame (ICRF for n-body runs). Default
+    /// `[1, 0, 0]`, an arbitrary choice: the heliocentric observable does not depend on it.
+    #[serde(default = "default_gamma0_direction")]
+    pub gamma0_direction: [f64; 3],
+}
+
+impl Conformal {
+    /// γ\* in km⁻¹.
+    #[must_use]
+    pub fn gamma_star_per_km(&self) -> f64 {
+        self.gamma_star * CM_PER_KM
+    }
+
+    /// γ0 in km⁻¹.
+    #[must_use]
+    pub fn gamma0_per_km(&self) -> f64 {
+        self.gamma0 * CM_PER_KM
+    }
+
+    /// κ in km⁻².
+    #[must_use]
+    pub fn kappa_per_km2(&self) -> f64 {
+        self.kappa * CM_PER_KM * CM_PER_KM
+    }
+}
+
+/// Centimetres per kilometre (exact), for the CGS coefficients of [`Conformal`].
+pub const CM_PER_KM: f64 = 1.0e5;
+
 /// `[forces]`: exactly the CI-002 switches. Every switch but `newton` defaults to off.
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
@@ -326,10 +413,15 @@ pub struct Forces {
     /// EPM2021). Requires `gr_eih` (not a CI-002 switch name; maintainer decision 2026-11-12).
     #[serde(default, skip_serializing_if = "EihScope::is_all")]
     pub eih_scope: EihScope,
+    /// The conformal-gravity comparison model (ADR-0016, PHY-020; n-body mode; not a ladder
+    /// switch). Absent by default, and then not serialised, so existing scenario digests are
+    /// unchanged.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub conformal: Option<Conformal>,
 }
 
 /// The force switches of CI-002, as written under `[forces]`.
-pub const SWITCHES: [&str; 12] = [
+pub const SWITCHES: [&str; 13] = [
     "newton",
     "sun_j2",
     "gr_1pn_central",
@@ -342,6 +434,7 @@ pub const SWITCHES: [&str; 12] = [
     "major_asteroids",
     "gr_potential",
     "eih_scope",
+    "conformal",
 ];
 
 impl Forces {
@@ -361,6 +454,7 @@ impl Forces {
             self.major_asteroids != MajorAsteroids::None,
             self.gr_potential,
             !self.eih_scope.is_all(),
+            self.conformal.is_some(),
         ];
         SWITCHES
             .iter()
@@ -750,6 +844,26 @@ impl ScenarioSpec {
                     "forces.ppn",
                     &"set",
                     "ppn needs a relativistic term (gr_1pn_central, gr_eih or lense_thirring)",
+                );
+            }
+        }
+        if let Some(c) = self.forces.conformal {
+            for (field, v) in [
+                ("forces.conformal.gamma0", c.gamma0),
+                ("forces.conformal.gamma_star", c.gamma_star),
+                ("forces.conformal.kappa", c.kappa),
+            ] {
+                if !v.is_finite() {
+                    return err(field, &v, "must be finite (signed)");
+                }
+            }
+            let [d0, d1, d2] = c.gamma0_direction;
+            let len = d0.hypot(d1).hypot(d2);
+            if !(len.is_finite() && len > 0.0) {
+                return err(
+                    "forces.conformal.gamma0_direction",
+                    &format!("[{d0}, {d1}, {d2}]"),
+                    "finite and non-zero (it is normalised)",
                 );
             }
         }

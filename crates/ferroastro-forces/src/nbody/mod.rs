@@ -12,9 +12,10 @@ pub use layout::{Accelerations, Layout, MoonPair, MoonVariables, NBody, View};
 pub use model::NBodyModel;
 pub use propagator::NBodyPropagator;
 pub use terms::{
-    ForceTerm, GeocentricMoon, GrPotential, LtReaction, MOON_TAYLOR_Q_MAX,
-    MOON_TAYLOR_TERMS_DEFAULT, MOON_TAYLOR_TERMS_MIN, MinorFromMajors, MinorReaction,
-    NewtonianMutual, RingMasses, SolarJ2WithReaction, SolarLenseThirring, TermParameter,
+    ConformalPotential, ConformalUniformGamma0, ForceTerm, GeocentricMoon, GrPotential, LtReaction,
+    MOON_TAYLOR_Q_MAX, MOON_TAYLOR_TERMS_DEFAULT, MOON_TAYLOR_TERMS_MIN, MinorFromMajors,
+    MinorReaction, NewtonianMutual, RingMasses, SolarJ2WithReaction, SolarLenseThirring,
+    TermParameter,
 };
 
 #[cfg(test)]
