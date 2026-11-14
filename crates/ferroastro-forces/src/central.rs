@@ -68,6 +68,8 @@ pub struct TestParticle<F: Frame, R: Real = f64> {
     mu: R,
     terms: Vec<Box<dyn CentralTerm<F, R>>>,
     gauge: Gauge,
+    /// True if a term is a comparison model (ADR-0016).
+    comparison: bool,
 }
 
 impl<F: Frame, R: Real> TestParticle<F, R> {
@@ -88,8 +90,10 @@ impl<F: Frame, R: Real> TestParticle<F, R> {
             });
         }
         let mut gauge = Gauge::Newtonian;
+        let mut comparison = false;
         for t in &terms {
             let g = t.gauge();
+            comparison |= g.is_comparison_model();
             if !g.is_relativistic() {
                 continue;
             }
@@ -101,10 +105,15 @@ impl<F: Frame, R: Real> TestParticle<F, R> {
             }
             gauge = g;
         }
+        // As in `NBodyModel::new`: a comparison-model term alone gives the model its gauge.
+        if comparison && !gauge.is_relativistic() {
+            gauge = Gauge::StaticWeakFieldPotential;
+        }
         Ok(Self {
             mu: m,
             terms,
             gauge,
+            comparison,
         })
     }
 
@@ -127,6 +136,10 @@ impl<F: Frame, R: Real> TestParticle<F, R> {
         }
         s.push_str("; gauge: ");
         s.push_str(self.gauge.label());
+        if self.comparison && self.gauge.is_relativistic() {
+            s.push_str("; + ");
+            s.push_str(Gauge::StaticWeakFieldPotential.label());
+        }
         s
     }
 

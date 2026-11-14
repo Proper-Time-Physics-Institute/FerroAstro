@@ -28,16 +28,17 @@ use ferroastro_eih::{
 };
 use ferroastro_ephem::NaifId;
 use ferroastro_forces::{
-    ForceTerm, GeocentricMoon, GrPotential, LtReaction, MOON_TAYLOR_TERMS_DEFAULT, MinorFromMajors,
-    MinorReaction, MixedForces, MoonVariables, NBody, NBodyModel, NewtonianMutual,
-    NewtonianMutualSoa, RingMasses, SoaBackend, SolarJ2WithReaction, SolarLenseThirring,
+    ConformalPotential, ConformalUniformGamma0, ForceTerm, GeocentricMoon, GrPotential, LtReaction,
+    MOON_TAYLOR_TERMS_DEFAULT, MinorFromMajors, MinorReaction, MixedForces, MoonVariables, NBody,
+    NBodyModel, NewtonianMutual, NewtonianMutualSoa, Pole, RingMasses, SoaBackend,
+    SolarJ2WithReaction, SolarLenseThirring,
 };
 use ferroastro_integrators::Ias15;
 use ferroastro_integrators::Irk16;
 use ferroastro_real::Real;
 use ferroastro_scenario::{
-    BodyName, ForceKernel, IcBarycentre, IcRecord, IntegratorName, MajorAsteroids, Precision,
-    ScenarioError, ScenarioSpec, ic_hash,
+    BodyName, ForceKernel, Gamma0Centre, IcBarycentre, IcRecord, IntegratorName, MajorAsteroids,
+    Precision, ScenarioError, ScenarioSpec, ic_hash,
 };
 use ferroastro_symplectic::Whfast;
 use ferroastro_system::{
@@ -129,8 +130,8 @@ fn relativity<R: Real>(
 
 /// The model of an N-body scenario (term order: Newtonian mutual, Minor, Ring, geocentric Moon,
 /// the relativistic term (WP19), solar J2 with reaction, solar Lense–Thirring with reaction
-/// (WP20)) and the body order. The solar J2, pole and spin are DE440's unless `data` carries
-/// [`crate::SolarOverrides`].
+/// (WP20), the conformal-gravity comparison terms (ADR-0016)) and the body order. The solar J2,
+/// pole and spin are DE440's unless `data` carries [`crate::SolarOverrides`].
 fn model<R: Real>(
     spec: &ScenarioSpec,
     data: &DataSources<'_>,
@@ -226,7 +227,54 @@ fn model<R: Real>(
             .with_minor_reaction(MinorReaction::On),
         ));
     }
+    terms.extend(conformal::<R>(spec, de, has(BodyName::Sun))?);
     Ok((NBodyModel::new(&bodies, vars, terms)?, gms))
+}
+
+/// The conformal-gravity comparison terms of `[forces.conformal]` (ADR-0016, PHY-020), last in
+/// the term order: the Sun-sourced [`ConformalPotential`] with γ = γ* (+ γ0 for
+/// `gamma0_centre = "sun"`) and κ, and for `"uniform"` with γ0 ≠ 0 the [`ConformalUniformGamma0`] field
+/// along `gamma0_direction` (ICRF axes). Coefficients converted from cm⁻¹ / cm⁻² to km⁻¹ / km⁻²;
+/// c from DE440. Empty without the table.
+fn conformal<R: Real>(
+    spec: &ScenarioSpec,
+    de: &De440,
+    has_sun: bool,
+) -> Result<Vec<Box<dyn ForceTerm<Icrf, R>>>, PropagateError> {
+    let Some(cg) = spec.forces.conformal else {
+        return Ok(Vec::new());
+    };
+    if !has_sun {
+        return Err(ScenarioError::Value {
+            name: spec.name.clone(),
+            field: "forces.conformal",
+            value: "set".into(),
+            problem: "the conformal-gravity term is Sun-sourced and needs the Sun among the bodies"
+                .into(),
+        }
+        .into());
+    }
+    let c = Velocity::from_km_per_s(R::from_f64(de.speed_of_light().km_per_s()))
+        .map_err(|e| setup(&spec.name, e.to_string(), "check the DE440 table"))?;
+    let gamma0 = R::from_f64(cg.gamma0_per_km());
+    let sun_centred = cg.gamma0_centre == Gamma0Centre::Sun;
+    let mut terms: Vec<Box<dyn ForceTerm<Icrf, R>>> = vec![Box::new(ConformalPotential::new(
+        R::from_f64(cg.gamma_star_per_km()),
+        if sun_centred { gamma0 } else { R::ZERO },
+        R::from_f64(cg.kappa_per_km2()),
+        c,
+    )?)];
+    // A non-zero uniform γ0 beside the fixed kbo_ring bodies is refused by
+    // ScenarioSpec::validate (FA-E1203) and, for direct model users, at bind (FA-E0500).
+    // gamma0 = 0 under "uniform" (both defaults): no zero-acceleration term in the model.
+    if !sun_centred && gamma0 != R::ZERO {
+        terms.push(Box::new(ConformalUniformGamma0::new(
+            gamma0,
+            c,
+            Pole::from_components(cg.gamma0_direction.map(R::from_f64))?,
+        )?));
+    }
+    Ok(terms)
 }
 
 type IcRecordGm = (i32, f64);

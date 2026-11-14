@@ -225,6 +225,7 @@ pub fn supports(item: &str, mode: Mode) -> Result<(), String> {
                 | "integrator.whfast"
                 | "integrator.irk16"
                 | "gr_potential"
+                | "conformal"
         ) && mode == Mode::NBody)
         || (central_term && mode == Mode::TestParticle)
         || (nbody_relativity && mode == Mode::NBody)
@@ -253,6 +254,11 @@ pub fn supports(item: &str, mode: Mode) -> Result<(), String> {
                 .into()
         }
         "gr_potential" => "the GR effective potential is an n-body term (WP29)".into(),
+        "conformal" => {
+            "the conformal-gravity comparison model is an n-body term (ADR-0016): its Sun \
+             reaction and the uniform gamma0 centring need the Sun as a moving body"
+                .into()
+        }
         other if other.starts_with("integrator.") => "not implemented".into(),
         _ => "not implemented".into(),
     })

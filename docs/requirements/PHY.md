@@ -7,7 +7,7 @@
 
 Evidence labels carried over from the journal: **[P]** read in the primary source, **[C]** computed from [P] constants, **[S]** secondary transcription, **UNVERIFIED** not yet confirmed. See [OPEN-ITEMS.md](OPEN-ITEMS.md) for everything that still has to be checked.
 
-Rungs in the Journal #1 table that have no dedicated requirement yet: N-SELF (0.0050, meaning UNVERIFIED), N-X cross terms (Σ = +0.0127), N-MOON (no primary value), J2-DE440 (0.02792, covered inside PHY-010) and GR-1PN-2B (finite-mass-ratio shift ≈ 7×10⁻⁶ ″/cy, covered by the μ note in PHY-001/PHY-004). N-AST (0.0012) has its own differential rung, PHY-019 (added 2026-10-14 after the red-team review, Journal #9). N-SELF, N-AST and N-X enter PHY-013 as part of the N-SUM total.
+Rungs in the Journal #1 table that have no dedicated requirement yet: N-SELF (0.0050, meaning UNVERIFIED), N-X cross terms (Σ = +0.0127), N-MOON (no primary value), J2-DE440 (0.02792, covered inside PHY-010) and GR-1PN-2B (finite-mass-ratio shift ≈ 7×10⁻⁶ ″/cy, covered by the μ note in PHY-001/PHY-004). N-AST (0.0012) has its own differential rung, PHY-019 (added 2026-10-14 after the red-team review, Journal #9). N-SELF, N-AST and N-X enter PHY-013 as part of the N-SUM total. PHY-020 (conformal gravity, added 2026-11-14) is not a rung: it is a default-off comparison model outside the ladder (ADR-0016).
 
 ---
 
@@ -745,4 +745,81 @@ notes: >-
   asteroids", which points to the 343 asteroids only; a human reading of that
   text is still pending (OI-24). The KBOs + ring add +0.000019 ″/cy in
   FerroAstro's full model (WP15, reported only).
+```
+
+### PHY-020 — Conformal-gravity comparison term (outside the ladder)
+
+```yaml
+id: PHY-020
+title: "Conformal-gravity comparison term reproduces the analytic Gauss secular rates, default off, never in the ladder"
+status: draft
+criticality: high
+verification: test
+statement: >-
+  FerroAstro SHALL provide Mannheim's weak-field conformal-gravity terms as a
+  comparison model (ADR-0016): a Sun-sourced, velocity-independent radial
+  acceleration −(γc²/2) r̂ + κc² r with reaction on the Sun,
+  γ and κ signed (κ > 0 repulsive, from the −κr² term of the
+  Mannheim–Kazanas B), declaring Gauge::StaticWeakFieldPotential, which
+  is_relativistic() excludes. The cosmological γ0 SHALL be selectable as
+  gamma0_centre = "sun" (added to the Sun-sourced γ) or "uniform" (the
+  same acceleration γ0c²/2 on every body along a fixed scenario
+  direction), default "uniform" when the term is on. The term SHALL be off
+  by default, SHALL carry the label "comparison model" wherever its rates are
+  reported, and SHALL never enter the GR ladder, the 575.31 ″/cy total or
+  any reference value.
+acceptance: >-
+  (a) Linear term: a two-body Sun + test-body integration with an exaggerated
+  γ, for both signs, gives a secular perihelion rate equal to
+  Δϖ = −πγa²√(1−e²)/β per orbit, β = GM☉/c²,
+  within the tolerance the test states and justifies from its span and
+  integrator floor. (b) Quadratic term: an exaggerated κ > 0 gives
+  Δϖ = +3πκa³√(1−e²)/β per orbit (prograde) on
+  the same terms. (c) Uniform centring: gamma0_centre = "uniform" with an
+  exaggerated γ0 changes the heliocentric rate by 0 within the integrator
+  floor. (d) Default off: a scenario without forces.conformal, and the default
+  viewer mask, contain no conformal term, and existing scenario digests are
+  byte-identical. (e) GR 1PN + this term and EIH + this term assemble without
+  FA-E0502. (f) Every reported rate from a model containing the term carries
+  the "comparison model" label with the PHY-015 metadata. All of these tests
+  are PR-tier; none is #[ignore].
+source: >-
+  docs/adr/0016-comparison-models.md; #59; relativistic-dynamics#88 (research
+  report and physics note, outside this repository). Mannheim & Kazanas 1989,
+  ApJ 342, 635 (metric); Mannheim & O'Brien 2012, PRD 85, 124020 (fit
+  values, OI-79); Sultana, Kazanas & Said 2012, PRD 86, 084008 (perihelion
+  calculation); Fienga et al. 2016, arXiv:1601.00947 (INPOP15a bound).
+parent: null
+related: [PHY-015, PHY-018, NUM-017, API-004, CI-002]
+notes: >-
+  Added 2026-11-14 with ADR-0016; maintainer decisions D1–D7 of 2026-11-14
+  (Bernard, recorded on #59). This is a comparison model, not a rung: parent
+  is null because ORG-002 is the ladder. ORACLES: the acceptance rests only on
+  the closed-form Gauss averages above. The fit values γ0 = 3.06e-30
+  cm⁻¹, γ* = 5.42e-41 cm⁻¹ per solar mass and κ = 9.54e-54 cm⁻²
+  are unverified (OI-79) and are never test oracles (PHY-018, D7). The rates
+  use √(1−e²), not the (1−e²)² and (1−e²)³ factors printed by
+  Sultana, Kazanas & Said 2012; the rd#88 physics note checked the √ form,
+  including its sign, by numerical integration to 0.2 %, and for Mercury the
+  printed linear factor differs by about 7 %. β = GM☉/c² uses the Sun's GM
+  only, and a is the semi-major axis of the relative orbit. With the reaction
+  on the Sun, the relative perturbing acceleration is
+  R = −(γc²/2)(1 + m/M☉), and Gauss gives Δϖ = 2πR a²√(1−e²)/μ with the
+  two-body μ = G(M☉ + m); the factors (1 + m/M☉) cancel, and the same
+  cancellation holds for the κ term. For the massless test body of
+  acceptance (a) the two readings coincide; using β = G(M☉ + m)/c² with the
+  API γ would be off by m/M☉ (1.7e-7 for Mercury). OI-77's two-body μ
+  applies only to the per-orbit → ″/cy conversion (n), not to β. With
+  velocity-dependent terms present (EIH, Lense–Thirring) the uniform drift
+  enters only at O(v·Δv/c²), so (c) is asserted in a configuration
+  with velocity-independent forces. The kbo_ring bodies are fixed and cannot
+  receive the uniform field, so (c) would fail beside them; a non-zero
+  uniform γ0 with forces.kbo_ring is refused (FA-E1203 at validation,
+  FA-E0500 at bind) rather than run. Mercury numbers from the rd#88 notes,
+  not yet reproduced in FerroAstro and not oracles: Sun-centred γ0 about
+  −0.183 ″/cy (about 60× the INPOP15a bound of 0.0 ± 3.1 mas/cy); uniform
+  γ0 about 0; γ* and κ 1e-11 to 1e-12 ″/cy in magnitude, of opposite
+  signs (about −3.2e-12 and +9.9e-12). Avoid the token
+  "nominal" in identifiers (PHY-003 scan). Implementation is the F2 engine PR
+  of #59; the viewer bit is API-004 / ABI v2 in a later PR.
 ```

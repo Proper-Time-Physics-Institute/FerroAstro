@@ -155,6 +155,51 @@
         }
       ]
     },
+    "Conformal": {
+      "description": "`[forces.conformal]`: Mannheim's weak-field conformal-gravity terms, a beyond-GR\n**comparison model** (ADR-0016, PHY-020): default off (absent), never part of the GR ladder,\nlabelled \"comparison model\" in every report. The Sun-sourced acceleration on a body at\nheliocentric position r is −(γc²/2) r̂ + κc² r, with γ = γ* (the Sun's N* = 1) plus γ0 when\n`gamma0_centre = \"sun\"`; with `\"uniform\"` γ0 instead accelerates every body equally.\n\nUnits are those of the published fits: **γ0 and γ\\* in cm⁻¹, κ in cm⁻²** (the engine\nconverts them to km⁻¹ and km⁻² exactly, ×10⁵ and ×10¹⁰). All three are signed (decision D3):\nγ > 0 attracts, κ > 0 repels (B ⊃ −κr²). Every field is serialised once the table is present,\nso the scenario digest covers the effective values, defaults included; the table itself is\nskipped when absent, so existing digests do not change. The published fit values are\nunverified (OI-79) and are not defaults: an omitted coefficient is 0.",
+      "type": "object",
+      "properties": {
+        "gamma0": {
+          "description": "Cosmological linear coefficient γ0 (cm⁻¹, signed; default 0).",
+          "type": "number",
+          "format": "double",
+          "default": 0.0
+        },
+        "gamma0_centre": {
+          "description": "Where γ0 is centred: `\"sun\"` or `\"uniform\"` (default `\"uniform\"`, decision D2).",
+          "$ref": "#/$defs/Gamma0Centre",
+          "default": "uniform"
+        },
+        "gamma0_direction": {
+          "description": "For `\"uniform\"`: the direction (any non-zero length; normalised) towards the uniform\nfield's distant centre, in the axes of the run's frame (ICRF for n-body runs). Default\n`[1, 0, 0]`, an arbitrary choice: the heliocentric observable does not depend on it.",
+          "type": "array",
+          "default": [
+            1.0,
+            0.0,
+            0.0
+          ],
+          "items": {
+            "type": "number",
+            "format": "double"
+          },
+          "maxItems": 3,
+          "minItems": 3
+        },
+        "gamma_star": {
+          "description": "Linear coefficient per solar mass of the source, γ\\* (cm⁻¹, signed; default 0). The\nsource is the Sun, N* = 1.",
+          "type": "number",
+          "format": "double",
+          "default": 0.0
+        },
+        "kappa": {
+          "description": "Quadratic coefficient κ (cm⁻², signed, κ > 0 repulsive; default 0).",
+          "type": "number",
+          "format": "double",
+          "default": 0.0
+        }
+      },
+      "additionalProperties": false
+    },
     "ConstantsSpec": {
       "description": "`[constants]`.",
       "type": "object",
@@ -209,6 +254,17 @@
           "format": "uint32",
           "default": 0,
           "minimum": 0
+        },
+        "conformal": {
+          "description": "The conformal-gravity comparison model (ADR-0016, PHY-020; n-body mode; not a ladder\nswitch). Absent by default, and then not serialised, so existing scenario digests are\nunchanged.",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Conformal"
+            },
+            {
+              "type": "null"
+            }
+          ]
         },
         "eih_scope": {
           "description": "Which bodies receive and source the 1PN EIH terms (`all`, the default: DE440; `majors`:\nEPM2021). Requires `gr_eih` (not a CI-002 switch name; maintainer decision 2026-11-12).",
@@ -269,6 +325,21 @@
       "additionalProperties": false,
       "required": [
         "newton"
+      ]
+    },
+    "Gamma0Centre": {
+      "description": "Where the cosmological linear term γ0 of the conformal-gravity comparison model is centred\n(ADR-0016 decision D2).",
+      "oneOf": [
+        {
+          "description": "γ0 is added to the Sun-sourced linear term (γ = γ* + γ0): a constant acceleration\ntowards the Sun, which changes heliocentric orbits.",
+          "type": "string",
+          "const": "sun"
+        },
+        {
+          "description": "γ0 is a uniform field: the same acceleration γ0c²/2 on every body along\n`gamma0_direction`. Relative motion is unchanged (the default). A non-zero γ0 is refused\nbeside `forces.kbo_ring`, whose bodies are fixed and cannot receive the field.",
+          "type": "string",
+          "const": "uniform"
+        }
       ]
     },
     "GmSet": {

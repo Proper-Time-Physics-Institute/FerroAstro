@@ -955,3 +955,340 @@ fn terms_with_different_minor_reaction_settings_are_refused() {
     assert_eq!(e.code().to_string(), "FA-E0500");
     assert!(e.to_string().contains("Minor-body reaction"), "{e}");
 }
+
+/// Synthetic conformal-gravity coefficients for the structural fixture (ADR-0016, PHY-020): no
+/// fit value (OI-79, decision D7). At r ≈ 5e7 km the linear term is ~1e-3 of GM☉/r² and the
+/// quadratic term ~1e-3 of GM☉/r³·r, so both are resolved far above round-off.
+const CG_C: f64 = 3.0e5; // lint: allow-literal(synthetic speed of light, km/s)
+const CG_GAMMA_STAR: f64 = 4.0e-19; // lint: allow-literal(synthetic gamma_star, 1/km)
+const CG_GAMMA0: f64 = 7.0e-19; // lint: allow-literal(synthetic gamma0, 1/km)
+const CG_KAPPA: f64 = -1.0e-26; // lint: allow-literal(synthetic kappa, 1/km^2, attractive sign on purpose)
+
+fn cg_sun<R: Real>(gamma0_sun: f64) -> ConformalPotential<R> {
+    ConformalPotential::new(
+        R::from_f64(CG_GAMMA_STAR),
+        R::from_f64(gamma0_sun),
+        R::from_f64(CG_KAPPA),
+        Velocity::from_km_per_s(R::from_f64(CG_C)).unwrap(),
+    )
+    .unwrap()
+}
+
+fn cg_uniform<R: Real>() -> ConformalUniformGamma0<Icrf, R> {
+    ConformalUniformGamma0::new(
+        R::from_f64(CG_GAMMA0),
+        Velocity::from_km_per_s(R::from_f64(CG_C)).unwrap(),
+        // lint: allow-literal(structural direction, normalised by Pole)
+        Pole::from_components([-0.3, 0.7, 0.2].map(R::from_f64)).unwrap(),
+    )
+    .unwrap()
+}
+
+/// `max_ik |∂(U/G)/∂x_ik + GM_i a_ik| / max_ik |GM_i a_ik|` by central differences in
+/// double-double (velocities zero, so the energy is the potential alone).
+fn gradient_mismatch(m: &Model<Dd>, x: &[f64]) -> f64 {
+    let n = m.layout().len();
+    let x = dd(x);
+    let zero = vec![Dd::ZERO; x.len()];
+    let a = accel(m, &x, &zero);
+    let h = Dd::from_f64(1.0); // km; truncation ~ (h/r)^2 ~ 1e-16 relative
+    let (mut worst, mut scale) = (0.0_f64, 0.0_f64);
+    for i in 0..n {
+        for k in 0..3 {
+            let at = |s: Dd| {
+                let mut y = x.clone();
+                y[k * n + i] += s;
+                m.energy_over_g(&y, &zero).unwrap()
+            };
+            let du = (at(h) - at(-h)) / (Dd::TWO * h);
+            let f = m.layout().gm(i) * a[k * n + i];
+            worst = worst.max((du + f).abs().to_f64());
+            scale = scale.max(f.abs().to_f64());
+        }
+    }
+    worst / scale
+}
+
+/// The conformal-gravity comparison terms are conservative with their stated potentials: the
+/// finite-difference gradient of `Φ = (γc²/2) r − (κc²/2) r²` (with the Sun's reaction) and of the
+/// uniform field's `Φ = −g·x` equals `−GMᵢ aᵢ` for every body, the Sun included, and the force
+/// power balances the potential's rate along the motion (the energy diagnostic, NUM-023).
+///
+/// Verifies: PHY-020, NUM-023
+#[test]
+fn conformal_terms_are_minus_the_gradient_of_their_potential() {
+    let (bodies, x, v) = fixture();
+    let bodies_dd: Vec<NBody<Dd>> = bodies.iter().map(|b| body(b.id, b.gm, b.tier)).collect();
+    let one = |t: Vec<Box<dyn ForceTerm<Icrf, Dd>>>| {
+        Model::<Dd>::new(&bodies_dd, MoonVariables::Barycentric, t).unwrap()
+    };
+    let tol = 1e-9; // lint: allow-literal(finite-difference budget, as for the other terms)
+    for (label, m) in [
+        (
+            "sun-sourced, gamma0 uniform",
+            one(vec![Box::new(cg_sun(0.0))]),
+        ),
+        (
+            "sun-sourced, gamma0 on the Sun",
+            one(vec![Box::new(cg_sun(CG_GAMMA0))]),
+        ),
+        ("uniform gamma0", one(vec![Box::new(cg_uniform())])),
+        (
+            "both, with Newton",
+            one(vec![
+                Box::new(NewtonianMutual),
+                Box::new(cg_sun(0.0)),
+                Box::new(cg_uniform()),
+            ]),
+        ),
+    ] {
+        let grad = gradient_mismatch(&m, &x);
+        let power = power_mismatch(&m, &x, &v);
+        println!("{label}: gradient mismatch {grad:.3e}, power balance {power:.3e}");
+        assert!(grad < tol, "{label}: {grad:e}");
+        assert!(power < tol, "{label}: {power:e}");
+    }
+}
+
+/// The Sun-sourced term gives every Major body the test-particle acceleration
+/// `−(γc²/2) r̂ + κc² r` of [`crate::ConformalCentral`] at its heliocentric position, and its
+/// reaction on the Sun conserves momentum; the uniform term gives every moving body exactly
+/// `(γ0c²/2) n̂`.
+///
+/// Verifies: PHY-020
+#[test]
+fn conformal_terms_have_the_stated_accelerations() {
+    let (bodies, x, v) = fixture();
+    let n = bodies.len();
+    let m = Model::new(
+        &bodies,
+        MoonVariables::Barycentric,
+        vec![Box::new(cg_sun::<f64>(0.0))],
+    )
+    .unwrap();
+    let a = accel(&m, &x, &v);
+    let central = crate::ConformalCentral::<Icrf>::new(
+        CG_GAMMA_STAR,
+        CG_KAPPA,
+        Velocity::from_km_per_s(CG_C).unwrap(),
+    )
+    .unwrap();
+    let mut worst = 0.0_f64;
+    for i in 1..n {
+        let r = [x[i] - x[0], x[n + i] - x[n], x[2 * n + i] - x[2 * n]];
+        let mut want = [0.0; 3];
+        CentralTerm::<Icrf>::add_acceleration(&central, r, [0.0; 3], &mut want);
+        let got = [a[i], a[n + i], a[2 * n + i]];
+        let d = (got[0] - want[0])
+            .hypot(got[1] - want[1])
+            .hypot(got[2] - want[2]);
+        worst = worst.max(d / want[0].hypot(want[1]).hypot(want[2]));
+    }
+    let mut p = [0.0_f64; 3];
+    let mut scale = 0.0;
+    for i in 0..n {
+        for (k, pk) in p.iter_mut().enumerate() {
+            *pk += bodies[i].gm * a[k * n + i];
+            scale += (bodies[i].gm * a[k * n + i]).abs();
+        }
+    }
+    let mom = p.iter().map(|z| z.abs()).fold(0.0, f64::max) / scale;
+    println!("sun-sourced: max |a - a_central|/|a| = {worst:.3e}, momentum {mom:.3e}");
+    assert!(worst < 1e-14, "{worst:e}"); // lint: allow-literal(f64 round-off budget)
+    assert!(mom < 1e-14, "{mom:e}"); // lint: allow-literal(f64 round-off budget)
+
+    let u = cg_uniform::<f64>();
+    let g = u.acceleration();
+    let gn = g[0].hypot(g[1]).hypot(g[2]);
+    let want = CG_GAMMA0 * CG_C * CG_C * 0.5;
+    assert!((gn - want).abs() <= 1e-15 * want, "{gn:e} vs {want:e}"); // lint: allow-literal(f64 round-off budget)
+    let mu = Model::new(&bodies, MoonVariables::Barycentric, vec![Box::new(u)]).unwrap();
+    let au = accel(&mu, &x, &v);
+    for i in 0..n {
+        for (k, gk) in g.iter().enumerate() {
+            assert_eq!(au[k * n + i], *gk, "body {i} component {k}");
+        }
+    }
+}
+
+/// Decision D1: the comparison model's gauge is not relativistic, so it combines with every
+/// relativistic gauge without FA-E0502 (PPN isotropic/harmonic, the GR effective potential), and
+/// the model then reports both gauges with the label "comparison model" (PHY-020 (e), (f)).
+/// Alone it gives the model its own gauge; without it nothing changes.
+///
+/// Verifies: PHY-020, NUM-017
+#[test]
+fn conformal_gauge_combines_with_every_relativistic_gauge() {
+    let g = Gauge::StaticWeakFieldPotential;
+    assert!(!g.is_relativistic());
+    assert!(g.is_comparison_model());
+    assert!(g.label().contains("comparison model"), "{}", g.label());
+    assert!(!Gauge::PpnIsotropicHarmonic.is_comparison_model());
+    let (bodies, _, _) = fixture();
+    let c = Velocity::from_km_per_s(CG_C).unwrap();
+    let build =
+        |t: Vec<Box<dyn ForceTerm<Icrf>>>| Model::new(&bodies, MoonVariables::Barycentric, t);
+
+    let ppn = build(vec![
+        Box::new(NewtonianMutual),
+        Box::new(lt_term(1.0, LtReaction::On)),
+        Box::new(cg_sun::<f64>(0.0)),
+        Box::new(cg_uniform::<f64>()),
+    ])
+    .unwrap();
+    assert_eq!(ppn.gauge(), Gauge::PpnIsotropicHarmonic);
+    assert!(ppn.has_comparison_model());
+    let d = ppn.describe();
+    println!("{d}");
+    assert!(
+        d.starts_with("N-body model [PPN isotropic/harmonic; + comparison model"),
+        "{d}"
+    );
+    assert!(d.contains("conformal-potential-sun") && d.contains("conformal-gamma0-uniform"));
+
+    let grp = build(vec![
+        Box::new(NewtonianMutual),
+        Box::new(GrPotential::new(c).unwrap()),
+        Box::new(cg_sun::<f64>(CG_GAMMA0)),
+    ])
+    .unwrap();
+    assert_eq!(grp.gauge(), Gauge::GrEffectivePotential);
+    assert!(grp.gauge_label().contains("comparison model"));
+
+    let alone = build(vec![
+        Box::new(NewtonianMutual),
+        Box::new(cg_sun::<f64>(0.0)),
+    ])
+    .unwrap();
+    assert_eq!(alone.gauge(), Gauge::StaticWeakFieldPotential);
+    assert!(alone.describe().contains("comparison model"));
+
+    let plain = build(vec![Box::new(NewtonianMutual)]).unwrap();
+    assert!(!plain.has_comparison_model());
+    assert_eq!(plain.gauge_label(), Gauge::Newtonian.label());
+    assert!(!plain.describe().contains("comparison model"));
+
+    // Two different relativistic gauges are still refused.
+    let e = build(vec![
+        Box::new(lt_term(1.0, LtReaction::On)),
+        Box::new(GrPotential::new(c).unwrap()),
+    ])
+    .unwrap_err();
+    assert_eq!(e.code().to_string(), "FA-E0502");
+
+    // Test-particle form: 1PN Schwarzschild (PPN gauge) + the central conformal term.
+    let mu = GravParam::from_km3_per_s2(bodies[0].gm).unwrap();
+    let tp = crate::TestParticle::<Icrf>::new(
+        mu,
+        vec![
+            Box::new(crate::SchwarzschildPpn::new(mu, c, 1.0, 1.0).unwrap()),
+            Box::new(crate::ConformalCentral::new(CG_GAMMA_STAR, CG_KAPPA, c).unwrap()),
+        ],
+    )
+    .unwrap();
+    assert_eq!(tp.gauge(), Gauge::PpnIsotropicHarmonic);
+    assert!(
+        tp.describe().contains("comparison model"),
+        "{}",
+        tp.describe()
+    );
+    let tp_alone = crate::TestParticle::<Icrf>::new(
+        mu,
+        vec![Box::new(
+            crate::ConformalCentral::new(CG_GAMMA_STAR, CG_KAPPA, c).unwrap(),
+        )],
+    )
+    .unwrap();
+    assert_eq!(tp_alone.gauge(), Gauge::StaticWeakFieldPotential);
+}
+
+/// The conformal terms refuse non-finite coefficients, a bad speed of light and a layout
+/// without a Major Sun (FA-E0500).
+///
+/// Verifies: PHY-020
+#[test]
+fn conformal_terms_refuse_invalid_input() {
+    let c = Velocity::from_km_per_s(CG_C).unwrap();
+    let e = ConformalPotential::new(f64::NAN, 0.0, 0.0, c).unwrap_err();
+    assert_eq!(e.code().to_string(), "FA-E0500");
+    let e = ConformalPotential::new(0.0, 0.0, f64::INFINITY, c).unwrap_err();
+    assert_eq!(e.code().to_string(), "FA-E0500");
+    let e = crate::ConformalCentral::<Icrf>::new(0.0, f64::NAN, c).unwrap_err();
+    assert_eq!(e.code().to_string(), "FA-E0500");
+    let e = ConformalUniformGamma0::<Icrf>::new(
+        f64::NAN,
+        c,
+        Pole::from_components([0.0, 0.0, 1.0]).unwrap(),
+    )
+    .unwrap_err();
+    assert_eq!(e.code().to_string(), "FA-E0500");
+    assert!(Pole::<Icrf>::from_components([0.0; 3]).is_err());
+    let no_sun = vec![
+        body(NaifId::MERCURY_BARYCENTER, 1.0, Tier::Major),
+        body(NaifId::VENUS_BARYCENTER, 1.0, Tier::Major),
+    ];
+    let e = Model::new(
+        &no_sun,
+        MoonVariables::Barycentric,
+        vec![Box::new(cg_sun::<f64>(0.0))],
+    )
+    .unwrap_err();
+    println!("{e}");
+    assert_eq!(e.code().to_string(), "FA-E0500");
+    assert!(
+        e.to_string()
+            .contains("conformal-gravity term needs the Sun"),
+        "{e}"
+    );
+}
+
+/// A non-zero uniform γ0 is refused beside a Ring body (FA-E0500 at bind): the ring is fixed, so
+/// the field would not act on every body and relative motion would change (PHY-020 (c),
+/// ADR-0016 item 5). A zero uniform γ0 is accepted, and so is the Sun-centred term.
+///
+/// Verifies: PHY-020
+#[test]
+fn uniform_gamma0_refuses_ring_bodies() {
+    let bodies = vec![
+        body(NaifId::SUN, 1.0, Tier::Major),
+        body(NaifId::MERCURY_BARYCENTER, 1.0e-3, Tier::Major), // lint: allow-literal(structural mass ratio)
+        body(NaifId(3_000_001), 1.0e-5, Tier::Ring), // lint: allow-literal(structural ring GM)
+    ];
+    let c = Velocity::from_km_per_s(CG_C).unwrap();
+    let dir = Pole::from_components([0.0, 0.0, 1.0]).unwrap();
+    let e = Model::new(
+        &bodies,
+        MoonVariables::Barycentric,
+        vec![Box::new(cg_uniform::<f64>())],
+    )
+    .unwrap_err();
+    println!("{e}");
+    assert_eq!(e.code().to_string(), "FA-E0500");
+    assert!(e.to_string().contains("Ring bodies"), "{e}");
+    for gamma0 in [CG_GAMMA0, -CG_GAMMA0] {
+        let without_ring = Model::new(
+            &bodies[..2],
+            MoonVariables::Barycentric,
+            vec![Box::new(
+                ConformalUniformGamma0::new(gamma0, c, dir).unwrap(),
+            )],
+        );
+        assert!(without_ring.is_ok());
+    }
+    assert!(
+        Model::new(
+            &bodies,
+            MoonVariables::Barycentric,
+            vec![Box::new(ConformalUniformGamma0::new(0.0, c, dir).unwrap())],
+        )
+        .is_ok()
+    );
+    assert!(
+        Model::new(
+            &bodies,
+            MoonVariables::Barycentric,
+            vec![Box::new(cg_sun::<f64>(CG_GAMMA0))],
+        )
+        .is_ok()
+    );
+}

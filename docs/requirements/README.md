@@ -111,7 +111,7 @@ def test_horizons_cross_check() -> None: ...
 |---|---:|---|
 | ORG | 10 | [ORG.md](ORG.md) |
 | STD | 12 | [STD.md](STD.md) |
-| PHY | 19 | [PHY.md](PHY.md) |
+| PHY | 20 | [PHY.md](PHY.md) |
 | NUM | 25 | [NUM.md](NUM.md) |
 | TST | 5 | [TST.md](TST.md) |
 | API | 4 | [API.md](API.md) |
@@ -120,11 +120,13 @@ def test_horizons_cross_check() -> None: ...
 | REF | 11 | [REF.md](REF.md) |
 | CI | 10 | [CI.md](CI.md) |
 | LIC | 5 | [LIC.md](LIC.md) |
-| **Total** | **122** | |
+| **Total** | **123** | |
 
-Criticality split: 74 high, 32 medium, 16 low (API-004, the orbit viewer, proposed 2026-11-14 as a draft).
+Criticality split: 75 high, 32 medium, 16 low (API-004, the orbit viewer, proposed 2026-11-14 as a draft; PHY-020, the conformal-gravity comparison model, added 2026-11-14 as a high-criticality draft with ADR-0016).
 
 Counts re-checked on 2026-10-20 after the build-evidence sync: unchanged (no requirement added, retired or re-rated; every status is still `draft`). Open items: 78 in total (OI-01…OI-78), 2 closed (OI-05, OI-23), 76 open; OI-73…OI-78 are new.
+
+ADR-0016 (2026-11-14, #59): PHY-020 added (draft), API-004 and CI-002 notes record the planned viewer ABI v2 and `[forces.conformal]` table, and OI-79 (provenance of the conformal-gravity fit values γ0, γ\*, κ) is open. Open items now total 79 (OI-01…OI-79).
 
 ## Journal #6 revisions applied
 

@@ -4,7 +4,9 @@
 //!
 //! Every term declares its gauge, its parameters and the tiers it acts on, resolves its body
 //! indices once ([`ForceTerm::bind`]) and adds accelerations in a fixed order. All terms here are
-//! Newtonian except [`SolarLenseThirring`] (PPN isotropic/harmonic). Clean-room (DEP-008): the
+//! Newtonian except [`SolarLenseThirring`] (PPN isotropic/harmonic), [`GrPotential`] (GR
+//! effective potential) and the conformal-gravity comparison terms [`ConformalPotential`] and
+//! [`ConformalUniformGamma0`] (static weak-field potential, ADR-0016). Clean-room (DEP-008): the
 //! equations are the textbook point-mass sums, the DE440 J2 description (Park et al. 2021,
 //! NUM-019), DE440 Eqs. 37–39 for the Lense–Thirring acceleration and the classical third-body
 //! expansion derived in [`GeocentricMoon`]; no REBOUND/REBOUNDx/ASSIST/Swiftest/Mercury6 source
@@ -768,6 +770,313 @@ impl<F: Frame, R: Real> ForceTerm<F, R> for GrPotential<R> {
         for &i in layout.indices(Tier::Major) {
             if i != self.sun {
                 u -= layout.gm(i) * self.k / r2_of(sub(view.position(i).ok()?, ps));
+            }
+        }
+        Some(u)
+    }
+}
+
+/// Find the Major Sun and its GM for a Sun-sourced term (`what` names the term in the error).
+fn major_sun<R: Real>(layout: &Layout<R>, what: &'static str) -> Result<(usize, R), ForceError> {
+    let sun = layout
+        .index_of(NaifId::SUN)
+        .filter(|&i| layout.tiers().get(i) == Some(&Tier::Major))
+        .ok_or(ForceError::Invalid {
+            name: what,
+            value: f64::from(NaifId::SUN.0),
+            valid: "a Major Sun",
+        })?;
+    let gm = layout.gm(sun);
+    if gm <= R::ZERO {
+        return Err(ForceError::Invalid {
+            name: "solar GM (km^3/s^2)",
+            value: gm.to_f64(),
+            valid: "> 0",
+        });
+    }
+    Ok((sun, gm))
+}
+
+/// The Sun-sourced conformal-gravity terms, a beyond-GR **comparison model** (ADR-0016,
+/// PHY-020; default off, never part of the GR ladder). Per unit mass, for every Major body other
+/// than the Sun, at heliocentric position `rᵢ`:
+///
+/// ```text
+/// Φ(r) = +(γc²/2) r − (κc²/2) r²,     aᵢ = −(γc²/2) r̂ᵢ + κc² rᵢ,     a☉ = −Σ (GMᵢ/GM☉) aᵢ,
+/// ```
+///
+/// with the reaction on the Sun (a pair potential, so momentum and energy are conserved, as for
+/// [`GrPotential`]). `γ = γ* + γ0☉` is the Sun's linear coefficient: `N*γ*` with `N* = 1` (the
+/// Sun's mass in solar masses), plus `γ0` when the scenario centres it on the Sun
+/// (`gamma0_centre = "sun"`, decision D2; for `"uniform"` pass `γ0☉ = 0` and add
+/// [`ConformalUniformGamma0`]). `κ` is the quadratic coefficient. All are signed (decision D3):
+/// `γ > 0` attracts (retrograde advance), `κ > 0` repels (prograde advance). Inputs in km⁻¹ and
+/// km⁻² (`ferroastro_scenario::Conformal` converts the published CGS values).
+///
+/// The Gauss secular rates per orbit (the PHY-020 oracles) are `−πγa²√(1−e²)/β` and
+/// `+3πκa³√(1−e²)/β`, `β = GM☉/c²`, `a` the relative semi-major axis. With the reaction the
+/// relative acceleration is larger by `1 + m/M☉`, which the two-body `μ = G(M☉ + m)` of the Gauss
+/// average divides out, so `β` uses the Sun's GM only.
+///
+/// Scope: Major bodies only (like [`GrPotential`]); Minor bodies do not feel the Sun-centred term.
+/// It is velocity independent, so the Wisdom–Holman kick integrates it (NUM-004). Gauge:
+/// [`Gauge::StaticWeakFieldPotential`] (decision D1), which combines with every relativistic
+/// gauge.
+#[derive(Debug, Clone, Copy)]
+pub struct ConformalPotential<R: Real = f64> {
+    gamma_star: R,
+    gamma0_sun: R,
+    kappa: R,
+    c: R,
+    sun: usize,
+    sun_gm: R,
+    /// `(γ* + γ0☉) c²/2` (km/s²).
+    lin: R,
+    /// `κc²` (s⁻²).
+    quad: R,
+}
+
+impl<R: Real> ConformalPotential<R> {
+    /// The Sun-sourced terms for `gamma_star` (the Sun's own linear coefficient, km⁻¹, `N* = 1`),
+    /// `gamma0_sun` (the Sun-centred share of γ0, km⁻¹; 0 for the uniform centring), `kappa`
+    /// (km⁻²) and speed of light `c`.
+    ///
+    /// # Errors
+    /// `FA-E0500` if a coefficient is not finite or `c` is not finite and positive.
+    pub fn new(gamma_star: R, gamma0_sun: R, kappa: R, c: Velocity<R>) -> Result<Self, ForceError> {
+        let gamma_star = crate::conformal::finite("conformal gamma_star (1/km)", gamma_star)?;
+        let gamma0_sun = crate::conformal::finite("conformal gamma0 (1/km)", gamma0_sun)?;
+        let kappa = crate::conformal::finite("conformal kappa (1/km^2)", kappa)?;
+        let c = crate::conformal::speed_of_light(c)?;
+        let (lin, quad) = crate::conformal::coefficients(gamma_star + gamma0_sun, kappa, c);
+        Ok(Self {
+            gamma_star,
+            gamma0_sun,
+            kappa,
+            c,
+            sun: 0,
+            sun_gm: R::ZERO,
+            lin,
+            quad,
+        })
+    }
+
+    /// `((γ* + γ0☉) c²/2, κc²)` in km/s² and s⁻².
+    #[must_use]
+    pub const fn coefficients(&self) -> (R, R) {
+        (self.lin, self.quad)
+    }
+}
+
+impl<F: Frame, R: Real> ForceTerm<F, R> for ConformalPotential<R> {
+    fn name(&self) -> &'static str {
+        "conformal-potential-sun"
+    }
+    fn gauge(&self) -> Gauge {
+        Gauge::StaticWeakFieldPotential
+    }
+    fn parameters(&self) -> Vec<TermParameter> {
+        vec![
+            TermParameter {
+                name: "gamma_star (Sun, N* = 1)",
+                value: self.gamma_star.to_f64(),
+                unit: "1/km",
+            },
+            TermParameter {
+                name: "gamma0 (Sun-centred share)",
+                value: self.gamma0_sun.to_f64(),
+                unit: "1/km",
+            },
+            TermParameter {
+                name: "kappa",
+                value: self.kappa.to_f64(),
+                unit: "1/km^2",
+            },
+            TermParameter {
+                name: "c",
+                value: self.c.to_f64(),
+                unit: "km/s",
+            },
+        ]
+    }
+    fn tiers(&self) -> &'static [Tier] {
+        &[Tier::Major]
+    }
+    fn bind(&mut self, layout: &Layout<R>) -> Result<(), ForceError> {
+        let (sun, gm) = major_sun(
+            layout,
+            "the conformal-gravity term needs the Sun (NAIF 10) as a Major body",
+        )?;
+        self.sun = sun;
+        self.sun_gm = gm;
+        Ok(())
+    }
+    fn accumulate(
+        &self,
+        t: R,
+        view: &View<'_, R>,
+        acc: &mut Accelerations<'_, R>,
+    ) -> Result<(), ForceError> {
+        let layout = view.layout();
+        let ps = view.position(self.sun)?;
+        for &i in layout.indices(Tier::Major) {
+            if i == self.sun {
+                continue;
+            }
+            let r = sub(view.position(i)?, ps);
+            let r2 = r2_of(r);
+            if r2 == R::ZERO {
+                return Err(singular(self.sun, i, t));
+            }
+            let s = self.quad - self.lin / r2.sqrt();
+            let a = r.map(|x| s * x);
+            let ratio = layout.gm(i) / self.sun_gm;
+            acc.add(i, a);
+            acc.add(self.sun, a.map(|x| -(ratio * x)));
+        }
+        Ok(())
+    }
+    fn potential_over_g(&self, view: &View<'_, R>) -> Option<R> {
+        let layout = view.layout();
+        let ps = view.position(self.sun).ok()?;
+        let half = R::HALF;
+        let mut u = R::ZERO;
+        for &i in layout.indices(Tier::Major) {
+            if i != self.sun {
+                let r2 = r2_of(sub(view.position(i).ok()?, ps));
+                u += layout.gm(i) * (self.lin * r2.sqrt() - half * self.quad * r2);
+            }
+        }
+        Some(u)
+    }
+}
+
+/// The cosmological linear term γ0 as a **uniform** field (decision D2, `gamma0_centre =
+/// "uniform"`, the default when the conformal term is on): the same acceleration
+/// `g = (γ0c²/2) n̂` on every body (Major and Minor), `n̂` a fixed unit vector of the run's frame
+/// pointing towards the field's distant centre (so `γ0 > 0` pulls towards `n̂`, as the
+/// Sun-centred term pulls towards the Sun). Comparison model (ADR-0016, PHY-020).
+///
+/// It is implemented, not just reported as zero: the barycentre accelerates, while every relative
+/// position obeys the same equations as without the field, so with velocity-independent forces
+/// the heliocentric observable is unchanged to integrator precision (PHY-020 (c)). That
+/// invariance needs the field on **every** body: Ring bodies (`forces.kbo_ring`, [`RingMasses`])
+/// are fixed and cannot receive it, so the moving system would accelerate away from the ring and
+/// the heliocentric observable would change. A non-zero γ0 is therefore refused (`FA-E0500` at
+/// bind) when the layout has Ring bodies; use `gamma0_centre = "sun"` or drop the ring. As an external
+/// field it does not conserve momentum; it conserves energy with the potential
+/// `Φᵢ = −g·xᵢ` per unit mass. With a geocentric Earth–Moon pair, `a_Moon − a_Earth = 0` and the
+/// barycentre of the pair receives `g`. Velocity independent (the Wisdom–Holman kick integrates
+/// it: the Jacobi relative kicks cancel and the centre of mass receives `g`). Gauge:
+/// [`Gauge::StaticWeakFieldPotential`].
+#[derive(Debug, Clone, Copy)]
+pub struct ConformalUniformGamma0<F: Frame, R: Real = f64> {
+    gamma0: R,
+    c: R,
+    direction: Pole<F, R>,
+    /// `(γ0c²/2) n̂` (km/s²).
+    g: [R; 3],
+}
+
+impl<F: Frame, R: Real> ConformalUniformGamma0<F, R> {
+    /// The uniform field for `gamma0` (km⁻¹, signed), speed of light `c` and the unit vector
+    /// `direction` towards the field's centre.
+    ///
+    /// # Errors
+    /// `FA-E0500` if `gamma0` is not finite or `c` is not finite and positive.
+    pub fn new(gamma0: R, c: Velocity<R>, direction: Pole<F, R>) -> Result<Self, ForceError> {
+        let gamma0 = crate::conformal::finite("conformal gamma0 (1/km)", gamma0)?;
+        let c = crate::conformal::speed_of_light(c)?;
+        let (lin, _) = crate::conformal::coefficients(gamma0, R::ZERO, c);
+        Ok(Self {
+            gamma0,
+            c,
+            direction,
+            g: direction.unit().map(|u| lin * u),
+        })
+    }
+
+    /// The acceleration `g` every moving body receives (km/s²).
+    #[must_use]
+    pub const fn acceleration(&self) -> [R; 3] {
+        self.g
+    }
+}
+
+impl<F: Frame, R: Real> ForceTerm<F, R> for ConformalUniformGamma0<F, R> {
+    fn name(&self) -> &'static str {
+        "conformal-gamma0-uniform"
+    }
+    fn gauge(&self) -> Gauge {
+        Gauge::StaticWeakFieldPotential
+    }
+    fn parameters(&self) -> Vec<TermParameter> {
+        let [n0, n1, n2] = self.direction.unit().map(Real::to_f64);
+        vec![
+            TermParameter {
+                name: "gamma0 (uniform)",
+                value: self.gamma0.to_f64(),
+                unit: "1/km",
+            },
+            TermParameter {
+                name: "direction x",
+                value: n0,
+                unit: "1",
+            },
+            TermParameter {
+                name: "direction y",
+                value: n1,
+                unit: "1",
+            },
+            TermParameter {
+                name: "direction z",
+                value: n2,
+                unit: "1",
+            },
+            TermParameter {
+                name: "c",
+                value: self.c.to_f64(),
+                unit: "km/s",
+            },
+        ]
+    }
+    fn tiers(&self) -> &'static [Tier] {
+        &[Tier::Major, Tier::Minor]
+    }
+    fn bind(&mut self, layout: &Layout<R>) -> Result<(), ForceError> {
+        let rings = layout.indices(Tier::Ring).len();
+        if rings > 0 && self.gamma0 != R::ZERO {
+            return Err(ForceError::Invalid {
+                name: "uniform conformal gamma0 (1/km) beside fixed Ring bodies (the field must \
+                       act on every body to leave relative motion unchanged; Ring bodies are \
+                       fixed)",
+                value: self.gamma0.to_f64(),
+                valid: "0 when the layout has Ring bodies (use gamma0_centre = \"sun\" or drop \
+                        forces.kbo_ring)",
+            });
+        }
+        Ok(())
+    }
+    fn accumulate(
+        &self,
+        _t: R,
+        view: &View<'_, R>,
+        acc: &mut Accelerations<'_, R>,
+    ) -> Result<(), ForceError> {
+        let layout = view.layout();
+        for tier in [Tier::Major, Tier::Minor] {
+            for &i in layout.indices(tier) {
+                acc.add(i, self.g);
+            }
+        }
+        Ok(())
+    }
+    fn potential_over_g(&self, view: &View<'_, R>) -> Option<R> {
+        let layout = view.layout();
+        let mut u = R::ZERO;
+        for tier in [Tier::Major, Tier::Minor] {
+            for &i in layout.indices(tier) {
+                u -= layout.gm(i) * dot(self.g, view.position(i).ok()?);
             }
         }
         Some(u)
