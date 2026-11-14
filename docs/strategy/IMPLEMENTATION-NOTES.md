@@ -5563,3 +5563,32 @@ deny; doc `-D warnings`; ruff, ruff format, mypy, pytest (86 passed, 4 skipped);
   pass)**, **C/D = 0.238 (< 1, pass)**, B/A = 47.1 (reported). Round-to-round scatter is ±20% (B 46.8–65.4 s), which
   is why the median of interleaved rounds is used. The earlier block measurement gave B/C = 3.37.
 - **Gates** (at `766e60b` + this notes commit): all exit 0. fmt, clippy `-D warnings`, nextest **302 passed, 49 skipped**, doctests, deny, doc `-D warnings`, ruff, ruff format, mypy, pytest (86 passed, 4 skipped), reuse, trace (121 requirements, 709 citing tests, 0 errors). Data tier: the combined E10 guard + E10b test passes (187 s); the diagnostic harness runs (Ceres row reproduced).
+
+### Issue #31: the diffrun store key covers the integrator settings (2026-11-13)
+- **Bug.** The store file was `<scenario digest>.leg`. The scenario digest does not cover the IAS15 settings that live
+  only in `Ias15Config` (e.g. `pc_b_from_g`, whose default flipped in #13). A leg interrupted by one build could
+  therefore resume in a build with the other predictor, with no warning. `Ias15::restore` continues with the
+  checkpoint's own settings, while the model string names the new build's.
+- **Fix (`ferroastro-diffrun`, store format v2).** The file is now `<scenario digest>-<SHA-256 of the settings>.leg`
+  (`store_file`). "The settings" means the JSON of the whole `Ias15Config` that a fresh N-body leg uses
+  (`ferroastro_propagate::ias15_config(spec, true)`). Because the whole struct is serialised, a field added to
+  `Ias15Config` reaches the key without a code change. The header records the settings too. On resume, both the header
+  and the decoded checkpoint's `integrator.config` must equal this run's settings. If they differ, the file is refused
+  with `FA-E1402` and kept. A leg under other settings looks for its own file name, so it runs from the start and
+  leaves the other settings' file alone.
+- **Old stores.** A v1 file (`<scenario digest>.leg`, or any file whose format tag is not v2) is refused with
+  `FA-E1402`, and the message names the format and issue #31. It is never resumed. Delete it to rerun the leg. This
+  affects only interrupted nightly legs: completed legs are not kept.
+- **Tests** (unit tests in `run.rs`, because emulating another build's file needs the private store layout; PR tier,
+  header.440):
+  - `every_ias15_setting_changes_the_store_key` destructures `Ias15Config` exhaustively, so a new field breaks the
+    build until it is added. Changing any one field changes the file name.
+  - `interrupted_leg_resumes_only_under_the_same_integrator_settings`:
+    - Same settings: the leg resumes, with 0 differing words against the one-piece leg.
+    - The other predictor's file (`pc_b_from_g` flipped in the checkpoint and header): not reused. The leg runs all
+      segments, the result is bitwise equal and that file is untouched.
+    - Refused (`FA-E1402`): a header with other settings or a checkpoint with other settings under this run's name, and
+      a v1 file under either name.
+  - Mutation probes: dropping the checkpoint check, or the settings from the file name, fails the tests.
+- **Not changed (open):** the `RunOutput::model` string still does not name the predictor (issue #31's second
+  point). Changing it alters every report and the committed speed tables, so it is left for a separate change.
