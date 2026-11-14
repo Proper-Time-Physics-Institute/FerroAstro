@@ -19,6 +19,7 @@
     reason = "test: a failed unwrap is a test failure"
 )]
 
+use ferroastro_constants::De440;
 use ferroastro_propagate::{Checkpoint, RunOutput};
 use std::path::{Path, PathBuf};
 use std::process::Command;
@@ -169,6 +170,12 @@ fn interrupted_equals_uninterrupted(tag: &str, scenario: &Path, stop_years: &str
 /// Verifies: CI-010, TST-005
 #[test]
 fn checkpoint_resume_in_a_fresh_process_is_bitwise_f64() {
+    if De440::load_cached_or_skip("checkpoint_resume_in_a_fresh_process_is_bitwise_f64")
+        .unwrap()
+        .is_none()
+    {
+        return;
+    }
     let dir = workdir("f64-100yr");
     let s = scenario_with_span(&dir, "sun-8planets-newton-j2-1000yr.toml", "100.0");
     interrupted_equals_uninterrupted("f64-100yr", &s, "50");
@@ -179,6 +186,12 @@ fn checkpoint_resume_in_a_fresh_process_is_bitwise_f64() {
 /// Verifies: CI-010, TST-005, DEP-007
 #[test]
 fn checkpoint_resume_in_a_fresh_process_is_bitwise_double_double() {
+    if De440::load_cached_or_skip("checkpoint_resume_in_a_fresh_process_is_bitwise_double_double")
+        .unwrap()
+        .is_none()
+    {
+        return;
+    }
     let dir = workdir("dd-20yr");
     let s = scenario_with_span(&dir, "sun-8planets-newton-j2-1000yr-dd.toml", "20.0");
     interrupted_equals_uninterrupted("dd-20yr", &s, "10");

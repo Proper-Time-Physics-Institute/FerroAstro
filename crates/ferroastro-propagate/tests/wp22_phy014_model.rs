@@ -13,6 +13,7 @@
     reason = "test: a failed unwrap is a test failure; step counts are small"
 )]
 
+use ferroastro_constants::De440;
 use ferroastro_constants::header440::Header;
 use ferroastro_propagate::{DataSources, run};
 use ferroastro_scenario::ScenarioSpec;
@@ -23,6 +24,12 @@ const SMOKE_DAYS: f64 = 30.0; // lint: allow-literal(run length, PR-tier cost, W
 /// Verifies: PHY-014, NUM-009, NUM-019
 #[test]
 fn phy014_model_builds_and_runs_with_eih_and_lt_on_minor_bodies() {
+    if De440::load_cached_or_skip("phy014_model_builds_and_runs_with_eih_and_lt_on_minor_bodies")
+        .unwrap()
+        .is_none()
+    {
+        return;
+    }
     let f = ferroastro_testdata::locate_product("de440-header").expect("cached header.440");
     let prov = f.provenance();
     let h = Header::parse(&std::fs::read_to_string(&f.path).unwrap()).unwrap();

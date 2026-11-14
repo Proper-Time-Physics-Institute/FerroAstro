@@ -1046,7 +1046,19 @@ mod tests {
     ///
     /// Verifies: CI-010
     #[test]
+    #[expect(
+        clippy::too_many_lines,
+        reason = "the header.440 skip gate, then one run read top to bottom"
+    )]
     fn interrupted_leg_resumes_only_under_the_same_integrator_settings() {
+        if ferroastro_constants::De440::load_cached_or_skip(
+            "interrupted_leg_resumes_only_under_the_same_integrator_settings",
+        )
+        .unwrap()
+        .is_none()
+        {
+            return;
+        }
         let (h, prov) = header();
         let data = DataSources::none().with_header(&h, &prov);
         let spec = spec();

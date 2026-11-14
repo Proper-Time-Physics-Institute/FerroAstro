@@ -167,6 +167,12 @@ fn run_check1<R: Real>(label: &str, h: &Header, hprov: &str, spk: &Spk<'_>) -> (
 /// Verifies: REF-002, NUM-009
 #[test]
 fn ref002_header_initial_conditions_equal_de440_at_jdepoc() {
+    if De440::load_cached_or_skip("ref002_header_initial_conditions_equal_de440_at_jdepoc")
+        .unwrap()
+        .is_none()
+    {
+        return;
+    }
     let v = vectors();
     let (h, hprov) = header();
     let (bsp, _) = cached("de440-bsp");
@@ -256,6 +262,12 @@ fn emrat_split_recombines_to_gmb_at_the_ulp_level() {
 /// Verifies: REF-002, NUM-009
 #[test]
 fn header_catalogue_equals_de440_and_tiers_the_asteroids() {
+    if De440::load_cached_or_skip("header_catalogue_equals_de440_and_tiers_the_asteroids")
+        .unwrap()
+        .is_none()
+    {
+        return;
+    }
     let v = vectors();
     let (h, hprov) = header();
     let de = De440::from_header(&h).unwrap();
@@ -323,14 +335,14 @@ fn header_catalogue_equals_de440_and_tiers_the_asteroids() {
 /// Verifies: NUM-018, REF-002
 #[test]
 fn header_barycentre_is_reported_and_rebarycentring_removes_it() {
-    let v = vectors();
-    let (h, hprov) = header();
     let Some(de) =
         De440::load_cached_or_skip("header_barycentre_is_reported_and_rebarycentring_removes_it")
             .unwrap()
     else {
         return;
     };
+    let v = vectors();
+    let (h, hprov) = header();
     let cat = Catalogue::from_header(&h, &hprov).unwrap();
     let c = de.speed_of_light();
     let mut ic = InitialConditions::<f64>::from_header(&h, &hprov).unwrap();
@@ -371,6 +383,12 @@ fn header_barycentre_is_reported_and_rebarycentring_removes_it() {
 /// Verifies: NUM-008, NUM-009
 #[test]
 fn geocentric_moon_round_trips_through_the_split() {
+    if De440::load_cached_or_skip("geocentric_moon_round_trips_through_the_split")
+        .unwrap()
+        .is_none()
+    {
+        return;
+    }
     let (h, hprov) = header();
     let ic = InitialConditions::<f64>::from_header(&h, &hprov).unwrap();
     let pair = *ic.earth_moon().unwrap();
@@ -403,13 +421,13 @@ fn geocentric_moon_round_trips_through_the_split() {
 /// Verifies: NUM-018
 #[test]
 fn relativistic_mass_correction_is_bounded_by_the_virial_cancellation() {
-    let (h, hprov) = header();
     let Some(de) = De440::load_cached_or_skip(
         "relativistic_mass_correction_is_bounded_by_the_virial_cancellation",
     )
     .unwrap() else {
         return;
     };
+    let (h, hprov) = header();
     let c = de.speed_of_light().km_per_s();
     let cat = Catalogue::from_header(&h, &hprov).unwrap();
     let ic = InitialConditions::<f64>::from_header(&h, &hprov).unwrap();

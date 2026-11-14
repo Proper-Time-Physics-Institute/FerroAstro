@@ -18,6 +18,7 @@ use ferroastro_bench::{
     Accuracy, Entry, Host, MIN_RUNS, Measure, Published, ScenarioInfo, Series, SpeedTable, Status,
     Timing, read_run, stability,
 };
+use ferroastro_constants::De440;
 use ferroastro_constants::header440::Header;
 use ferroastro_propagate::{DataSources, initial_conditions, run, run_with_energy};
 use ferroastro_scenario::ScenarioSpec;
@@ -111,6 +112,12 @@ fn committed_oracle_goldens_read_as_series_and_run_records() {
 /// Verifies: CI-008, REF-005, NUM-023
 #[test]
 fn stage_a_accuracy_columns_from_real_output() {
+    if De440::load_cached_or_skip("stage_a_accuracy_columns_from_real_output")
+        .unwrap()
+        .is_none()
+    {
+        return;
+    }
     let (h, prov) = header();
     let data = DataSources::none().with_header(&h, &prov);
     let s = spec(STAGE_A);

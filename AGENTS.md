@@ -26,6 +26,8 @@ RUSTDOCFLAGS="-D warnings" cargo doc --no-deps --workspace
 reuse lint
 (cd tools && uv run python trace.py --check)
 ```
+Tests that need the cached `header.440` skip with a message when it is absent, and fail instead when
+`FA_REQUIRE_DATA=1` (as in CI); see [docs/standards/testing.md](docs/standards/testing.md) item 9.
 
 ## Rules
 1. **No bare physical literals in tests.** Load expected values by `id` from `tests/vectors/*.toml`, each with

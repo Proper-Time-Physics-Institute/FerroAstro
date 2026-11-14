@@ -12,6 +12,7 @@
     reason = "test: a failed unwrap is a test failure; indices are in range by construction"
 )]
 
+use ferroastro_constants::De440;
 use ferroastro_constants::header440::Header;
 use ferroastro_propagate::{DataSources, RunOutput, run};
 use ferroastro_scenario::{Ppn, ScenarioSpec};
@@ -44,6 +45,12 @@ fn final_mercury(out: &RunOutput) -> [f64; 3] {
 /// Verifies: NUM-019, PHY-011
 #[test]
 fn nbody_lense_thirring_uses_the_scenario_gamma() {
+    if De440::load_cached_or_skip("nbody_lense_thirring_uses_the_scenario_gamma")
+        .unwrap()
+        .is_none()
+    {
+        return;
+    }
     let tol = VectorSet::load_canonical()
         .unwrap()
         .get("NBODY-LT-GAMMA-WIRING")

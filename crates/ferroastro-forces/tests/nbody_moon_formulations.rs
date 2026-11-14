@@ -91,6 +91,14 @@ fn max_diff_f64(a: &[[f64; 3]], b: &[[f64; 3]]) -> f64 {
 /// Verifies: NUM-008
 #[test]
 fn geocentric_and_barycentric_moon_agree_and_geocentric_keeps_more_bits() {
+    if De440::load_cached_or_skip(
+        "geocentric_and_barycentric_moon_agree_and_geocentric_keeps_more_bits",
+    )
+    .unwrap()
+    .is_none()
+    {
+        return;
+    }
     let truth_eps = 1e-12; // lint: allow-literal(IAS15 epsilon of the DD truth runs, WP12 plan 3a)
     let default_eps = Ias15Config::default().epsilon;
     let started = std::time::Instant::now();
