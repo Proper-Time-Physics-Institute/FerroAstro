@@ -96,16 +96,51 @@ fn fa_data_dir_override_is_reverified() {
     std::fs::remove_dir_all(&dir).unwrap();
 }
 
-/// Child half of [`fa_data_dir_override_is_reverified`]: only meaningful when that test spawns it
-/// with `FA_TESTDATA_CHILD_PROBE=1`; otherwise it checks nothing and passes.
+/// Two halves, so that the test never passes without checking something (issue #38):
 ///
-/// Verifies: CI-005
+/// * spawned by [`fa_data_dir_override_is_reverified`] (`FA_TESTDATA_CHILD_PROBE=1`, `FA_DATA_DIR`
+///   at a directory holding wrong content): the lookup is refused with `DataMissing`, and the
+///   refusal names the file in the overriding directory (the parent checks the printed line for
+///   the code and the wrong bytes' SHA-256);
+/// * run on its own (the PR-fast tier, with the cache `tools/fetch_jpl.py` fills): the lookup
+///   through the same [`locate_product`](ferroastro_testdata::locate_product) path succeeds, the
+///   located file is the one under [`data_dir`](ferroastro_testdata::data_dir), and an
+///   independent re-hash of its bytes equals the `tests/data/MANIFEST.toml` pin.
+///
+/// Verifies: CI-005, REF-002
 #[test]
 fn child_locate_probe() {
-    if std::env::var_os("FA_TESTDATA_CHILD_PROBE").is_none() {
+    let dir = ferroastro_testdata::data_dir();
+    let p = product("de440-header").unwrap();
+    let located = ferroastro_testdata::locate_product("de440-header");
+    if std::env::var_os("FA_TESTDATA_CHILD_PROBE").is_some() {
+        let err = located.unwrap_err();
+        assert_eq!(err.code(), ErrorCode::DataMissing);
+        let msg = err.to_string();
+        assert!(
+            msg.contains(&dir.join(&p.file).display().to_string()),
+            "the refusal does not name the file under the FA_DATA_DIR override {}: {msg}",
+            dir.display()
+        );
+        println!("probe: {err}");
         return;
     }
-    let err = ferroastro_testdata::locate_product("de440-header").unwrap_err();
-    assert_eq!(err.code(), ErrorCode::DataMissing);
-    println!("probe: {err}");
+    let f = located
+        .unwrap_or_else(|e| panic!("de440-header must be located in {}: {e}", dir.display()));
+    assert_eq!(f.path, dir.join(&p.file));
+    let bytes = std::fs::read(&f.path).unwrap();
+    assert_eq!(bytes.len() as u64, f.bytes);
+    assert_eq!(
+        sha256_hex(&bytes),
+        p.sha256,
+        "{} does not match its manifest pin",
+        f.path.display()
+    );
+    assert_eq!(f.sha256, p.sha256);
+    println!(
+        "located {} ({} bytes, SHA-256 {} = manifest pin)",
+        f.path.display(),
+        f.bytes,
+        f.sha256
+    );
 }
