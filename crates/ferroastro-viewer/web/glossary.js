@@ -27,6 +27,7 @@
     { id: "orbits", title: "Bodies and orbits" },
     { id: "frames", title: "Frames and reference planes" },
     { id: "effects", title: "Effects (the physics switches)" },
+    { id: "comparison", title: "Comparison models (outside the GR ladder)" },
     { id: "integrators", title: "Integrators and the engine" },
     { id: "time", title: "Time and units" },
     { id: "fit", title: "Fit and statistics" },
@@ -425,10 +426,99 @@
   };
   E["physical-exaggeration"] = {
     term: "Physical exaggeration (non-nominal run)", group: "effects",
-    short: "Settings that change the actual physics or accuracy: a J₂ override, a solar spin scale other than 1, or an IAS15 ε looser than 10⁻⁹. Such runs are labelled \"Exaggerated physics\".",
+    short: "Settings that change the actual physics or accuracy: a J₂ override, a solar spin scale other than 1, an IAS15 ε looser than 10⁻⁹, or conformal-gravity coefficients other than the fit values. Such runs are labelled \"Exaggerated physics\".",
     long: "These knobs exist to make tiny effects visible, but the numbers they produce are not the real solar system. The page flags the run in the header badge, in the readout (\"non-nominal\") and in the metadata (\"nominal\": false). Compare the [[display-exaggeration]], which changes only the drawing.",
     mercury: "Use them to build intuition, never for literature comparisons.",
-    see: ["j2-override", "spin-scale", "ias15-epsilon", "nominal-run", "display-exaggeration"],
+    see: ["j2-override", "spin-scale", "ias15-epsilon", "nominal-run", "display-exaggeration", "cg-fit-values"],
+  };
+
+  // ------------------------------------------------------------------------- comparison models
+  // Sources: ADR-0016, PHY-020, OI-79 and the rd#88 research notes (REPORT.md, the physics note).
+  // The Mercury numbers marked "Gauss" are the first-order averages the engine evaluates
+  // (metadata "conformal.reference"); they reproduce the rd#88 values.
+  E["comparison-model"] = {
+    term: "Comparison model", group: "comparison",
+    short: "A beyond-GR term the viewer can switch on to compare with GR. It is off by default and never part of the GR ladder, the 575.31 ″/cy total or any reference value.",
+    long: "FerroAstro's ladder reproduces the observed advance from Newtonian planets, solar J2 and GR only. A comparison model (ADR-0016) is a different theory's term, added on request so its prediction can be set against GR and against ephemeris bounds such as the [[inpop15a-bound]]. Wherever one appears (toggle, preset, table row, gauge, scenario, metadata) it says \"comparison model\". Its table reference is the engine's own [[cg-gauss-reference|Gauss estimate]], not a literature or ladder value. The first one is [[conformal-gravity]] (toggle bit 12, viewer ABI v2).",
+    mercury: "With the default uniform [[gamma0-centring]] it adds about nothing; Sun-centred, its γ0 term is about −0.18 ″/cy, some 60 times the INPOP15a bound.",
+    see: ["conformal-gravity", "cg-gauss-reference", "inpop15a-bound", "cg-fit-values"],
+  };
+  E["conformal-gravity"] = {
+    term: "Conformal gravity (comparison model)", sym: "CG", group: "comparison",
+    short: "Mannheim's fourth-order theory from the Weyl action. Near the Sun it adds a constant pull γc²/2 and a Hooke-like push κc²r to Newton. Toggle bit 12, off by default; a comparison model, not part of the GR ladder.",
+    typical: "Gauss, fit values: γ* term −3.2×10⁻¹² ″/cy, κ term +9.9×10⁻¹² ″/cy; γ0 Sun-centred −0.183 ″/cy, uniform ≈ 0",
+    long: "The [[weyl-action]] has the [[mannheim-kazanas-metric]] as its static exterior, B = 1 − 2β/r + γr − κr². With γ = κ = 0 it is Schwarzschild, so its β term gives GR's +42.98 ″/cy, recovered rather than predicted (β is matched to the Keplerian GM); this viewer takes that part from its own GR switches. The extra terms are, to Newtonian order, an inward acceleration (γc²/2) r̂ with γ = γ* + γ0 and an outward κc² r. The engine adds them as one velocity-independent, Sun-sourced term with reaction on the Sun, gauge \"static weak-field potential\", so it combines with GR 1PN, EIH and Lense–Thirring. Parameters: [[gamma0]], [[gamma-star]], [[kappa]] and the [[gamma0-centring]].",
+    mercury: "Only γ0 could matter. Uniform, it moves the Sun and planets alike and changes nothing; Sun-centred, it gives about −0.183 ″/cy, excluded by the [[inpop15a-bound]]. The γ* and κ terms are about 10⁻¹¹ ″/cy, far below what any run resolves.",
+    see: ["comparison-model", "weyl-action", "mannheim-kazanas-metric", "gamma0-centring", "cg-gauss-reference"],
+  };
+  E["weyl-action"] = {
+    term: "Weyl action", group: "comparison",
+    short: "The action of conformal gravity: the square of the Weyl curvature tensor, which is unchanged when the metric is rescaled by any positive function, g → Ω²g.",
+    long: "Mannheim's theory replaces the Einstein–Hilbert action by I_W = −α_g ∫ d⁴x √−g C_λμνκ C^λμνκ, with C the Weyl (conformal) tensor. Local conformal invariance fixes this form and makes the field equations fourth order, so the static vacuum solution has more integration constants than Schwarzschild's one: the β, γ and κ of the [[mannheim-kazanas-metric]]. A conformally flat metric (Ω²η) has zero Weyl tensor and is invisible to this action.",
+    mercury: "It is the origin of the extra γ and κ terms that the [[conformal-gravity]] toggle adds; the action itself is not evaluated by the engine.",
+    see: ["conformal-gravity", "mannheim-kazanas-metric"],
+  };
+  E["mannheim-kazanas-metric"] = {
+    term: "Mannheim–Kazanas metric", group: "comparison",
+    short: "The static, spherically symmetric vacuum solution of conformal gravity: ds² = B dt² − dr²/B − r²dΩ² with B = 1 − 2β/r + γr − κr² in the form used for orbits.",
+    typical: "β = GM/c² (Sun: about 1.48 km)",
+    long: "Mannheim and Kazanas (1989, ApJ 342, 635) found the exact form B = 1 − β(2 − 3βγ)/r − 3βγ + γr − κr². The orbit form drops the βγ terms, which are below 10⁻²⁴ in the solar system. To Newtonian order Φ = c²(B − 1)/2, so the γr term is a constant inward acceleration γc²/2 and the −κr² term an outward acceleration κc²r. The −dr²/B part is what gives PPN γ = 1 and GR's light bending.",
+    mercury: "The 1/r term alone is Schwarzschild and gives the +42.98 ″/cy; the viewer's [[conformal-gravity]] toggle adds only the γ and κ accelerations.",
+    see: ["conformal-gravity", "weyl-action", "gamma0", "kappa"],
+  };
+  E["gamma0"] = {
+    term: "γ0, cosmological linear coefficient", sym: "γ0", group: "comparison",
+    short: "The linear-potential coefficient attributed to the rest of the universe. Its galactic-fit value is unverified (OI-79). Where it is centred decides whether it acts on Mercury at all.",
+    typical: "fit 3.06×10⁻³⁰ cm⁻¹ (default, unverified); input range ±10⁻²⁵ cm⁻¹, signed",
+    long: "Rotation-curve fits write the linear coefficient as γ = N*γ* + γ0, with N* the source mass in solar masses ([[gamma-star]]). Mannheim derives γ0 from a negatively curved Robertson–Walker cosmology seen by an observer at rest in a galaxy, and the fits measure γ0c²R/2 from each galaxy's centre. The sources leave open where it is centred in the solar system ([[gamma0-centring]]). γ > 0 attracts and makes the perihelion regress. Any value other than the fit value marks the run as [[physical-exaggeration|exaggerated physics]].",
+    mercury: "Sun-centred at the fit value: Gauss −0.183 ″/cy, about 60× the [[inpop15a-bound]]; uniform: 0. Sultana, Kazanas and Said (2012) bound a Sun-centred γ below 1.5×10⁻³¹ cm⁻¹.",
+    see: ["gamma0-centring", "gamma-star", "cg-fit-values", "inpop15a-bound"],
+  };
+  E["gamma-star"] = {
+    term: "γ*, linear coefficient per solar mass", sym: "γ*", group: "comparison",
+    short: "The linear-potential coefficient each solar mass of a source carries. For the Sun (N* = 1) it is always Sun-centred. Fit value unverified (OI-79).",
+    typical: "fit 5.42×10⁻⁴¹ cm⁻¹ per M☉ (default, unverified); input range ±10⁻²⁵ cm⁻¹, signed",
+    long: "In γ = N*γ* + γ0 the γ* part belongs to the source itself, so for the Sun it acts like a Sun-centred γ whatever the [[gamma0-centring]]. The engine adds it to the Sun-sourced term with reaction on the Sun. The fit value comes from galactic rotation curves; it is about 10⁻¹¹ of the fitted [[gamma0]].",
+    mercury: "Gauss at the fit value: about −3.2×10⁻¹² ″/cy, some nine orders of magnitude below what a run resolves. Set it much larger to see the retrograde effect; the run is then labelled exaggerated.",
+    see: ["gamma0", "conformal-gravity", "cg-fit-values"],
+  };
+  E["kappa"] = {
+    term: "κ, quadratic coefficient", sym: "κ", group: "comparison",
+    short: "The coefficient of the −κr² term of the Mannheim–Kazanas B. κ > 0 is a repulsive, Hooke-like acceleration κc²r that makes the perihelion advance (prograde). Signed; fit value unverified (OI-79).",
+    typical: "fit 9.54×10⁻⁵⁴ cm⁻² (default, unverified); input range ±10⁻⁴⁰ cm⁻², signed",
+    long: "Because B contains −κr², the Newtonian-order potential c²(B − 1)/2 has −κc²r²/2 and the acceleration is +κc² r, outward for κ > 0. (An earlier integration note assumed an attractive κ; the rd#88 physics note and ADR-0016 supersede it.) It has the r-dependence of a cosmological-constant term. Mannheim and O'Brien (2012) fit it to galactic rotation curves.",
+    mercury: "Gauss at the fit value: about +9.9×10⁻¹² ″/cy, far below resolution. The rate grows as a³, so it matters only on galactic scales.",
+    see: ["conformal-gravity", "mannheim-kazanas-metric", "cg-fit-values"],
+  };
+  E["gamma0-centring"] = {
+    term: "γ0 centring (uniform or Sun-centred)", group: "comparison",
+    short: "Uniform (default): γ0 gives every body the same acceleration γ0c²/2, so heliocentric orbits are unchanged. Sun-centred: γ0 adds to the Sun's own γ and pulls Mercury towards the Sun.",
+    typical: "uniform: 0; Sun-centred at the fit γ0: Gauss −0.183 ″/cy",
+    long: "The sources do not settle where γ0 acts (ADR-0016 decision D2), so both readings are computed, not just labelled. Uniform: the same acceleration on every body along a fixed direction; relative motion is unchanged, so with velocity-independent forces the heliocentric rate is unchanged exactly (to round-off). With EIH or Lense–Thirring on, whose forces depend on velocity, the common drift (about 0.04 m/s per century at the fit γ0) enters at O(v·Δv/c²): not exactly zero, but far below any resolvable rate. In the Rung lab the fixed Sun stands for the freely falling heliocentric frame, so a uniform γ0 adds no term there. Sun-centred: γ = γ* + γ0 in the Sun-sourced term.",
+    mercury: "This choice is the whole question at Mercury: uniform gives 0, Sun-centred about −0.183 ″/cy against the [[inpop15a-bound]] of ±0.0031 ″/cy.",
+    see: ["gamma0", "inpop15a-bound", "conformal-gravity", "eih", "lense-thirring"],
+  };
+  E["inpop15a-bound"] = {
+    term: "INPOP15a bound", group: "comparison",
+    short: "The INPOP15a planetary ephemeris finds no supplementary advance of Mercury's perihelion: 0.0 ± 3.1 mas/cy (0.0 ± 0.0031 ″/cy).",
+    typical: "0.0 ± 3.1 mas/cy (stricter criterion: ± 1.05 mas/cy); EPM2011: −2 ± 3 mas/cy",
+    long: "Fienga, Laskar, Manche and Gastineau (2016, arXiv:1601.00947), with MESSENGER ranging, fit a supplementary perihelion advance on top of GR and find it consistent with zero. Any extra term must therefore give |Δϖ̇| within a few mas/cy at Mercury; for a Sun-centred linear potential that means |γ| ≲ 5×10⁻³² cm⁻¹. The proceedings volume and pages have not been checked (ADR-0016).",
+    mercury: "A Sun-centred γ0 at the fit value (−183 mas/cy) misses it by a factor of about 60; a uniform γ0 passes trivially.",
+    see: ["gamma0-centring", "gamma0", "comparison-model"],
+  };
+  E["cg-gauss-reference"] = {
+    term: "Gauss reference (conformal gravity)", group: "comparison",
+    short: "The engine's analytic rate for the current γ0, γ*, κ and centring: first-order Gauss secular averages for Mercury, labelled comparison model. The page computes nothing itself.",
+    long: "Per orbit the linear term gives −πγa²√(1−e²)/β and the quadratic term +3πκa³√(1−e²)/β, with β = GM☉/c² (DE440), a and e Mercury's SW92 J2000 mean elements, and the rate from the two-body mean motion. A uniform γ0 contributes exactly 0. The factor is √(1−e²), checked by numerical integration in the rd#88 notes; the (1−e²)² printed by Sultana et al. (2012) is about 7 % off for Mercury. It is the table's reference for the CG row and appears in the metadata (\"conformal.reference\").",
+    mercury: "At the fit values: γ* −3.2×10⁻¹², κ +9.9×10⁻¹² ″/cy; a Sun-centred fit γ0 adds −0.183 ″/cy. The engine's tests check it against integrations with exaggerated parameters.",
+    see: ["conformal-gravity", "reference-value", "comparison-model"],
+  };
+  E["cg-fit-values"] = {
+    term: "Conformal-gravity fit values (unverified)", group: "comparison",
+    short: "γ0 = 3.06×10⁻³⁰ cm⁻¹, γ* = 5.42×10⁻⁴¹ cm⁻¹ per M☉, κ = 9.54×10⁻⁵⁴ cm⁻²: galactic rotation-curve fits, the viewer's defaults, UNVERIFIED (open item OI-79).",
+    long: "They are quoted from a secondary transcription of Mannheim's lecture notes; the abstract of Mannheim and O'Brien (2012, PRD 85, 124020) confirms γ0 and κ but the full paper has not been checked (OI-79). They are display defaults only and never test oracles: the engine's tests use exaggerated parameters against the analytic Gauss rates. Changing any of them marks the run as [[physical-exaggeration|exaggerated physics]]; \"Reset to fit values\" restores them.",
+    mercury: "At these values only the γ0 centring matters (−0.183 ″/cy Sun-centred, 0 uniform).",
+    see: ["gamma0", "gamma-star", "kappa", "physical-exaggeration"],
   };
 
   // -------------------------------------------------------------------------------- integrators
@@ -803,15 +893,15 @@
   };
   E["wedges"] = {
     term: "Per-effect wedges", group: "table",
-    short: "Coloured fans on the chart: the table's contributions stacked as slopes from the Kepler floor, largest at the bottom. Indicative only.",
-    long: "Once the table has been computed for the current settings, each positive contribution is drawn as a wedge whose slope is that rate, starting at the first passage. The wedges come from the table's own span, so they show proportions rather than a fit to this run. Hidden when \"Subtract fitted rate\" is on.",
+    short: "Coloured fans on the chart: the table's contributions stacked as slopes from the Kepler floor, positive ones upwards, negative ones downwards and hatched. Indicative only.",
+    long: "Once the table has been computed for the current settings, each contribution is drawn as a wedge whose slope is that rate, starting at the first passage. Positive ones stack upwards, largest at the bottom; negative ones (Lense–Thirring, a Sun-centred [[gamma0]]) stack downwards below the floor, hatched, and a dashed ray then marks the net sum. The wedges come from the table's own span, so they show proportions rather than a fit to this run. Hidden when \"Subtract fitted rate\" is on.",
     mercury: "Shows at a glance that Venus and Jupiter dominate and GR is a thin slice.",
     see: ["contribution-table", "budget"],
   };
   E["budget"] = {
     term: "Rate budget strip", group: "table",
-    short: "The positive contributions stacked to scale in one bar, each in its effect's colour; negative ones are listed but not drawn.",
-    long: "Each segment's width is its share of the sum of positive contributions. The key gives the values in ″/cy. Lense–Thirring is negative and so appears under \"Not drawn (≤ 0)\".",
+    short: "Every contribution to one scale in one bar, each in its effect's colour: positive ones right of the zero mark, negative ones left of it, hatched.",
+    long: "Each segment's width is its share of the sum of the magnitudes of all contributions, with a sliver of minimum width so even the smallest rows show. Negative contributions, such as Lense–Thirring or a Sun-centred [[gamma0]], sit left of the zero mark and are hatched so the sign does not rest on colour alone. The key gives the signed values in ″/cy; a [[comparison-model]] row says so.",
     mercury: "Venus is about half of the whole bar.",
     see: ["contribution-table", "wedges"],
   };
@@ -904,7 +994,7 @@
   };
   E["nominal-run"] = {
     term: "Nominal run", group: "data",
-    short: "A run with the real DE440 J₂ and solar spin and IAS15 ε ≤ 10⁻⁹. Anything else is non-nominal and labelled.",
+    short: "A run with the real DE440 J₂ and solar spin, IAS15 ε ≤ 10⁻⁹ and, with conformal gravity on, its fit coefficients. Anything else is non-nominal and labelled.",
     long: "Only nominal runs describe the real solar system at full accuracy. The metadata field \"nominal\" records it; the header badge and readout show \"Exaggerated physics\" or \"non-nominal\" otherwise ([[physical-exaggeration]]).",
     mercury: "Literature comparisons need a nominal run.",
     see: ["physical-exaggeration", "metadata"],
@@ -934,10 +1024,10 @@
   };
   E["presets"] = {
     term: "Presets", group: "controls",
-    short: "One-click toggle sets: Kepler only (no perturbations), Planets only, GR only, and Full model (planets, J2, GR, Lense–Thirring).",
-    long: "[[preset-kepler]] checks the [[integrator-floor]]; [[preset-planets]] gives the Newtonian ≈ 532 ″/cy; [[preset-gr]] gives ≈ 42.98 ″/cy; [[preset-full]] gives ≈ 575.31 ″/cy. In the Rung lab the presets choose a rung instead (Planets only is unavailable).",
+    short: "One-click toggle sets: Kepler only (no perturbations), Planets only, GR only, Full model (planets, J2, GR, Lense–Thirring) and Full model + CG (adds the conformal-gravity comparison model).",
+    long: "[[preset-kepler]] checks the [[integrator-floor]]; [[preset-planets]] gives the Newtonian ≈ 532 ″/cy; [[preset-gr]] gives ≈ 42.98 ″/cy; [[preset-full]] gives ≈ 575.31 ″/cy; [[preset-full-cg]] adds the [[comparison-model]] on top. In the Rung lab the presets choose a rung instead (Planets only is unavailable).",
     mercury: "Compare the presets to see the classic split: Newtonian planets versus relativity.",
-    see: ["preset-kepler", "preset-planets", "preset-gr", "preset-full"],
+    see: ["preset-kepler", "preset-planets", "preset-gr", "preset-full", "preset-full-cg"],
   };
   E["preset-kepler"] = {
     term: "Kepler only", group: "controls",
@@ -971,12 +1061,20 @@
     mercury: "Park17: 575.3100 ″/cy; FerroAstro's PHY-014 total with EIH, asteroids and KBOs: 575.3093.",
     see: ["varpi-dot", "ias15"],
   };
+  E["preset-full-cg"] = {
+    term: "Full model + CG", group: "controls",
+    short: "The Full model plus conformal gravity (bit 12), a comparison model outside the GR ladder, with the current γ0, γ*, κ and centring.",
+    typical: "≈ 575.31 ″/cy plus the CG Gauss reference: ≈ 0 (uniform γ0, fit values) or ≈ −0.18 ″/cy (Sun-centred)",
+    long: "Use it to see the comparison model next to the full GR model. With the defaults (fit values, uniform γ0) the contribution is about 10⁻¹¹ ″/cy, so the table row stays greyed; switch the [[gamma0-centring]] to Sun-centred to see the γ0 term. EIH and Lense–Thirring are velocity-dependent, so a uniform γ0 is then not exactly zero, only far below resolution. In the Rung lab it selects the GR rung with J2, Lense–Thirring and conformal gravity.",
+    mercury: "Its CG row is never part of the 575.31 ″/cy budget.",
+    see: ["preset-full", "conformal-gravity", "comparison-model"],
+  };
   E["effects-toggles"] = {
     term: "Effects (toggles)", group: "controls",
     short: "Switch each perturbation on or off. The figure on the right is its expected contribution to ϖ̇; \"IAS15 only\" means WHFast cannot model it.",
-    long: "Any change restarts the live run (after asking if more than 10 s of integration would be lost). The expected values are approximate literature numbers on the Park17 plane; the table computes the actual contributions. In the Rung lab only Solar J2 and Lense–Thirring are available.",
+    long: "Any change restarts the live run (after asking if more than 10 s of integration would be lost). The expected values are approximate literature numbers on the Park17 plane; the table computes the actual contributions. Below a dashed line, [[conformal-gravity]] is a [[comparison-model]], not part of the GR ladder: its figure is the engine's [[cg-gauss-reference|Gauss reference]] for the current settings. In the Rung lab only Solar J2, Lense–Thirring and conformal gravity are available.",
     mercury: "Together the switched-on effects make up the advance shown in the readout.",
-    see: ["planetary-perturbations", "gr-1pn", "solar-j2", "lense-thirring", "asteroids", "eih"],
+    see: ["planetary-perturbations", "gr-1pn", "solar-j2", "lense-thirring", "asteroids", "eih", "conformal-gravity"],
   };
   E["asteroid-count"] = {
     term: "Asteroid count", group: "controls",

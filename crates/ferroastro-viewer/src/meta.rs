@@ -14,6 +14,41 @@ fn num(x: f64) -> Value {
     serde_json::Number::from_f64(x).map_or(Value::Null, Value::Number)
 }
 
+/// The `conformal` object (ABI v2): the settings of parameters 13–16, whether bit 12 is on, the
+/// exaggeration flag, and the engine's analytic reference for the current settings (null in a
+/// build without `embed-header`). Always present, so the page can show the reference before the
+/// toggle is switched on.
+fn conformal(cfg: &ViewerConfig) -> Value {
+    let s = cfg.conformal_settings();
+    let reference = crate::reference::conformal_reference(&s).map_or(Value::Null, |r| {
+        json!({
+            "linear_arcsec_per_cy": num(r.linear),
+            "quadratic_arcsec_per_cy": num(r.quadratic),
+            "total_arcsec_per_cy": num(r.total),
+            "gamma0_arcsec_per_cy": num(r.gamma0_part),
+            "basis": crate::reference::BASIS,
+        })
+    });
+    json!({
+        "label": "comparison model",
+        "enabled": cfg.conformal().is_some(),
+        "gamma0_per_cm": num(s.gamma0_per_cm),
+        "gamma_star_per_cm": num(s.gamma_star_per_cm),
+        "kappa_per_cm2": num(s.kappa_per_cm2),
+        "gamma0_centre": s.centre_label(),
+        "exaggerated": s.exaggerated(),
+        "fit_values": format!(
+            "defaults gamma0 {:e} cm^-1, gamma* {:e} cm^-1, kappa {:e} cm^-2 (Mannheim & O'Brien \
+             2012 galactic fit): UNVERIFIED (OI-79), never test oracles",
+            crate::config::CG_FIT_GAMMA0_PER_CM,
+            crate::config::CG_FIT_GAMMA_STAR_PER_CM,
+            crate::config::CG_FIT_KAPPA_PER_CM2
+        ),
+        "uniform_caveat": crate::reference::UNIFORM_CAVEAT,
+        "reference": reference,
+    })
+}
+
 /// The metadata JSON (`null` values for a field without a run or a fit).
 pub(crate) fn json(cfg: &ViewerConfig, info: Option<&RunInfo>, fit: Option<&FitResult>) -> String {
     let params: Map<String, Value> = cfg
@@ -58,6 +93,8 @@ pub(crate) fn json(cfg: &ViewerConfig, info: Option<&RunInfo>, fit: Option<&FitR
         // The nominal DE440 solar J2, so the page can scale its J2_OVERRIDE references without
         // copying a header value (#22); null if the constants are unavailable.
         "j2_nominal": crate::ic::de440().map_or(Value::Null, |d| num(d.sun_j2())),
+        // ABI v2: the conformal-gravity comparison model (bit 12; ADR-0016, PHY-020).
+        "conformal": conformal(cfg),
     });
     v.to_string()
 }

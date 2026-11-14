@@ -124,7 +124,10 @@ const toggleBlock = /const TOGGLES = \[([\s\S]*?)\];/.exec(js);
 if (toggleBlock) {
   const rows = toggleBlock[1].split("\n").filter((l) => /\{ bit:/.test(l));
   for (const r of rows) if (!/\bterm:\s*"/.test(r)) fail(`viewer.js TOGGLES row without term: ${r.trim()}`);
-  if (rows.length !== 12) fail(`viewer.js TOGGLES has ${rows.length} rows, expected 12 (bits 0-11)`);
+  // ABI v2: bits 0-12 (bit 12 is the conformal-gravity comparison model, ADR-0016).
+  if (rows.length !== 13) fail(`viewer.js TOGGLES has ${rows.length} rows, expected 13 (bits 0-12)`);
+  // A comparison model must say so in its toggle label (ADR-0016, PHY-020).
+  for (const r of rows) if (/\bcomparison:\s*true\b/.test(r) && !/label:\s*"[^"]*\(comparison model\)"/.test(r)) fail(`viewer.js comparison-model TOGGLES row without "(comparison model)" in its label: ${r.trim()}`);
 }
 
 // ---------------------------------------------------------------- report

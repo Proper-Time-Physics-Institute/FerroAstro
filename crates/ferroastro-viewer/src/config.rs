@@ -35,11 +35,15 @@ pub mod bits {
     pub const ASTEROIDS: u32 = 1 << 10;
     /// 1PN EIH among all bodies (IAS15 only; replaces [`GR_1PN`]).
     pub const EIH: u32 = 1 << 11;
+    /// Conformal gravity, a **comparison model** outside the GR ladder (ABI v2; ADR-0016, PHY-020):
+    /// `forces.conformal` with γ0, γ\*, κ and the γ0 centring of parameters 13–16. Never in the
+    /// default mask.
+    pub const CONFORMAL: u32 = 1 << 12;
     /// The seven planet bits.
     pub const PLANETS: u32 = 0x7f;
-    /// Every defined bit.
-    pub const ALL: u32 = 0xfff;
-    /// The default mask: bits 0–9 (planets, J2, GR, Lense–Thirring).
+    /// Every defined bit (0–12).
+    pub const ALL: u32 = 0x1fff;
+    /// The default mask: bits 0–9 (planets, J2, GR, Lense–Thirring); conformal gravity stays off.
     pub const DEFAULT: u32 = 0x3ff;
 }
 
@@ -73,10 +77,18 @@ pub enum Param {
     SpinScale = 11,
     /// 1: fit the Park17 Table 2 terms the span resolves; 0: linear only.
     FitPeriodic = 12,
+    /// Conformal gravity (bit 12): cosmological linear coefficient γ0, cm⁻¹, signed.
+    CgGamma0 = 13,
+    /// Conformal gravity (bit 12): linear coefficient per solar mass γ\*, cm⁻¹, signed.
+    CgGammaStar = 14,
+    /// Conformal gravity (bit 12): quadratic coefficient κ, cm⁻², signed (κ > 0 repulsive).
+    CgKappa = 15,
+    /// Conformal gravity (bit 12): where γ0 is centred, 0 uniform (default), 1 Sun.
+    CgGamma0Centre = 16,
 }
 
 /// Number of parameters.
-pub const PARAM_COUNT: usize = 13;
+pub const PARAM_COUNT: usize = 17;
 
 impl Param {
     /// The parameter of an id.
@@ -96,6 +108,10 @@ impl Param {
             10 => Self::J2Override,
             11 => Self::SpinScale,
             12 => Self::FitPeriodic,
+            13 => Self::CgGamma0,
+            14 => Self::CgGammaStar,
+            15 => Self::CgKappa,
+            16 => Self::CgGamma0Centre,
             _ => return None,
         })
     }
@@ -117,6 +133,10 @@ impl Param {
             Self::J2Override => "j2_override",
             Self::SpinScale => "spin_scale",
             Self::FitPeriodic => "fit_periodic",
+            Self::CgGamma0 => "cg_gamma0_per_cm",
+            Self::CgGammaStar => "cg_gamma_star_per_cm",
+            Self::CgKappa => "cg_kappa_per_cm2",
+            Self::CgGamma0Centre => "cg_gamma0_centre",
         }
     }
 
@@ -134,6 +154,22 @@ pub const IAS15_SAMPLE_DAYS: f64 = 1.0;
 /// `WHFast` symplectic corrector order (WP29 default).
 pub const WH_CORRECTOR: u32 = 11;
 
+/// Conformal-gravity γ0 (cm⁻¹) of the published galactic fit (Mannheim & O'Brien 2012), the
+/// default of parameter 13. **UNVERIFIED (OI-79)**: a display default, never a test oracle (D7).
+pub const CG_FIT_GAMMA0_PER_CM: f64 = 3.06e-30;
+/// Conformal-gravity γ\* (cm⁻¹ per solar mass) of the published fit, the default of parameter 14.
+/// **UNVERIFIED (OI-79)**.
+pub const CG_FIT_GAMMA_STAR_PER_CM: f64 = 5.42e-41;
+/// Conformal-gravity κ (cm⁻²) of the published fit, the default of parameter 15. **UNVERIFIED
+/// (OI-79)**.
+pub const CG_FIT_KAPPA_PER_CM2: f64 = 9.54e-54;
+/// Largest |γ0|, |γ\*| accepted (cm⁻¹): about 3×10⁴ times the fit γ0, a constant acceleration
+/// near 10⁻⁵ of the Sun's pull at Neptune's distance (still a bound orbit).
+pub const CG_MAX_GAMMA_PER_CM: f64 = 1e-25;
+/// Largest |κ| accepted (cm⁻²): the Hooke term then stays below a few per cent of the Sun's pull at
+/// Neptune's distance.
+pub const CG_MAX_KAPPA_PER_CM2: f64 = 1e-40;
+
 /// The defaults of DESIGN §4.3, in id order.
 pub const DEFAULTS: [f64; PARAM_COUNT] = [
     0.0,
@@ -149,7 +185,62 @@ pub const DEFAULTS: [f64; PARAM_COUNT] = [
     f64::NAN,
     1.0,
     1.0,
+    CG_FIT_GAMMA0_PER_CM,
+    CG_FIT_GAMMA_STAR_PER_CM,
+    CG_FIT_KAPPA_PER_CM2,
+    0.0,
 ];
+
+/// Where the conformal-gravity γ0 is centred (parameter 16; ADR-0016 decision D2).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Gamma0Centring {
+    /// The same acceleration γ0c²/2 on every body (default): no relative effect with
+    /// velocity-independent forces.
+    Uniform,
+    /// γ0 added to the Sun-sourced linear term.
+    Sun,
+}
+
+/// The conformal-gravity settings of a configuration (parameters 13–16), in the published units.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct ConformalSettings {
+    /// γ0, cm⁻¹.
+    pub gamma0_per_cm: f64,
+    /// γ\*, cm⁻¹ per solar mass (the Sun: N\* = 1).
+    pub gamma_star_per_cm: f64,
+    /// κ, cm⁻².
+    pub kappa_per_cm2: f64,
+    /// Where γ0 is centred.
+    pub centre: Gamma0Centring,
+}
+
+impl ConformalSettings {
+    /// The scenario spelling of the centring.
+    #[must_use]
+    pub const fn centre_label(&self) -> &'static str {
+        match self.centre {
+            Gamma0Centring::Uniform => "uniform",
+            Gamma0Centring::Sun => "sun",
+        }
+    }
+
+    /// The Sun-sourced linear coefficient, cm⁻¹: γ\* plus γ0 when γ0 is Sun-centred.
+    #[must_use]
+    pub fn sun_gamma_per_cm(&self) -> f64 {
+        match self.centre {
+            Gamma0Centring::Sun => self.gamma_star_per_cm + self.gamma0_per_cm,
+            Gamma0Centring::Uniform => self.gamma_star_per_cm,
+        }
+    }
+
+    /// True when any coefficient differs from the published fit value (exaggerated physics).
+    #[must_use]
+    pub fn exaggerated(&self) -> bool {
+        !(same(self.gamma0_per_cm, CG_FIT_GAMMA0_PER_CM)
+            && same(self.gamma_star_per_cm, CG_FIT_GAMMA_STAR_PER_CM)
+            && same(self.kappa_per_cm2, CG_FIT_KAPPA_PER_CM2))
+    }
+}
 
 /// The integrator of a System-mode run.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -224,11 +315,11 @@ impl ViewerConfig {
     /// Set the toggle mask.
     ///
     /// # Errors
-    /// `FAV_E_ARG` for a reserved bit (12–31).
+    /// `FAV_E_ARG` for a reserved bit (13–31).
     pub fn set_mask(&mut self, mask: u32) -> Result<(), ViewerError> {
         if mask & !bits::ALL != 0 {
             return Err(ViewerError::arg(format!(
-                "FA-E0002: toggle mask {mask:#x} sets reserved bits {:#x} (only bits 0-11 are defined)",
+                "FA-E0002: toggle mask {mask:#x} sets reserved bits {:#x} (only bits 0-12 are defined)",
                 mask & !bits::ALL
             )));
         }
@@ -250,7 +341,9 @@ impl ViewerConfig {
         let name = p.name();
         let within = |lo: f64, hi: f64| (lo..=hi).contains(&value);
         let ok = match p {
-            Param::Mode | Param::FitPeriodic => as_index(value, 1).is_some(),
+            Param::Mode | Param::FitPeriodic | Param::CgGamma0Centre => {
+                as_index(value, 1).is_some()
+            }
             Param::Engine => as_index(value, 2).is_some(),
             Param::PpnBeta | Param::PpnGamma => value.is_finite() && (value - 1.0).abs() <= 100.0,
             Param::WhStepDays => within(0.125, 4.0),
@@ -261,6 +354,10 @@ impl ViewerConfig {
             Param::Rung => as_index(value, 4).is_some(),
             Param::J2Override => value.is_nan() || within(0.0, 1e-3),
             Param::SpinScale => within(0.0, 1e6),
+            Param::CgGamma0 | Param::CgGammaStar => {
+                within(-CG_MAX_GAMMA_PER_CM, CG_MAX_GAMMA_PER_CM)
+            }
+            Param::CgKappa => within(-CG_MAX_KAPPA_PER_CM2, CG_MAX_KAPPA_PER_CM2),
         };
         if !ok {
             let valid = match p {
@@ -276,6 +373,9 @@ impl ViewerConfig {
                 Param::Rung => "an integer 0 ... 4",
                 Param::J2Override => "NaN (DE440 J2SUN) or 0 ... 1e-3",
                 Param::SpinScale => "0 ... 1e6",
+                Param::CgGamma0 | Param::CgGammaStar => "-1e-25 ... 1e-25 cm^-1 (signed)",
+                Param::CgKappa => "-1e-40 ... 1e-40 cm^-2 (signed)",
+                Param::CgGamma0Centre => "0 (uniform) or 1 (Sun-centred)",
             };
             return Err(range_err(name, value, valid));
         }
@@ -346,12 +446,35 @@ impl ViewerConfig {
         (!same(s, 1.0)).then_some(s)
     }
 
-    /// True when the run uses DE440 J2 and spin and ε ≤ 1e-9 (DESIGN §4.3).
+    /// True when the run uses DE440 J2 and spin, ε ≤ 1e-9 and, with conformal gravity on, the
+    /// published fit coefficients (DESIGN §4.3).
     #[must_use]
     pub fn is_nominal(&self) -> bool {
         self.j2_override().is_none()
             && self.spin_scale().is_none()
             && self.get(Param::Ias15Epsilon) <= DEFAULT_IAS15_EPSILON
+            && !self.conformal().is_some_and(|c| c.exaggerated())
+    }
+
+    /// The conformal-gravity settings of parameters 13–16, whether or not bit 12 is on.
+    #[must_use]
+    pub fn conformal_settings(&self) -> ConformalSettings {
+        ConformalSettings {
+            gamma0_per_cm: self.get(Param::CgGamma0),
+            gamma_star_per_cm: self.get(Param::CgGammaStar),
+            kappa_per_cm2: self.get(Param::CgKappa),
+            centre: if as_index(self.get(Param::CgGamma0Centre), 1) == Some(1) {
+                Gamma0Centring::Sun
+            } else {
+                Gamma0Centring::Uniform
+            },
+        }
+    }
+
+    /// The conformal-gravity settings when bit 12 is on.
+    #[must_use]
+    pub fn conformal(&self) -> Option<ConformalSettings> {
+        (self.mask & bits::CONFORMAL != 0).then(|| self.conformal_settings())
     }
 
     /// True when the linear-plus-periodic fit is requested.
@@ -385,7 +508,8 @@ impl ViewerConfig {
             return Err(ViewerError::arg(format!(
                 "FA-E0002: Rung lab integrates Mercury as a test particle about a fixed Sun; \
                  clear the planet, asteroid and EIH bits (mask {m:#x}); RUNG selects the dynamics \
-                 and bits 7 and 9 add solar J2 and Lense-Thirring"
+                 and bits 7, 9 and 12 add solar J2, Lense-Thirring and the conformal-gravity \
+                 comparison model"
             )));
         }
         Ok(())
@@ -469,7 +593,12 @@ impl ViewerConfig {
         );
         let _ = writeln!(
             s,
-            "description = \"FerroAstro orbit viewer, System mode, toggle mask {m:#x} (docs/viewer/DESIGN.md)\""
+            "description = \"FerroAstro orbit viewer, System mode, toggle mask {m:#x} (docs/viewer/DESIGN.md){}\"",
+            if on(bits::CONFORMAL) {
+                "; with the conformal-gravity comparison model (ADR-0016), outside the GR ladder"
+            } else {
+                ""
+            }
         );
         let _ = writeln!(s, "mode = \"n-body\"");
         let _ = writeln!(s, "bodies = [{}]", quoted.join(", "));
@@ -495,6 +624,17 @@ impl ViewerConfig {
         }
         if on(bits::ASTEROIDS) {
             let _ = writeln!(s, "asteroids = {}", self.asteroid_count());
+        }
+        if let Some(cg) = self.conformal() {
+            // The conformal-gravity comparison model (ADR-0016, PHY-020): never in the GR ladder.
+            let _ = writeln!(
+                s,
+                "conformal = {{ gamma0 = {:?}, gamma_star = {:?}, kappa = {:?}, gamma0_centre = \"{}\" }}",
+                cg.gamma0_per_cm,
+                cg.gamma_star_per_cm,
+                cg.kappa_per_cm2,
+                cg.centre_label()
+            );
         }
         let relativistic = (!wh && on(bits::GR_1PN)) || on(bits::EIH) || on(bits::LENSE_THIRRING);
         if relativistic && !self.ppn_is_gr() {
@@ -533,13 +673,80 @@ mod tests {
     fn defaults_and_ranges() {
         let mut c = ViewerConfig::default();
         assert_eq!(c.mask(), bits::DEFAULT);
-        assert!(c.set_mask(1 << 12).is_err());
+        assert!(c.set_mask(1 << 13).is_err());
+        assert!(c.set_mask(bits::CONFORMAL).is_ok());
+        assert_eq!(bits::DEFAULT & bits::CONFORMAL, 0);
+        c.set_mask(bits::DEFAULT).unwrap();
         assert!(c.set(Param::WhStepDays, 0.0).is_err());
         assert!(c.set(Param::AsteroidCount, 2.5).is_err()); // lint: allow-literal(a non-integer probe of an integer parameter)
         assert!(c.set(Param::J2Override, f64::NAN).is_ok());
         assert!(c.set(Param::Mode, 1.0).is_ok());
         assert!(c.is_lab());
         assert!(c.validate().is_err(), "planets are not allowed in Rung lab");
+    }
+
+    /// Bit 12 maps to `forces.conformal` with parameters 13–16 (default: the OI-79 fit values,
+    /// uniform γ0); out-of-range coefficients are refused; non-fit values mark the run exaggerated.
+    ///
+    /// Verifies: API-004, PHY-020
+    #[test]
+    fn conformal_bit_and_parameters() {
+        let mut c = ViewerConfig::default();
+        assert!(c.conformal().is_none());
+        assert!(
+            c.to_scenario(EngineKind::Ias15)
+                .unwrap()
+                .forces
+                .conformal
+                .is_none()
+        );
+        c.set_mask(bits::DEFAULT | bits::CONFORMAL).unwrap();
+        assert!(c.is_nominal(), "the fit values are the defaults");
+        let cg = c
+            .to_scenario(EngineKind::Ias15)
+            .unwrap()
+            .forces
+            .conformal
+            .unwrap();
+        assert_eq!(cg.gamma0.to_bits(), CG_FIT_GAMMA0_PER_CM.to_bits());
+        assert_eq!(cg.gamma_star.to_bits(), CG_FIT_GAMMA_STAR_PER_CM.to_bits());
+        assert_eq!(cg.kappa.to_bits(), CG_FIT_KAPPA_PER_CM2.to_bits());
+        assert_eq!(cg.gamma0_centre, ferroastro_scenario::Gamma0Centre::Uniform);
+        assert!(
+            c.scenario_toml(EngineKind::Ias15)
+                .unwrap()
+                .contains("comparison model")
+        );
+        let exaggerated = 100.0 * CG_FIT_GAMMA0_PER_CM; // lint: allow-literal(an exaggeration factor)
+        c.set(Param::CgGamma0, exaggerated).unwrap();
+        c.set(Param::CgGamma0Centre, 1.0).unwrap();
+        assert!(
+            !c.is_nominal(),
+            "a non-fit coefficient is exaggerated physics"
+        );
+        let wh = c
+            .to_scenario(EngineKind::WhFast)
+            .unwrap()
+            .forces
+            .conformal
+            .unwrap();
+        assert_eq!(wh.gamma0_centre, ferroastro_scenario::Gamma0Centre::Sun);
+        assert_eq!(wh.gamma0.to_bits(), exaggerated.to_bits());
+        let s = c.conformal().unwrap();
+        assert_eq!(
+            s.sun_gamma_per_cm().to_bits(),
+            (CG_FIT_GAMMA_STAR_PER_CM + exaggerated).to_bits()
+        );
+        assert!(c.set(Param::CgGamma0, 2.0 * CG_MAX_GAMMA_PER_CM).is_err());
+        assert!(c.set(Param::CgKappa, f64::NAN).is_err());
+        assert!(c.set(Param::CgKappa, -CG_MAX_KAPPA_PER_CM2).is_ok());
+        assert!(c.set(Param::CgGamma0Centre, 2.0).is_err());
+        assert_eq!(Param::from_id(16), Some(Param::CgGamma0Centre));
+        assert_eq!(Param::from_id(17), None);
+        c.set(Param::Mode, 1.0).unwrap();
+        c.set_mask(bits::SUN_J2 | bits::LENSE_THIRRING | bits::CONFORMAL)
+            .unwrap();
+        assert!(c.validate().is_ok(), "bit 12 is allowed in the Rung lab");
     }
 
     /// Verifies: API-004
