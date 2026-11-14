@@ -19,34 +19,40 @@
   <div class="brand">
     <p class="brand-name" translate="no">FerroAstro orbit viewer</p>
     <h1>The advance of Mercury's perihelion</h1>
-    <p class="sub">Switch perturbations on and off and watch the perihelion turn. Every number comes from the FerroAstro engine (wasm); this page only draws it.</p>
+    <p class="sub">Switch <button type="button" class="term" data-tip="planetary-perturbations">perturbations</button> on and off and watch the <button type="button" class="term" data-tip="perihelion">perihelion</button> turn. Every number comes from the <button type="button" class="term" data-tip="wasm-engine">FerroAstro engine (wasm)</button>; this page only draws it. Hover, focus or tap an <span class="tip-sample" aria-hidden="true">i</span> or a dotted term for an explanation, or open the glossary.</p>
   </div>
   <div class="top-side">
     <div class="badges">
-      <span id="badge-mode" class="badge">System mode</span>
-      <span id="badge-engine" class="badge" title="Resolved integrator">engine: –</span>
-      <span id="badge-nominal" class="badge warn" hidden>Exaggerated physics</span>
+      <span class="badge" data-term="system-mode"><span id="badge-mode">System mode</span><button type="button" class="tip" id="badge-mode-tip" data-tip="system-mode"></button></span>
+      <span class="badge" data-term="integrator"><span id="badge-engine">engine: –</span><button type="button" class="tip" data-tip="integrator"></button></span>
+      <span id="badge-nominal" class="badge warn" hidden><span id="badge-nominal-text">Exaggerated physics</span><button type="button" class="tip" data-tip="physical-exaggeration"></button></span>
     </div>
+    <button type="button" class="gloss-btn" data-glossary-open aria-haspopup="dialog">Glossary</button>
     <div class="seg theme-switch" role="group" aria-label="Colour theme">
       <button type="button" data-theme-set="auto" aria-pressed="true">Auto</button>
       <button type="button" data-theme-set="light" aria-pressed="false">Light</button>
       <button type="button" data-theme-set="dark" aria-pressed="false">Dark</button>
     </div>
+    <button type="button" class="tip" data-tip="colour-theme"></button>
   </div>
 </header>
 
-<div id="status" class="status" role="status" aria-live="polite">Loading the engine…</div>
-<div id="error" class="error" role="alert" hidden></div>
+<div class="status-row"><div id="status" class="status" role="status" aria-live="polite">Loading the engine…</div><button type="button" class="tip" data-tip="messages"></button></div>
+<div class="error-row"><div id="error" class="error" role="alert" hidden></div><button type="button" class="tip" data-tip="error-codes"></button></div>
 
 <main class="layout">
   <!-- ============================== orbit view ============================== -->
   <section class="panel orbit-panel" aria-labelledby="orbit-h">
     <div class="panel-head">
-      <h2 id="orbit-h">Orbits <span class="muted small">top-down on the J2000 ecliptic, heliocentric</span></h2>
-      <div class="seg" role="group" aria-label="Zoom preset">
-        <button type="button" id="zoom-mercury" aria-pressed="false">Mercury</button>
-        <button type="button" id="zoom-inner" aria-pressed="true">Inner system</button>
-        <button type="button" id="zoom-full" aria-pressed="false">Full system</button>
+      <div class="head-l"><h2 id="orbit-h">Orbits</h2><button type="button" class="tip" data-tip="orbit-plate"></button>
+        <span class="muted small">top-down on the <button type="button" class="term" data-tip="ecliptic-j2000">J2000 ecliptic</button>, <button type="button" class="term" data-tip="heliocentric">heliocentric</button></span></div>
+      <div class="tool-group">
+        <div class="seg" role="group" aria-label="Zoom preset">
+          <button type="button" id="zoom-mercury" aria-pressed="false" data-term="zoom-presets">Mercury</button>
+          <button type="button" id="zoom-inner" aria-pressed="true" data-term="zoom-presets">Inner system</button>
+          <button type="button" id="zoom-full" aria-pressed="false" data-term="zoom-presets">Full system</button>
+        </div>
+        <button type="button" class="tip" data-tip="zoom-presets"></button>
       </div>
     </div>
     <div class="canvas-wrap orbit-wrap">
@@ -55,24 +61,28 @@
       <div id="exag-badge" class="sr-only" aria-live="polite"></div>
     </div>
     <div id="orbit-legend" class="legend" aria-label="Bodies on the plate"></div>
-    <p id="advance" class="advance" aria-live="off">The perihelion markers appear after Mercury's first pass.</p>
-    <div class="ramp" aria-hidden="true">
-      <span id="ramp-t0">first passage</span>
-      <span class="ramp-bar"></span>
-      <span id="ramp-t1">latest</span>
+    <p class="help">The <button type="button" class="term" data-tip="sun">Sun</button> sits at the centre; the dashed line points to the <button type="button" class="term" data-tip="equinox-j2000">♈︎ J2000 equinox</button>; circles and the scale bar are in <button type="button" class="term" data-tip="au">au</button>.</p>
+    <div class="with-tip"><p id="advance" class="advance" aria-live="off">The perihelion markers appear after Mercury's first pass.</p><button type="button" class="tip" data-tip="delta-varpi"></button></div>
+    <div class="with-tip">
+      <div class="ramp" aria-hidden="true">
+        <span id="ramp-t0">first passage</span>
+        <span class="ramp-bar"></span>
+        <span id="ramp-t1">latest</span>
+      </div>
+      <button type="button" class="tip" data-tip="time-ramp"></button>
     </div>
-    <p class="help">Perihelion markers and chart dots share this time colour. The faint ellipse is Mercury's orbit at the first passage; the solid one is its orbit now.</p>
+    <p class="help"><button type="button" class="term" data-tip="perihelion-markers">Perihelion markers</button> and chart dots share this <button type="button" class="term" data-tip="time-ramp">time colour</button>. The faint dashed ellipse is Mercury's <button type="button" class="term" data-tip="osculating-ellipse">osculating orbit</button> at the start of the run; the solid one is its orbit now.</p>
     <div class="orbit-tools">
-      <label class="slider" for="exag">
-        <span class="slider-label"><span>Display exaggeration</span> <output id="exag-out" for="exag">×1</output></span>
+      <div class="slider">
+        <div class="slider-label"><span class="lab"><label for="exag" data-term="display-exaggeration">Display exaggeration</label><button type="button" class="tip" data-tip="display-exaggeration"></button></span> <output id="exag-out" for="exag">×1</output></div>
         <input type="range" id="exag" min="0" max="5" step="0.05" value="0"
           aria-describedby="exag-help">
-      </label>
+      </div>
       <p id="exag-help" class="help">Rotates only the drawn Mercury ellipse and perihelion markers by (k−1)·Δϖ. It never changes the physics, the chart or the table.</p>
       <div class="checks-inline">
-        <label class="check"><input type="checkbox" id="show-ellipse" checked> Osculating ellipse</label>
-        <label class="check"><input type="checkbox" id="show-markers" checked> Perihelion markers</label>
-        <label class="check"><input type="checkbox" id="show-trails" checked> Trails</label>
+        <span class="check-wrap"><label class="check" data-term="osculating-ellipse"><input type="checkbox" id="show-ellipse" checked> Osculating ellipse</label><button type="button" class="tip" data-tip="osculating-ellipse"></button></span>
+        <span class="check-wrap"><label class="check" data-term="perihelion-markers"><input type="checkbox" id="show-markers" checked> Perihelion markers</label><button type="button" class="tip" data-tip="perihelion-markers"></button></span>
+        <span class="check-wrap"><label class="check" data-term="trails"><input type="checkbox" id="show-trails" checked> Trails</label><button type="button" class="tip" data-tip="trails"></button></span>
       </div>
       <p class="help">Wheel or pinch to zoom, drag to pan, double-click to reset. With the plate focused: + and − zoom, arrows pan, 0 resets.</p>
     </div>
@@ -82,45 +92,49 @@
     <!-- ============================== varpi chart ============================== -->
     <section class="panel chart-panel" aria-labelledby="chart-h">
       <div class="panel-head">
-        <h2 id="chart-h">Longitude of perihelion ϖ(t)</h2>
-        <span class="muted small">Park17 mean-Mercury-orbit plane</span>
+        <div class="head-l"><h2 id="chart-h">Longitude of perihelion ϖ(t)</h2><button type="button" class="tip" data-tip="varpi"></button></div>
+        <span class="muted small" id="chart-plane"><button type="button" class="term" data-tip="park17-plane">Park17 mean-Mercury-orbit plane</button></span>
       </div>
       <div class="readout">
-        <div class="rate" id="rate-readout" title="">ϖ̇ = – ″/cy</div>
+        <div class="with-tip lead"><button type="button" class="tip" data-tip="varpi-dot"></button><div class="rate" id="rate-readout" title="">ϖ̇ = – ″/cy</div></div>
         <div class="rate-sub parts" id="rate-sub">Needs at least 20 perihelion passages (about 5 years).</div>
-        <details class="fit-details">
-          <summary>Fit model and metadata</summary>
-          <pre id="fit-details">No fit yet.</pre>
-        </details>
+        <div class="with-tip top">
+          <details class="fit-details">
+            <summary>Fit model and metadata</summary>
+            <pre id="fit-details">No fit yet.</pre>
+            <p class="help">Terms: <button type="button" class="term" data-tip="fit-model">fit model</button>, <button type="button" class="term" data-tip="fit-b">B</button>, <button type="button" class="term" data-tip="fit-q">Q</button>, <button type="button" class="term" data-tip="periodic-terms">periodic terms</button>, <button type="button" class="term" data-tip="formal-sigma">formal σ</button>, <button type="button" class="term" data-tip="jackknife">jack-knife σ</button>, <button type="button" class="term" data-tip="rms-residual">rms residual</button>, <button type="button" class="term" data-tip="estimator">estimator</button>, <button type="button" class="term" data-tip="park17-plane">frame</button>, <button type="button" class="term" data-tip="integrator">engine</button>, <button type="button" class="term" data-tip="constants-version">constants</button>.</p>
+          </details>
+          <button type="button" class="tip" data-tip="fit-model"></button>
+        </div>
       </div>
       <div class="canvas-wrap chart-wrap">
         <canvas id="chart" role="img" aria-label="Chart of perihelion longitude against time"></canvas>
       </div>
       <ul class="chart-key">
-        <li><span class="key-dots" aria-hidden="true"></span>Perihelion passages (fitted), by time</li>
-        <li><span class="key-line fit" aria-hidden="true"></span>Fitted rate</li>
-        <li><span class="key-line osc" aria-hidden="true"></span>Osculating ϖ (drawn only)</li>
-        <li><span class="key-line ecl" aria-hidden="true"></span>ϖ on J2000 ecliptic</li>
-        <li><span class="key-fan" aria-hidden="true"></span>Per-effect wedges (from the table)</li>
+        <li><span class="key-dots" aria-hidden="true"></span><button type="button" class="term" data-tip="fit-passages">Perihelion passages (fitted), by time</button></li>
+        <li><span class="key-line fit" aria-hidden="true"></span><button type="button" class="term" data-tip="fitted-rate">Fitted rate</button></li>
+        <li><span class="key-line osc" aria-hidden="true"></span><button type="button" class="term" data-tip="osculating-varpi">Osculating ϖ (drawn only)</button></li>
+        <li><span class="key-line ecl" aria-hidden="true"></span><button type="button" class="term" data-tip="varpi-ecl">ϖ on J2000 ecliptic</button></li>
+        <li><span class="key-fan" aria-hidden="true"></span><button type="button" class="term" data-tip="wedges">Per-effect wedges (from the table)</button></li>
       </ul>
-      <p class="help">x: years since the run epoch (TDB), calendar year along the top. y: arcsec relative to the first passage.</p>
+      <p class="help"><button type="button" class="term" data-tip="varpi-chart">Axes</button>: x: <button type="button" class="term" data-tip="julian-year">years</button> since the <button type="button" class="term" data-tip="run-epoch">run epoch</button> (<button type="button" class="term" data-tip="tdb">TDB</button>), calendar year along the top. y: <button type="button" class="term" data-tip="arcsec">arcsec</button> relative to the first passage.</p>
       <div class="spark-row">
-        <div class="spark"><span class="spark-label">e(t)</span><canvas id="spark-e" role="img" aria-label="Eccentricity against time"></canvas><span id="spark-e-val" class="spark-val"></span></div>
-        <div class="spark"><span class="spark-label">a(t), au</span><canvas id="spark-a" role="img" aria-label="Semi-major axis against time"></canvas><span id="spark-a-val" class="spark-val"></span></div>
+        <div class="spark"><span class="spark-label"><button type="button" class="term" data-tip="eccentricity">e(t)</button></span><canvas id="spark-e" role="img" aria-label="Eccentricity against time"></canvas><span id="spark-e-val" class="spark-val"></span></div>
+        <div class="spark"><span class="spark-label"><button type="button" class="term" data-tip="semi-major-axis">a(t)</button>, <button type="button" class="term" data-tip="au">au</button></span><canvas id="spark-a" role="img" aria-label="Semi-major axis against time"></canvas><span id="spark-a-val" class="spark-val"></span></div>
       </div>
       <div class="chart-tools">
-        <label class="check"><input type="checkbox" id="show-osc" checked> Osculating ϖ</label>
-        <label class="check"><input type="checkbox" id="show-ecl"> ϖ on J2000 ecliptic</label>
-        <label class="check"><input type="checkbox" id="detrend"> Subtract fitted rate</label>
-        <label class="check"><input type="checkbox" id="show-fan" checked> Per-effect wedges</label>
-        <label class="check">Fit window
+        <span class="check-wrap"><label class="check" data-term="osculating-varpi"><input type="checkbox" id="show-osc" checked> Osculating ϖ</label><button type="button" class="tip" data-tip="osculating-varpi"></button></span>
+        <span class="check-wrap"><label class="check" data-term="varpi-ecl"><input type="checkbox" id="show-ecl"> ϖ on J2000 ecliptic</label><button type="button" class="tip" data-tip="varpi-ecl"></button></span>
+        <span class="check-wrap"><label class="check" data-term="detrend"><input type="checkbox" id="detrend"> Subtract fitted rate</label><button type="button" class="tip" data-tip="detrend"></button></span>
+        <span class="check-wrap"><label class="check" data-term="wedges"><input type="checkbox" id="show-fan" checked> Per-effect wedges</label><button type="button" class="tip" data-tip="wedges"></button></span>
+        <span class="check-wrap"><label class="check" data-term="fit-window">Fit window
           <select id="fit-window">
             <option value="all">all passages</option>
             <option value="1000">last 1000 yr</option>
             <option value="100">last 100 yr</option>
             <option value="20">last 20 yr</option>
           </select>
-        </label>
+        </label><button type="button" class="tip" data-tip="fit-window"></button></span>
       </div>
     </section>
 
@@ -128,24 +142,25 @@
     <section class="panel controls-panel" id="controls" aria-labelledby="controls-h" tabindex="-1">
       <div class="panel-head">
         <h2 id="controls-h">Physics</h2>
-        <div class="seg radios" role="radiogroup" aria-label="Mode">
-          <label class="check"><input type="radio" name="mode" value="0" checked> System</label>
-          <label class="check"><input type="radio" name="mode" value="1"> Rung lab</label>
+        <div class="seg radios" role="group" aria-label="Mode">
+          <span class="check-wrap"><label class="check" data-term="system-mode"><input type="radio" name="mode" value="0" checked> System</label><button type="button" class="tip" data-tip="system-mode"></button></span>
+          <span class="check-wrap"><label class="check" data-term="rung-lab"><input type="radio" name="mode" value="1"> Rung lab</label><button type="button" class="tip" data-tip="rung-lab"></button></span>
         </div>
       </div>
 
       <div class="presets" role="group" aria-label="Presets">
-        <button type="button" data-preset="kepler">Kepler only</button>
-        <button type="button" data-preset="planets">Planets only</button>
-        <button type="button" data-preset="gr">GR only</button>
-        <button type="button" data-preset="full">Full model</button>
+        <button type="button" data-preset="kepler" data-term="preset-kepler">Kepler only</button>
+        <button type="button" data-preset="planets" data-term="preset-planets">Planets only</button>
+        <button type="button" data-preset="gr" data-term="preset-gr">GR only</button>
+        <button type="button" data-preset="full" data-term="preset-full">Full model</button>
+        <button type="button" class="tip" data-tip="presets"></button>
       </div>
 
-      <p id="mode-note" class="note" hidden>Rung lab: Mercury as a test particle about a fixed Sun (Standish &amp; Williams 1992 J2000 mean elements, epoch J2000.0). The special-relativity rungs exist only here, because ADR-0012 defines them for the test-particle problem; with planets on they have no meaning. The SR/GR split is not observable.</p>
+      <p id="mode-note" class="note" hidden>Rung lab: Mercury as a <button type="button" class="term" data-tip="test-particle">test particle</button> about a fixed Sun (<button type="button" class="term" data-tip="sw92">Standish &amp; Williams 1992</button> J2000 mean elements, epoch <button type="button" class="term" data-tip="j2000">J2000.0</button>). The special-relativity rungs exist only here, because <button type="button" class="term" data-tip="reference-ids">ADR-0012</button> defines them for the test-particle problem; with planets on they have no meaning. The <button type="button" class="term" data-tip="sr-gr-split">SR/GR split</button> is not observable.</p>
 
       <fieldset id="rung-fs" hidden>
         <legend>Rung</legend>
-        <label for="rung">Central-force model</label>
+        <span class="lab"><label for="rung" data-term="rung">Central-force model</label><button type="button" class="tip" data-tip="rung"></button></span>
         <select id="rung">
           <option value="0">Newton only (expect 0)</option>
           <option value="1">SR-a, SrKepler, gauge “SR, no PN gauge” (7.1634 ″/cy)</option>
@@ -156,19 +171,19 @@
       </fieldset>
 
       <fieldset>
-        <legend>Effects <span class="muted small">expected contribution to ϖ̇</span></legend>
+        <legend>Effects <span class="muted small">expected contribution to ϖ̇</span> <button type="button" class="tip" data-tip="effects-toggles"></button></legend>
         <ul class="toggles" id="toggles"></ul>
       </fieldset>
 
       <fieldset class="grid2">
         <legend>Parameters</legend>
-        <label for="p-beta">PPN β</label>
+        <span class="lab"><label for="p-beta" data-term="ppn-beta">PPN β</label><button type="button" class="tip" data-tip="ppn-beta"></button></span>
         <input id="p-beta" name="ppn-beta" type="number" step="0.1" value="1" inputmode="decimal" autocomplete="off" aria-describedby="ppn-help">
-        <label for="p-gamma">PPN γ</label>
+        <span class="lab"><label for="p-gamma" data-term="ppn-gamma">PPN γ</label><button type="button" class="tip" data-tip="ppn-gamma"></button></span>
         <input id="p-gamma" name="ppn-gamma" type="number" step="0.1" value="1" inputmode="decimal" autocomplete="off" aria-describedby="ppn-help">
-        <p id="ppn-help" class="help span2">Used by GR 1PN, EIH, Lense–Thirring and the Rung lab GR rung. GR advance scales as (2+2γ−β)/3. WHFast takes GR only with β = γ = 1.</p>
+        <p id="ppn-help" class="help span2">β is used by GR 1PN, EIH and the Rung lab GR rung; γ by those and Lense–Thirring. GR advance scales as (2+2γ−β)/3. WHFast takes GR only with β = γ = 1.</p>
 
-        <label for="p-engine">Engine</label>
+        <span class="lab"><label for="p-engine" data-term="engine-auto">Engine</label><button type="button" class="tip" data-tip="integrator"></button></span>
         <div class="row">
           <select id="p-engine" name="engine">
             <option value="0" selected>AUTO</option>
@@ -177,9 +192,9 @@
           </select>
           <span id="engine-resolved" class="muted small"></span>
         </div>
-        <label for="p-whstep">WHFast step (days)</label>
+        <span class="lab"><label for="p-whstep" data-term="wh-step">WHFast step (days)</label><button type="button" class="tip" data-tip="wh-step"></button></span>
         <input id="p-whstep" name="wh-step" type="number" min="0.125" max="4" step="0.125" value="1" inputmode="decimal" autocomplete="off">
-        <label for="p-eps">IAS15 ε</label>
+        <span class="lab"><label for="p-eps" data-term="ias15-epsilon">IAS15 ε</label><button type="button" class="tip" data-tip="ias15-epsilon"></button></span>
         <div class="row">
           <select id="p-eps" name="ias15-eps">
             <option value="1e-12">1e-12</option>
@@ -191,69 +206,73 @@
             <option value="1e-6">1e-6 (fast, reduced accuracy)</option>
           </select>
         </div>
-        <label for="p-span">Run span (years)</label>
+        <span class="lab"><label for="p-span" data-term="run-span">Run span (years)</label><button type="button" class="tip" data-tip="run-span"></button></span>
         <input id="p-span" name="span" type="number" min="1" max="20000" step="1" value="1000" inputmode="numeric" autocomplete="off">
-        <label for="p-cadence">Display cadence (days)</label>
+        <span class="lab"><label for="p-cadence" data-term="display-cadence">Display cadence (days)</label><button type="button" class="tip" data-tip="display-cadence"></button></span>
         <input id="p-cadence" name="cadence" type="number" min="0.5" max="50" step="0.5" value="4" inputmode="decimal" autocomplete="off">
-        <label for="p-ast">Asteroid count</label>
+        <span class="lab"><label for="p-ast" data-term="asteroid-count">Asteroid count</label><button type="button" class="tip" data-tip="asteroid-count"></button></span>
         <input id="p-ast" name="asteroids" type="number" min="1" max="343" step="1" value="16" inputmode="numeric" autocomplete="off">
-        <label for="p-fitper">Fit model</label>
+        <span class="lab"><label for="p-fitper" data-term="fit-model-choice">Fit model</label><button type="button" class="tip" data-tip="fit-model-choice"></button></span>
         <select id="p-fitper" name="fit-model">
           <option value="1" selected>B + ϖ̇t (+ Qt², periodic terms the span resolves)</option>
-          <option value="0">B + ϖ̇t only</option>
+          <option value="0">B + ϖ̇t (+ Qt²), no periodic terms</option>
         </select>
       </fieldset>
 
+      <div class="with-tip top">
       <details class="advanced">
         <summary>Physical exaggeration (marks the run non-nominal)</summary>
         <div class="grid2">
-          <label for="p-j2">Solar J2 override</label>
+          <span class="lab"><label for="p-j2" data-term="j2-override">Solar J2 override</label><button type="button" class="tip" data-tip="j2-override"></button></span>
           <input id="p-j2" name="j2" type="number" min="0" max="0.001" step="any" placeholder="DE440 J2SUN" inputmode="decimal" autocomplete="off" aria-describedby="j2-help">
-          <p id="j2-help" class="help span2">Empty = DE440 J2SUN. Range 0 … 1e-3.</p>
-          <label for="p-spin">Solar spin scale</label>
+          <p id="j2-help" class="help span2">Empty = <button type="button" class="term" data-tip="de440">DE440</button> J2SUN. Range 0 … 1e-3.</p>
+          <span class="lab"><label for="p-spin" data-term="spin-scale">Solar spin scale</label><button type="button" class="tip" data-tip="spin-scale"></button></span>
           <input id="p-spin" name="spin" type="number" min="0" max="1000000" step="any" value="1" inputmode="decimal" autocomplete="off" aria-describedby="spin-help">
-          <p id="spin-help" class="help span2">Multiplies the DE440 solar angular momentum G·S used by Lense–Thirring. Range 0 … 1e6.</p>
+          <p id="spin-help" class="help span2">Multiplies the DE440 solar angular momentum G·S used by <button type="button" class="term" data-tip="lense-thirring">Lense–Thirring</button>. Range 0 … 1e6.</p>
         </div>
       </details>
+      <button type="button" class="tip" data-tip="physical-exaggeration"></button>
+      </div>
 
       <div class="apply-row">
-        <button type="button" id="copy-scenario" title="Copy the run's ScenarioSpec (TOML) to reproduce with the CLI">Copy scenario TOML</button>
-        <span id="meta-line" class="muted small parts"></span>
+        <span class="check-wrap"><button type="button" id="copy-scenario" data-term="scenario-toml">Copy scenario TOML</button><button type="button" class="tip" data-tip="scenario-toml"></button></span>
+        <span class="with-tip top"><span id="meta-line" class="muted small parts"></span><button type="button" class="tip" data-tip="metadata"></button></span>
       </div>
     </section>
 
     <!-- ============================== contribution table ============================== -->
     <section class="panel table-panel" aria-labelledby="table-h">
       <div class="panel-head">
-        <h2 id="table-h">Per-effect contributions</h2>
-        <span class="muted small">ADR-0014 P-remove: ϖ̇(S) − ϖ̇(S∖X)</span>
+        <div class="head-l"><h2 id="table-h">Per-effect contributions</h2><button type="button" class="tip" data-tip="contribution-table"></button></div>
+        <span class="muted small"><button type="button" class="term" data-tip="reference-ids">ADR-0014</button> <button type="button" class="term" data-tip="p-remove">P-remove</button>: ϖ̇(S) − ϖ̇(S∖X)</span>
       </div>
       <div class="table-tools">
-        <label for="t-span">Compute contributions over</label>
+        <span class="lab"><label for="t-span" data-term="table-span">Compute contributions over</label><button type="button" class="tip" data-tip="table-span"></button></span>
         <input id="t-span" name="table-span" type="number" min="10" max="20000" step="10" value="200" inputmode="numeric" autocomplete="off">
         <span>years</span>
-        <label class="check"><input type="checkbox" id="t-padd"> Also P-add</label>
-        <button type="button" id="t-run" class="primary">Compute</button>
-        <button type="button" id="t-cancel" hidden>Cancel</button>
-        <button type="button" id="t-csv" disabled>Export CSV</button>
+        <span class="check-wrap"><label class="check" data-term="p-add"><input type="checkbox" id="t-padd"> Also P-add</label><button type="button" class="tip" data-tip="p-add"></button></span>
+        <button type="button" id="t-run" class="primary" data-term="contribution-table">Compute</button>
+        <button type="button" id="t-cancel" data-term="leg" hidden>Cancel</button>
+        <span class="check-wrap"><button type="button" id="t-csv" disabled>Export CSV</button><button type="button" class="tip" data-tip="export-csv"></button></span>
       </div>
-      <p class="help">Each leg is an independent run in its own worker: the same engine, span, estimator and initial conditions, differing only by the one effect removed. Rows within 3σ of zero are greyed: below resolution for this span.</p>
+      <p class="help">Each <button type="button" class="term" data-tip="leg">leg</button> is an independent run in its own worker: the same engine, span, <button type="button" class="term" data-tip="estimator">estimator</button> and <button type="button" class="term" data-tip="initial-conditions">initial conditions</button>, differing only by the one effect removed. Rows within <button type="button" class="term" data-tip="three-sigma">3σ of zero</button> are greyed: below resolution for this span.</p>
       <div id="budget" class="budget" hidden>
+        <p class="budget-head"><button type="button" class="term" data-tip="budget">Rate budget</button> <span class="muted small">positive contributions to scale</span></p>
         <div id="budget-bar" class="budget-bar" aria-hidden="true"></div>
         <ul id="budget-key" class="budget-key" aria-label="Positive contributions, largest first"></ul>
       </div>
-      <div id="t-meta" class="table-meta parts"></div>
+      <div class="with-tip top"><div id="t-meta" class="table-meta parts"></div><button type="button" class="tip" data-tip="metadata"></button></div>
       <div class="table-scroll" tabindex="0" role="region" aria-labelledby="table-h">
         <table id="contrib">
           <caption class="sr-only">Perihelion-rate contribution of each effect</caption>
           <thead>
             <tr>
-              <th scope="col">Effect</th>
-              <th scope="col" class="num">ϖ̇(S)−ϖ̇(S∖X) ″/cy</th>
-              <th scope="col" class="num">Reference</th>
-              <th scope="col" class="num">Diff</th>
-              <th scope="col" class="num padd-col" hidden>P-add (info only)</th>
-              <th scope="col">Leg</th>
+              <th scope="col">Effect <button type="button" class="tip" data-tip="effects-toggles"></button></th>
+              <th scope="col" class="num">ϖ̇(S)−ϖ̇(S∖X) ″/cy <button type="button" class="tip" data-tip="p-remove"></button></th>
+              <th scope="col" class="num">Reference <button type="button" class="tip" data-tip="reference-value"></button></th>
+              <th scope="col" class="num">Diff <button type="button" class="tip" data-tip="diff"></button></th>
+              <th scope="col" class="num padd-col" hidden>P-add (info only) <button type="button" class="tip" data-tip="p-add"></button></th>
+              <th scope="col">Leg <button type="button" class="tip" data-tip="leg"></button></th>
             </tr>
           </thead>
           <tbody id="contrib-body">
@@ -268,38 +287,40 @@
 
 <!-- ============================== explainer ============================== -->
 <section class="explain" aria-labelledby="explain-h">
-  <h2 id="explain-h">What you are looking at</h2>
+  <div class="explain-head"><h2 id="explain-h">What you are looking at</h2>
+    <button type="button" class="gloss-btn" data-glossary-open aria-haspopup="dialog">Open the glossary</button></div>
   <div class="explain-grid">
     <details open>
       <summary>The measurement</summary>
-      <p>The engine integrates the Sun, Mercury and whichever bodies are switched on, from the DE440 initial conditions at JD 2440400.5 TDB (1969-06-28). At each perihelion passage it records the longitude of Mercury's position projected on the Park et al. (2017) mean-orbit plane (ADR-0011). A least-squares fit of those longitudes against time gives the advance rate ϖ̇ in arcseconds per Julian century, with a jack-knife uncertainty. The thin wiggly line is the osculating ϖ, which swings by tens of arcseconds with the planets' synodic periods; it is drawn, not fitted.</p>
+      <p>The engine integrates the Sun, Mercury and whichever bodies are switched on, from the <button type="button" class="term" data-tip="de440">DE440</button> <button type="button" class="term" data-tip="initial-conditions">initial conditions</button> at <button type="button" class="term" data-tip="julian-date">JD</button> 2440400.5 <button type="button" class="term" data-tip="tdb">TDB</button> (1969-06-28). At each <button type="button" class="term" data-tip="perihelion-passage">perihelion passage</button> it records the <button type="button" class="term" data-tip="projected-longitude">longitude of Mercury's position projected</button> on the <button type="button" class="term" data-tip="park17-plane">Park et al. (2017) mean-orbit plane</button> (ADR-0011). A <button type="button" class="term" data-tip="least-squares">least-squares fit</button> of those longitudes against time gives the advance rate <button type="button" class="term" data-tip="varpi-dot">ϖ̇</button> in <button type="button" class="term" data-tip="arcsec-per-century">arcseconds per Julian century</button>, with a <button type="button" class="term" data-tip="jackknife">jack-knife uncertainty</button>. The thin wiggly line is the <button type="button" class="term" data-tip="osculating-varpi">osculating ϖ</button>, which swings by tens of arcseconds with the planets' <button type="button" class="term" data-tip="synodic-period">synodic periods</button>; it is drawn, not fitted.</p>
       <p>Short spans give wobbly rates: the periodic perturbations do not average out. Park's literature numbers use a 2000-year window; for a comparable figure run 1000 years or more.</p>
     </details>
     <details>
       <summary>Planets (Newtonian pull)</summary>
-      <p>Each planet's gravity tugs Mercury's orbit around. Removing a planet from the integration is Park's “GM set to zero” (ADR-0014 P-remove). Venus (≈277 ″/cy), Jupiter (≈154) and the Earth–Moon barycentre (≈91) dominate; Saturn adds ≈7, Mars ≈2.5, Uranus and Neptune a fraction of an arcsecond. Together ≈532 ″/cy, the part Le Verrier could explain.</p>
+      <p>Each planet's <button type="button" class="term" data-tip="newtonian-gravity">gravity</button> tugs Mercury's orbit around. Removing a planet from the integration is <button type="button" class="term" data-tip="park17">Park's</button> “<button type="button" class="term" data-tip="gm">GM</button> set to zero” (ADR-0014 <button type="button" class="term" data-tip="p-remove">P-remove</button>). Venus (≈277 ″/cy), Jupiter (≈154) and the Earth–Moon barycentre (≈91) dominate; Saturn adds ≈7, Mars ≈2.5, Uranus and Neptune a fraction of an arcsecond. Together ≈532 ″/cy, the part Le Verrier could explain.</p>
     </details>
     <details>
       <summary>General relativity</summary>
-      <p>The 1PN Schwarzschild field of the Sun adds 6πGM/(c²a(1−e²)) per orbit: ≈42.98 ″/cy, the famous anomaly. With PPN parameters it scales as (2+2γ−β)/3. The “EIH” option applies 1PN among all bodies instead of the Sun alone (IAS15 only). WHFast uses a GR potential that reproduces the same secular advance, only for β = γ = 1.</p>
+      <p>The <button type="button" class="term" data-tip="post-newtonian">1PN</button> Schwarzschild field of the Sun adds 6πGM/(c²a(1−e²)) per orbit: ≈42.98 ″/cy, the famous <button type="button" class="term" data-tip="gr">anomaly</button>. With <button type="button" class="term" data-tip="ppn">PPN parameters</button> it scales as (2+2γ−β)/3. The “<button type="button" class="term" data-tip="eih">EIH</button>” option applies 1PN among all bodies instead of the Sun alone (IAS15 only). WHFast uses a <button type="button" class="term" data-tip="gr-potential">GR potential</button> that reproduces the same secular advance, only for β = γ = 1.</p>
     </details>
     <details>
       <summary>Solar J2 and Lense–Thirring</summary>
-      <p>The Sun is slightly oblate (J2 ≈ 2.2×10⁻⁷), adding ≈0.03 ″/cy. Its spin drags inertial frames (Lense–Thirring), about −0.002 ″/cy. Both are tiny: you need hundreds of years before they rise above the uncertainty. The J2 and spin overrides scale the real physics and mark the run non-nominal; the display exaggeration only changes the drawing.</p>
+      <p>The Sun is slightly oblate (<button type="button" class="term" data-tip="solar-j2">J2</button> ≈ 2.2×10⁻⁷), adding ≈0.03 ″/cy. Its spin drags inertial frames (<button type="button" class="term" data-tip="lense-thirring">Lense–Thirring</button>), about −0.002 ″/cy. Both are tiny: on 300–400-year runs the <button type="button" class="term" data-tip="three-sigma">3σ uncertainty</button> is still at or above the J2 effect and far above Lense–Thirring, so those rows are usually greyed. The J2 and spin overrides scale the real physics and mark the run non-nominal; the display exaggeration only changes the drawing.</p>
     </details>
     <details>
       <summary>Asteroids</summary>
-      <p>The first N numbered asteroids of DE440 (default 16) as point masses. Park finds ≈0.001 ″/cy for 343 of them, below what the viewer can resolve on spans under about 1000 years.</p>
+      <p>The first N numbered <button type="button" class="term" data-tip="asteroids">asteroids</button> of DE440 (default 16) as point masses. Park finds ≈0.001 ″/cy for 343 of them, below what the viewer can resolve on spans under about 1000 years.</p>
     </details>
     <details>
       <summary>Rung lab</summary>
-      <p>Mercury alone around a fixed Sun, to compare central-force models: Newton (0), special relativity in two gauges (SR-a 7.16, SR-b 50.14 or 35.82 ″/cy) and GR (42.98). The SR rungs show how much a “relativistic” label alone fixes; the split between SR and GR parts depends on the gauge and is not observable (ADR-0012).</p>
+      <p>Mercury alone around a fixed Sun, to compare central-force models: Newton (0), special relativity in two <button type="button" class="term" data-tip="gauge">gauges</button> (<button type="button" class="term" data-tip="sr-a">SR-a</button> 7.16, <button type="button" class="term" data-tip="sr-b">SR-b</button> 50.14 or 35.82 ″/cy) and GR (42.98). The SR rungs show how much a “relativistic” label alone fixes; the split between SR and GR parts depends on the gauge and is not observable (ADR-0012).</p>
     </details>
     <details id="frame-caveat">
       <summary>Why not 5600 ″/cy?</summary>
+      <p class="help">In short: <button type="button" class="term" data-tip="frame-caveat">the observed figure includes the precession of the Earth's axis</button>.</p>
       <ul>
-        <li>This simulation is inertial: ICRF axes, no rotating reference frame.</li>
-        <li>The observed ≈5600 ″/cy (Clemence 1947: 5599.74 ± 0.41 ″/cy) is measured against the equinox of date. It includes about 5025 ″/cy of general precession of the equinoxes (Clemence's value; the IAU 2006 p<sub>A</sub> = 5028.796195 ″/cy is marked UNVERIFIED in PHY-017). No inertial-frame simulation shows that part.</li>
+        <li>This simulation is <button type="button" class="term" data-tip="inertial-frame">inertial</button>: <button type="button" class="term" data-tip="icrf">ICRF</button> axes, no rotating reference frame.</li>
+        <li>The observed ≈5600 ″/cy (<button type="button" class="term" data-tip="clemence">Clemence 1947</button>: 5599.74 ± 0.41 ″/cy) is measured against the <button type="button" class="term" data-tip="equinox-of-date">equinox of date</button>. It includes about 5025 ″/cy of <button type="button" class="term" data-tip="general-precession">general precession of the equinoxes</button> (Clemence's value; the IAU 2006 p<sub>A</sub> = 5028.796195 ″/cy is marked UNVERIFIED in PHY-017). No inertial-frame simulation shows that part.</li>
         <li>Totals depend on the reference plane: ≈575.31 ″/cy on the Park17 mean-orbit plane and ≈577.72 ″/cy on the fixed J2000 ecliptic (ADR-0011).</li>
         <li>Adding 575.31 and 5028.80 does not reproduce the equinox-referred value, because the two numbers refer to different planes. The viewer makes no comparison with the observed value tighter than ±0.41 ″/cy.</li>
       </ul>
@@ -309,10 +330,10 @@
 
 <!-- ============================== transport ============================== -->
 <footer class="transport" aria-label="Playback">
-  <button type="button" id="play" class="primary" aria-pressed="false" disabled>Play</button>
-  <button type="button" id="restart" disabled>Restart</button>
+  <button type="button" id="play" class="primary" aria-pressed="false" disabled data-term="transport">Play</button>
+  <button type="button" id="restart" disabled data-term="transport">Restart</button>
   <span class="tgroup">
-    <label for="speed">Speed</label>
+    <label for="speed" data-term="sim-speed">Speed</label>
     <select id="speed" name="speed">
       <option value="0.1">0.1 yr/s</option>
       <option value="1" selected>1 yr/s</option>
@@ -321,13 +342,33 @@
       <option value="max">max</option>
     </select>
   </span>
-  <div class="tstat"><span class="muted">Date (TDB)</span> <span id="t-date">–</span></div>
-  <div class="tstat"><span class="muted">Integrated</span> <span id="t-span-done">–</span></div>
-  <div class="tstat"><span class="muted">Speed</span> <span id="t-rate">–</span></div>
-  <div class="tstat"><span class="muted">Engine</span> <span id="t-engine">–</span></div>
-  <progress id="t-progress" max="1" value="0" aria-label="Fraction of the run span integrated"></progress>
+  <div class="tstat"><button type="button" class="term muted" data-tip="calendar-date">Date (TDB)</button> <span id="t-date">–</span></div>
+  <div class="tstat"><button type="button" class="term muted" data-tip="integrated">Integrated</button> <span id="t-span-done">–</span></div>
+  <div class="tstat"><button type="button" class="term muted" data-tip="sim-speed">Speed</button> <span id="t-rate">–</span></div>
+  <div class="tstat"><button type="button" class="term muted" data-tip="integrator">Engine</button> <span id="t-engine">–</span></div>
+  <progress id="t-progress" max="1" value="0" aria-label="Fraction of the run span integrated" data-term="integrated"></progress>
+  <button type="button" class="tip" data-tip="transport"></button>
 </footer>
 
+<!-- ============================== glossary ============================== -->
+<dialog id="glossary" class="gloss" aria-labelledby="gloss-h">
+  <div class="gloss-head">
+    <div class="gloss-title">
+      <h2 id="gloss-h">Glossary</h2>
+      <button type="button" class="gloss-close" data-glossary-close>Close</button>
+    </div>
+    <div class="gloss-search">
+      <label for="gloss-search">Filter</label>
+      <input id="gloss-search" type="search" placeholder="e.g. TDB, jack-knife, Venus" autocomplete="off" spellcheck="false">
+      <span id="gloss-count" class="muted small" role="status" aria-live="polite"></span>
+    </div>
+    <nav id="gloss-nav" class="gloss-nav" aria-label="Glossary sections"></nav>
+  </div>
+  <div id="gloss-list" class="gloss-list"></div>
+</dialog>
+
+<script src="glossary.js"></script>
+<script src="glossary-ui.js"></script>
 <script src="fav.js"></script>
 <script src="viewer.js"></script>
 </body>

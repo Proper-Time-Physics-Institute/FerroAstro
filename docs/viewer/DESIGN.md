@@ -441,7 +441,8 @@ the viewer's forward runs from 1969:
 * `FIT_PERIODIC = 1`: include the `park17_table2_frequencies` terms whose period ≤ span/2 (a term
   that does not complete two cycles is degenerate with the polynomial). Include Q only when
   span ≥ 500 yr. The included labels go into the `fit_model` string.
-* `FIT_PERIODIC = 0`: B + ϖ̇t only (useful for showing why short-span rates wobble).
+* `FIT_PERIODIC = 0`: no periodic terms, B + ϖ̇t, with Qt² under the same span rule as above (useful for showing
+  why short-span rates wobble).
 * Minimum: 20 passages (≈ 5 yr); below that `fav_fit` returns `FAV_E_FIT`.
 
 ### 6.4 Per-effect contribution table (run with − run without, ADR-0014 P-remove)
@@ -470,7 +471,8 @@ For the current toggle set S (the "full" configuration) and every effect X ∈ S
 
 Files: `index.html`, `viewer.css`, `viewer.js` (main thread), `worker.js` (wasm host), `fav.js` (the
 ABI constants and a ~100-line wrapper: instantiate, call, copy buffers, decode UTF-8, all shared by
-the workers). The UI also includes `smoke.mjs` (§9). Each file starts with an SPDX header (`<!-- -->`
+the workers), `glossary.js` and `glossary-ui.js` (the explanations, §7.1a). The UI also includes `smoke.mjs`
+(§9) and `check-glossary.mjs` (§7.1a). Each file starts with an SPDX header (`<!-- -->`
 for HTML, `//` for JS, `/* */` for CSS). There are no external URLs, fonts or CDNs. It works from
 `python3 -m http.server` in that directory after copying `ferroastro_viewer.wasm` next to
 `index.html` (§9). Workers are classic workers (`new Worker("worker.js")`) using `fetch` +
@@ -521,6 +523,27 @@ type).
 
   If the panel offers a "construct the equinox-referred value" line, it shows the construction
   explicitly, cites p_A and makes no comparison tighter than ±0.41 ″/cy (PHY-017).
+
+### 7.1a Explanations: tooltips and glossary
+
+Every user-visible control, label, readout, chart key entry, table column and row, and technical term carries
+an explanation, so a reader can tell what each number means. All text lives in one record per term in
+`web/glossary.js` (`FA_GLOSSARY.entries[id]`: term, group, a 1–2 sentence tooltip text, an optional unit and
+typical value, a 2–5 sentence glossary text, why it matters for Mercury's perihelion, related ids). It is display
+text only and follows §3, §6 and §8; no value in it feeds the physics.
+
+`web/glossary-ui.js` presents it, with no dependencies: one shared tooltip (`role="tooltip"`, linked by
+`aria-describedby`) shown on hover, keyboard focus and tap of small info buttons (`button.tip[data-tip]`), inline
+dotted terms (`button.term[data-tip]`) and controls whose element or label has `data-term`. A click or tap pins
+it open as a toggletip with a link to the glossary entry; Esc closes it, and hover does not reopen that trigger until the pointer leaves it (live readouts whose text changes make the browser re-fire `pointerover` on a resting pointer). It is placed inside the viewport and
+above the fixed transport bar, uses the colour tokens of `viewer.css`, and its fade obeys
+`prefers-reduced-motion`. A `MutationObserver` covers the markup `viewer.js` generates (toggles, legend, readout,
+table, budget). The tooltip node always stays a child of `<body>`, never inside markup `viewer.js` re-renders;
+Tab from an open info button moves into its glossary link and on to the next control. `viewer.js` updates the
+readout parts in place (same nodes, new text), so a hovered or focused term survives the twice-a-second fit
+refresh. On coarse pointers each info button has a 44 px hit area around its 24 px ring. The glossary is a modal `<dialog>` drawer, grouped by topic, alphabetical within a group, with a
+filter box and links between entries. `web/check-glossary.mjs` (node, no packages) checks that every hook names a
+non-empty entry.
 
 ### 7.2 Worker protocol (main ↔ worker messages)
 

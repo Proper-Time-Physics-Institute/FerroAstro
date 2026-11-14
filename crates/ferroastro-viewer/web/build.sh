@@ -6,7 +6,7 @@
 # index.html (docs/viewer/DESIGN.md section 9). The .wasm is a build artefact; it is git-ignored.
 #
 #   crates/ferroastro-viewer/web/build.sh            build and copy
-#   crates/ferroastro-viewer/web/build.sh --smoke    also run the node smoke test
+#   crates/ferroastro-viewer/web/build.sh --smoke    also run the node smoke test and the glossary check
 #   crates/ferroastro-viewer/web/build.sh --serve    also serve this directory on http://localhost:8000/
 set -eu
 
@@ -27,7 +27,7 @@ echo "copied ferroastro_viewer.wasm ($(wc -c < "$here/ferroastro_viewer.wasm") b
 
 for arg in "$@"; do
   case "$arg" in
-    --smoke) node "$here/smoke.mjs" "$here/ferroastro_viewer.wasm" ;;
+    --smoke) node "$here/smoke.mjs" "$here/ferroastro_viewer.wasm" && node "$here/check-glossary.mjs" ;;
     --serve)
       echo "serving $here on http://localhost:${PORT:-8000}/ (Ctrl-C to stop)"
       cd "$here" && exec python3 -m http.server "${PORT:-8000}" --bind 127.0.0.1
