@@ -22,11 +22,18 @@
    CODEOWNERS review through the ORG-011 meta surface (TST-004). The `ratchet` check also fails widened
    tolerances, downgraded oracles, deleted tests, pytest configuration changes, and Rust `#[ignore]`/`cfg`
    gates or Python skip/xfail/collection gates off the allowlist that are new on the test or item they stand
-   on (moving a gate onto another test counts), unless a maintainer approves. Only the forms TST-006 lists
-   are detected; its notes list the known undetected ones (`known_gap_*`, e.g. a skip built at run time,
-   an emptied test body, Rust `#[should_panic]` on a failing test, an empty
-   `parametrize`, an allowlisted feature `cfg` that hides a test), and pytest has no test-count
-   backstop. Do not rely on CI to catch those: disclose them in the PR (TST-006, ADR-0015).
+   on (moving a gate onto another test counts), unless a maintainer approves. The ratchet detects exactly these
+   forms of test weakening, and no others (TST-006 notes define each `detects_*` form precisely): a deleted or
+   renamed `#[test]` fn under `crates/` or `test*` function/method in a `tools/` test file; a new Rust
+   `ignore`/`cfg`/`cfg_attr` attribute under `crates/` off the allowlist; a fall in the nextest executed count;
+   under `tools/`, a new `skip`/`skipif`/`xfail`/`importorskip`/unittest-skip name, pytest `exit`, an assignment
+   to `pytestmark`/`__test__`/`collect_ignore`/`collect_ignore_glob`, a `def pytest_*` hook or an unparsable
+   file; and a pytest configuration change in `pytest.toml`, `.pytest.toml`, `pytest.ini`, `.pytest.ini`,
+   `tox.ini`, `setup.cfg` or `pyproject.toml` under `tools/`. Any other way of skipping, deselecting, hiding or
+   neutering a test is NOT detected, and pytest has no test-count backstop. TST-006 notes give a
+   non-exhaustive list of examples (`known_gap_*`, e.g. a skip built at run time, an emptied test body, Rust
+   `#[should_panic]` on a failing test, an empty `parametrize`, a test file moved out of `testpaths`). Do not
+   rely on CI for those: reviewers check for them, and authors disclose them in the PR (TST-006, ADR-0015).
 7. **UNVERIFIED and secondary-source [S] values** may not be oracles until they are closed in
    [OPEN-ITEMS.md](../requirements/OPEN-ITEMS.md) (PHY-018).
 8. **Compile-fail tests** (`trybuild`) prove that type-level physics guards work (API-001).

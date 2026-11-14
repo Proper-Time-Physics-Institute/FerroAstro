@@ -35,6 +35,13 @@
 /tools/canary/                  @temoTxt @Zorns-Lemmon
 /tools/pyproject.toml           @temoTxt @Zorns-Lemmon
 /tools/uv.lock                  @temoTxt @Zorns-Lemmon
+# pytest configuration files at any depth under tools/ (also a ratchet finding, TST-006)
+/tools/**/pytest.toml @temoTxt @Zorns-Lemmon
+/tools/**/.pytest.toml @temoTxt @Zorns-Lemmon
+/tools/**/pytest.ini @temoTxt @Zorns-Lemmon
+/tools/**/.pytest.ini @temoTxt @Zorns-Lemmon
+/tools/**/tox.ini @temoTxt @Zorns-Lemmon
+/tools/**/setup.cfg @temoTxt @Zorns-Lemmon
 /tools/tests/conftest.py        @temoTxt @Zorns-Lemmon
 /tools/tests/test_trace.py      @temoTxt @Zorns-Lemmon
 /tools/tests/test_lints.py      @temoTxt @Zorns-Lemmon

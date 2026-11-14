@@ -363,7 +363,10 @@ def test_moving_a_python_gate_onto_another_test_is_a_new_gate(tmp_path: Path) ->
         ("tools/tests/sub/conftest.py", 'collect_ignore = ["x.py"]\n', "collect_ignore"),
         ("tools/tests/sub/conftest.py", 'collect_ignore_glob = ["*"]\n', "collect_ignore_glob"),
         ("tools/tests/sub/conftest.py", 'collect_ignore.append("x.py")\n', "collect_ignore"),
+        ("tools/pytest.toml", '[pytest]\naddopts = ["-k", "nothing"]\n', "pytest configuration"),
+        ("tools/.pytest.toml", '[pytest]\naddopts = ["-k", "nothing"]\n', "pytest configuration"),
         ("tools/pytest.ini", "[pytest]\naddopts = -k nothing\n", "pytest configuration"),
+        ("tools/tests/.pytest.ini", "[pytest]\naddopts = -k nothing\n", "pytest configuration"),
         ("tools/tests/tox.ini", "[pytest]\naddopts = -k nothing\n", "pytest configuration"),
         ("tools/setup.cfg", "[tool:pytest]\naddopts = -k nothing\n", "pytest configuration"),
         ("tools/pyproject.toml", '[tool.pytest.ini_options]\naddopts = "-k nothing"\n', "pytest"),
@@ -381,6 +384,24 @@ def test_python_collection_controls_are_found(
     assert found
     assert all(f.cls == "approval" for f in found)
     assert any(expect in f.what or expect in f.where for f in found), found
+
+
+# Verifies: TST-006
+@pytest.mark.parametrize(
+    "stop",
+    [
+        "import pytest\npytest.exit('x')\n",
+        "import pytest as p\np.exit('x')\n",
+        "from pytest import exit as e\ne('x')\n",
+        "import _pytest.outcomes as o\no.exit('x')\n",
+        "from _pytest import outcomes\noutcomes.exit('x')\n",
+        "import _pytest.outcomes\n_pytest.outcomes.exit('x')\n",
+        "from _pytest.outcomes import exit\nexit('x')\n",
+    ],
+)
+def test_pytest_exit_under_any_import(stop: str) -> None:
+    """`exit` reached through a name bound by importing pytest or _pytest is a gate."""
+    assert ratchet.python_gates(stop), stop
 
 
 # Verifies: TST-006
@@ -560,11 +581,41 @@ def test_cli_help(cmd: list[str]) -> None:
     assert res.returncode == 0
 
 
-# --- Known gaps --------------------------------------------------------------------------------
-# Each test below pins a form of test weakening that the ratchet does NOT detect today. They assert
-# the current behaviour (no finding), so a fix that closes a gap fails its test: delete that test
-# and the gap's entry in KNOWN_GAPS, TST-006 notes and the ratchet.py docstring together. The
-# follow-up issue #55 ("ratchet: close the detection gaps listed in TST-006") tracks closing them.
+# --- What is detected, and examples of what is not ---------------------------------------------
+# The ratchet's guarantee is the closed list DETECTED_FORMS: each `detects_*` id names one form
+# that TST-006 statement/notes and the ratchet.py docstring describe, mapped to the tests here that
+# pin it. Anything else is not detected. KNOWN_GAPS is a NON-EXHAUSTIVE list of examples of
+# undetected forms, each pinned by `test_<id>` asserting no finding, so a fix that closes one fails
+# its test: then move the form into DETECTED_FORMS and the docs, together. Issue #55 collects them.
+
+DETECTED_FORMS = {
+    "detects_rs_test_deleted": (
+        "test_deleted_test_and_new_gates",
+        "test_rust_tests_hidden_on_one_line_or_in_comments_are_found",
+    ),
+    "detects_rs_gate_attr": (
+        "test_rust_gate_spellings_and_hiding_cfgs_need_approval",
+        "test_allowlisted_gates_pass",
+        "test_moving_a_gate_onto_another_test_is_a_new_gate",
+    ),
+    "detects_rs_executed_count": ("test_executed_count_from_nextest_json",),
+    "detects_py_test_deleted": (
+        "test_python_tests_come_from_the_ast",
+        "test_python_collection_controls_are_found",
+    ),
+    "detects_py_gate_name": (
+        "test_every_detected_python_gate_needs_approval",
+        "test_moving_a_python_gate_onto_another_test_is_a_new_gate",
+    ),
+    "detects_py_exit": ("test_pytest_exit_under_any_import",),
+    "detects_py_collection_target": ("test_python_collection_controls_are_found",),
+    "detects_py_hook_def": ("test_every_detected_python_gate_needs_approval",),
+    "detects_py_unparsable": ("test_every_detected_python_gate_needs_approval",),
+    "detects_pytest_config": (
+        "test_python_collection_controls_are_found",
+        "test_non_pytest_pyproject_change_is_not_a_finding",
+    ),
+}
 
 KNOWN_GAPS = (
     "known_gap_py_runtime_gate",
@@ -583,6 +634,21 @@ KNOWN_GAPS = (
     "known_gap_py_fixture_on_test",
     "known_gap_py_assigned_hook",
     "known_gap_rs_verdict_attribute",
+    "known_gap_py_aliased_exit",
+    "known_gap_py_moved_out_of_testpaths",
+    "known_gap_py_replacing_decorator",
+    "known_gap_py_imported_marker",
+    "known_gap_rs_macro_gate",
+)
+
+# Every document that states the guarantee says it is a closed list and that the examples are not.
+GUARANTEE_DOCS = (
+    "docs/requirements/TST.md",
+    "tools/ratchet.py",
+    "ci/ratchet.toml",
+    "docs/adr/0015-evidence-gated-merges.md",
+    "docs/standards/testing.md",
+    ".github/PULL_REQUEST_TEMPLATE.md",
 )
 
 PY_GAP_BASE = (
@@ -610,15 +676,39 @@ def rs_gap(tmp_path: Path, base_files: dict[str, str], head_files: dict[str, str
 
 # Verifies: TST-006
 def test_known_gaps_are_documented() -> None:
-    """Every gap pinned here is named in TST-006 notes and the ratchet.py docstring, and back."""
+    """The closed list of detected forms and the example gaps agree across docs, code and tests.
+
+    TST-006 and the ratchet.py docstring name exactly the `detects_*` ids of DETECTED_FORMS and
+    the `known_gap_*` ids of KNOWN_GAPS; each id is pinned by a test here; every document that
+    states the guarantee calls the detected list exact and the example list non-exhaustive; and
+    the names the code matches (gate names, collection targets, config files) are all written out.
+    """
     tst = (ROOT / "docs" / "requirements" / "TST.md").read_text(encoding="utf-8")
+    tst006 = re.search(r"id: TST-006\n.*?```", tst, re.DOTALL)
+    assert tst006 is not None
+    tst = tst006.group(0)
     doc = ratchet.__doc__ or ""
-    named = set(re.findall(r"known_gap_\w+", tst)) | set(re.findall(r"known_gap_\w+", doc))
-    assert named == set(KNOWN_GAPS)
+    this = Path(__file__).read_text(encoding="utf-8")
+    for text in (tst, doc):
+        assert set(re.findall(r"detects_\w+", text)) == set(DETECTED_FORMS)
+        assert set(re.findall(r"known_gap_\w+", text)) == set(KNOWN_GAPS)
+        for name in ratchet.PY_GATE_NAMES | ratchet.PY_GATE_TARGETS | ratchet.PY_CONFIG_FILES:
+            assert name in text, name
+    for form, tests in DETECTED_FORMS.items():
+        for test in tests:
+            assert f"def {test}(" in this, (form, test)
     for gap in KNOWN_GAPS:
-        assert gap in tst, gap
-        assert gap in doc, gap
-        assert f"def test_{gap}" in Path(__file__).read_text(encoding="utf-8"), gap
+        assert f"def test_{gap}(" in this, gap
+    for rel in GUARANTEE_DOCS:
+        text = " ".join((ROOT / rel).read_text(encoding="utf-8").split())
+        text = re.sub(r"^# |(?<= )# ", "", text)  # TOML comment markers
+        assert "detects exactly these forms" in text, rel
+        assert "non-exhaustive" in text, rel
+        assert "NOT detected" in text, rel
+    for rel in (".github/CODEOWNERS",):
+        owners = (ROOT / rel).read_text(encoding="utf-8")
+        for name in ratchet.PY_CONFIG_FILES - {"pyproject.toml"}:
+            assert f"/tools/**/{name} " in owners, name
 
 
 # Verifies: TST-006
@@ -837,5 +927,65 @@ def test_known_gap_rs_verdict_attribute(tmp_path: Path, attr: str) -> None:
         tmp_path,
         {"crates/c/tests/t.rs": "#[test]\nfn t() {\n    assert_eq!(1, 2);\n}\n"},
         {"crates/c/tests/t.rs": f"#[test]\n{attr}\nfn t() {{\n    assert_eq!(1, 2);\n}}\n"},
+    )
+    assert found == []
+
+
+# Verifies: TST-006
+@pytest.mark.parametrize(
+    "stop",
+    [
+        "p = pytest\n\n\ndef test_z():\n    p.exit('x')\n",
+        "import importlib\n\n\ndef test_z():\n    importlib.import_module('pytest').exit('x')\n",
+    ],
+)
+def test_known_gap_py_aliased_exit(tmp_path: Path, stop: str) -> None:
+    """`exit` through a module object rebound or imported at run time is not seen."""
+    assert py_gap(tmp_path, PY_GAP_BASE + "\n\n" + stop) == []
+
+
+# Verifies: TST-006
+def test_known_gap_py_moved_out_of_testpaths(tmp_path: Path) -> None:
+    """Python tests are keyed by file name, so moving a file out of `testpaths` keeps its tests."""
+    base, h = tmp_path / "b", tmp_path / "h"
+    for root in (base, h):
+        write(root, "tools/pyproject.toml", '[tool.pytest.ini_options]\ntestpaths = ["tests"]\n')
+    write(base, "tools/tests/test_a.py", "def test_a():\n    assert 1\n")
+    write(h, "tools/attic/test_a.py", "def test_a():\n    assert 1\n")
+    assert ratchet.source_findings(base, h, CFG) == []
+
+
+# Verifies: TST-006
+def test_known_gap_py_replacing_decorator(tmp_path: Path) -> None:
+    """A decorator that replaces the test with a no-op leaves the name, so nothing is deleted."""
+    head = PY_GAP_BASE.replace(
+        "def test_a():", "def nop(f):\n    return lambda: None\n\n\n@nop\ndef test_a():"
+    )
+    assert py_gap(tmp_path, head) == []
+
+
+# Verifies: TST-006
+def test_known_gap_py_imported_marker(tmp_path: Path) -> None:
+    """`pytestmark` bound by an import, not an assignment, is not a gate in the importing file."""
+    base, h = tmp_path / "b", tmp_path / "h"
+    marks = "import pytest\n\npytestmark = pytest.mark.skip(reason='helpers')\n"
+    for root in (base, h):
+        write(root, "tools/tests/marks.py", marks)
+    write(base, "tools/tests/test_a.py", PY_GAP_BASE)
+    write(h, "tools/tests/test_a.py", "from marks import pytestmark\n" + PY_GAP_BASE)
+    assert ratchet.source_findings(base, h, CFG) == []
+
+
+# Verifies: TST-006
+def test_known_gap_rs_macro_gate(tmp_path: Path) -> None:
+    """An attribute passed to a macro as a token (`#[$a]`, invoked `t!(ignore)`) is not seen."""
+    mac = (
+        "macro_rules! t {\n    ($a:meta) => {\n        #[$a]\n"
+        "        #[test]\n        fn t() {}\n    };\n}\n"
+    )
+    found = rs_gap(
+        tmp_path,
+        {"crates/c/tests/t.rs": mac + "t!(inline);\n"},
+        {"crates/c/tests/t.rs": mac + "t!(ignore);\n"},
     )
     assert found == []

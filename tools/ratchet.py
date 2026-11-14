@@ -43,66 +43,103 @@ Each finding has a class:
 * ``reject``: never passes. A computed-reference vector whose ``generated_by`` SHA is a commit of
   this PR (TST-004): the generator must land, reviewed, before the golden it produces.
 
-Detected gate forms (each pinned by a test in tools/tests/test_ratchet.py):
+What the ratchet guarantees about tests (TST-006). It detects exactly these forms of test
+weakening; each ``detects_*`` id is pinned by the tests listed for it in ``DETECTED_FORMS`` in
+tools/tests/test_ratchet.py, and nothing else is detected:
 
-* Rust, in ``.rs`` files under ``crates/``: any outer or inner ``ignore``, ``cfg`` or ``cfg_attr``
-  attribute outside comments and string literals, with whitespace inside it normalised (so
-  ``# [ignore]``, ``#[ ignore ]`` and attributes split over lines count), including
-  ``cfg_attr(..., ignore)``, unless it matches ``gate_allowlist`` in ``ci/ratchet.toml`` and names
-  only features the base tree declares.
-* Python, in any ``.py`` file under ``tools/``, by parsing: decorator-form ``@pytest.mark.skip`` /
-  ``skipif`` / ``xfail`` under any module alias or as bare ``@mark.skip``; ``pytest.skip()``,
-  ``pytest.xfail()``, ``pytest.importorskip()`` and ``pytest.exit()`` calls anywhere; those names
-  imported under any alias; unittest ``skip``/``skipIf``/``skipUnless``/``skipTest``/
-  ``expectedFailure``/``SkipTest``; assignments to ``pytestmark``, ``__test__``,
-  ``collect_ignore``, ``collect_ignore_glob``; ``def pytest_*`` hooks; a file that does not parse
-  (:func:`python_gates`).
+* ``detects_rs_test_deleted``: a Rust test removed or renamed. A test is a ``fn`` in a ``.rs``
+  file under ``crates/`` whose run of outer attributes holds ``#[test]`` or ``#[<path>::test]``,
+  outside comments and string literals; tests are counted by crate directory and function name
+  (:func:`rust_scan`).
+* ``detects_rs_gate_attr``: a new ``ignore``, ``cfg`` or ``cfg_attr`` attribute, outer or inner,
+  in a ``.rs`` file under ``crates/``, outside comments and string literals, with whitespace
+  normalised (``# [ignore]``, ``#[ ignore ]``, an attribute split over lines). New means its
+  (file, inline ``mod`` path + item kind + item name, normalised text) was not in the merge base,
+  so a gate moved onto another item is new. It passes only if it matches ``gate_allowlist`` in
+  ``ci/ratchet.toml`` and names no Cargo feature that is undeclared in the merge base.
+* ``detects_rs_executed_count``: the number of tests ``cargo nextest list --workspace`` (default
+  profile, each tree with its own ``.config/nextest.toml``) reports as run, neither ignored nor
+  filtered out, is lower for the head than for the merge base. The head listing is produced by
+  PR code.
+* ``detects_py_test_deleted``: a Python test removed or renamed. A test is, in a file under
+  ``tools/`` named ``test_*.py`` or ``*_test.py``, a module-level ``def test*`` or a ``def
+  test*`` in a (nested) ``class Test*``, as a direct statement of the parsed module and still
+  bound at the end of its scope (so one put in a string, under ``if``/``try``/``with``,
+  ``del``-ed or rebound is removed); tests are counted by file name, not directory, and
+  ``Class::function`` (:func:`python_test_names`).
+* ``detects_py_gate_name``: in any ``.py`` file under ``tools/``, a new call or reference
+  ``<expr>.<name>`` where ``<name>`` is ``skip``, ``skipif``, ``xfail``, ``importorskip``,
+  ``skipIf``, ``skipUnless``, ``skipTest``, ``expectedFailure`` or ``SkipTest`` (whatever
+  ``<expr>`` is: ``@pytest.mark.skip``, ``@mark.xfail``, ``pytest.skip()``, ``raise
+  unittest.SkipTest``), or a bare name bound by ``from pytest|_pytest|unittest[.sub] import
+  <one of those> [as alias]`` (:func:`python_gates`).
+* ``detects_py_exit``: ``<m>[.<attr>...].exit`` where ``<m>`` is a name bound by ``import
+  pytest``/``import _pytest[.sub]`` (any alias) or by ``from pytest|_pytest[.sub] import ...``,
+  and a bare name bound by ``from pytest|_pytest[.sub] import exit [as alias]``.
+* ``detects_py_collection_target``: an assignment (plain, annotated or augmented) whose target
+  contains the name or attribute ``pytestmark``, ``__test__``, ``collect_ignore`` or
+  ``collect_ignore_glob`` (``f.__test__ = False`` too), or ``append``/``extend``/``insert``/
+  ``__setitem__`` called on one of those bare names.
+* ``detects_py_hook_def``: a ``def``/``async def`` named ``pytest_*``, at any scope.
+* ``detects_py_unparsable``: a ``.py`` file under ``tools/`` that does not parse.
+* ``detects_pytest_config``: pytest configuration added, changed or removed in a file at any
+  depth under ``tools/``: all of ``pytest.toml``, ``.pytest.toml``, ``pytest.ini``,
+  ``.pytest.ini``; the ``[pytest]`` section of ``tox.ini``; ``[tool:pytest]`` of ``setup.cfg``;
+  ``[tool.pytest]`` (with ``ini_options``) of ``pyproject.toml``; such a file that does not
+  parse is compared as text (:func:`collect_pytest_configs`).
 
-Known gaps (not detected; each is pinned by ``test_<name>`` in tools/tests/test_ratchet.py,
-asserting no finding, and listed in TST-006 notes; issue "ratchet: close the detection gaps
-listed in TST-006", #55, tracks them):
+Python gates are keyed by (file path, enclosing ``Class::function`` or ``<module>``, unparsed
+text), so a gate moved onto another test is new. Directories named ``target``, ``.venv``,
+``.git``, ``node_modules``, ``__pycache__`` or ``.mypy_cache`` are not scanned.
+
+Any other way of skipping, deselecting, hiding or neutering a test is NOT detected; reviewers
+must check for it. The non-exhaustive examples below are each pinned by ``test_<id>`` in
+tools/tests/test_ratchet.py, asserting no finding (issue #55 collects them):
 
 * ``known_gap_py_runtime_gate``: a skip or ``__test__`` built at run time (``getattr(pytest,
   "sk" + "ip")``, ``setattr(f, "__test__", False)``, ``globals()["__test__"] = False``).
 * ``known_gap_py_existing_helper``: a new call to a helper that already existed and skips.
 * ``known_gap_hollowed_test``: a Python or Rust test that returns early, whose body is emptied,
   or whose assertions are put under dead code (Rust ``if false { ... }``).
-* ``known_gap_py_nondefault_name``: deleting a test pytest collects outside its default naming
-  (``test*`` functions, ``test*`` methods of ``Test*`` classes), e.g. a method of a
-  ``unittest.TestCase`` subclass not named ``Test*``.
-* ``known_gap_py_no_count``: there is no executed-test count for pytest, so no backstop catches
-  a Python gap; ``test-count`` counts ``cargo nextest list`` only.
-* ``known_gap_rs_allowlisted_gate``: an allowlisted gate can hide a test from the PR tier: a
+* ``known_gap_py_nondefault_name``: deleting a test pytest collects outside its default naming,
+  e.g. a method of a ``unittest.TestCase`` subclass not named ``Test*``.
+* ``known_gap_py_no_count``: there is no executed-test count for pytest, so nothing backstops a
+  Python gap; ``test-count`` counts ``cargo nextest list`` only.
+* ``known_gap_rs_allowlisted_gate``: an allowlisted gate hiding a test from the PR tier: a
   ``cfg(feature = ...)`` / ``cfg(not(feature = ...))`` on a feature the base declares (e.g.
-  ``cfg(not(feature = "std"))`` while ``std`` is a default feature), and ``ignore = "data..."``
+  ``cfg(not(feature = "std"))`` while ``std`` is a default feature), or ``ignore = "data..."``
   / ``"network..."`` on a test that needs neither (the reason is not checked); only
-  ``test-count`` sees it, and its head listing is produced by PR code.
-  (``cfg(not(target_arch = "wasm32"))`` is allowlisted too; it hides nothing from the x86_64
-  nextest run.)
-* ``known_gap_rs_uncompiled_file``: a test file moved to a path cargo does not compile, or a
-  dropped ``mod`` line; the source scan still sees the names; only ``test-count`` sees it.
-* ``known_gap_rs_same_name_items``: items are keyed by inline ``mod`` path, kind and name, so a
-  gate moved between two same-named fns of one module (two ``impl`` blocks) is not new.
-* ``known_gap_scan_scope``: only Rust under ``crates/`` and Python under ``tools/`` are scanned.
+  ``test-count`` can see it, and its head listing is produced by PR code.
+* ``known_gap_rs_uncompiled_file``: a Rust test file moved to a path cargo does not compile, or a
+  dropped ``mod`` line; the source scan still sees the names; only ``test-count`` can see it.
+* ``known_gap_rs_same_name_items``: a gate moved between two same-named fns of one module (two
+  ``impl`` blocks), which are one item key.
+* ``known_gap_scan_scope``: Rust outside ``crates/`` and Python outside ``tools/``.
 * ``known_gap_py_outcome_exception``: raising pytest's outcome exceptions directly (``from
   _pytest.outcomes import Skipped`` / ``XFailed`` / ``Exit`` / ``OutcomeException``, then ``raise
-  Skipped("x")``); the test reports as skipped.
-* ``known_gap_py_empty_parametrize``: ``@pytest.mark.parametrize("x", [])`` on a test; an empty
-  parameter set skips it.
+  Skipped("x")``).
+* ``known_gap_py_empty_parametrize``: ``@pytest.mark.parametrize("x", [])``, which skips the test.
 * ``known_gap_py_process_exit``: ``os._exit(0)`` or ``sys.exit(0)`` in a test file (e.g. a new
-  ``tools/tests/test_0.py``); pytest stops with exit 0 and no summary, so later tests never run.
-* ``known_gap_py_uncollectable_class``: ``__init__`` or ``__new__`` added to a ``Test*`` class;
-  pytest does not collect the class and only warns.
-* ``known_gap_py_fixture_on_test``: ``@pytest.fixture`` on a ``test*`` function; it is no longer
-  collected, yet :func:`python_test_names` still counts it as a test.
-* ``known_gap_py_assigned_hook``: a pytest hook bound by assignment (``pytest_collection_modifyitems
-  = lambda ...``), e.g. in a subdirectory ``conftest.py`` off the CODEOWNERS surface; only
-  ``def pytest_*`` is detected.
-* ``known_gap_rs_verdict_attribute``: ``#[should_panic]`` added to a failing Rust test turns the
-  failure into a pass; the test still runs, so ``test-count`` does not see it either. Only
-  ``ignore``/``cfg``/``cfg_attr`` are gate attributes.
+  ``tools/tests/test_0.py``); pytest stops with exit 0 and no summary.
+* ``known_gap_py_uncollectable_class``: ``__init__`` or ``__new__`` added to a ``Test*`` class,
+  which pytest then does not collect (a warning only).
+* ``known_gap_py_fixture_on_test``: ``@pytest.fixture`` on a ``test*`` function; no longer
+  collected, still counted as a test.
+* ``known_gap_py_assigned_hook``: a pytest hook bound by assignment
+  (``pytest_collection_modifyitems = lambda ...``), e.g. in a subdirectory ``conftest.py``.
+* ``known_gap_rs_verdict_attribute``: ``#[should_panic]`` on a failing Rust test, which turns the
+  failure into a pass; the test still runs, so ``test-count`` does not see it either.
+* ``known_gap_py_aliased_exit``: ``exit`` through a module object rebound (``p = pytest;
+  p.exit()``) or imported at run time (``importlib.import_module("pytest").exit()``).
+* ``known_gap_py_moved_out_of_testpaths``: a test file moved out of pytest's ``testpaths`` (e.g.
+  ``tools/tests/test_a.py`` to ``tools/attic/test_a.py``); tests are keyed by file name.
+* ``known_gap_py_replacing_decorator``: a decorator that replaces the test with a no-op.
+* ``known_gap_py_imported_marker``: ``pytestmark`` bound by ``from m import pytestmark``.
+* ``known_gap_rs_macro_gate``: a gate passed to a macro as tokens (``#[$a]`` in a
+  ``macro_rules!``, invoked as ``t!(ignore)``).
 
-``tools/pyproject.toml`` and ``tools/tests/conftest.py`` are also on the ORG-011 meta surface.
+``tools/pyproject.toml``, ``tools/tests/conftest.py`` and the pytest configuration files above,
+at any depth under ``tools/``, are also on the ORG-011 meta surface (CODEOWNERS).
 """
 
 from __future__ import annotations
@@ -162,10 +199,22 @@ PY_GATE_NAMES = frozenset(
     }
 )
 PY_GATE_MODULES = frozenset({"pytest", "_pytest", "unittest"})
+# Modules whose `exit` stops the whole pytest session.
+PY_EXIT_MODULES = frozenset({"pytest", "_pytest"})
 # Module-level or class-level names that make pytest skip or not collect tests.
 PY_GATE_TARGETS = frozenset({"pytestmark", "__test__", "collect_ignore", "collect_ignore_glob"})
 # Files under tools/ that can hold pytest configuration (testpaths, addopts such as `-k`, ...).
-PY_CONFIG_FILES = frozenset({"pytest.ini", ".pytest.ini", "tox.ini", "setup.cfg", "pyproject.toml"})
+PY_CONFIG_FILES = frozenset(
+    {
+        "pytest.toml",
+        ".pytest.toml",
+        "pytest.ini",
+        ".pytest.ini",
+        "tox.ini",
+        "setup.cfg",
+        "pyproject.toml",
+    }
+)
 
 
 @dataclass(frozen=True)
@@ -595,10 +644,11 @@ class _PyGateFinder(ast.NodeVisitor):
         if isinstance(node, ast.Attribute):
             if node.attr in PY_GATE_NAMES:
                 return True
+            root = node.value
+            while isinstance(root, ast.Attribute):
+                root = root.value
             return (
-                node.attr == "exit"
-                and isinstance(node.value, ast.Name)
-                and node.value.id in self.pytest_mods
+                node.attr == "exit" and isinstance(root, ast.Name) and root.id in self.pytest_mods
             )
         return isinstance(node, ast.Name) and node.id in self.aliases
 
@@ -662,15 +712,15 @@ def python_gates(text: str) -> list[tuple[str, str]]:
     (and unittest's ``skipIf``/``skipUnless``/``skipTest``/``expectedFailure``/``SkipTest``),
     so ``@pytest.mark.skip``, ``@mark.xfail``, ``pytest.skip(...)`` in a test body,
     ``pytest.importorskip(...)`` and ``raise unittest.SkipTest`` all count, whatever the module
-    alias; the same names imported from pytest/unittest under any alias; ``pytest.exit``
-    (``import pytest as p``: ``p.exit``; ``from pytest import exit``); any assignment to
+    alias; the same names imported from pytest/_pytest/unittest under any alias; ``exit`` on a
+    name bound by importing pytest or _pytest (``import pytest as p``: ``p.exit``; ``import
+    _pytest.outcomes as o``: ``o.exit``; ``from pytest import exit``); any assignment to
     ``pytestmark``, ``__test__``, ``collect_ignore`` or ``collect_ignore_glob`` (also as an
-    attribute, ``f.__test__ = False``) and ``append``/``extend``/``insert`` on the last two; any
+    attribute, ``f.__test__ = False``) and ``append``/``extend``/``insert``/``__setitem__`` on
+    one of those names; any
     ``def pytest_*`` hook. A file that does not parse yields one gate. Any ``<expr>.skip`` counts,
     also in code that is not a test (``args.skip``): it over-detects, which only costs an approval.
-    Not detected: names built at run time (``getattr(pytest, "sk" + "ip")``,
-    ``setattr(f, "__test__", False)``, ``globals()``), a new call to a helper that already
-    existed and skips, and a test that returns early or whose body is emptied.
+    Anything else is not detected; see the module docstring for the closed list and examples.
     """
     try:
         tree = ast.parse(text)
@@ -682,11 +732,16 @@ def python_gates(text: str) -> list[tuple[str, str]]:
         if isinstance(node, ast.ImportFrom) and (node.module or "").split(".")[0] in (
             PY_GATE_MODULES
         ):
-            gate_names = PY_GATE_NAMES | ({"exit"} if node.module != "unittest" else set())
+            from_pytest = node.module.split(".")[0] in PY_EXIT_MODULES  # type: ignore[union-attr]
+            gate_names = PY_GATE_NAMES | ({"exit"} if from_pytest else set())
             aliases |= {a.asname or a.name for a in node.names if a.name in gate_names}
+            if from_pytest:  # `from _pytest import outcomes as o`: `o.exit` is pytest's exit
+                pytest_mods |= {a.asname or a.name for a in node.names}
         elif isinstance(node, ast.Import):
             pytest_mods |= {
-                a.asname or a.name for a in node.names if a.name in ("pytest", "_pytest")
+                a.asname or a.name.split(".")[0]
+                for a in node.names
+                if a.name.split(".")[0] in PY_EXIT_MODULES
             }
     finder = _PyGateFinder(aliases, pytest_mods)
     finder.visit(tree)

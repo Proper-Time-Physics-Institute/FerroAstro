@@ -161,7 +161,7 @@ notes: >-
 
 ```yaml
 id: TST-006
-title: "A base-branch ratchet fails a PR that weakens the evidence in a detected way, unless a maintainer approves"
+title: "A base-branch ratchet fails a PR that weakens the evidence in one of a closed list of detected forms, unless a maintainer approves"
 status: draft
 criticality: high
 verification: test
@@ -170,46 +170,35 @@ statement: >-
   approves the PR's current head, when: a vector tolerance widens; a vector's
   oracle kind is downgraded (analytic or defined, then measured, then
   computed-reference); |Δvalue| exceeds k times the old effective tolerance
-  (k in ci/ratchet.toml); a vector or a test is deleted; a vector gains
-  blocked_by; the number of tests the PR-fast tier executes falls (cargo
-  nextest list JSON); pytest configuration under tools/ changes (pytest.ini,
-  .pytest.ini, the [pytest] section of tox.ini, [tool:pytest] of setup.cfg,
-  [tool.pytest] of a pyproject.toml); a gate appears on an item that did not
-  carry it, and it is not on the allowlist in ci/ratchet.toml or names a
-  Cargo feature the base tree does not declare; or a requirement field owned
-  by ORG-011 changes. A Rust test is a fn whose outer attributes include
-  test or <path>::test, and a Python test is what pytest's default naming
-  collects from the parsed module (module-level test* functions and test*
-  methods of Test* classes; one under if, try or with, inside a string, or
-  del-ed or rebound later is deleted). A gate is keyed by its file, the item
-  it stands on and its text, so moving an existing gate onto another test is
-  a new gate. In Rust under crates/, a gate is an ignore, cfg or cfg_attr
-  attribute anywhere outside comments and string literals (whitespace inside
-  it ignored, also across lines), keyed by the item it decorates (inline mod
-  path, kind and name). In Python under tools/, found by parsing whatever the
-  module alias and keyed by the function or class it decorates or sits in, a
-  gate is: a call or reference to skip, skipif, xfail, importorskip, skipIf,
-  skipUnless, skipTest, expectedFailure or SkipTest (so pytest.mark
-  decorators, pytest.skip/xfail/importorskip calls in a test body and
-  unittest skips); such a name, or pytest's exit, imported under any alias;
-  pytest.exit; an assignment to pytestmark, __test__, collect_ignore or
-  collect_ignore_glob, or append/extend/insert on the last two; a def
-  pytest_* hook; or a file that does not parse. From
-  milestone M2, mutation testing (cargo-mutants) SHALL run on changed physics
-  functions, with a ratchet on surviving mutants.
+  (k in ci/ratchet.toml); a vector is deleted; a vector gains blocked_by; a
+  requirement field owned by ORG-011 changes; or the PR weakens a test in one
+  of the forms the ratchet detects. The ratchet detects exactly these forms
+  of test weakening, and no others: detects_rs_test_deleted,
+  detects_rs_gate_attr, detects_rs_executed_count, detects_py_test_deleted,
+  detects_py_gate_name, detects_py_exit, detects_py_collection_target,
+  detects_py_hook_def, detects_py_unparsable and detects_pytest_config, as
+  defined in the notes. Any other way of skipping, deselecting, hiding or
+  neutering a test is NOT detected, and this requirement claims nothing
+  about it. From milestone M2, mutation testing (cargo-mutants) SHALL run on
+  changed physics functions, with a ratchet on surviving mutants.
 acceptance: >-
   The `ratchet` and `ratchet (test count)` checks of
   .github/workflows/ratchet.yml are required on main and run tools/ratchet.py
   and ci/ratchet.toml from a base-SHA checkout, comparing the PR head with
   git merge-base(base, head), in jobs that never build or run PR code.
-  pytest shows each listed weakening is detected, that each known gap
-  named in the notes is not (one test_known_gap_* per gap, asserting no
-  finding, and a test that the notes, the ratchet.py docstring and those
-  tests name the same gaps), that a maintainer's
-  approval of the head SHA lets an approval finding pass, that the repository
-  compared with itself has no finding, and that a branch behind main gets no
-  finding for what main gained after the branch point. From M2: a cargo-mutants job is required and fails when the number
-  of surviving mutants in changed physics functions rises.
+  pytest shows that each listed vector and requirement weakening and each
+  detects_* form is detected (DETECTED_FORMS in tools/tests/test_ratchet.py
+  maps each form to its tests); that each example of an undetected form
+  named in the notes is not detected (one test_known_gap_* per example,
+  asserting no finding); that the notes, the ratchet.py docstring and those
+  tests name the same detects_* forms and the same examples, and that every
+  document stating the guarantee calls the detected list exact and the
+  examples non-exhaustive; that a maintainer's approval of the head SHA lets
+  an approval finding pass; that the repository compared with itself has no
+  finding; and that a branch behind main gets no finding for what main
+  gained after the branch point. From M2: a cargo-mutants job is required
+  and fails when the number of surviving mutants in changed physics
+  functions rises.
 source: >-
   GitHub issue #12 §3 (maintainer decisions 2026-10-14, including mutation
   testing from M2); red-team review, Journal #9; ADR-0015.
@@ -218,57 +207,96 @@ related: [TST-004, ORG-009, ORG-011, TST-005]
 notes: >-
   NEW (ADR-0015). Approval means a review in state APPROVED by a login in
   .github/governance/maintainers.txt on the current head SHA; a later push
-  needs a new approval. Rust tests are matched by crate and function name,
-  Python tests by file name and Class::function, so a rename counts as a
-  deletion and needs approval. The test-count job lists
-  each tree with its own .config/nextest.toml, so filtering tests out through
-  a profile edit also lowers the count. The head listing is produced by PR
-  code, so it is the PR's own claim; deleted tests are caught by the source
-  scan independently. Known gaps, NOT detected (each pinned by a test
-  test_<name> in tools/tests/test_ratchet.py that asserts no finding, so
-  this list and the code cannot drift; follow-up issue "ratchet: close the
-  detection gaps listed in TST-006", #55): known_gap_py_runtime_gate, a Python
-  skip or __test__ built at run time (getattr(pytest, "sk" + "ip"),
-  setattr(f, "__test__", False), globals()["__test__"] = False);
-  known_gap_py_existing_helper, a new call to a helper that already existed
-  and skips; known_gap_hollowed_test, a Python or Rust test that returns
-  early, whose body is emptied, or whose assertions are put under dead code
-  (Rust if false { ... }); known_gap_py_nondefault_name, deleting a
-  test pytest collects outside its default naming (e.g. a method of a
-  unittest.TestCase subclass not named Test*); known_gap_py_no_count, there
-  is no executed-test count for pytest, so nothing backstops a Python gap;
-  known_gap_rs_allowlisted_gate, an allowlisted gate hiding a Rust test
-  from the PR tier: cfg(feature = ...) or cfg(not(feature = ...)) on a
-  feature the base declares (e.g. cfg(not(feature = "std")) with std on by
-  default), or ignore = "data..."/"network..." on a test that needs neither
-  (the reason is not checked), caught only by the test count, whose head
-  listing is the PR's own (cfg(not(target_arch = "wasm32")) is allowlisted
-  and hides nothing from the x86_64 nextest run); known_gap_rs_uncompiled_file, a
-  test file moved to a path cargo does not compile, or a dropped mod line,
-  caught only by the test count; known_gap_rs_same_name_items, a gate moved
-  between two same-named Rust fns of one module (e.g. in two impl blocks);
-  known_gap_scan_scope, only Rust under crates/ and Python under tools/ are
-  scanned; known_gap_py_outcome_exception, raising pytest's outcome
-  exceptions directly (from _pytest.outcomes import Skipped, XFailed, Exit or
-  OutcomeException, then raise Skipped("x")), reported as skipped;
-  known_gap_py_empty_parametrize, @pytest.mark.parametrize("x", []) on a
-  test, which an empty parameter set skips; known_gap_py_process_exit,
-  os._exit(0) or sys.exit(0) in a test file (e.g. a new
-  tools/tests/test_0.py), which stops pytest with exit 0 and no summary so
-  later tests never run; known_gap_py_uncollectable_class, __init__ or
-  __new__ added to a Test* class, which pytest then does not collect (a
-  warning only); known_gap_py_fixture_on_test, @pytest.fixture on a test*
-  function, no longer collected but still counted as a test by the deletion
-  check; known_gap_py_assigned_hook, a pytest hook bound by assignment
-  (pytest_collection_modifyitems = lambda ...), e.g. in a subdirectory
-  conftest.py off the CODEOWNERS surface (only def pytest_* is detected);
-  known_gap_rs_verdict_attribute, #[should_panic] added to a failing Rust
-  test, which turns the failure into a pass; the test still runs, so the
-  test count does not see it (only ignore, cfg and cfg_attr are gate
-  attributes). The Python gate names are matched on any expression, so args.skip
-  in non-test code also needs approval (over-detection). tools/pyproject.toml
-  (pytest options) and
-  tools/tests/conftest.py are on the ORG-011 meta surface. A new Cargo
-  feature that gates code needs approval until it is in the base tree. The
-  mutation-testing part is not implemented before M2.
+  needs a new approval. The ratchet detects exactly these forms of test
+  weakening (each pinned by tests, DETECTED_FORMS in
+  tools/tests/test_ratchet.py): detects_rs_test_deleted, a Rust test removed
+  or renamed, where a test is a fn in a .rs file under crates/ whose run of
+  outer attributes holds test or <path>::test, outside comments and string
+  literals, counted by crate directory and function name;
+  detects_rs_gate_attr, a new ignore, cfg or cfg_attr attribute (outer or
+  inner) in a .rs file under crates/, outside comments and string literals,
+  whitespace normalised (also across lines), new when its file, item (inline
+  mod path, kind and name) and text were not in the merge base, unless it
+  matches gate_allowlist in ci/ratchet.toml and names no Cargo feature
+  undeclared in the merge base; detects_rs_executed_count, fewer tests that
+  cargo nextest list --workspace (default profile, each tree with its own
+  .config/nextest.toml) reports as run, not ignored and not filtered out,
+  for the head than for the merge base (the head listing is produced by PR
+  code); detects_py_test_deleted, a Python test removed or renamed, where a
+  test is, in a file under tools/ named test_*.py or *_test.py, a
+  module-level def test* or a def test* in a (nested) class Test*, as a
+  direct statement of the parsed module still bound at the end of its scope
+  (so one put in a string, under if, try or with, del-ed or rebound is
+  removed), counted by file name and Class::function; detects_py_gate_name,
+  in any .py file under tools/, a new call or reference <expr>.<name> with
+  <name> one of skip, skipif, xfail, importorskip, skipIf, skipUnless,
+  skipTest, expectedFailure, SkipTest (so pytest.mark decorators,
+  pytest.skip/xfail/importorskip calls and unittest skips), or a bare name
+  imported as one of those from pytest, _pytest or unittest (or their
+  submodules) under any alias; detects_py_exit, exit on a name bound by
+  import pytest or import _pytest[.sub] (any alias) or by from
+  pytest|_pytest[.sub] import ..., or a bare exit imported from those under
+  any alias; detects_py_collection_target, an assignment (plain, annotated
+  or augmented) whose target contains the name or attribute pytestmark,
+  __test__, collect_ignore or collect_ignore_glob, or append, extend, insert
+  or __setitem__ called on one of those names; detects_py_hook_def, a def
+  or async def named pytest_* at any scope; detects_py_unparsable, a .py
+  file under tools/ that does not parse; detects_pytest_config, pytest
+  configuration added, changed or removed in a file at any depth under
+  tools/: all of pytest.toml, .pytest.toml, pytest.ini and .pytest.ini, the
+  [pytest] section of tox.ini, [tool:pytest] of setup.cfg and [tool.pytest]
+  of pyproject.toml (unparsable: compared as text). Python gates are keyed
+  by file, enclosing Class::function and unparsed text, so moving a gate
+  onto another test is new. Directories target, .venv, .git, node_modules,
+  __pycache__ and .mypy_cache are not scanned. A rename counts as a
+  deletion and needs approval. Any other way of skipping, deselecting,
+  hiding or neutering a test is NOT detected; reviewers must check for it.
+  Non-exhaustive examples, each pinned by test_<id> in
+  tools/tests/test_ratchet.py asserting no finding (issue #55 collects
+  them): known_gap_py_runtime_gate, a skip or __test__ built at run time
+  (getattr(pytest, "sk" + "ip"), setattr(f, "__test__", False),
+  globals()["__test__"] = False); known_gap_py_existing_helper, a new call
+  to a helper that already existed and skips; known_gap_hollowed_test, a
+  Python or Rust test that returns early, whose body is emptied, or whose
+  assertions are under dead code (Rust if false { ... });
+  known_gap_py_nondefault_name, deleting a test pytest collects outside its
+  default naming (a unittest.TestCase method in a class not named Test*);
+  known_gap_py_no_count, there is no executed-test count for pytest, so
+  nothing backstops a Python gap; known_gap_rs_allowlisted_gate, an
+  allowlisted gate hiding a Rust test from the PR tier (cfg(feature = ...)
+  or cfg(not(feature = ...)) on a declared feature, e.g.
+  cfg(not(feature = "std")) with std on by default, or ignore =
+  "data..."/"network..." on a test that needs neither), visible only to the
+  test count, whose head listing is the PR's own;
+  known_gap_rs_uncompiled_file, a test file moved to a path cargo does not
+  compile, or a dropped mod line, visible only to the test count;
+  known_gap_rs_same_name_items, a gate moved between two same-named Rust
+  fns of one module (two impl blocks); known_gap_scan_scope, Rust outside
+  crates/ and Python outside tools/; known_gap_py_outcome_exception, raising
+  pytest's outcome exceptions directly (from _pytest.outcomes import
+  Skipped, XFailed, Exit or OutcomeException, then raise Skipped("x"));
+  known_gap_py_empty_parametrize, @pytest.mark.parametrize("x", []);
+  known_gap_py_process_exit, os._exit(0) or sys.exit(0) in a test file,
+  which stops pytest with exit 0 and no summary;
+  known_gap_py_uncollectable_class, __init__ or __new__ on a Test* class
+  (not collected, a warning only); known_gap_py_fixture_on_test,
+  @pytest.fixture on a test* function (not collected, still counted);
+  known_gap_py_assigned_hook, a pytest hook bound by assignment
+  (pytest_collection_modifyitems = lambda ...);
+  known_gap_rs_verdict_attribute, #[should_panic] on a failing Rust test,
+  which turns the failure into a pass (the test still runs, so the count
+  does not see it); known_gap_py_aliased_exit, exit through a rebound
+  module object (p = pytest; p.exit()) or one imported at run time
+  (importlib.import_module("pytest").exit()); known_gap_py_moved_out_of_testpaths,
+  a test file moved out of pytest's testpaths (tests are keyed by file
+  name); known_gap_py_replacing_decorator, a decorator that replaces the
+  test with a no-op; known_gap_py_imported_marker, pytestmark bound by from
+  m import pytestmark; known_gap_rs_macro_gate, a gate passed to a macro as
+  tokens (#[$a] in a macro_rules!, invoked as t!(ignore)). Python gate
+  names are matched on any expression, so args.skip in non-test code also
+  needs approval (over-detection). tools/pyproject.toml,
+  tools/tests/conftest.py and the pytest configuration files above are on
+  the ORG-011 meta surface. A new Cargo feature that gates code needs
+  approval until it is in the base tree. The mutation-testing part is not
+  implemented before M2.
 ```
