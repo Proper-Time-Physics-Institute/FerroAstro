@@ -283,8 +283,9 @@ pub enum Gamma0Centre {
     /// γ0 is added to the Sun-sourced linear term (γ = γ* + γ0): a constant acceleration
     /// towards the Sun, which changes heliocentric orbits.
     Sun,
-    /// γ0 is a uniform field: the same acceleration γ0c²/2 on every moving body along
-    /// `gamma0_direction`. Relative motion is unchanged (the default).
+    /// γ0 is a uniform field: the same acceleration γ0c²/2 on every body along
+    /// `gamma0_direction`. Relative motion is unchanged (the default). A non-zero γ0 is refused
+    /// beside `forces.kbo_ring`, whose bodies are fixed and cannot receive the field.
     #[default]
     Uniform,
 }
@@ -420,7 +421,8 @@ pub struct Forces {
     pub conformal: Option<Conformal>,
 }
 
-/// The force switches of CI-002, as written under `[forces]`.
+/// The keys accepted under `[forces]`: the force switches of CI-002 plus the `conformal` table
+/// (the comparison model of ADR-0016, which is not a ladder switch).
 pub const SWITCHES: [&str; 13] = [
     "newton",
     "sun_j2",
@@ -864,6 +866,16 @@ impl ScenarioSpec {
                     "forces.conformal.gamma0_direction",
                     &format!("[{d0}, {d1}, {d2}]"),
                     "finite and non-zero (it is normalised)",
+                );
+            }
+            // The uniform field leaves relative motion unchanged only if every body receives
+            // it; the kbo_ring bodies are fixed (ADR-0016 item 5, PHY-020 (c)).
+            if c.gamma0_centre == Gamma0Centre::Uniform && c.gamma0 != 0.0 && self.forces.kbo_ring {
+                return err(
+                    "forces.conformal.gamma0_centre",
+                    &"uniform",
+                    "a non-zero uniform gamma0 needs every body to move, but the forces.kbo_ring \
+                     bodies are fixed; use gamma0_centre = \"sun\" or drop kbo_ring",
                 );
             }
         }

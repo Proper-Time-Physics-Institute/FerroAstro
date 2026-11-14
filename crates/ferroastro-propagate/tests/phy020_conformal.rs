@@ -589,6 +589,59 @@ fn conformal_scenarios_assemble_with_every_relativistic_switch() {
     assert!(e.to_string().contains("forces.conformal"), "{e}");
 }
 
+/// PHY-020 (c) guards at scenario level: `"uniform"` with γ0 = 0 (both defaults) adds no
+/// zero-acceleration uniform term, and a non-zero uniform γ0 beside `kbo_ring` is refused before
+/// the run (FA-E1203), because the fixed ring bodies cannot share the field and relative motion
+/// would change.
+///
+/// Verifies: PHY-020, CI-002
+#[test]
+fn uniform_gamma0_zero_adds_no_term_and_is_refused_beside_the_ring() {
+    if De440::load_cached_or_skip("uniform_gamma0_zero_adds_no_term_and_is_refused_beside_the_ring")
+        .unwrap()
+        .is_none()
+    {
+        return;
+    }
+    let f = ferroastro_testdata::locate_product("de440-header").expect("cached header.440");
+    let prov = f.provenance();
+    let h = Header::parse(&std::fs::read_to_string(&f.path).unwrap()).unwrap();
+    let data = DataSources::none().with_header(&h, &prov);
+    // "uniform" with gamma0 = 0 (both defaults) adds no zero-acceleration uniform term.
+    let mut s0 = with_conformal(
+        spec("sun-mercury-newton-header440.toml"),
+        Gamma0Centre::Uniform,
+    );
+    if let Some(c) = s0.forces.conformal.as_mut() {
+        c.gamma0 = 0.0;
+    }
+    let out = run(&s0, &data).unwrap();
+    assert!(
+        out.model.contains("conformal-potential-sun"),
+        "{}",
+        out.model
+    );
+    assert!(
+        !out.model.contains("conformal-gamma0-uniform"),
+        "{}",
+        out.model
+    );
+    // A non-zero uniform gamma0 beside the fixed kbo_ring bodies is refused before the run
+    // (FA-E1203): the field would not act on every body (PHY-020 (c)).
+    let mut ring = with_conformal(
+        spec("sun-mercury-newton-header440.toml"),
+        Gamma0Centre::Uniform,
+    );
+    ring.forces.kbo_ring = true;
+    let e = run(&ring, &data).unwrap_err();
+    println!("{e}");
+    assert_eq!(e.code().to_string(), "FA-E1203");
+    assert!(
+        e.to_string().contains("forces.conformal.gamma0_centre"),
+        "{e}"
+    );
+}
+
 /// PHY-020 (c) at scenario level: Sun + Mercury with DE440 initial conditions and an
 /// exaggerated γ0 (1e-26 cm⁻¹, ≈ 3000× the unverified fit value's order) gives the same perihelion
 /// passages with `"uniform"` as without the table, to the integrator floor, while `"sun"` moves
@@ -648,4 +701,71 @@ fn uniform_gamma0_scenario_leaves_the_heliocentric_passages_unchanged() {
     );
     assert!(d_uniform < 1.0e-12, "{d_uniform:e}"); // lint: allow-literal(passage-location floor, rad)
     assert!(d_sun > 1.0e3 * d_uniform.max(1.0e-15)); // lint: allow-literal(signal well above floor)
+}
+
+/// PHY-020 (c) with `WHFast`: Sun + Mercury (DE440 initial conditions, Newton + the GR effective
+/// potential, h = 1 d) over 5 yr with an exaggerated γ0 = 1e-26 cm⁻¹ along ẑ. With `"uniform"`
+/// the final heliocentric Mercury position equals the run without the table to the floor of the
+/// map (reviewer probe: 4e-5 km), while `"sun"` moves it by ~1e4 km; the Sun itself is displaced
+/// by `g t²/2` along the field, so the Jacobi centre-of-mass kick receives `g` and the relative
+/// kicks cancel.
+///
+/// Verifies: PHY-020, NUM-004
+#[test]
+fn uniform_gamma0_whfast_moves_the_barycentre_not_the_heliocentric_orbit() {
+    let Some(de) = De440::load_cached_or_skip(
+        "uniform_gamma0_whfast_moves_the_barycentre_not_the_heliocentric_orbit",
+    )
+    .unwrap() else {
+        return;
+    };
+    let f = ferroastro_testdata::locate_product("de440-header").expect("cached header.440");
+    let prov = f.provenance();
+    let h = Header::parse(&std::fs::read_to_string(&f.path).unwrap()).unwrap();
+    let data = DataSources::none().with_header(&h, &prov);
+    let mut base = spec("wh-sun-mercury-grpotential-100yr.toml");
+    base.span.years = 5.0; // lint: allow-literal(about 20 Mercury orbits)
+    base.span.stop_after_passages = None;
+    base.output.cadence_days = None;
+    let pick = |centre| {
+        let mut s = base.clone();
+        let mut c = with_conformal(s.clone(), centre).forces.conformal.unwrap();
+        c.gamma_star = 0.0;
+        c.kappa = 0.0;
+        s.forces.conformal = Some(c);
+        s
+    };
+    // (t, Sun position, heliocentric Mercury position) at the end of the run, km.
+    let end = |s: &ScenarioSpec| -> (f64, [f64; 3], [f64; 3]) {
+        let out = run(s, &data).unwrap();
+        let fs = out.final_state.expect("final state");
+        let at = |id: NaifId| {
+            let i = fs.bodies.iter().position(|&b| b == id.0).unwrap();
+            fs.positions[i].map(|c| c[0] + c[1])
+        };
+        let sun = at(NaifId::SUN);
+        let me = at(NaifId::MERCURY_BARYCENTER);
+        (fs.t[0] + fs.t[1], sun, [0, 1, 2].map(|k| me[k] - sun[k]))
+    };
+    let norm = |a: [f64; 3], b: [f64; 3]| (a[0] - b[0]).hypot(a[1] - b[1]).hypot(a[2] - b[2]);
+    let (t, sun0, r0) = end(&base);
+    let (tu, sunu, ru) = end(&pick(Gamma0Centre::Uniform));
+    let (_, _, rs) = end(&pick(Gamma0Centre::Sun));
+    assert_eq!(t, tu);
+    let d_uniform = norm(ru, r0);
+    let d_sun = norm(rs, r0);
+    // g = (γ0 c²/2) ẑ with γ0 = 1e-26 /cm = 1e-21 /km and DE440's c.
+    let c = de.speed_of_light().km_per_s();
+    let shift = 1.0e-21 * c * c / 2.0 * t * t / 2.0; // lint: allow-literal(gamma0 in 1/km, see with_conformal)
+    let d_sun_pos = [0, 1, 2].map(|k| sunu[k] - sun0[k]);
+    println!(
+        "WHFast {t:.4e} s: heliocentric |dr| uniform {d_uniform:.3e} km, Sun-centred {d_sun:.3e} km; \
+         Sun displaced {d_sun_pos:?} km, g t^2/2 = {shift:.6e} km"
+    );
+    assert!(d_uniform < 1.0e-2, "{d_uniform:e}"); // lint: allow-literal(WH map floor bound, km: 1e-6 of the Sun-centred signal)
+    assert!(d_sun > 1.0e3, "{d_sun:e}"); // lint: allow-literal(Sun-centred signal resolved, km)
+    assert!(
+        norm(d_sun_pos, [0.0, 0.0, shift]) < 1.0e-6 * shift, // lint: allow-literal(relative bound on the barycentre drift)
+        "{d_sun_pos:?} vs {shift:e}"
+    );
 }

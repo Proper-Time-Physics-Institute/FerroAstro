@@ -812,7 +812,10 @@ notes: >-
   applies only to the per-orbit → ″/cy conversion (n), not to β. With
   velocity-dependent terms present (EIH, Lense–Thirring) the uniform drift
   enters only at O(v·Δv/c²), so (c) is asserted in a configuration
-  with velocity-independent forces. Mercury numbers from the rd#88 notes,
+  with velocity-independent forces. The kbo_ring bodies are fixed and cannot
+  receive the uniform field, so (c) would fail beside them; a non-zero
+  uniform γ0 with forces.kbo_ring is refused (FA-E1203 at validation,
+  FA-E0500 at bind) rather than run. Mercury numbers from the rd#88 notes,
   not yet reproduced in FerroAstro and not oracles: Sun-centred γ0 about
   −0.183 ″/cy (about 60× the INPOP15a bound of 0.0 ± 3.1 mas/cy); uniform
   γ0 about 0; γ* and κ 1e-11 to 1e-12 ″/cy in magnitude, of opposite

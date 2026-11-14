@@ -7188,7 +7188,10 @@ decisions D1–D7 of 2026-11-14 (Bernard, rd#88). No viewer or web change (that 
   potential on the Major bodies, `Φ = (γc²/2) r − (κc²/2) r²`, `aᵢ = −(γc²/2) r̂ + κc² r`, reaction
   `a☉ = −Σ (GMᵢ/GM☉) aᵢ`, `γ = γ* + γ0☉` (N* = 1; γ0☉ = γ0 only for `"sun"`), signed γ and κ (D3), potential
   implemented. `ConformalUniformGamma0` (name `conformal-gamma0-uniform`, D2 `"uniform"`): the same acceleration
-  `(γ0c²/2) n̂` on every moving body (Major and Minor), `n̂` towards the field's centre, potential `−g·x`.
+  `(γ0c²/2) n̂` on every moving body (Major and Minor), `n̂` towards the field's centre, potential `−g·x`. Ring
+  bodies are fixed and cannot share it (the system would accelerate away from the ring; review of #61), so `bind`
+  refuses a non-zero γ0 when the layout has Ring bodies (FA-E0500), and `ScenarioSpec::validate` refuses
+  `"uniform"` + γ0 ≠ 0 + `kbo_ring` (FA-E1203). With γ0 = 0 under `"uniform"` no uniform term is added.
   `ConformalCentral` (`conformal.rs`): the test-particle `CentralTerm` for the Rung lab (no uniform form: a uniform
   field has no relative effect on a test particle about a fixed centre). Inputs in km⁻¹ / km⁻².
 - **Interpretation (NEEDS HUMAN REVIEW):** the Sun-sourced term acts on Major bodies only, as `GrPotential` does;
@@ -7206,7 +7209,9 @@ decisions D1–D7 of 2026-11-14 (Bernard, rd#88). No viewer or web change (that 
   `gamma0_centre` defaults to `"uniform"`, `gamma0_direction` to `[1, 0, 0]` (ICRF axes; arbitrary, the
   heliocentric observable does not depend on it). Once present every field is serialised, so the digest covers the
   effective values (the `eih_scope` lesson of #18 B1). Validation (FA-E1203): finite coefficients, finite non-zero
-  direction. Schema regenerated.
+  direction, no non-zero uniform γ0 beside `kbo_ring`. Schema regenerated. The Python mirror of `SWITCHES` in
+  `tools/oracles/common.py` is not updated (it already lacks `gr_potential` and `eih_scope`); the runners still
+  refuse the unknown key by name.
 - `ferroastro-propagate`: `conformal()` appends the terms last in the n-body term order (c from DE440); `supports`
   accepts `conformal` in n-body mode only (FA-E1201 otherwise, with the reason). No integrator combination is refused:
   the terms are velocity independent. The Python oracle runners refuse the key by name (unknown switch; no change).
@@ -7226,14 +7231,23 @@ decisions D1–D7 of 2026-11-14 (Bernard, rd#88). No viewer or web change (that 
   2.4e-15 over 20 orbits. Data tier: EIH + CG (both centrings), 1PN rung + CG, WHFast + GR potential + CG and
   Newton + CG run from scenarios with the label and parameters in the model string; test-particle mode refused;
   DE440 Sun–Mercury over 5 yr: uniform γ0 = 1e-26 cm⁻¹ moves the 21 passages by ≤ 3.4e-14 rad, Sun-centred by
-  1.5e-4 rad.
+  1.5e-4 rad; the same with WHFast (h = 1 d, GR potential): final heliocentric Mercury position 4.2e-5 km from the
+  run without the table (Sun-centred 1.2e4 km), the Sun displaced by g t²/2 = 5.594e5 km along ẑ to < 1e-6
+  relative (the Jacobi centre-of-mass kick receives g). A uniform γ0 = 0 adds no term; uniform γ0 ≠ 0 beside
+  `kbo_ring` is refused (FA-E1203; `bind` FA-E0500 in the forces unit test).
 - `crates/ferroastro-scenario/tests/digest_stability.rs`: the digests of all 49 committed scenarios
   (`ci/scenarios`, `ci/oracles/canaries`) equal those recorded at `18666f5` before the table existed
   (`tests/data/scenario-digests.toml`, written by hand, never regenerated). `conformal_table.rs`: parsing, defaults,
   unit accessors, refusals, digest semantics.
-- `crates/ferroastro-propagate/tests/default_model_bitwise.rs`: four committed scenarios (Newton, EIH, WHFast + GR
-  potential, test-particle 1PN; 1 yr each) give bit for bit the model string, states and passages recorded at
-  `18666f5` (SHA-256 fingerprints recorded on that commit in an isolated target directory).
+- `crates/ferroastro-propagate/tests/default_model_bitwise.rs`: four committed two-body Sun–Mercury scenarios
+  (Newton, EIH, WHFast + GR potential, test-particle 1PN; 1 yr each) give bit for bit the model string, states and
+  passages recorded at `18666f5` (SHA-256 fingerprints recorded on that commit in an isolated target directory).
+  The pin does not exercise the Moon pair, Minor, Ring, J2 or Lense–Thirring paths; those are unchanged by
+  construction (the term list is extended only when `[forces.conformal]` is present).
+- **Gauge labels at other call sites (for F3):** `particle.rs` (two sites), `ferroastro-viewer/src/lab.rs` and
+  `ferroastro-ladder/src/single_body.rs` report `gauge().label()`, which beside a relativistic gauge drops the
+  comparison label. Not reachable today (test-particle mode refuses the table, FA-E1201; `describe()` carries the
+  label); the F3 Rung-lab work switches them to the combined label for PHY-020 (f).
 
 **Not done here.** Viewer bit 12 / ABI v2 (F3, after #58); the comparison dashboard (F4); the Proper Time −7.17″/cy
 row (F4b, D6); OI-79 stays open.

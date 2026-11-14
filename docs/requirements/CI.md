@@ -82,7 +82,9 @@ notes: >-
   km⁻¹ and km⁻² exactly (CM_PER_KM = 1e5). Omitted coefficients are 0 (the
   unverified OI-79 fit values are never defaults); gamma0_centre defaults to
   "uniform" and gamma0_direction (ICRF axes, normalised, non-zero) to
-  [1, 0, 0]. The table is skipped when absent, so every existing scenario
+  [1, 0, 0]. A non-zero gamma0 with gamma0_centre = "uniform" beside
+  kbo_ring is refused (FA-E1203): the ring bodies are fixed and cannot share
+  the uniform field. The table is skipped when absent, so every existing scenario
   digest is byte-identical (crates/ferroastro-scenario/tests/digest_stability.rs
   pins all 49 committed scenarios against digests recorded before the table
   existed); once present every field is serialised, so the digest covers the

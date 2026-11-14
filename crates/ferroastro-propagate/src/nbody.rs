@@ -233,7 +233,7 @@ fn model<R: Real>(
 
 /// The conformal-gravity comparison terms of `[forces.conformal]` (ADR-0016, PHY-020), last in
 /// the term order: the Sun-sourced [`ConformalPotential`] with γ = γ* (+ γ0 for
-/// `gamma0_centre = "sun"`) and κ, and for `"uniform"` the [`ConformalUniformGamma0`] field
+/// `gamma0_centre = "sun"`) and κ, and for `"uniform"` with γ0 ≠ 0 the [`ConformalUniformGamma0`] field
 /// along `gamma0_direction` (ICRF axes). Coefficients converted from cm⁻¹ / cm⁻² to km⁻¹ / km⁻²;
 /// c from DE440. Empty without the table.
 fn conformal<R: Real>(
@@ -264,7 +264,10 @@ fn conformal<R: Real>(
         R::from_f64(cg.kappa_per_km2()),
         c,
     )?)];
-    if !sun_centred {
+    // A non-zero uniform γ0 beside the fixed kbo_ring bodies is refused by
+    // ScenarioSpec::validate (FA-E1203) and, for direct model users, at bind (FA-E0500).
+    // gamma0 = 0 under "uniform" (both defaults): no zero-acceleration term in the model.
+    if !sun_centred && gamma0 != R::ZERO {
         terms.push(Box::new(ConformalUniformGamma0::new(
             gamma0,
             c,

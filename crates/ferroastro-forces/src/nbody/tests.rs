@@ -1241,3 +1241,54 @@ fn conformal_terms_refuse_invalid_input() {
         "{e}"
     );
 }
+
+/// A non-zero uniform γ0 is refused beside a Ring body (FA-E0500 at bind): the ring is fixed, so
+/// the field would not act on every body and relative motion would change (PHY-020 (c),
+/// ADR-0016 item 5). A zero uniform γ0 is accepted, and so is the Sun-centred term.
+///
+/// Verifies: PHY-020
+#[test]
+fn uniform_gamma0_refuses_ring_bodies() {
+    let bodies = vec![
+        body(NaifId::SUN, 1.0, Tier::Major),
+        body(NaifId::MERCURY_BARYCENTER, 1.0e-3, Tier::Major), // lint: allow-literal(structural mass ratio)
+        body(NaifId(3_000_001), 1.0e-5, Tier::Ring), // lint: allow-literal(structural ring GM)
+    ];
+    let c = Velocity::from_km_per_s(CG_C).unwrap();
+    let dir = Pole::from_components([0.0, 0.0, 1.0]).unwrap();
+    let e = Model::new(
+        &bodies,
+        MoonVariables::Barycentric,
+        vec![Box::new(cg_uniform::<f64>())],
+    )
+    .unwrap_err();
+    println!("{e}");
+    assert_eq!(e.code().to_string(), "FA-E0500");
+    assert!(e.to_string().contains("Ring bodies"), "{e}");
+    for gamma0 in [CG_GAMMA0, -CG_GAMMA0] {
+        let without_ring = Model::new(
+            &bodies[..2],
+            MoonVariables::Barycentric,
+            vec![Box::new(
+                ConformalUniformGamma0::new(gamma0, c, dir).unwrap(),
+            )],
+        );
+        assert!(without_ring.is_ok());
+    }
+    assert!(
+        Model::new(
+            &bodies,
+            MoonVariables::Barycentric,
+            vec![Box::new(ConformalUniformGamma0::new(0.0, c, dir).unwrap())],
+        )
+        .is_ok()
+    );
+    assert!(
+        Model::new(
+            &bodies,
+            MoonVariables::Barycentric,
+            vec![Box::new(cg_sun::<f64>(CG_GAMMA0))],
+        )
+        .is_ok()
+    );
+}

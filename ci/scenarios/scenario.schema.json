@@ -336,7 +336,7 @@
           "const": "sun"
         },
         {
-          "description": "γ0 is a uniform field: the same acceleration γ0c²/2 on every moving body along\n`gamma0_direction`. Relative motion is unchanged (the default).",
+          "description": "γ0 is a uniform field: the same acceleration γ0c²/2 on every body along\n`gamma0_direction`. Relative motion is unchanged (the default). A non-zero γ0 is refused\nbeside `forces.kbo_ring`, whose bodies are fixed and cannot receive the field.",
           "type": "string",
           "const": "uniform"
         }

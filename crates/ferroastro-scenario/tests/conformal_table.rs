@@ -95,6 +95,34 @@ fn conformal_table_refuses_invalid_values() {
     }
 }
 
+/// A non-zero uniform γ0 beside `forces.kbo_ring` is refused (FA-E1203, naming
+/// `forces.conformal.gamma0_centre`): the ring bodies are fixed, so the field would not act on
+/// every body and relative motion would change (ADR-0016 item 5, PHY-020 (c)). The Sun-centred
+/// γ0 and a zero uniform γ0 (with γ\* and κ) are accepted beside the ring.
+///
+/// Verifies: PHY-020, CI-002
+#[test]
+fn uniform_gamma0_beside_the_kbo_ring_is_refused() {
+    let ring = |table: &str| with_table(&format!("kbo_ring = true\n{table}"));
+    let e = ScenarioSpec::parse(&ring("conformal = { gamma0 = 1.0 }")).unwrap_err();
+    println!("{e}");
+    assert_eq!(e.code().to_string(), "FA-E1203");
+    assert!(
+        e.to_string().contains("forces.conformal.gamma0_centre"),
+        "{e}"
+    );
+    assert!(e.to_string().contains("kbo_ring"), "{e}");
+    for ok in [
+        "conformal = { gamma0 = 1.0, gamma0_centre = \"sun\" }",
+        "conformal = { gamma_star = 1.0, kappa = -2.0 }",
+    ] {
+        let s = ScenarioSpec::parse(&ring(ok)).unwrap();
+        assert!(s.forces.kbo_ring && s.forces.conformal.is_some(), "{ok}");
+    }
+    // Without the ring the same uniform table is accepted.
+    assert!(ScenarioSpec::parse(&with_table("conformal = { gamma0 = 1.0 }")).is_ok());
+}
+
 /// The digest covers the effective table: present vs absent differs; an omitted default and
 /// the same value written out give the same digest (every field is serialised once the table is
 /// present); changing the centring, a coefficient or the direction changes it.

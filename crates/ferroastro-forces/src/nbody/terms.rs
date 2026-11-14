@@ -953,14 +953,17 @@ impl<F: Frame, R: Real> ForceTerm<F, R> for ConformalPotential<R> {
 
 /// The cosmological linear term γ0 as a **uniform** field (decision D2, `gamma0_centre =
 /// "uniform"`, the default when the conformal term is on): the same acceleration
-/// `g = (γ0c²/2) n̂` on every moving body (Major and Minor; Ring bodies are fixed), `n̂` a fixed
-/// unit vector of the run's frame pointing towards the field's distant centre (so `γ0 > 0`
-/// pulls towards `n̂`, as the Sun-centred term pulls towards the Sun). Comparison model
-/// (ADR-0016, PHY-020).
+/// `g = (γ0c²/2) n̂` on every body (Major and Minor), `n̂` a fixed unit vector of the run's frame
+/// pointing towards the field's distant centre (so `γ0 > 0` pulls towards `n̂`, as the
+/// Sun-centred term pulls towards the Sun). Comparison model (ADR-0016, PHY-020).
 ///
 /// It is implemented, not just reported as zero: the barycentre accelerates, while every relative
 /// position obeys the same equations as without the field, so with velocity-independent forces
-/// the heliocentric observable is unchanged to integrator precision (PHY-020 (c)). As an external
+/// the heliocentric observable is unchanged to integrator precision (PHY-020 (c)). That
+/// invariance needs the field on **every** body: Ring bodies (`forces.kbo_ring`, [`RingMasses`])
+/// are fixed and cannot receive it, so the moving system would accelerate away from the ring and
+/// the heliocentric observable would change. A non-zero γ0 is therefore refused (`FA-E0500` at
+/// bind) when the layout has Ring bodies; use `gamma0_centre = "sun"` or drop the ring. As an external
 /// field it does not conserve momentum; it conserves energy with the potential
 /// `Φᵢ = −g·xᵢ` per unit mass. With a geocentric Earth–Moon pair, `a_Moon − a_Earth = 0` and the
 /// barycentre of the pair receives `g`. Velocity independent (the Wisdom–Holman kick integrates
@@ -1040,7 +1043,18 @@ impl<F: Frame, R: Real> ForceTerm<F, R> for ConformalUniformGamma0<F, R> {
     fn tiers(&self) -> &'static [Tier] {
         &[Tier::Major, Tier::Minor]
     }
-    fn bind(&mut self, _layout: &Layout<R>) -> Result<(), ForceError> {
+    fn bind(&mut self, layout: &Layout<R>) -> Result<(), ForceError> {
+        let rings = layout.indices(Tier::Ring).len();
+        if rings > 0 && self.gamma0 != R::ZERO {
+            return Err(ForceError::Invalid {
+                name: "uniform conformal gamma0 (1/km) beside fixed Ring bodies (the field must \
+                       act on every body to leave relative motion unchanged; Ring bodies are \
+                       fixed)",
+                value: self.gamma0.to_f64(),
+                valid: "0 when the layout has Ring bodies (use gamma0_centre = \"sun\" or drop \
+                        forces.kbo_ring)",
+            });
+        }
         Ok(())
     }
     fn accumulate(
