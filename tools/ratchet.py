@@ -60,7 +60,7 @@ Detected gate forms (each pinned by a test in tools/tests/test_ratchet.py):
 
 Known gaps (not detected; each is pinned by ``test_<name>`` in tools/tests/test_ratchet.py,
 asserting no finding, and listed in TST-006 notes; issue "ratchet: close the detection gaps
-listed in TST-006" tracks them):
+listed in TST-006", #55, tracks them):
 
 * ``known_gap_py_runtime_gate``: a skip or ``__test__`` built at run time (``getattr(pytest,
   "sk" + "ip")``, ``setattr(f, "__test__", False)``, ``globals()["__test__"] = False``).

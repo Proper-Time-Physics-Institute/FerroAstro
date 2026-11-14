@@ -227,7 +227,7 @@ notes: >-
   scan independently. Known gaps, NOT detected (each pinned by a test
   test_<name> in tools/tests/test_ratchet.py that asserts no finding, so
   this list and the code cannot drift; follow-up issue "ratchet: close the
-  detection gaps listed in TST-006"): known_gap_py_runtime_gate, a Python
+  detection gaps listed in TST-006", #55): known_gap_py_runtime_gate, a Python
   skip or __test__ built at run time (getattr(pytest, "sk" + "ip"),
   setattr(f, "__test__", False), globals()["__test__"] = False);
   known_gap_py_existing_helper, a new call to a helper that already existed

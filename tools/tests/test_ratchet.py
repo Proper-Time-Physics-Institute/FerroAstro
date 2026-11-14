@@ -564,7 +564,7 @@ def test_cli_help(cmd: list[str]) -> None:
 # Each test below pins a form of test weakening that the ratchet does NOT detect today. They assert
 # the current behaviour (no finding), so a fix that closes a gap fails its test: delete that test
 # and the gap's entry in KNOWN_GAPS, TST-006 notes and the ratchet.py docstring together. The
-# follow-up issue "ratchet: close the detection gaps listed in TST-006" tracks closing them.
+# follow-up issue #55 ("ratchet: close the detection gaps listed in TST-006") tracks closing them.
 
 KNOWN_GAPS = (
     "known_gap_py_runtime_gate",
