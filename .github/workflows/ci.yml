@@ -176,6 +176,10 @@ jobs:
         run: cd tools && uv sync --locked
       - name: ruff + mypy (AGENTS.md)
         run: (cd tools && uv run ruff check && uv run ruff format --check && uv run mypy .)
+      # LIC-001 / STD-009: no GPL/LGPL/AGPL distribution in the locked tools/ environment. The
+      # oracle images under ci/oracles/ are outside it (LIC-005); `reuse` is the documented CLI exemption.
+      - name: licence guard (LIC-001)
+        run: (cd tools && uv run python license_guard.py)
       - name: pytest (STD-009)
         run: (cd tools && uv run pytest)
       - name: doctest coverage of public fns (API-003; report-only until a maintainer sets a ratio)
