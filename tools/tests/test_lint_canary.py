@@ -85,6 +85,56 @@ def test_member_without_inheritance_flagged(tmp_path: Path) -> None:
     ]
 
 
+VIEWER = """\
+[package]
+name = "ferroastro-viewer"
+
+[lints.rust]
+unsafe_code = "deny"
+rust_2018_idioms = { level = "warn", priority = -1 }
+
+[lints.clippy]
+all = { level = "deny", priority = -1 }
+float_cmp = "deny"
+"""
+
+
+# Verifies: STD-003, API-004
+def test_viewer_exception_accepted_when_tables_match(tmp_path: Path) -> None:
+    root = make_repo(tmp_path, a=INHERITS, viewer=VIEWER)
+    assert lint_canary.check_config(root) == []
+
+
+# Verifies: STD-003, API-004
+def test_viewer_exception_drift_flagged(tmp_path: Path) -> None:
+    drifted = VIEWER.replace('float_cmp = "deny"\n', "")
+    root = make_repo(tmp_path, a=INHERITS, viewer=drifted)
+    findings = lint_canary.check_config(root)
+    assert len(findings) == 1
+    assert "crates/viewer/Cargo.toml" in findings[0]
+    assert "LINT_EXCEPTIONS" in findings[0]
+
+
+# Verifies: STD-003, API-004
+def test_viewer_exception_root_change_flagged(tmp_path: Path) -> None:
+    root = make_repo(
+        tmp_path,
+        GOOD_ROOT.replace('float_cmp = "deny"', 'float_cmp = "deny"\nunwrap_used = "deny"'),
+        a=INHERITS,
+        viewer=VIEWER,
+    )
+    assert [f for f in lint_canary.check_config(root) if "crates/viewer" in f]
+
+
+# Verifies: STD-003
+def test_exception_is_only_for_listed_packages(tmp_path: Path) -> None:
+    other = VIEWER.replace('name = "ferroastro-viewer"', 'name = "other"')
+    root = make_repo(tmp_path, a=INHERITS, other=other)
+    assert lint_canary.check_config(root) == [
+        "crates/other/Cargo.toml: missing `[lints] workspace = true`"
+    ]
+
+
 # Verifies: STD-003, TST-001
 def test_fixture_manifest_copies_root_lints() -> None:
     root_data = tomllib.loads(GOOD_ROOT)

@@ -656,6 +656,29 @@ dependencies = [
 ]
 
 [[package]]
+name = "ferroastro-viewer"
+version = "0.0.0"
+dependencies = [
+ "ferroastro-analytic",
+ "ferroastro-constants",
+ "ferroastro-core",
+ "ferroastro-diffrun",
+ "ferroastro-forces",
+ "ferroastro-frames",
+ "ferroastro-integrators",
+ "ferroastro-ladder",
+ "ferroastro-precession",
+ "ferroastro-propagate",
+ "ferroastro-scenario",
+ "ferroastro-system",
+ "ferroastro-testdata",
+ "ferroastro-vectors",
+ "serde_json",
+ "sha2",
+ "toml 0.8.23",
+]
+
+[[package]]
 name = "futures-core"
 version = "0.3.34"
 source = "registry+https://github.com/rust-lang/crates.io-index"

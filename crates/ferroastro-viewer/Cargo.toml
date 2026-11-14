@@ -1,0 +1,90 @@
+# SPDX-FileCopyrightText: 2026 Proper-Time Physics Institute
+# SPDX-License-Identifier: Apache-2.0
+[package]
+name = "ferroastro-viewer"
+description = "Interactive orbit viewer engine: Mercury's perihelion with toggled perturbations, a no-import extern \"C\" ABI for wasm32 (docs/viewer/DESIGN.md)"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+authors.workspace = true
+repository.workspace = true
+# Embeds files from outside the crate directory (tests/goldens, tests/vectors; DESIGN §5) and,
+# with `embed-header`, the JPL header.440 that may never be redistributed (#22).
+publish = false
+
+[features]
+# DESIGN §5 (#22): include the fetched, hash-pinned JPL header.440 at build time for the System-mode
+# initial conditions. build.rs copies $FA_DATA_DIR/header.440 into OUT_DIR after checking its
+# SHA-256 against tests/data/MANIFEST.toml, and fails with FA-E0303 if the file is absent. The file
+# is never committed. Without the feature the crate builds with no data and System-mode
+# fav_configure refuses with FAV_E_UNSUPPORTED ("built without embed-header").
+embed-header = []
+
+[lib]
+# cdylib: the .wasm (and a harmless .so on native); rlib: native tests, clippy and docs.
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+ferroastro-analytic.workspace = true
+ferroastro-constants.workspace = true
+ferroastro-core.workspace = true
+ferroastro-diffrun.workspace = true
+ferroastro-forces.workspace = true
+ferroastro-frames.workspace = true
+ferroastro-integrators.workspace = true
+ferroastro-ladder.workspace = true
+ferroastro-precession.workspace = true
+# Without the `parallel` feature: no rayon on wasm32.
+ferroastro-propagate.workspace = true
+ferroastro-scenario.workspace = true
+ferroastro-system.workspace = true
+serde_json.workspace = true
+toml.workspace = true
+
+[build-dependencies]
+# build.rs (embed-header only): verify header.440 against the MANIFEST pin.
+sha2.workspace = true
+toml.workspace = true
+
+[dev-dependencies]
+ferroastro-testdata.workspace = true
+ferroastro-vectors.workspace = true
+
+# DESIGN §2.2 (NEEDS HUMAN REVIEW, AGENTS.md rule 5, STD-003): a copy of the root
+# [workspace.lints] with exactly one change, unsafe_code = "deny" instead of "forbid", because the
+# wasm exports need `#[unsafe(no_mangle)]`, which `forbid` rejects. Only src/ffi.rs allows it (for
+# that attribute alone; no unsafe block, fn or impl, checked by the `ffi_contains_no_unsafe_code`
+# test), and tools/lint_canary.py checks that these tables equal the root ones except for that key.
+[lints.rust]
+unsafe_code = "deny"
+missing_docs = "deny"
+missing_debug_implementations = "warn"
+unreachable_pub = "warn"
+rust_2018_idioms = { level = "warn", priority = -1 }
+
+[lints.rustdoc]
+broken_intra_doc_links = "deny"
+
+[lints.clippy]
+all = { level = "deny", priority = -1 }
+pedantic = { level = "warn", priority = -1 }
+float_cmp = "deny"
+float_cmp_const = "deny"
+cast_precision_loss = "deny"
+cast_possible_truncation = "deny"
+cast_sign_loss = "deny"
+lossy_float_literal = "deny"
+excessive_precision = "warn"
+suboptimal_flops = "warn"
+imprecise_flops = "warn"
+unwrap_used = "deny"
+expect_used = "warn"
+panic = "warn"
+indexing_slicing = "warn"
+missing_errors_doc = "warn"
+missing_panics_doc = "warn"
+many_single_char_names = "allow"
+similar_names = "allow"
+module_name_repetitions = "allow"
+unreadable_literal = "warn"

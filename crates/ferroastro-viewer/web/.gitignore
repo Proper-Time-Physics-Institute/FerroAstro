@@ -1,0 +1,4 @@
+# SPDX-FileCopyrightText: 2026 Proper-Time Physics Institute
+# SPDX-License-Identifier: Apache-2.0
+# Build artefact copied here by build.sh (docs/viewer/DESIGN.md section 9); never commit it.
+ferroastro_viewer.wasm

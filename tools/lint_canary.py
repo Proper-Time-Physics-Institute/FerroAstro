@@ -7,7 +7,9 @@ this gate checks the configuration and proves the lints still bite:
 
 1. **Config check.** The root ``Cargo.toml`` has ``[workspace.lints.rust] unsafe_code = "forbid"``
    and ``[workspace.lints.clippy] float_cmp = "deny"``, and every workspace member inherits them
-   with ``[lints] workspace = true`` (STD-002/003, TST-001).
+   with ``[lints] workspace = true`` (STD-002/003, TST-001). A member listed in
+   :data:`LINT_EXCEPTIONS` instead carries its own ``[lints]`` tables, which must equal the root
+   ``[workspace.lints]`` except for the listed keys, so drift in either direction fails.
 2. **Compile-fail canaries.** Each fixture under ``tools/canary/`` is built as a throwaway crate in
    a temporary directory, outside the workspace. A crate outside the workspace cannot inherit, so
    the root ``[workspace.lints]`` tables are copied into the fixture's ``[lints]`` at run time:
@@ -42,6 +44,28 @@ REQUIRED_LINTS: tuple[tuple[str, str, str], ...] = (
     ("rust", "unsafe_code", "forbid"),  # STD-003
     ("clippy", "float_cmp", "deny"),  # TST-001
 )
+
+
+# Members allowed their own lint tables: package name -> (reason, {(table, key): required value}).
+# Each table must equal the root [workspace.lints] with exactly these keys replaced.
+LINT_EXCEPTIONS: dict[str, tuple[str, dict[tuple[str, str], object]]] = {
+    "ferroastro-viewer": (
+        "the wasm exports need #[unsafe(no_mangle)], which unsafe_code = forbid rejects; only "
+        "src/ffi.rs allows it, for that attribute alone (docs/viewer/DESIGN.md section 2.2; "
+        "NEEDS HUMAN REVIEW: AGENTS.md rule 5, STD-003)",
+        {("rust", "unsafe_code"): "deny"},
+    ),
+}
+
+
+def expected_member_lints(
+    root_lints: dict[str, Any], overrides: dict[tuple[str, str], object]
+) -> dict[str, Any]:
+    """Return the root ``[workspace.lints]`` tables with an exception's ``overrides``."""
+    out = {table: dict(entries) for table, entries in root_lints.items()}
+    for (table, key), value in overrides.items():
+        out.setdefault(table, {})[key] = value
+    return out
 
 
 @dataclass(frozen=True)
@@ -94,8 +118,17 @@ def check_config(root: Path = ROOT) -> list[str]:
         findings.append("Cargo.toml: [workspace] members matched no crate")
     for member in members:
         member_data = tomllib.loads(member.read_text(encoding="utf-8"))
-        if member_data.get("lints", {}).get("workspace") is not True:
-            rel = member.relative_to(root).as_posix()
+        member_lints = member_data.get("lints", {})
+        rel = member.relative_to(root).as_posix()
+        exception = LINT_EXCEPTIONS.get(member_data.get("package", {}).get("name", ""))
+        if exception is not None and member_lints.get("workspace") is not True:
+            want = expected_member_lints(lints, exception[1])
+            if member_lints != want:
+                findings.append(
+                    f"{rel}: its own [lints] tables must equal the root [workspace.lints] except "
+                    f"{sorted(exception[1].items())} (LINT_EXCEPTIONS: {exception[0]})"
+                )
+        elif member_lints.get("workspace") is not True:
             findings.append(f"{rel}: missing `[lints] workspace = true`")
     return findings
 
