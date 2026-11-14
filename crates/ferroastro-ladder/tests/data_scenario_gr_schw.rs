@@ -52,7 +52,9 @@ fn passages(out: &RunOutput) -> Vec<Passage> {
 #[test]
 #[ignore = "data: downloads JPL header.440 (network); run with --profile data"]
 fn data_gr_schw_scenario_equals_direct_api_bitwise_from_header440() {
-    let c = common::ctx();
+    let Some(c) = common::ctx() else {
+        return;
+    };
     let fetched = fetch_product("de440-header").unwrap();
     let prov = fetched.provenance();
     println!("de440-header {prov}");

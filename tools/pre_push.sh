@@ -24,6 +24,9 @@ if [[ "$msrv" =~ ^[0-9]+\.[0-9]+$ ]]; then msrv="${msrv}.0"; fi
 step() { echo "## $*"; "$@"; }
 
 step cargo fmt --all --check
+# The PR-fast JPL products (as CI's rust job; cache hit = no download). Needed by the tests and, for
+# `--all-features`, by ferroastro-constants' `embed-header` build, which includes header.440 (#22).
+(cd tools && step uv run python fetch_jpl.py)
 step cargo clippy --workspace --all-targets --all-features -- -D warnings
 step cargo nextest run --workspace
 step cargo test --doc --workspace

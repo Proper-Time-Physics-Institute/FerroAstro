@@ -15,7 +15,7 @@ name = "ferroastro"
 path = "src/main.rs"
 
 [dependencies]
-ferroastro-constants.workspace = true
+ferroastro-constants = { workspace = true, features = ["fs"] }
 ferroastro-core.workspace = true
 ferroastro-ladder.workspace = true
 ferroastro-vectors.workspace = true

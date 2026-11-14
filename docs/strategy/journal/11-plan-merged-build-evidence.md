@@ -10,7 +10,7 @@
 
 ### Findings
 - **OI-23 closed.** The header.440 states are SSB-centred ICRF in au and au/day. They match de440.bsp at JDEPOC to 4.8e-7 km; the heliocentric reading misses by 6.7e5 km. **OI-05 closed:** the au is exact (IAU 2012 B2).
-- **OI-04 (GMSDOT = −9e-14):** no public source states its units.
+- **OI-04 (GMSDOT units):** no public source states its units.
   - It is absent from Park 2021, and it first appears in DE440 (DE441/442 carry it; DE421–438 do not). It probably comes from the non-public JPL IOM 392R-20-002.
   - Adopted inference: a fractional rate in **yr⁻¹**, consistent with radiation (≈−6.8e-14/yr) plus solar wind.
   - Impact: a t² drift of about 28 km (Earth) and 46 km (Mercury) at the ends of DE440's span. So it matters only for the M5 reproduction, where it will be fitted against de440.bsp.

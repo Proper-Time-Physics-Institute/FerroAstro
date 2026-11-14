@@ -70,7 +70,11 @@ fn newtonian<R: Real>(b: &[BarycentreBody<R>]) -> Vec<[R; 3]> {
 #[test]
 fn mu_star_rate_matches_a_central_difference_of_mu_star() {
     let (h, prov) = header();
-    let de = De440::load().unwrap();
+    let Some(de) =
+        De440::load_cached_or_skip("mu_star_rate_matches_a_central_difference_of_mu_star").unwrap()
+    else {
+        return;
+    };
     let cat = Catalogue::de440_major(&de);
     let ic = InitialConditions::<Dd>::from_header(&h, &prov).unwrap();
     let bodies: Vec<BarycentreBody<Dd>> = ids()
@@ -134,7 +138,7 @@ fn typed(p: [f64; 3], w: [f64; 3]) -> State<Icrf, Barycentric> {
 /// the velocity condition; returns the GMs and the states.
 fn rebarycentred(with_rate: bool) -> (Vec<f64>, SystemState<Icrf, Barycentric>) {
     let (h, prov) = header();
-    let de = De440::load().unwrap();
+    let de = De440::load_cached().unwrap();
     let cat = Catalogue::de440_major(&de);
     let ic = InitialConditions::<f64>::from_header(&h, &prov).unwrap();
     let c = de.speed_of_light();
@@ -176,7 +180,7 @@ fn rebarycentred(with_rate: bool) -> (Vec<f64>, SystemState<Icrf, Barycentric>) 
 /// `max_t |R*(t) − R*(0)|` over a 10-yr EIH run (Sun + 8 planets + Moon, all Major, barycentric
 /// Moon) from the re-barycentred header.440 states.
 fn drift(with_rate: bool) -> f64 {
-    let de = De440::load().unwrap();
+    let de = De440::load_cached().unwrap();
     let (h, prov) = header();
     let ic = InitialConditions::<f64>::from_header(&h, &prov).unwrap();
     let c = de.speed_of_light();

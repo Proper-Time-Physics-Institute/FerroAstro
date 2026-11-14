@@ -160,13 +160,6 @@ fn verdict(vectors: Option<&VectorSet>, id: &str, r: &RungResult) -> (String, &'
 /// Constants, scenario, model or integration errors.
 pub fn run<W: Write>(opts: &Options, out: &mut W) -> Result<bool, CliError> {
     let io = |e: std::io::Error| CliError(format!("output: {e}"), ErrorCode::LadderSelection);
-    let de = De440::load().map_err(LadderError::from)?;
-    let scn = Scenario::mercury_single_body()?;
-    let rungs = rung_set(&opts.rungs, &scn, &de)?;
-    let mut setup = SingleBody::mercury(&scn, &de)?;
-    if let Some(n) = opts.orbits {
-        setup.orbits = n;
-    }
     // The report is evidence: an FA_VECTORS_DIR override is refused (FA-E0106), never silently
     // ignored; a checkout without tests/vectors only loses the oracle column.
     let vectors = if opts.check {
@@ -180,6 +173,15 @@ pub fn run<W: Write>(opts: &Options, out: &mut W) -> Result<bool, CliError> {
     } else {
         None
     };
+    // The DE440 constants are read at run time from the pinned header.440 in the data cache
+    // (FA-E0303 names the fetch command when it is absent; #22).
+    let de = De440::load_cached().map_err(LadderError::from)?;
+    let scn = Scenario::mercury_single_body()?;
+    let rungs = rung_set(&opts.rungs, &scn, &de)?;
+    let mut setup = SingleBody::mercury(&scn, &de)?;
+    if let Some(n) = opts.orbits {
+        setup.orbits = n;
+    }
     let mut text = String::new();
     let _ = writeln!(
         text,

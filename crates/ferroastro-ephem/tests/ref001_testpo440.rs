@@ -4,7 +4,7 @@
 //! acceptance threshold of JPL's `testeph.f` (DEL < 1e-13 au or au/day).
 //!
 //! PR-fast tier (CI-005): reads the cached de440.bsp and testpo.440 (pinned SHA-256; AU from the
-//! committed DE440 constants table);
+//! DE440 constants, read at run time from the cached header.440, #22);
 //! a missing cache fails loudly with the `fetch_jpl.py` command.
 #![allow(
     clippy::unwrap_used,
@@ -29,8 +29,14 @@ fn every_testpo440_body_point_is_within_the_testeph_threshold() {
     let spk = Spk::parse(&bytes).unwrap();
     let text = String::from_utf8(cached_product("de440-testpo")).unwrap();
     let points = parse_testpo(&text).unwrap();
-    // AU from the committed DE440 constants table (verified against header.440 by WP2's tests).
-    let au = De440::load().unwrap().au().km();
+    // AU from the DE440 constants, read at run time from the pinned header.440 (#22).
+    let Some(de) =
+        De440::load_cached_or_skip("every_testpo440_body_point_is_within_the_testeph_threshold")
+            .unwrap()
+    else {
+        return;
+    };
+    let au = de.au().km();
     let day = ferroastro_ephem::SECONDS_PER_DAY;
     println!(
         "testpo.440: {} points; AU = {au} km (DE440 table)",

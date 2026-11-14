@@ -96,9 +96,13 @@ mod tests {
 
     /// Verifies: PHY-003
     #[test]
+    #[cfg(feature = "fs")]
     fn nominal_differs_from_de440() {
         // The quarantine matters because the values differ from the DE440 ones.
-        let de = crate::De440::load().unwrap();
+        let Some(de) = crate::De440::load_cached_or_skip("nominal_differs_from_de440").unwrap()
+        else {
+            return;
+        };
         let r_nom = solar_radius().conversion_value();
         assert!((r_nom.km() - de.sun_radius().km()).abs() > 1.0);
         let gm_nom = solar_mass_parameter().conversion_value();

@@ -10,7 +10,9 @@ use ferroastro_ladder::single_body::single_body_rungs;
 /// Verifies: PHY-015, PHY-008, NUM-012
 #[test]
 fn every_single_body_rung_reports_full_metadata() {
-    let mut c = common::ctx();
+    let Some(mut c) = common::ctx() else {
+        return;
+    };
     c.setup.orbits = 5;
     for rung in single_body_rungs(&c.scn, &c.de).unwrap() {
         let r = c.setup.run(&rung).unwrap();

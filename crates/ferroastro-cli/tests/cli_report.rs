@@ -9,6 +9,13 @@ use ferroastro_cli::{Options, run};
 /// Verifies: PHY-015, PHY-008, NUM-016
 #[test]
 fn single_body_report_lists_every_rung_with_gauge_and_metadata() {
+    // The CLI reads the DE440 constants from the cached header.440 (#22).
+    let gate = ferroastro_constants::De440::load_cached_or_skip(
+        "single_body_report_lists_every_rung_with_gauge_and_metadata",
+    );
+    if gate.unwrap().is_none() {
+        return;
+    }
     let opts = Options {
         rungs: "single-body".into(),
         orbits: Some(20),

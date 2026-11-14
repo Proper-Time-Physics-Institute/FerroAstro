@@ -12,11 +12,14 @@
 #   October 2026"), fetched with BuildKit's git source at that commit, then checked against a
 #   SHA-256 of the installed data tree (ORE_DATA_TREE_SHA256 below). It was pinned by archive
 #   SHA-256 until 2026-11-13, but GitLab generates archives on the fly and their bytes changed
-#   for the same commit (FerroAstro#32). Its DE-440-ephemerides/lnxp1990.440 is removed so that
-#   the only JPL ephemeris Orekit can load is the pinned linux_p1550p2650.440 mounted at run time
-#   (tests/data/MANIFEST.toml product de440-linux-binary).
-# * StageB.java (FerroAstro, Apache-2.0) is compiled here against the pinned jars; it uses the
-#   documented Orekit API only.
+#   for the same commit (FerroAstro#32). Its DE-440-ephemerides/lnxp1990.440 is moved out of the
+#   data tree, so that the only JPL ephemeris StageB can load is the pinned linux_p1550p2650.440
+#   mounted at run time (tests/data/MANIFEST.toml product de440-linux-binary).
+# * The moved lnxp1990.440 (git blob eb123ab5f9fafb90165b62c2a63e328bea69d82b at that commit) is
+#   checked against LNXP1990_SHA256 and kept in /opt/orekit/de440-bundled for HeaderConstants.java:
+#   oracle (b) of the live header.440 cross-check SYSTEM-HEADER-LIVE-CROSSCHECK-MAX-ULP (#22).
+# * StageB.java and HeaderConstants.java (FerroAstro, Apache-2.0) are compiled here against the
+#   pinned jars; they use the documented Orekit API only.
 FROM python:3.12-slim-bookworm@sha256:34386ef0cb081344d7ec1c103ba398e6e9f64e9ab3a1509accc92a4e24a07258
 
 RUN apt-get update \
@@ -44,8 +47,11 @@ ADD https://gitlab.orekit.org/orekit/orekit-data.git#2422a7d06ee2cc3b5a503a47271
     /tmp/od
 # SHA-256 over `sha256sum` of every installed data file, in C-locale path order.
 ARG ORE_DATA_TREE_SHA256=48b4dbcae7b33b74b33ce3cd519addf086784b363bbb247b36845aca3e83ac9a
-RUN mkdir -p /opt/orekit/data /opt/orekit/classes \
+ARG LNXP1990_SHA256=00a3863ec1ee692d4779a3ba3ad10fca5c90871f5a9c6a5ba4752b8ad8a5df08
+RUN mkdir -p /opt/orekit/data /opt/orekit/classes /opt/orekit/de440-bundled \
  && mv /tmp/od/* /opt/orekit/data/ \
+ && mv /opt/orekit/data/DE-440-ephemerides/lnxp1990.440 /opt/orekit/de440-bundled/ \
+ && echo "${LNXP1990_SHA256}  /opt/orekit/de440-bundled/lnxp1990.440" | sha256sum -c - \
  && rm -rf /opt/orekit/data/DE-440-ephemerides /opt/orekit/data/_pyinstaller /tmp/od \
  && got="$(cd /opt/orekit/data && find . -type f -print0 | LC_ALL=C sort -z \
            | xargs -0 sha256sum | sha256sum | cut -d' ' -f1)" \
@@ -53,8 +59,9 @@ RUN mkdir -p /opt/orekit/data /opt/orekit/classes \
  && [ "$got" = "$ORE_DATA_TREE_SHA256" ] \
  && chmod -R a+rX /opt/orekit
 
-COPY StageB.java settings.toml /opt/fa/
+COPY StageB.java HeaderConstants.java settings.toml /opt/fa/
 RUN javac -encoding UTF-8 -cp '/opt/orekit/lib/*' -d /opt/orekit/classes /opt/fa/StageB.java \
+      /opt/fa/HeaderConstants.java \
  && java -version 2>&1 | head -1 > /opt/orekit/java-version.txt
 
 COPY oracles/ /opt/fa/tools/oracles/

@@ -66,6 +66,11 @@ TEST_SUPPORT: frozenset[str] = frozenset({"ferroastro-vectors", "ferroastro-test
 
 # (crate, dependency) -> reason. Each entry is a deliberate, documented deviation.
 EXCEPTIONS: dict[tuple[str, str], str] = {
+    ("ferroastro-constants", "ferroastro-testdata"): (
+        "optional dependency behind the default `fs` feature only: De440::load_cached locates the "
+        "pinned header.440 in the data cache (maintainer decision 2026-11-14, #22); dependents "
+        "use default-features = false, so library crates and wasm32 never link it"
+    ),
     ("ferroastro-cli", "ferroastro-vectors"): (
         "the CLI ladder report compares each rung with its cited test vector at run time "
         "(WP4); NEEDS HUMAN REVIEW in IMPLEMENTATION-NOTES WP6"

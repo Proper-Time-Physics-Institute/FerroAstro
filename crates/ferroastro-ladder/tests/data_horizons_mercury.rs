@@ -197,7 +197,7 @@ fn data_horizons_osculating_elements_match() {
 fn data_horizons_gr_rate_from_osculating_elements_vs_park17() {
     let els = query("ELEMENTS", "horizons-199-sun-j2000-elements.json");
     els.print("ELEMENTS");
-    let de = De440::load().unwrap();
+    let de = De440::load_cached().unwrap();
     let (gm_sun, gm_me) = two_body::gms(&de);
     let a = Length::from_km(els.num("A")).unwrap();
     let e = els.num("EC");
@@ -233,7 +233,7 @@ fn data_horizons_gr_rate_from_osculating_elements_vs_park17() {
 fn data_horizons_n2b_from_de441_state() {
     let vecs = query("VECTORS", "horizons-199-sun-j2000-vectors.json");
     vecs.print("VECTORS");
-    let de = De440::load().unwrap();
+    let de = De440::load_cached().unwrap();
     let (gm_sun, gm_me) = two_body::gms(&de);
     let (r, v) = state(&vecs);
     let l = |z: f64| Length::from_km(z).unwrap();

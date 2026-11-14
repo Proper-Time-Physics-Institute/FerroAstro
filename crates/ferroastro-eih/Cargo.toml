@@ -19,7 +19,7 @@ ferroastro-system.workspace = true
 
 [dev-dependencies]
 ferroastro-analytic.workspace = true
-ferroastro-constants.workspace = true
+ferroastro-constants = { workspace = true, features = ["fs"] }
 ferroastro-frames.workspace = true
 ferroastro-integrators.workspace = true
 ferroastro-testdata.workspace = true

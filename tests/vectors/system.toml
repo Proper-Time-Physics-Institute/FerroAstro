@@ -57,25 +57,40 @@ value = 0.0
 unit = "ulp"
 kind = "analytic"
 source = "Exact identity EMRAT/(1+EMRAT) + 1/(1+EMRAT) = 1; the two GMs are each rounded once in the products and once in the unit conversion, and the sum once."
-citation = "header.440 GMB and EMRAT (sha256 0f4636b663e6f00af9efa2b605ef23635489f56b23dd1a5e3821d3acc6ac3359) through the committed DE440 table"
+citation = "header.440 GMB and EMRAT (sha256 0f4636b663e6f00af9efa2b605ef23635489f56b23dd1a5e3821d3acc6ac3359) through De440, read at run time"
 retrieved = "2026-10-15"
 tolerance = { abs = 2.0 }
 tolerance_rationale = "Two ulp covers the independent roundings of the split fractions, the products and the sum (each <= 1/2 ulp of its result)."
 verified_by = "WP11 builder agent, 2026-10-15: fixed in the WP11 plan before the first run."
 
 [[vector]]
-id = "SYSTEM-HEADER-CATALOGUE-VS-TABLE-GM-DIFF"
+id = "SYSTEM-HEADER-CATALOGUE-VS-DE440-GM-DIFF"
 requirement = ["REF-002"]
-quantity = "largest |GM from header.440 at run time - GM from the committed DE440 table| over the 11 major bodies"
+quantity = "largest |GM from Catalogue::from_header - GM from Catalogue::de440_major(De440)| over the 11 major bodies, both read from the same pinned header.440 at run time"
 value = 0.0
 unit = "km^3/s^2"
 kind = "measured"
-source = "Catalogue::from_header vs Catalogue::de440_major: same tokens, same conversion arithmetic (au^3/d^2 x AU^3/86400^2, EMRAT split)."
-citation = "header.440 (sha256 0f4636b663e6f00af9efa2b605ef23635489f56b23dd1a5e3821d3acc6ac3359); crates/ferroastro-constants/data/de440-constants.toml"
-retrieved = "2026-10-15"
+source = "Catalogue::from_header vs Catalogue::de440_major(De440::from_header): two code paths over the same tokens with the same conversion arithmetic (au^3/d^2 x AU^3/86400^2, EMRAT split)."
+citation = "header.440 (sha256 0f4636b663e6f00af9efa2b605ef23635489f56b23dd1a5e3821d3acc6ac3359), read at run time; no value committed (#22)"
+retrieved = "2026-11-14"
 tolerance = { abs = 0.0 }
 tolerance_rationale = "Bit-identical by construction; any difference means the two paths diverged."
-verified_by = "WP11 builder agent, 2026-10-15: fixed in the WP11 plan before the first run."
+verified_by = "WP11 builder agent, 2026-10-15 (as SYSTEM-HEADER-CATALOGUE-VS-TABLE-GM-DIFF, against the former committed table); renamed and re-sourced by the #22 author agent, 2026-11-14 (golden-change): the committed value table no longer exists, both sides are run-time reads."
+
+[[vector]]
+id = "SYSTEM-HEADER-LIVE-CROSSCHECK-MAX-ULP"
+requirement = ["REF-002", "PHY-002"]
+quantity = "largest distance in binary64 ulps between FerroAstro's run-time parse of the pinned header.440 and an independent reader, over the 23 constants of crates/ferroastro-constants/data/de440-metadata.toml"
+value = 0.0
+unit = "ulp"
+kind = "defined"
+source = "LIVE cross-check, no committed values (maintainer decision 2026-11-14, #22). FerroAstro: `cargo run -p ferroastro-constants --example header_constants_json` (De440 table from the hash-verified header). Oracles: (a) data tier, tools/oracles/header440.py on the same header.440 (ci.yml `data` job); (b) AUTHORITATIVE, oracle tier, Orekit 13.1.9 JPLEphemeridesLoader.getLoadedConstant on the binary DE440 file DE-440-ephemerides/lnxp1990.440 bundled in the pinned orekit-data snapshot (tools/oracles/run_oracles.sh header-constants; oracles.yml). Compared by tools/oracles/header_crosscheck.py."
+citation = "JPL DE440 (Park et al. 2021, AJ 161, 105): header.440 sha256 0f4636b663e6f00af9efa2b605ef23635489f56b23dd1a5e3821d3acc6ac3359 (tests/data/MANIFEST.toml); orekit-data commit 2422a7d06ee2cc3b5a503a47271203b0706f3e82, DE-440-ephemerides/lnxp1990.440 (git blob eb123ab5f9fafb90165b62c2a63e328bea69d82b, sha256 00a3863ec1ee692d4779a3ba3ad10fca5c90871f5a9c6a5ba4752b8ad8a5df08)"
+retrieved = "2026-11-14"
+tolerance = { abs = 0.0 }
+tolerance_rationale = "The header prints each constant as an 18-significant-digit decimal; every correct reader rounds it to the same nearest binary64, and the binary DE file stores the same binary64 values. Any non-zero distance is a parse or data error, so equality is required. Fixed before the first comparison; the #22 author's exploratory run (2026-11-14, Orekit 13.1.9 image built 2026-11-13) found 23/23 bit-identical."
+verified_by = "#22 author agent, 2026-11-14: exploratory Orekit run disclosed above (not blind); the tolerance follows from round-to-nearest, not from that run."
+notes = "Supersedes SYSTEM-HEADER-CATALOGUE-VS-TABLE-GM-DIFF's role as the check that FerroAstro's constants are the header's (golden-change). Its PHY-002/REF-002 trace is kept by tools/tests/test_header_crosscheck.py and the oracle-tier run."
 
 [[vector]]
 id = "SYSTEM-HEADER-NUMBERED-ASTEROIDS"
