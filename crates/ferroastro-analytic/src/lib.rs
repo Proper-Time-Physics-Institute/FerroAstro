@@ -9,6 +9,7 @@
 //!   the exact SR-Kepler advance (NUM-015 R2), J2 planar and inclined (PHY-010, Park et al. 2017
 //!   Eq. 3) and Lense–Thirring (PHY-011, Park et al. 2017 Eq. 2).
 //! * [`vector`]: raw 3-vector helpers and the eccentricity (LRL) vector.
+//! * [`drift`]: the exact Kepler flow in universal variables (the Wisdom–Holman drift, NUM-004).
 //!
 //! Every oracle is generic over the scalar backend `R: ferroastro_real::Real` (default `f64`), so
 //! the same formula can be evaluated in double-double when a rung is run in double-double.
@@ -30,6 +31,7 @@
 //! ```
 
 pub mod advance;
+pub mod drift;
 mod error;
 pub mod kepler;
 pub mod vector;

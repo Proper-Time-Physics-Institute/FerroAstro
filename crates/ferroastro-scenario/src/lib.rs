@@ -57,7 +57,8 @@ mod spec;
 pub use error::ScenarioError;
 pub use hash::{IcRecord, Parts, canonical_ic_text, ic_hash};
 pub use spec::{
-    BodyName, ConstantsSpec, DAYS_PER_JULIAN_YEAR, Forces, GmSet, IcBarycentre, IcSource,
-    InitialConditionsSpec, IntegratorName, IntegratorSpec, MAX_OUTPUT_SAMPLES, Mode, OutputSpec,
-    Ppn, Precision, SCHEMA_VERSION, SWITCHES, ScenarioSpec, Span, json_schema,
+    AbmCorrector, BodyName, ConstantsSpec, DAYS_PER_JULIAN_YEAR, EihScope, ForceKernel, Forces,
+    GmSet, IcBarycentre, IcSource, InitialConditionsSpec, IntegratorName, IntegratorSpec,
+    MAX_OUTPUT_SAMPLES, MajorAsteroids, Mode, OutputSpec, Ppn, Precision, SCHEMA_VERSION, SWITCHES,
+    ScenarioSpec, Span, json_schema,
 };

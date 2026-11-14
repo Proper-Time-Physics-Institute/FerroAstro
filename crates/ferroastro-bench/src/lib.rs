@@ -40,5 +40,6 @@ pub use error::BenchError;
 pub use series::{RunInfo, Series, read_run};
 pub use stats::{MIN_RUNS, Timing};
 pub use table::{
-    Accuracy, Entry, Host, Measure, ScenarioInfo, SpeedTable, Stability, Status, stability,
+    Accuracy, Entry, Host, Measure, Published, ReferenceScore, ScenarioInfo, SpeedTable, Stability,
+    Status, stability,
 };

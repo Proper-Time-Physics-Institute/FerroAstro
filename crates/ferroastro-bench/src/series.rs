@@ -31,6 +31,8 @@ pub const MANIFEST: &str = "MANIFEST.json";
 pub const LOAD_FILE: &str = "load.txt";
 
 const SECONDS_PER_DAY: f64 = ferroastro_core::time::SECONDS_PER_DAY;
+/// The final state is appended when it is later than the last sample by more than this (s).
+const TAIL_MIN_S: f64 = 1e-6;
 
 /// One body's state at one output time.
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -143,11 +145,17 @@ impl Series {
     }
 
     /// A FerroAstro run's sampled states (solar-system barycentric), summing each `(hi, lo)`
-    /// pair to binary64.
+    /// pair to binary64, followed by the final state when it lies after the last sample (WP28:
+    /// a 40-yr run sampled every 20 d ends between samples).
     #[must_use]
     pub fn from_run(file: &str, out: &RunOutput) -> Self {
         let mut rows = Vec::new();
-        for s in &out.states {
+        let last_t = out.states.last().map(|s| sum(s.t));
+        let tail = out
+            .final_state
+            .as_ref()
+            .filter(|f| last_t.is_none_or(|t| sum(f.t) > t + TAIL_MIN_S));
+        for s in out.states.iter().chain(tail) {
             let t_days = sum(s.t) / SECONDS_PER_DAY;
             for ((id, p), w) in s.bodies.iter().zip(&s.positions).zip(&s.velocities) {
                 rows.push(Row {

@@ -73,6 +73,17 @@ pub enum IntegratorError {
         /// What is wrong.
         problem: String,
     },
+    /// An iterative solve inside a step did not converge.
+    #[error(
+        "FA-E0406: {what} did not converge (step tau = {t}); fix: shorten the step or check the \
+         orbit for a near-parabolic or degenerate configuration"
+    )]
+    NoConvergence {
+        /// Which solve.
+        what: &'static str,
+        /// The step (or time) at which it happened.
+        t: f64,
+    },
     /// The dynamics (force model) reported an error with its own stable code.
     #[error("{code}: force model error: {message}")]
     Dynamics {
@@ -94,6 +105,7 @@ impl IntegratorError {
             IntegratorError::Dimension { .. } => ErrorCode::IntegratorDimension,
             IntegratorError::Fit { .. } => ErrorCode::DiagnosticFitDegenerate,
             IntegratorError::Checkpoint { .. } => ErrorCode::IntegratorCheckpoint,
+            IntegratorError::NoConvergence { .. } => ErrorCode::IntegratorNoConvergence,
             IntegratorError::Dynamics { code, .. } => *code,
         }
     }

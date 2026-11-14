@@ -158,3 +158,17 @@ retrieved = "2026-10-20"
 tolerance = { abs = 1.0e-13 }
 tolerance_rationale = "The same expression evaluated in two operation orders (~15 operations each, cross products with cancellation); about 450 ulp, as EIH-R3-LIMIT-CORRECTION-REL. A coefficient or sign error is O(1). Pre-registered in IMPLEMENTATION-NOTES WP20 (L1b) before the first run."
 verified_by = "WP20 builder agent, 2026-10-20: fixed in the WP20 plan before the first run."
+
+[[vector]]
+id = "NBODY-LT-GAMMA-WIRING"
+requirement = ["NUM-019", "PHY-011"]
+quantity = "Delta(gamma = 0.9) / Delta(gamma = 1) - (1 + 0.9)/2, where Delta is Mercury's final barycentric displacement |r(LT on) - r(LT off)| of a Sun + Mercury N-body scenario run (header.440 ICs, 1 Julian year, same IC hash), ppn beta = 1"
+value = 0.0
+unit = "1"
+kind = "analytic"
+source = "The Lense-Thirring acceleration is proportional to (1 + gamma)/2 (DE440 Eqs. 37-39); the perturbation it causes over 1 yr is linear in it to ~1e-8, so the displacement ratio is (1 + 0.9)/2 / 1 = 0.95."
+citation = "Park et al. 2021, AJ 161, 105, Eqs. 37-39; progress review after WP21, V1"
+retrieved = "2026-10-20"
+tolerance = { abs = 1.0e-3 }
+tolerance_rationale = "The displacement (m-level) is resolved to ~1e-6 relative against f64 positions (~6e7 km, ulp ~ 7e-9 km); nonlinearity is ~1e-8. A scenario gamma ignored by the wiring gives a ratio of 1 (deviation 0.05)."
+verified_by = "WP24 builder agent, 2026-10-20: fixed in the WP24 plan before the first run (V1)."

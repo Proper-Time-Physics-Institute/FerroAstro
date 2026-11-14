@@ -153,7 +153,8 @@ pub struct InitialConditionsSpec {
     pub epoch_jd_tdb: Option<f64>,
     /// Re-barycentre the assembled initial conditions (n-body mode; absent: use the source's
     /// states as given). `relativistic` moves the origin to the relativistic SSB with the μᵢ* of
-    /// Park et al. 2021 Eqs. 1–2 and the velocity condition with dμ*/dt (NUM-018, OI-75; WP22).
+    /// Park et al. 2021 Eqs. 1–2 and the velocity condition with dμ*/dt (NUM-018, OI-75; WP22),
+    /// computed in the run's backend (WP25).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub barycentre: Option<IcBarycentre>,
 }
@@ -176,6 +177,75 @@ impl IcBarycentre {
         match self {
             IcBarycentre::Relativistic => "relativistic",
         }
+    }
+}
+
+/// Which numbered asteroids are Major bodies (`forces.major_asteroids`, NUM-009, WP25). The
+/// others of `forces.asteroids` stay Minor.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "kebab-case")]
+pub enum MajorAsteroids {
+    /// None: every asteroid is Minor (Newtonian from the Majors only).
+    #[default]
+    None,
+    /// (1) Ceres, (2) Pallas, (4) Vesta, (7) Iris and (324) Bamberga, the five asteroids that
+    /// obey the EIH equations in the EPM2021 model of Subbotin et al. 2023 §2 (with the Sun, the
+    /// planets, the Moon and Pluto: their 16 Major bodies).
+    Epm2021,
+    /// Every asteroid of `forces.asteroids`: the all-mutual reference of the tiering check.
+    All,
+}
+
+impl MajorAsteroids {
+    /// The spelling in scenario files.
+    #[must_use]
+    pub const fn label(self) -> &'static str {
+        match self {
+            MajorAsteroids::None => "none",
+            MajorAsteroids::Epm2021 => "epm2021",
+            MajorAsteroids::All => "all",
+        }
+    }
+
+    /// True for [`MajorAsteroids::None`] (the serde skip test).
+    #[must_use]
+    pub fn is_none(&self) -> bool {
+        *self == MajorAsteroids::None
+    }
+
+    /// The asteroid numbers of [`MajorAsteroids::Epm2021`].
+    pub const EPM2021: [u32; 5] = [1, 2, 4, 7, 324];
+}
+
+/// Which bodies receive and source the 1PN EIH terms (`forces.eih_scope`, NUM-009; maintainer
+/// decision 2026-11-12). Only meaningful with `gr_eih`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "kebab-case")]
+pub enum EihScope {
+    /// DE440 (Park et al. 2021; decision D1 of 2026-10-21): every moving body, Major and Minor,
+    /// over the tiered interaction graph, Ring masses as sources. The default.
+    #[default]
+    All,
+    /// EPM2021 (Subbotin et al. 2023 §2): only the Major bodies receive and source the 1PN
+    /// terms; Minor and Ring bodies stay Newtonian.
+    Majors,
+}
+
+impl EihScope {
+    /// The spelling in scenario files.
+    #[must_use]
+    pub const fn label(self) -> &'static str {
+        match self {
+            EihScope::All => "all",
+            EihScope::Majors => "majors",
+        }
+    }
+
+    /// True for [`EihScope::All`] (the serde skip test: the default is not serialized, so the
+    /// digest of every scenario without the key is unchanged).
+    #[must_use]
+    pub fn is_all(&self) -> bool {
+        *self == EihScope::All
     }
 }
 
@@ -242,10 +312,24 @@ pub struct Forces {
     /// not a CI-002 switch name, WP15).
     #[serde(default, skip_serializing_if = "std::ops::Not::not")]
     pub kbo_ring: bool,
+    /// Which of the `asteroids` are Major bodies instead of Minor (NUM-009; not a CI-002 switch
+    /// name, WP25). Default `none`.
+    #[serde(default, skip_serializing_if = "MajorAsteroids::is_none")]
+    pub major_asteroids: MajorAsteroids,
+    /// The velocity-independent GR effective potential of the Sun, `−3(GM☉)²/(c²r²)` per unit
+    /// mass (Nobili & Roxburgh 1986), with the reaction on the Sun: the GR-potential rung of the
+    /// Wisdom–Holman integrator (n-body mode; not a CI-002 switch name, WP29). It gives the 1PN
+    /// perihelion advance, but the mean motion is off by O(GM/(ac²)).
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub gr_potential: bool,
+    /// Which bodies receive and source the 1PN EIH terms (`all`, the default: DE440; `majors`:
+    /// EPM2021). Requires `gr_eih` (not a CI-002 switch name; maintainer decision 2026-11-12).
+    #[serde(default, skip_serializing_if = "EihScope::is_all")]
+    pub eih_scope: EihScope,
 }
 
 /// The force switches of CI-002, as written under `[forces]`.
-pub const SWITCHES: [&str; 9] = [
+pub const SWITCHES: [&str; 12] = [
     "newton",
     "sun_j2",
     "gr_1pn_central",
@@ -255,6 +339,9 @@ pub const SWITCHES: [&str; 9] = [
     "asteroids",
     "kbos",
     "kbo_ring",
+    "major_asteroids",
+    "gr_potential",
+    "eih_scope",
 ];
 
 impl Forces {
@@ -271,6 +358,9 @@ impl Forces {
             self.asteroids > 0,
             self.kbos,
             self.kbo_ring,
+            self.major_asteroids != MajorAsteroids::None,
+            self.gr_potential,
+            !self.eih_scope.is_all(),
         ];
         SWITCHES
             .iter()
@@ -315,6 +405,9 @@ pub enum Precision {
     F64,
     /// Double-double (`ferroastro-real`).
     Dd,
+    /// The NUM-007 ephemeris precision mode (Subbotin et al. 2023 "mixed"): state, integrator
+    /// sums and coefficients in double-double, forces in f64 (n-body mode, WP25).
+    Mixed,
 }
 
 impl Precision {
@@ -324,11 +417,35 @@ impl Precision {
         match self {
             Precision::F64 => "f64",
             Precision::Dd => "dd",
+            Precision::Mixed => "mixed",
         }
     }
 }
 
-/// `[integrator]`. Unset settings take the integrator's defaults.
+/// Predictor–corrector mode of the Adams–Bashforth–Moulton integrator (WP24, NUM-002).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "kebab-case")]
+pub enum AbmCorrector {
+    /// P, E, C, E.
+    Pece,
+    /// P(EC)²: P, E, C, E, C (Subbotin et al. 2023; the default).
+    Pecec,
+}
+
+impl AbmCorrector {
+    /// The spelling in scenario files.
+    #[must_use]
+    pub const fn label(self) -> &'static str {
+        match self {
+            AbmCorrector::Pece => "pece",
+            AbmCorrector::Pecec => "pecec",
+        }
+    }
+}
+
+/// `[integrator]`. Unset settings take the integrator's defaults. `epsilon`, `pc_tolerance` and
+/// `dt0_days` configure IAS15 only; `order`, `corrector`, `step_days` and `compensated` configure
+/// ABM only (a key of the other integrator is refused).
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub struct IntegratorSpec {
@@ -345,6 +462,51 @@ pub struct IntegratorSpec {
     /// First trial step in days (N-body default 0.1 d; the controller adapts it).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub dt0_days: Option<f64>,
+    /// ABM order, 8 … 14 (default 13).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[schemars(range(min = 8, max = 14))]
+    pub order: Option<u32>,
+    /// ABM predictor–corrector mode (default `pecec`).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub corrector: Option<AbmCorrector>,
+    /// Fixed step in days of ABM (default 1/16 d), `WHFast` and IRK16 (default 1 d); its sign
+    /// follows the span.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub step_days: Option<f64>,
+    /// Kahan-compensated state update of ABM and IRK16 (default true; false gives the plain
+    /// sums).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub compensated: Option<bool>,
+    /// `WHFast` symplectic-corrector order: 0 (none), 3, 5, 7 or 11 (default 11; WP29).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub wh_corrector: Option<u32>,
+    /// The N-body pair kernels (NUM-021, WP26): `pairwise` (default) or `soa`. Not a force
+    /// switch: it selects FerroAstro's arithmetic, not the physics.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub force_kernel: Option<ForceKernel>,
+}
+
+/// The N-body pair kernels (`integrator.force_kernel`, NUM-021, WP26).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "kebab-case")]
+pub enum ForceKernel {
+    /// Each pair visited once (`i < j`), fused `r²`, `1/(r²√r²)` (the M3/M4 kernels).
+    #[default]
+    Pairwise,
+    /// Structure-of-arrays kernels (`ferroastro_forces::soa`): exact `1/r³`, no FMA, sources of
+    /// each target summed in storage order; scalar and SIMD lanes are bitwise identical.
+    Soa,
+}
+
+impl ForceKernel {
+    /// The spelling in scenario files.
+    #[must_use]
+    pub const fn label(self) -> &'static str {
+        match self {
+            ForceKernel::Pairwise => "pairwise",
+            ForceKernel::Soa => "soa",
+        }
+    }
 }
 
 /// `[span]`.
@@ -561,6 +723,20 @@ impl ScenarioSpec {
             }
             _ => {}
         }
+        if !self.forces.eih_scope.is_all() && !self.forces.gr_eih {
+            return err(
+                "forces.eih_scope",
+                &self.forces.eih_scope.label(),
+                "selects the bodies of the EIH terms; it needs gr_eih = true",
+            );
+        }
+        if self.forces.major_asteroids != MajorAsteroids::None && self.forces.asteroids == 0 {
+            return err(
+                "forces.major_asteroids",
+                &self.forces.major_asteroids.label(),
+                "selects Major bodies among forces.asteroids, which is 0",
+            );
+        }
         if let Some(p) = self.forces.ppn {
             if !(p.beta.is_finite() && p.gamma.is_finite()) {
                 return err(
@@ -614,10 +790,113 @@ impl ScenarioSpec {
                 "needs exactly one body in output.perihelion",
             );
         }
+        let ig = &self.integrator;
+        let owners: [(&'static str, bool, &[IntegratorName], &str); 8] = [
+            (
+                "integrator.epsilon",
+                ig.epsilon.is_some(),
+                &[IntegratorName::Ias15],
+                "IAS15",
+            ),
+            (
+                "integrator.pc_tolerance",
+                ig.pc_tolerance.is_some(),
+                &[IntegratorName::Ias15],
+                "IAS15",
+            ),
+            (
+                "integrator.dt0_days",
+                ig.dt0_days.is_some(),
+                &[IntegratorName::Ias15],
+                "IAS15",
+            ),
+            (
+                "integrator.order",
+                ig.order.is_some(),
+                &[IntegratorName::Abm],
+                "ABM",
+            ),
+            (
+                "integrator.corrector",
+                ig.corrector.is_some(),
+                &[IntegratorName::Abm],
+                "ABM",
+            ),
+            (
+                "integrator.step_days",
+                ig.step_days.is_some(),
+                &[
+                    IntegratorName::Abm,
+                    IntegratorName::Whfast,
+                    IntegratorName::Irk16,
+                ],
+                "the fixed-step integrators (ABM, whfast, irk16)",
+            ),
+            (
+                "integrator.compensated",
+                ig.compensated.is_some(),
+                &[IntegratorName::Abm, IntegratorName::Irk16],
+                "ABM and IRK16",
+            ),
+            (
+                "integrator.wh_corrector",
+                ig.wh_corrector.is_some(),
+                &[IntegratorName::Whfast],
+                "WHFast",
+            ),
+        ];
+        if let Some((field, _, _, owner)) = owners
+            .iter()
+            .find(|(_, set, who, _)| *set && !who.contains(&ig.name))
+        {
+            return err(
+                field,
+                &ig.name.label(),
+                &format!(
+                    "configures {owner} only, not integrator {}",
+                    ig.name.label()
+                ),
+            );
+        }
+        if let Some(c) = ig.wh_corrector {
+            if ![0, 3, 5, 7, 11].contains(&c) {
+                return err("integrator.wh_corrector", &c, "one of 0, 3, 5, 7, 11");
+            }
+        }
+        if self.forces.gr_potential && (self.forces.gr_eih || self.forces.gr_1pn_central) {
+            return err(
+                "forces.gr_potential",
+                &true,
+                "the GR effective potential replaces gr_eih / gr_1pn_central; do not combine them",
+            );
+        }
+        if ig.force_kernel == Some(ForceKernel::Soa) {
+            if self.mode != Mode::NBody {
+                return err(
+                    "integrator.force_kernel",
+                    &"soa",
+                    "the SoA kernels are N-body pair kernels (mode = \"n-body\" only)",
+                );
+            }
+            if ig.precision == Precision::Mixed {
+                return err(
+                    "integrator.force_kernel",
+                    &"soa",
+                    "not with precision = \"mixed\": the NUM-007 mixed mode compensates every pair \
+                     contribution (WP25), the SoA kernel sums each body's sources in one lane",
+                );
+            }
+        }
+        if let Some(o) = ig.order {
+            if !(8..=14).contains(&o) {
+                return err("integrator.order", &o, "8 <= order <= 14 (NUM-002)");
+            }
+        }
         for (field, v) in [
             ("integrator.epsilon", self.integrator.epsilon),
             ("integrator.pc_tolerance", self.integrator.pc_tolerance),
             ("integrator.dt0_days", self.integrator.dt0_days),
+            ("integrator.step_days", self.integrator.step_days),
         ] {
             if let Some(v) = v {
                 if !(v.is_finite() && v > 0.0) {
@@ -678,12 +957,36 @@ impl ScenarioSpec {
         Ok(())
     }
 
-    /// SHA-256 (hex) of the scenario's canonical JSON form (field order fixed by the type), used
-    /// to tie a checkpoint to its scenario.
+    /// The model semantics an EIH scenario's digest covers besides its JSON form, `None` for a
+    /// scenario without `gr_eih`: the effective EIH scope, default included
+    /// (`"model-semantics v1: eih_scope = all"`).
+    #[must_use]
+    pub fn model_semantics(&self) -> Option<String> {
+        self.forces.gr_eih.then(|| {
+            format!(
+                "model-semantics v1: eih_scope = {}",
+                self.forces.eih_scope.label()
+            )
+        })
+    }
+
+    /// SHA-256 (hex) of the scenario's canonical JSON form (field order fixed by the type) and,
+    /// for an EIH scenario, of the **effective** model semantics ([`ScenarioSpec::model_semantics`]),
+    /// used to tie a checkpoint (and a differential-run store) to its scenario.
+    ///
+    /// The JSON form omits defaults (`eih_scope = "all"` is not serialized), so a change of what a
+    /// default means would otherwise leave the digest unchanged: the M5 review (#18, B1) found
+    /// scenarios measured under the Major-only EIH and re-run under the all-body EIH (decision D1)
+    /// with the same digest. Since 2026-11-12 the digest of every `gr_eih` scenario covers its
+    /// effective `eih_scope`; a checkpoint written before that is refused (FA-E1302).
     #[must_use]
     pub fn digest(&self) -> String {
         use sha2::{Digest, Sha256};
-        let json = serde_json::to_string(self).unwrap_or_default();
+        let mut json = serde_json::to_string(self).unwrap_or_default();
+        if let Some(m) = self.model_semantics() {
+            json.push('\n');
+            json.push_str(&m);
+        }
         let d = Sha256::digest(json.as_bytes());
         d.iter().fold(String::with_capacity(64), |mut s, b| {
             use std::fmt::Write as _;

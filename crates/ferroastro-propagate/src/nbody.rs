@@ -14,27 +14,35 @@ use crate::setup::{
     DataSources, constants_version, epoch, nbody_ics, setup, solar_j2, solar_pole, solar_spin,
     tag_overrides,
 };
-use crate::{PropagateError, ias15_config};
+use crate::stepper::{IntegratorSnapshot, Stepper};
+use crate::{PropagateError, abm_config, ias15_config};
+use ferroastro_abm::Abm;
 use ferroastro_constants::{Body, De440};
 use ferroastro_core::frames::Barycentric;
 use ferroastro_core::frames::Icrf;
 use ferroastro_core::time::SECONDS_PER_DAY;
 use ferroastro_core::units::{Length, Velocity};
 use ferroastro_eih::{
-    BarycentreBody, Eih, HeliocentricSchwarzschild, RhsAcceleration,
+    BarycentreBody, Eih, EihSoa, HeliocentricSchwarzschild, RhsAcceleration,
     relativistic_barycentre_with_rate,
 };
 use ferroastro_ephem::NaifId;
 use ferroastro_forces::{
-    ForceTerm, GeocentricMoon, LtReaction, MOON_TAYLOR_TERMS_DEFAULT, MinorFromMajors,
-    MinorReaction, MoonVariables, NBody, NBodyModel, NewtonianMutual, RingMasses,
-    SolarJ2WithReaction, SolarLenseThirring,
+    ForceTerm, GeocentricMoon, GrPotential, LtReaction, MOON_TAYLOR_TERMS_DEFAULT, MinorFromMajors,
+    MinorReaction, MixedForces, MoonVariables, NBody, NBodyModel, NewtonianMutual,
+    NewtonianMutualSoa, RingMasses, SoaBackend, SolarJ2WithReaction, SolarLenseThirring,
 };
-use ferroastro_integrators::{Ias15, Ias15Snapshot};
+use ferroastro_integrators::Ias15;
+use ferroastro_integrators::Irk16;
 use ferroastro_real::Real;
-use ferroastro_scenario::{BodyName, IcBarycentre, IcRecord, ScenarioError, ScenarioSpec, ic_hash};
+use ferroastro_scenario::{
+    BodyName, ForceKernel, IcBarycentre, IcRecord, IntegratorName, MajorAsteroids, Precision,
+    ScenarioError, ScenarioSpec, ic_hash,
+};
+use ferroastro_symplectic::Whfast;
 use ferroastro_system::{
-    Catalogue, KBO_IDENTIFICATION, KBO_RING, SystemState, Tier, kbo_ring_states, place_small_bodies,
+    ASTEROID_NAIF_BASE, Catalogue, KBO_IDENTIFICATION, KBO_RING, SystemState, Tier,
+    kbo_ring_states, place_small_bodies,
 };
 use serde::{Deserialize, Serialize};
 
@@ -45,6 +53,13 @@ pub(crate) struct DriverState {
     pub(crate) next_sample: u64,
     /// Perihelion passages found so far.
     pub(crate) passages: u64,
+}
+
+/// True if the scenario selects the SoA pair kernels (`integrator.force_kernel = "soa"`, WP26).
+/// The lane backend is [`SoaBackend::preferred`]: SIMD with the `simd` feature, scalar without,
+/// bitwise identical either way.
+fn soa_kernel(spec: &ScenarioSpec) -> bool {
+    spec.integrator.force_kernel == Some(ForceKernel::Soa)
 }
 
 /// The relativistic term of an N-body scenario (WP19): `gr_eih` gives the EIH term (Park et al.
@@ -80,12 +95,16 @@ fn relativity<R: Real>(
     let (beta, gamma) = (R::from_f64(beta), R::from_f64(gamma));
     let mut terms: Vec<Box<dyn ForceTerm<Icrf, R>>> = Vec::new();
     if f.gr_eih {
-        terms.push(Box::new(Eih::new(
-            c,
-            beta,
-            gamma,
-            RhsAcceleration::Newtonian,
-        )?));
+        let scope = match f.eih_scope {
+            ferroastro_scenario::EihScope::All => ferroastro_eih::EihScope::All,
+            ferroastro_scenario::EihScope::Majors => ferroastro_eih::EihScope::Majors,
+        };
+        let eih = Eih::new(c, beta, gamma, RhsAcceleration::Newtonian)?.with_scope(scope);
+        if soa_kernel(spec) {
+            terms.push(Box::new(EihSoa::new(eih, SoaBackend::preferred())));
+        } else {
+            terms.push(Box::new(eih));
+        }
     }
     if f.gr_1pn_central {
         if !has_sun {
@@ -95,6 +114,15 @@ fn relativity<R: Real>(
             ));
         }
         terms.push(Box::new(HeliocentricSchwarzschild::new(c, beta, gamma)?));
+    }
+    if f.gr_potential {
+        if !has_sun {
+            return Err(value_err(
+                "forces.gr_potential",
+                "the GR effective potential of the Sun needs the Sun among the bodies",
+            ));
+        }
+        terms.push(Box::new(GrPotential::new(c)?));
     }
     Ok(terms)
 }
@@ -135,7 +163,11 @@ fn model<R: Real>(
         });
     }
     let has = |b: BodyName| spec.bodies.contains(&b);
-    let mut terms: Vec<Box<dyn ForceTerm<Icrf, R>>> = vec![Box::new(NewtonianMutual)];
+    let mut terms: Vec<Box<dyn ForceTerm<Icrf, R>>> = if soa_kernel(spec) {
+        vec![Box::new(NewtonianMutualSoa::new(SoaBackend::preferred()))]
+    } else {
+        vec![Box::new(NewtonianMutual)]
+    };
     if small.iter().any(|b| b.2 == Tier::Minor) {
         terms.push(Box::new(MinorFromMajors::new(MinorReaction::On)));
     }
@@ -274,13 +306,25 @@ fn small_bodies<R: Real>(
             )
         })?;
         let placed = place_small_bodies(file, &minor, &sun)?;
+        let major = major_asteroid_filter(spec, &minor)?;
+        let mut promoted = 0_usize;
         for (id, st) in placed.states()? {
             states.push(id, &st)?;
-            list.push((id, cat.gm(id)?.km3_per_s2(), Tier::Minor));
+            let tier = if major(id) {
+                promoted += 1;
+                Tier::Major
+            } else {
+                Tier::Minor
+            };
+            list.push((id, cat.gm(id)?.km3_per_s2(), tier));
         }
         prov.push(format!(
-            "{} Minor bodies placed from {} + the header Sun",
+            "{} small bodies ({} Major: forces.major_asteroids = {}, {} Minor) placed from {} + \
+             the header Sun",
             minor.len(),
+            promoted,
+            f.major_asteroids.label(),
+            minor.len() - promoted,
             file.provenance()
         ));
     }
@@ -300,8 +344,43 @@ fn small_bodies<R: Real>(
     Ok((list, states, prov.join("; ")))
 }
 
-/// Passes of the relativistic re-barycentring (μ* depends on the velocities being corrected).
-const REBARYCENTRE_PASSES: usize = 2;
+/// Which placed asteroids are Major under `forces.major_asteroids` (WP25), after checking that
+/// every EPM2021 asteroid is among `minor`.
+fn major_asteroid_filter(
+    spec: &ScenarioSpec,
+    minor: &[NaifId],
+) -> Result<impl Fn(NaifId) -> bool, PropagateError> {
+    let f = &spec.forces;
+    let naif = |k: u32| i64::from(ASTEROID_NAIF_BASE) + i64::from(k);
+    if f.major_asteroids == MajorAsteroids::Epm2021 {
+        for k in MajorAsteroids::EPM2021 {
+            if !minor.iter().any(|id| i64::from(id.0) == naif(k)) {
+                return Err(ScenarioError::Value {
+                    name: spec.name.clone(),
+                    field: "forces.major_asteroids",
+                    value: "epm2021".into(),
+                    problem: format!(
+                        "asteroid ({k}) is not among the first {} numbered asteroids of header.440",
+                        f.asteroids
+                    ),
+                }
+                .into());
+            }
+        }
+    }
+    let which = f.major_asteroids;
+    Ok(move |id: NaifId| match which {
+        MajorAsteroids::None => false,
+        MajorAsteroids::All => true,
+        MajorAsteroids::Epm2021 => MajorAsteroids::EPM2021
+            .iter()
+            .any(|&k| i64::from(id.0) == naif(k)),
+    })
+}
+
+/// Fixed-point passes of [`rebarycentre`] (μ* depends on the velocities being corrected;
+/// translation leaves every rᵢⱼ unchanged). Three, as recorded in `EPH-REBARY-DD-RESIDUAL-KM`.
+const REBARYCENTRE_PASSES: usize = 3;
 
 /// Move the packed initial conditions to the relativistic SSB (`initial_conditions.barycentre =
 /// "relativistic"`, NUM-018, OI-75 decision of 2026-10-21): Σ μᵢ* rᵢ = 0 and
@@ -309,8 +388,9 @@ const REBARYCENTRE_PASSES: usize = 2;
 /// Subbotin et al. 2023 Eq. 5), μ* and μ̇* from the physical barycentric states (a geocentric
 /// Earth–Moon pair is reconstructed; μ̇* uses the Newtonian accelerations by every body). Every
 /// moving body is translated by the same position and velocity (the Moon − Earth slot is a
-/// difference and stays), fixed Ring masses by the position only. Returns the residual
-/// |Σμ*r|/Σμ* (km) and |Σ(μ̇*r + μ*v)|/Σμ* (km/s) after the last pass.
+/// difference and stays), fixed Ring masses by the position only. Computed in `R`
+/// (double-double in the ephemeris mode, WP25). Returns the residual |Σμ*r|/Σμ* (km) and
+/// |Σ(μ̇*r + μ*v)|/Σμ* (km/s) after the last pass.
 fn rebarycentre<R: Real>(
     model: &NBodyModel<Icrf, R>,
     de: &De440,
@@ -410,7 +490,9 @@ struct Event {
 pub(crate) struct NBodyRun<R: Real> {
     spec: ScenarioSpec,
     model: NBodyModel<Icrf, R>,
-    ias: Ias15<R>,
+    /// The f64 force model of the NUM-007 mixed mode (`precision = "mixed"`); `None` otherwise.
+    forces64: Option<NBodyModel<Icrf, f64>>,
+    ias: Stepper<R>,
     n: usize,
     t_end: R,
     cadence: Option<R>,
@@ -441,7 +523,7 @@ impl<R: Real> NBodyRun<R> {
     pub(crate) fn new(
         spec: &ScenarioSpec,
         data: &DataSources<'_>,
-        restore: Option<(&Ias15Snapshot, &DriverState, &str)>,
+        restore: Option<(&IntegratorSnapshot, &DriverState, &str)>,
     ) -> Result<Self, PropagateError> {
         let name = spec.name.as_str();
         let de = data.de440(name)?;
@@ -454,6 +536,11 @@ impl<R: Real> NBodyRun<R> {
         if !small_source.is_empty() {
             source = format!("{source}; {small_source}");
         }
+        let forces64 = if spec.integrator.precision == Precision::Mixed {
+            Some(model::<f64>(spec, data, &de, &small)?.0)
+        } else {
+            None
+        };
         let (model, gms) = model::<R>(spec, data, &de, &small)?;
         let (mut x0, mut v0) = model.pack(&states, pair.as_ref())?;
         let n = model.layout().len();
@@ -480,7 +567,12 @@ impl<R: Real> NBodyRun<R> {
         let ic_epoch = parts(ep.jd());
         let hash = ic_hash(&constants, spec.mode.label(), ic_epoch, &records);
         let cfg = ias15_config(spec, true);
+        let abm = abm_config(spec);
         let dt0_days = spec.integrator.dt0_days.unwrap_or(DEFAULT_DT0_DAYS);
+        let step_days = spec.integrator.step_days.unwrap_or(DEFAULT_ABM_STEP_DAYS);
+        let fixed_days = spec.integrator.step_days.unwrap_or(DEFAULT_FIXED_STEP_DAYS);
+        let wh = crate::wh_config(spec);
+        let irk = crate::irk16_config(spec);
         let dir = if spec.span.years < 0.0 { -1.0 } else { 1.0 };
         let ias = match restore {
             Some((snap, _, ic)) => {
@@ -491,16 +583,65 @@ impl<R: Real> NBodyRun<R> {
                         ),
                     });
                 }
-                Ias15::restore(snap)?
+                if snap.integrator() != spec.integrator.name.label() {
+                    return Err(PropagateError::Checkpoint {
+                        problem: format!(
+                            "checkpoint holds an {} state, the scenario integrates with {}",
+                            snap.integrator(),
+                            spec.integrator.name.label()
+                        ),
+                    });
+                }
+                Stepper::restore(snap)?
             }
-            None => Ias15::new(
-                3 * n,
-                R::ZERO,
-                &x0,
-                &v0,
-                R::from_f64(dir * dt0_days * SECONDS_PER_DAY),
-                cfg,
-            )?,
+            None => match spec.integrator.name {
+                IntegratorName::Abm => Stepper::Abm(Abm::new(
+                    3 * n,
+                    R::ZERO,
+                    &x0,
+                    &v0,
+                    R::from_f64(dir * step_days * SECONDS_PER_DAY),
+                    abm,
+                )?),
+                IntegratorName::Whfast => {
+                    ferroastro_symplectic::check_model(&model)?;
+                    let gm: Vec<R> = (0..n).map(|i| model.layout().gm(i)).collect();
+                    Stepper::Whfast(Whfast::new(
+                        &model,
+                        &gm,
+                        R::ZERO,
+                        &x0,
+                        &v0,
+                        R::from_f64(dir * fixed_days * SECONDS_PER_DAY),
+                        wh,
+                    )?)
+                }
+                IntegratorName::Irk16 => Stepper::Irk16(Irk16::new(
+                    3 * n,
+                    R::ZERO,
+                    &x0,
+                    &v0,
+                    R::from_f64(dir * fixed_days * SECONDS_PER_DAY),
+                    irk,
+                )?),
+                IntegratorName::Ias15 => Stepper::Ias15(Ias15::new(
+                    3 * n,
+                    R::ZERO,
+                    &x0,
+                    &v0,
+                    R::from_f64(dir * dt0_days * SECONDS_PER_DAY),
+                    cfg,
+                )?),
+            },
+        };
+        let integrator = match spec.integrator.name {
+            IntegratorName::Abm => format!("{}, h = {step_days} d", abm.describe()),
+            IntegratorName::Whfast => format!("{}, h = {fixed_days} d", wh.describe()),
+            IntegratorName::Irk16 => format!("{}, h = {fixed_days} d", irk.describe()),
+            IntegratorName::Ias15 => format!(
+                "IAS15 epsilon = {:e}, safety = {}, PC tolerance = {:e}, dense output",
+                cfg.epsilon, cfg.safety, cfg.pc_tolerance
+            ),
         };
         let mut events = Vec::new();
         let central = spec.central_body.naif();
@@ -556,12 +697,14 @@ impl<R: Real> NBodyRun<R> {
             epoch_jd_tdb: parts(R::from_f64(jd)),
             model: tag_overrides(
                 format!(
-                    "{}; IAS15 epsilon = {:e}, safety = {}, PC tolerance = {:e}, dense output, {}",
+                    "{}; {integrator}, {}",
                     model.describe(),
-                    cfg.epsilon,
-                    cfg.safety,
-                    cfg.pc_tolerance,
-                    R::NAME
+                    if spec.integrator.precision == Precision::Mixed {
+                        "mixed (NUM-007): double-double state, integrator sums and coefficients, \
+                         f64 force terms with compensated accumulation into double-double"
+                    } else {
+                        R::NAME
+                    }
                 ),
                 data,
             ),
@@ -574,6 +717,7 @@ impl<R: Real> NBodyRun<R> {
         Ok(Self {
             spec: spec.clone(),
             model,
+            forces64,
             ias,
             n,
             t_end: R::from_f64(spec.span_seconds()),
@@ -648,15 +792,18 @@ impl<R: Real> NBodyRun<R> {
         let stop_at = stop_at.map(R::from_f64);
         let (mut xs, mut vs) = (vec![R::ZERO; 3 * self.n], vec![R::ZERO; 3 * self.n]);
         // The initial sample (k = 0) of a fresh run.
-        if self.driver.next_sample == 0 && self.ias.stats().steps == 0 && self.cadence.is_some() {
+        if self.driver.next_sample == 0 && self.ias.steps() == 0 && self.cadence.is_some() {
             out.states
                 .push(self.record(R::ZERO, self.ias.positions(), self.ias.velocities())?);
             self.driver.next_sample = 1;
         }
         let wanted = self.spec.span.stop_after_passages.map(u64::from);
         loop {
-            let rep = self.ias.step(&self.model, self.t_end)?;
-            if rep.dt_done == R::ZERO {
+            let rep = match &self.forces64 {
+                Some(f) => self.ias.step(&MixedForces::new(f), self.t_end)?,
+                None => self.ias.step(&self.model, self.t_end)?,
+            };
+            if !rep.moved {
                 out.finished = true;
                 break;
             }
@@ -666,10 +813,11 @@ impl<R: Real> NBodyRun<R> {
                 .ok_or_else(|| setup(&self.spec.name, "dense output is off", "internal error"))?;
             // Samples inside (t0, t1].
             while let Some(tk) = self.sample_time(self.driver.next_sample) {
-                if !(after(tk, t0) && not_after(tk, t1)) {
+                // ABM's last step may end after the span; samples stop at its end.
+                if !(after(tk, t0) && not_after(tk, t1) && not_after(tk, self.t_end)) {
                     break;
                 }
-                self.ias.dense_state(tk, &mut xs, &mut vs)?;
+                self.ias.dense_state(&self.model, tk, &mut xs, &mut vs)?;
                 out.states.push(self.record(tk, &xs, &vs)?);
                 self.driver.next_sample += 1;
             }
@@ -690,11 +838,13 @@ impl<R: Real> NBodyRun<R> {
                 };
                 if early < R::ZERO && late >= R::ZERO {
                     let n = self.n;
+                    // An event after the end of the span (ABM's last step only) is not recorded.
                     if let Some(te) = self
                         .ias
-                        .locate_event(|_, x, v| rdotv(x, v, n, e.body, e.central))?
+                        .locate_event(&self.model, |_, x, v| rdotv(x, v, n, e.body, e.central))?
+                        .filter(|&te| not_after(te, self.t_end))
                     {
-                        self.ias.dense_state(te, &mut xs, &mut vs)?;
+                        self.ias.dense_state(&self.model, te, &mut xs, &mut vs)?;
                         let sub = |a: [R; 3], b: [R; 3]| [a[0] - b[0], a[1] - b[1], a[2] - b[2]];
                         out.passages.push(PassageRecord {
                             body: e.body_id,
@@ -710,7 +860,7 @@ impl<R: Real> NBodyRun<R> {
                     *g = g_now;
                 }
             }
-            if wanted.is_some_and(|w| self.driver.passages >= w) || rep.reached_limit {
+            if wanted.is_some_and(|w| self.driver.passages >= w) || rep.reached_end {
                 out.finished = true;
                 break;
             }
@@ -730,10 +880,30 @@ impl<R: Real> NBodyRun<R> {
                 });
             }
         }
-        out.final_state =
-            Some(self.record(self.ias.time(), self.ias.positions(), self.ias.velocities())?);
+        out.final_state = Some(if out.finished && after(self.ias.time(), self.t_end) {
+            // ABM's last step ended after the span: the state at its end, from dense output.
+            self.ias
+                .dense_state(&self.model, self.t_end, &mut xs, &mut vs)?;
+            self.record(self.t_end, &xs, &vs)?
+        } else {
+            self.record(self.ias.time(), self.ias.positions(), self.ias.velocities())?
+        });
         out.stats = self.ias.stats();
         Ok(out)
+    }
+
+    /// The accelerations of the integration variables at the integrator's current state (km/s²,
+    /// storage order; with a geocentric pair the Earth slot is the EMB and the Moon slot Moon −
+    /// Earth), as the integrator sees them: through [`MixedForces`] in the mixed mode.
+    pub(crate) fn accelerations(&self) -> Result<Vec<[R; 3]>, PropagateError> {
+        use ferroastro_integrators::SecondOrderSystem as _;
+        let mut a = vec![R::ZERO; 3 * self.n];
+        let (t, x, v) = (self.ias.time(), self.ias.positions(), self.ias.velocities());
+        match &self.forces64 {
+            Some(f) => MixedForces::new(f).acceleration(t, x, v, &mut a)?,
+            None => self.model.acceleration(t, x, v, &mut a)?,
+        }
+        Ok((0..self.n).map(|i| slot(&a, self.n, i)).collect())
     }
 
     /// The model's total energy divided by G (km⁵/s⁴) at the integrator's current state, or
@@ -747,7 +917,7 @@ impl<R: Real> NBodyRun<R> {
     /// The integrator snapshot and the driver state, for a checkpoint.
     pub(crate) fn checkpoint_parts(
         &self,
-    ) -> Result<(Ias15Snapshot, DriverState, String), PropagateError> {
+    ) -> Result<(IntegratorSnapshot, DriverState, String), PropagateError> {
         Ok((
             self.ias.snapshot()?,
             self.driver.clone(),
@@ -758,3 +928,9 @@ impl<R: Real> NBodyRun<R> {
 
 /// First trial step of N-body runs when the scenario sets none (days; as WP12).
 pub const DEFAULT_DT0_DAYS: f64 = 0.1;
+
+/// ABM fixed step when the scenario sets none: 1/16 d (Subbotin et al. 2023; WP24).
+pub const DEFAULT_ABM_STEP_DAYS: f64 = 0.0625;
+
+/// `WHFast` and IRK16 fixed step when the scenario sets none: 1 d (WP29).
+pub const DEFAULT_FIXED_STEP_DAYS: f64 = 1.0;

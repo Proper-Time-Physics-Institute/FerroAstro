@@ -25,6 +25,9 @@
 //!   [`relativistic_barycentre_with_rate`]: the barycentre velocity condition with dμ*/dt
 //!   (DE430 Eq. 3, Subbotin et al. 2023 Eq. 5; OI-75 decision of 2026-10-21), taken over from
 //!   `m5-performance` (WP25) and re-verified in WP22.
+//! * [`EihSoa`] (WP26, NUM-021): the [`Eih`] term on the structure-of-arrays kernel of
+//!   `ferroastro_forces::soa` (exact `1/r³`, no FMA); feature `simd` adds the bitwise-identical
+//!   `wide` lanes.
 //!
 //! # Gauge, time and units (NUM-017, AGENTS.md rule 4)
 //! Both terms declare [`ferroastro_forces::Gauge::PpnIsotropicHarmonic`]. The time argument is
@@ -34,10 +37,12 @@
 mod barycentre;
 mod central;
 mod eih;
+mod eih_soa;
 
 pub use barycentre::{
     BarycentreBody, mu_star, mu_star_rate, relativistic_barycentre,
     relativistic_barycentre_with_rate,
 };
 pub use central::HeliocentricSchwarzschild;
-pub use eih::{Eih, RhsAcceleration};
+pub use eih::{Eih, EihScope, RhsAcceleration};
+pub use eih_soa::EihSoa;

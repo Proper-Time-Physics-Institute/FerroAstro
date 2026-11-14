@@ -21,6 +21,14 @@
 //! [`GeocentricMoon`], [`SolarJ2WithReaction`] and (WP20) [`SolarLenseThirring`] — each declaring its gauge, parameters and
 //! tiers. [`NBodyPropagator`] advances a model with IAS15 from a TDB epoch.
 //!
+//! M5 (WP25) adds the NUM-007 ephemeris precision mode: [`MixedForces`] (f64 force terms,
+//! compensated accumulation widened into double-double) and the plain [`F64Forces`] adapter, for
+//! an integrator whose state, sums and coefficients are double-double.
+//!
+//! M5 (WP26) adds the [`soa`] structure-of-arrays kernels (NUM-021): [`NewtonianMutualSoa`], with
+//! an exact `1/r³`, no fused multiply-add and a fixed reduction order, whose scalar and SIMD
+//! (feature `simd`, the safe `wide` crate) instantiations are bitwise identical.
+//!
 //! Internal units: positions in km, velocities in km/s, time in TDB seconds, GM in km³/s². The
 //! typed constructors and [`NewtonianPointMasses::pack`] / [`NewtonianPointMasses::unpack`]
 //! convert from and to the [`ferroastro_core`] newtypes, so raw scalars only appear inside the
@@ -30,16 +38,19 @@
 
 mod central;
 mod error;
+mod mixed;
 mod nbody;
 mod newtonian;
 mod oblateness;
 mod relativity;
+pub mod soa;
 
 pub use central::{CentralTerm, Pole, TestParticle};
 pub use error::ForceError;
 pub use ferroastro_integrators::SecondOrderSystem;
+pub use mixed::{F64Forces, MixedForces};
 pub use nbody::{
-    Accelerations, ForceTerm, GeocentricMoon, Layout, LtReaction, MOON_TAYLOR_Q_MAX,
+    Accelerations, ForceTerm, GeocentricMoon, GrPotential, Layout, LtReaction, MOON_TAYLOR_Q_MAX,
     MOON_TAYLOR_TERMS_DEFAULT, MOON_TAYLOR_TERMS_MIN, MinorFromMajors, MinorReaction, MoonPair,
     MoonVariables, NBody, NBodyModel, NBodyPropagator, NewtonianMutual, RingMasses,
     SolarJ2WithReaction, SolarLenseThirring, TermParameter, View,
@@ -47,6 +58,7 @@ pub use nbody::{
 pub use newtonian::NewtonianPointMasses;
 pub use oblateness::SolarJ2;
 pub use relativity::{LenseThirring, PnCoefficients, PnLagrangian, SchwarzschildPpn, SrKepler};
+pub use soa::{NewtonianMutualSoa, SoaBackend};
 
 /// The coordinate gauge of a force model (AGENTS.md rule 4).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -70,6 +82,10 @@ pub enum Gauge {
     /// A generic 1PN test-particle Lagrangian with freely chosen coefficients (the PHY-009
     /// coefficient study). It is not derived from a metric, so it has no gauge.
     GenericPnLagrangian,
+    /// A velocity-independent effective potential that reproduces the 1PN perihelion advance
+    /// (Nobili & Roxburgh 1986, `−3(GM)²/(c²r²)`): no metric and no PN gauge; the mean motion is
+    /// off by O(GM/(ac²)). Used with the Wisdom–Holman map (NUM-004).
+    GrEffectivePotential,
 }
 
 impl Gauge {
@@ -86,6 +102,9 @@ impl Gauge {
                 "special relativity, inertial frame (no PN gauge; H = gamma m c^2 - mu m / r)"
             }
             Gauge::GenericPnLagrangian => "generic 1PN Lagrangian coefficients (no metric gauge)",
+            Gauge::GrEffectivePotential => {
+                "GR effective potential -3(GM)^2/(c^2 r^2) (Nobili & Roxburgh 1986; no PN gauge)"
+            }
         }
     }
 

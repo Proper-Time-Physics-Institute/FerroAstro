@@ -1,0 +1,235 @@
+# SPDX-FileCopyrightText: 2026 Proper-Time Physics Institute
+# SPDX-License-Identifier: Apache-2.0
+# Orbit viewer (API-004, docs/viewer/DESIGN.md section 8): expectations and tolerances of the
+# viewer's native tests. The expected rates are the repository's cited values (PHY-004, PHY-007/008,
+# PHY-010, PHY-011, Park17 Table 3); the tolerances are the design's, written there before the
+# implementation. The short-window planetary tolerances are PROVISIONAL (DESIGN section 11 item 3):
+# the tests report the measured deviation and must not be tightened without evidence. No value here
+# is copied from JPL header.440 (#22): the System-mode tests read it from the build-time embedded
+# file (feature embed-header) and skip without it.
+# Schema: ADR-0004.
+schema_version = 1
+
+[[vector]]
+id = "VIEWER-E1-KEPLER-RATE"
+requirement = ["API-004", "PHY-001"]
+quantity = "perihelion rate of the Kepler-only baseline (toggle mask 0: Sun + Mercury, Newtonian), Park17 mean-orbit frame, 100 yr from JDEPOC, WHFast h = 1 d and IAS15 eps = 1e-9"
+value = 0.0
+unit = "arcsec/cy"
+kind = "analytic"
+source = "The two-body Newtonian orbit does not precess (PHY-001); DESIGN E1."
+citation = "Murray & Dermott 1999, Solar System Dynamics, Sec. 2.4 (fixed Kepler ellipse); docs/viewer/DESIGN.md section 8 E1"
+retrieved = "2026-11-14"
+tolerance = { abs = 1.0e-3 }
+tolerance_rationale = "DESIGN E1: the integrator floor over 100 yr; a missing or wrong force term (e.g. a stray solar J2) moves the rate by >= 0.03 arcsec/cy."
+verified_by = "Viewer engine builder, 2026-11-14: tolerance copied from DESIGN E1 before the tests ran."
+
+[[vector]]
+id = "VIEWER-E2-WH-GR-RATE"
+requirement = ["API-004", "PHY-004", "NUM-004"]
+quantity = "perihelion rate of Sun + Mercury with the GR effective potential (toggle bit 8, WHFast h = 1 d), Park17 mean-orbit frame, 100 yr from JDEPOC"
+value = 42.9805
+unit = "arcsec/cy"
+kind = "analytic"
+source = "PHY004-GR-RATE (tests/vectors/phy004-gr-analytic.toml): 6 pi GM/(c^2 a (1 - e^2)) per orbit x orbits per century; WP29 G1 measured 42.9796 with WHFast and the GR potential."
+citation = "Will 2014, Living Rev. Relativ. 17, 4, Eq. 65; docs/viewer/DESIGN.md section 8 E2"
+retrieved = "2026-11-14"
+tolerance = { abs = 0.002 }
+tolerance_rationale = "DESIGN E2 (System WH gr_potential, Sun + Mercury, 100 yr): the osculating initial a, e of the header ICs and the 100-yr passage fit differ from the SW92 mean elements of the analytic value at the 1e-3 arcsec/cy level."
+verified_by = "Viewer engine builder, 2026-11-14: tolerance copied from DESIGN E2 before the tests ran."
+
+[[vector]]
+id = "VIEWER-E2-LAB-GR-RATE"
+requirement = ["API-004", "PHY-005"]
+quantity = "perihelion rate of the Rung-lab GR PPN rung (beta = gamma = 1, test particle about a fixed Sun, SW92 J2000 elements, IAS15 eps = 1e-9), 100 yr"
+value = 42.9805
+unit = "arcsec/cy"
+kind = "analytic"
+source = "PHY004-GR-RATE (tests/vectors/phy004-gr-analytic.toml), the analytic rate of the same initial orbit."
+citation = "Will 2014, Living Rev. Relativ. 17, 4, Eq. 65; docs/viewer/DESIGN.md section 8 E2"
+retrieved = "2026-11-14"
+tolerance = { abs = 0.01 }
+tolerance_rationale = "DESIGN E2 (Rung lab IAS15, 100 yr): the passage fit over 415 orbits; the ladder's 1000-orbit rung agrees to 2.3e-5 relative (PHY-005)."
+verified_by = "Viewer engine builder, 2026-11-14: tolerance copied from DESIGN E2 before the tests ran."
+
+[[vector]]
+id = "VIEWER-E3-PPN-SCALING-DEV"
+requirement = ["API-004", "PHY-006"]
+quantity = "relative deviation |rate(beta, gamma) / (rate(1, 1) (2 + 2 gamma - beta) / 3) - 1| of the Rung-lab GR PPN rung, 100 yr"
+value = 0.0
+unit = "1"
+kind = "analytic"
+source = "The 1PN perihelion advance scales as (2 + 2 gamma - beta)/3 (PHY-006)."
+citation = "Will 2014, Living Rev. Relativ. 17, 4, Eq. 65; docs/viewer/DESIGN.md section 8 E3"
+retrieved = "2026-11-14"
+tolerance = { abs = 1.0e-3 }
+tolerance_rationale = "DESIGN E3: relative 1e-3 for beta, gamma in [0, 2]; second-order terms are O(GM/c^2 p) ~ 3e-8."
+verified_by = "Viewer engine builder, 2026-11-14: tolerance copied from DESIGN E3 before the tests ran."
+
+[[vector]]
+id = "VIEWER-E4-J2-PREMOVE"
+requirement = ["API-004", "PHY-010"]
+quantity = "solar J2 contribution rate(GR + J2) - rate(GR), Sun + Mercury, DE440 J2SUN with the WGCCRE solar pole, Park17 mean-orbit frame, 100 yr from JDEPOC"
+value = 0.02792
+unit = "arcsec/cy"
+kind = "analytic"
+source = "PHY-010 acceptance via PHY010-J2-DE440-ANALYTIC-RATE (tests/vectors/single-body-rungs.toml): planar 3 pi J2 R^2/p^2 per orbit at the DE440 J2SUN (read from the embedded header.440 at run time; no header value is reproduced here, #22); FerroAstro's real-pole geometry gives 0.02845 (J2-REAL, WP29)."
+citation = "Iorio 2005, A&A 433, 385 (planar J2 advance); docs/viewer/DESIGN.md section 8 E4"
+retrieved = "2026-11-14"
+tolerance = { abs = 0.002 }
+tolerance_rationale = "DESIGN E4 (P-remove over >= 100 yr): covers the planar-vs-real-pole geometry (0.0005) and the frame of the projected longitude."
+verified_by = "Viewer engine builder, 2026-11-14: tolerance copied from DESIGN E4 before the tests ran."
+
+[[vector]]
+id = "VIEWER-E5-LT-PREMOVE"
+requirement = ["API-004", "PHY-011"]
+quantity = "solar Lense-Thirring contribution rate(GR + LT) - rate(GR), Sun + Mercury, IAS15, DE440 solar spin and WGCCRE pole, Park17 mean-orbit frame, 200 yr from JDEPOC"
+value = -0.002
+unit = "arcsec/cy"
+kind = "analytic"
+source = "PHY-011 acceptance via PHY011-LT-NUM-RATE (tests/vectors/single-body-rungs.toml) and Park17 Table 3 (-0.0020); FerroAstro LT-REAL -0.002015. The solar spin terms (MOISUN, ASUN, OMGSUN) are read from the embedded header.440 at run time; none is reproduced here (#22)."
+citation = "Park et al. 2017, AJ 153, 121, Table 3; docs/viewer/DESIGN.md section 8 E5"
+retrieved = "2026-11-14"
+tolerance = { abs = 0.0005 }
+tolerance_rationale = "DESIGN E5 (P-remove over >= 200 yr): the two legs share ICs, step control differences leave < 1e-4 arcsec/cy."
+verified_by = "Viewer engine builder, 2026-11-14: tolerance copied from DESIGN E5 before the tests ran."
+
+[[vector]]
+id = "VIEWER-E6-VENUS-100YR"
+requirement = ["API-004", "PHY-012"]
+quantity = "Venus contribution rate(Sun + Mercury + Venus) - rate(Sun + Mercury) (single-planet run), WHFast h = 1 d, Park17 mean-orbit frame, 100 yr from JDEPOC, linear + resolved Park17 Table 2 terms"
+value = 277.4176
+unit = "arcsec/cy"
+kind = "measured"
+source = "PARK17-T3-VENUS (tests/vectors/park2017-table3.toml): 2000-yr window centred on J2000, P-remove in the full system."
+citation = "Park et al. 2017, AJ 153, 121, Table 3; docs/viewer/DESIGN.md section 8 E6"
+retrieved = "2026-11-14"
+tolerance = { abs = 2.0 }
+tolerance_rationale = "PROVISIONAL (DESIGN section 11 item 3): the 100-200-yr window tolerance of DESIGN E6; a forward 100-yr window from 1969 and the single-planet (P-add) protocol differ from Park's centred 2000-yr P-remove by the window and the cross terms. Report the measured deviation; do not tighten."
+verified_by = "Viewer engine builder, 2026-11-14: tolerance copied from DESIGN E6 before the tests ran."
+
+[[vector]]
+id = "VIEWER-E6-JUPITER-100YR"
+requirement = ["API-004", "PHY-012"]
+quantity = "Jupiter contribution rate(Sun + Mercury + Jupiter) - rate(Sun + Mercury) (single-planet run), WHFast h = 1 d, Park17 mean-orbit frame, 100 yr from JDEPOC"
+value = 153.9899
+unit = "arcsec/cy"
+kind = "measured"
+source = "PARK17-T3-JUPITER (tests/vectors/park2017-table3.toml): 2000-yr window centred on J2000, P-remove in the full system."
+citation = "Park et al. 2017, AJ 153, 121, Table 3; docs/viewer/DESIGN.md section 8 E6"
+retrieved = "2026-11-14"
+tolerance = { abs = 2.0 }
+tolerance_rationale = "PROVISIONAL (DESIGN section 11 item 3): the 100-200-yr window tolerance of DESIGN E6 (window and protocol, as for Venus). Report the measured deviation; do not tighten."
+verified_by = "Viewer engine builder, 2026-11-14: tolerance copied from DESIGN E6 before the tests ran."
+
+[[vector]]
+id = "VIEWER-ADDITIVITY-VENUS-GR"
+requirement = ["API-004", "NUM-013"]
+quantity = "cross term rate(Venus + GR) - rate(Venus) - rate(GR) + rate(Kepler only), Sun + Mercury (+ Venus), WHFast h = 1 d, 100 yr from JDEPOC"
+value = 0.0
+unit = "arcsec/cy"
+kind = "analytic"
+source = "Perturbations add to first order; the Venus x GR cross term is second order (~ 42.98 x 277/5.4e5 x a few ~ 1e-2 arcsec/cy at most)."
+citation = "Park et al. 2017, AJ 153, 121, Table 3 (largest planetary cross term 0.0411 arcsec/cy, Jupiter x Saturn); docs/viewer/DESIGN.md section 6.4"
+retrieved = "2026-11-14"
+tolerance = { abs = 0.05 }
+tolerance_rationale = "Bounds the second-order cross term and the 100-yr window's periodic leakage; a toggle that switched the wrong term would miss by >= 0.03 (J2) or tens of arcsec/cy."
+verified_by = "Viewer engine builder, 2026-11-14: bound set before the test ran."
+
+[[vector]]
+id = "VIEWER-E9-SRA-RATE"
+requirement = ["API-004", "PHY-007"]
+quantity = "perihelion rate of the Rung-lab SR-a rung (SrKepler), test particle, IAS15, 100 yr"
+value = 7.1634
+unit = "arcsec/cy"
+kind = "analytic"
+source = "PHY007-SRA-ANALYTIC-RATE (tests/vectors/single-body-rungs.toml): GR/6."
+citation = "ADR-0012; docs/viewer/DESIGN.md section 8 E9"
+retrieved = "2026-11-14"
+tolerance = { abs = 0.01 }
+tolerance_rationale = "DESIGN E9: the passage fit over 415 orbits (the ladder's rung uses 1000)."
+verified_by = "Viewer engine builder, 2026-11-14: tolerance copied from DESIGN E9 before the tests ran."
+
+[[vector]]
+id = "VIEWER-E9-SRB-HARMONIC-RATE"
+requirement = ["API-004", "PHY-008"]
+quantity = "perihelion rate of the Rung-lab SR-b rung, isotropic/harmonic gauge, test particle, IAS15, 100 yr"
+value = 50.144
+unit = "arcsec/cy"
+kind = "analytic"
+source = "PHY008-SRB-HARMONIC-RATE (tests/vectors/single-body-rungs.toml): 7/6 GR."
+citation = "ADR-0012; docs/viewer/DESIGN.md section 8 E9"
+retrieved = "2026-11-14"
+tolerance = { abs = 0.01 }
+tolerance_rationale = "DESIGN E9: the passage fit over 415 orbits (the ladder's rung uses 1000)."
+verified_by = "Viewer engine builder, 2026-11-14: tolerance copied from DESIGN E9 before the tests ran."
+
+[[vector]]
+id = "VIEWER-E9-SRB-AREAL-RATE"
+requirement = ["API-004", "PHY-008"]
+quantity = "perihelion rate of the Rung-lab SR-b rung, Schwarzschild areal gauge (pedagogical), test particle, IAS15, 100 yr"
+value = 35.817
+unit = "arcsec/cy"
+kind = "analytic"
+source = "PHY008-SRB-AREAL-RATE (tests/vectors/single-body-rungs.toml): 5/6 GR."
+citation = "ADR-0012; docs/viewer/DESIGN.md section 8 E9"
+retrieved = "2026-11-14"
+tolerance = { abs = 0.01 }
+tolerance_rationale = "DESIGN E9: the passage fit over 415 orbits (the ladder's rung uses 1000)."
+verified_by = "Viewer engine builder, 2026-11-14: tolerance copied from DESIGN E9 before the tests ran."
+
+[[vector]]
+id = "VIEWER-E11-ENGINE-AGREEMENT"
+requirement = ["API-004", "NUM-004"]
+quantity = "|rate(WHFast h = 1 d) - rate(IAS15 eps = 1e-9)| on the same WH-compatible toggles (Venus + GR, beta = gamma = 1), 100 yr from JDEPOC"
+value = 0.0
+unit = "arcsec/cy"
+kind = "analytic"
+source = "Both engines integrate the same Newtonian + GR physics (GR potential vs 1PN: same advance, mean motion off by O(GM/ac^2)); DESIGN E11."
+citation = "Saha & Tremaine 1994, AJ 108, 1962 (GR potential in symplectic maps); docs/viewer/DESIGN.md section 8 E11"
+retrieved = "2026-11-14"
+tolerance = { abs = 0.05 }
+tolerance_rationale = "DESIGN E11: GR-potential vs 1PN mean-motion difference plus the WH phase error over 100 yr; the measured value is reported."
+verified_by = "Viewer engine builder, 2026-11-14: tolerance copied from DESIGN E11 before the tests ran."
+
+[[vector]]
+id = "VIEWER-E12-SAME-PATH-REL"
+requirement = ["API-004", "CI-009"]
+quantity = "relative difference of the viewer's rate and the ferroastro-diffrun Estimator (SampledStates) on a ferroastro-propagate run of the viewer's exported scenario, same fit model and jack-knife blocks"
+value = 0.0
+unit = "1"
+kind = "analytic"
+source = "One code path: the passages must be bitwise equal, so the fits are the same arithmetic (DESIGN E12)."
+citation = "docs/viewer/DESIGN.md section 8 E12; CI-009 (one estimator per table)"
+retrieved = "2026-11-14"
+tolerance = { abs = 1.0e-12 }
+tolerance_rationale = "DESIGN E12: the passages are compared bitwise; the rate bound allows only the summation order of an identical fit."
+verified_by = "Viewer engine builder, 2026-11-14: tolerance copied from DESIGN E12 before the tests ran."
+
+[[vector]]
+id = "VIEWER-E14-VARPI-IDENTITY"
+requirement = ["API-004", "NUM-011"]
+quantity = "max over passages of |dog_leg_angle(e, h x e) - dog_leg_angle(r, v)| on the Park17 plane (osculating varpi from the eccentricity vector vs from the passage state), 20 yr"
+value = 0.0
+unit = "rad"
+kind = "analytic"
+source = "At a perihelion the position is along the eccentricity vector and v is along h x e, so both give Omega + omega (DESIGN section 6.1)."
+citation = "docs/viewer/DESIGN.md section 6.1 and section 8 E14"
+retrieved = "2026-11-14"
+tolerance = { abs = 5.0e-9 }
+tolerance_rationale = "DESIGN E14 proposed 1e-9 rad; measured 1.24e-9 rad (2026-11-14, Venus + Jupiter + GR, 20 yr). The identity is exact at r.v = 0; the Lagrange-interpolated passage leaves |r.v|/(|r||v|) <= 2.1e-10 (r and v come from their own interpolants, the root from the interpolated r.v), and e = (v^2/mu - 1/r) r - (r.v) v/mu then turns away from r by (r.v)/(|r||v|) (1 + e)/e = 1.23e-9 rad, which accounts for the whole difference. 5e-9 keeps a factor 4 over that bound; a wrong varpi definition (e.g. node on another plane) misses by >= 1e-6 rad."
+verified_by = "Viewer engine builder, 2026-11-14: the first run exceeded the design's 1e-9 (1.236e-9); the bound was widened only after the residual was derived and printed by the test (worst angle = max |r.v|/(|r||v|) x (1 + e)/e). NEEDS HUMAN REVIEW."
+
+[[vector]]
+id = "VIEWER-E7-FULL-100YR"
+requirement = ["API-004", "PHY-014"]
+quantity = "perihelion rate of the full viewer model (toggle bits 0-9: planets, solar J2, Sun 1PN, Lense-Thirring; IAS15 eps = 1e-9), Park17 mean-orbit frame, 100 yr from JDEPOC, linear + resolved Park17 Table 2 terms"
+value = 575.31
+unit = "arcsec/cy"
+kind = "measured"
+source = "Park17 total 575.3100 arcsec/cy (2000-yr window centred on J2000, with EIH, asteroids and KBOs); DESIGN E7."
+citation = "Park et al. 2017, AJ 153, 121, Sec. 5 and Table 3; docs/viewer/DESIGN.md section 8 E7"
+retrieved = "2026-11-14"
+tolerance = { abs = 5.0 }
+tolerance_rationale = "PROVISIONAL (DESIGN section 11 item 3): DESIGN E7's 100-yr tolerance (window, Sun-only 1PN, no KBOs). Report the measured deviation; do not tighten."
+verified_by = "Viewer engine builder, 2026-11-14: tolerance copied from DESIGN E7 before the tests ran."

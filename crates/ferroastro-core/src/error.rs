@@ -84,6 +84,9 @@ pub enum ErrorCode {
     /// `FA-E0405`: an integrator checkpoint (snapshot) cannot be taken or restored (wrong
     /// backend or dimension, non-finite or non-representable values).
     IntegratorCheckpoint,
+    /// `FA-E0406`: an iterative solve inside an integrator step did not converge (for example the
+    /// universal-variable Kepler drift of the Wisdom–Holman kernel).
+    IntegratorNoConvergence,
     /// `FA-E0500`: a force model was built with invalid parameters.
     ForceModelInvalid,
     /// `FA-E0501`: a force model met a singular configuration (e.g. two coincident bodies).
@@ -187,7 +190,7 @@ pub enum ErrorCode {
 
 impl ErrorCode {
     /// Every code, in numeric order (used to prove codes are unique).
-    pub const ALL: [ErrorCode; 69] = [
+    pub const ALL: [ErrorCode; 70] = [
         ErrorCode::NonFinite,
         ErrorCode::OutOfRange,
         ErrorCode::VectorIo,
@@ -213,6 +216,7 @@ impl ErrorCode {
         ErrorCode::IntegratorDimension,
         ErrorCode::DiagnosticFitDegenerate,
         ErrorCode::IntegratorCheckpoint,
+        ErrorCode::IntegratorNoConvergence,
         ErrorCode::ForceModelInvalid,
         ErrorCode::ForceModelSingular,
         ErrorCode::OrbitDomain,
@@ -288,6 +292,7 @@ impl ErrorCode {
             ErrorCode::IntegratorDimension => "FA-E0403",
             ErrorCode::DiagnosticFitDegenerate => "FA-E0404",
             ErrorCode::IntegratorCheckpoint => "FA-E0405",
+            ErrorCode::IntegratorNoConvergence => "FA-E0406",
             ErrorCode::ForceModelInvalid => "FA-E0500",
             ErrorCode::ForceModelSingular => "FA-E0501",
             ErrorCode::OrbitDomain => "FA-E0600",

@@ -31,8 +31,10 @@ ferroastro-ephem = { path = "crates/ferroastro-ephem", version = "0.0.0" }
 ferroastro-system = { path = "crates/ferroastro-system", version = "0.0.0" }
 ferroastro-analytic = { path = "crates/ferroastro-analytic", version = "0.0.0" }
 ferroastro-integrators = { path = "crates/ferroastro-integrators", version = "0.0.0" }
+ferroastro-abm = { path = "crates/ferroastro-abm", version = "0.0.0" }
 ferroastro-forces = { path = "crates/ferroastro-forces", version = "0.0.0" }
 ferroastro-eih = { path = "crates/ferroastro-eih", version = "0.0.0" }
+ferroastro-symplectic = { path = "crates/ferroastro-symplectic", version = "0.0.0" }
 ferroastro-precession = { path = "crates/ferroastro-precession", version = "0.0.0" }
 ferroastro-scenario = { path = "crates/ferroastro-scenario", version = "0.0.0" }
 ferroastro-propagate = { path = "crates/ferroastro-propagate", version = "0.0.0" }
@@ -57,6 +59,9 @@ schemars = { version = "1.0.4", default-features = false, features = ["derive", 
 postcard = { version = "1.1.1", default-features = false, features = ["alloc"] }
 # Run-level parallelism behind ferroastro-propagate's optional `parallel` feature (NUM-022).
 rayon = "1.10.0"
+# Safe SIMD lanes behind ferroastro-forces' optional `simd` feature (NUM-021, WP26). Zlib OR
+# Apache-2.0 OR MIT; 0.7.33 is the last release within the workspace MSRV (newer ones need 1.89).
+wide = { version = "0.7.33", default-features = false, features = ["std"] }
 sha2 = "0.10.9"
 thiserror = "2.0.12"
 toml = "0.8.23"
@@ -101,3 +106,12 @@ unreadable_literal = "warn"
 [profile.test]
 # Long-running physics tests are compiled with optimisation (STD-008 nightly tier stays fast enough).
 opt-level = 1
+
+[profile.release-v3]
+# WP26 NEEDS HUMAN REVIEW 2 (NUM-021 2.5x SIMD target), adopted 2026-11-12 (M5 review #18): a
+# release profile for runs on x86-64-v3 (AVX2/FMA-capable) machines. Build it with
+#   RUSTFLAGS="-C target-cpu=x86-64-v3" cargo build --profile release-v3 --features ferroastro-propagate/simd
+# (stable Cargo cannot set target-cpu in a profile; the separate profile keeps its artefacts in
+# target/release-v3, apart from the baseline x86-64 release build). WP26 P7 found a native AVX
+# build bitwise identical to the baseline (the SoA kernels contain no FMA).
+inherits = "release"

@@ -9,10 +9,10 @@ use crate::estimator::{Estimate, Estimator, PassageSource};
 use crate::plan::{Combination, Plan, Protocol};
 use crate::track::Track;
 use ferroastro_propagate::{
-    Checkpoint, DataSources, InitialRecords, ias15_config, initial_conditions, resume_until, run,
-    run_until,
+    Checkpoint, DataSources, InitialRecords, IntegratorSnapshot, abm_config, ias15_config,
+    initial_conditions, irk16_config, resume_until, run, run_until, wh_config,
 };
-use ferroastro_scenario::{IcRecord, Mode, ScenarioSpec, ic_hash};
+use ferroastro_scenario::{IcRecord, IntegratorName, Mode, ScenarioSpec, ic_hash};
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
@@ -157,16 +157,33 @@ fn hex_sha256(text: &str) -> String {
 }
 
 /// The integrator settings that decide a leg's result beyond its scenario: the JSON of the whole
-/// IAS15 configuration (`ferroastro_propagate::ias15_config`), e.g. the predictor
-/// `pc_b_from_g`, which the scenario digest does not cover (issue #31). The whole struct is
-/// serialised, so a field added to `Ias15Config` is keyed without a change here.
+/// configuration of the leg's integrator (for IAS15 `ferroastro_propagate::ias15_config`, e.g.
+/// the predictor `pc_b_from_g`, which the scenario digest does not cover; issue #31). The whole
+/// struct is serialised, so a field added to `Ias15Config` (or to `AbmConfig`, `WhConfig` or
+/// `Irk16Config`) is keyed without a change here.
 fn integrator_settings(cfg: &impl Serialize) -> Result<String, DiffrunError> {
     serde_json::to_string(cfg).map_err(|e| store_err(Path::new("-"), e))
 }
 
-/// The settings a fresh N-body leg of `spec` runs with (dense output on, as the driver sets it).
+/// The settings a fresh N-body leg of `spec` runs with: the configuration of the scenario's
+/// integrator as the driver builds it (IAS15 with dense output on).
 fn leg_settings(spec: &ScenarioSpec) -> Result<String, DiffrunError> {
-    integrator_settings(&ias15_config(spec, true))
+    match spec.integrator.name {
+        IntegratorName::Ias15 => integrator_settings(&ias15_config(spec, true)),
+        IntegratorName::Abm => integrator_settings(&abm_config(spec)),
+        IntegratorName::Whfast => integrator_settings(&wh_config(spec)),
+        IntegratorName::Irk16 => integrator_settings(&irk16_config(spec)),
+    }
+}
+
+/// The settings a checkpointed integrator state continues with (its own configuration).
+fn snapshot_settings(snap: &IntegratorSnapshot) -> Result<String, DiffrunError> {
+    match snap {
+        IntegratorSnapshot::Ias15(s) => integrator_settings(&s.config),
+        IntegratorSnapshot::Abm(s) => integrator_settings(&s.config),
+        IntegratorSnapshot::Whfast(s) => integrator_settings(&s.config),
+        IntegratorSnapshot::Irk16(s) => integrator_settings(&s.config),
+    }
 }
 
 fn store_path(dir: &Path, spec: &ScenarioSpec, settings: &str) -> PathBuf {
@@ -243,11 +260,11 @@ fn load(
     }
     check_settings(&path, "its header records", &s.integrator, settings)?;
     let c = Checkpoint::decode(&s.checkpoint)?;
-    // The checkpoint's own settings are the ones `Ias15::restore` continues with.
+    // The checkpoint's own settings are the ones the restored integrator continues with.
     check_settings(
         &path,
         "its checkpoint holds",
-        &integrator_settings(&c.integrator.config)?,
+        &snapshot_settings(&c.integrator)?,
         settings,
     )?;
     Ok(Some((s, c)))
@@ -1076,9 +1093,12 @@ mod tests {
         // Other settings: the file of the other predictor is not reused.
         let stored = interrupt();
         let mut ck = Checkpoint::decode(&stored.checkpoint).unwrap();
-        ck.integrator.config.pc_b_from_g = !ck.integrator.config.pc_b_from_g;
+        let IntegratorSnapshot::Ias15(ias) = &mut ck.integrator else {
+            panic!("an IAS15 leg checkpoints an IAS15 state");
+        };
+        ias.config.pc_b_from_g = !ias.config.pc_b_from_g;
         let other = Stored {
-            integrator: integrator_settings(&ck.integrator.config).unwrap(),
+            integrator: snapshot_settings(&ck.integrator).unwrap(),
             checkpoint: ck.encode().unwrap(),
             ..stored.clone()
         };
