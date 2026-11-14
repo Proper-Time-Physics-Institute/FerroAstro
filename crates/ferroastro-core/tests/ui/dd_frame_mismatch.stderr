@@ -2,7 +2,7 @@ error[E0308]: mismatched types
   --> tests/ui/dd_frame_mismatch.rs:11:17
    |
 11 |     let _ = a - b;
-   |                 ^ expected `Position<Icrf, Barycentric, ...>`, found `Position<EclipticJ2000, ..., ...>`
+   |                 ^ expected `Position<Icrf, Barycentric, _>`, found `Position<EclipticJ2000, Barycentric, _>`
    |
    = note: expected struct `Position<Icrf, Barycentric, DoubleDouble>`
               found struct `Position<EclipticJ2000, Barycentric, DoubleDouble>`

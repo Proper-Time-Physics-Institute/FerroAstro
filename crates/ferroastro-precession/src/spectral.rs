@@ -70,6 +70,10 @@ pub fn dft_power(t: &[f64], y: &[f64], omega: f64) -> f64 {
 
 /// Maximise [`dft_power`] over `[lo, hi]` by golden-section search (`iters` iterations).
 #[must_use]
+#[expect(
+    clippy::suboptimal_flops,
+    reason = "bit-for-bit unchanged results on the toolchain bump: fused multiply-add would alter rounding (gh #23)"
+)]
 pub fn refine_peak(t: &[f64], y: &[f64], lo: f64, hi: f64, iters: usize) -> f64 {
     let g = (5.0_f64.sqrt() - 1.0) / 2.0;
     let (mut a, mut b) = (lo, hi);

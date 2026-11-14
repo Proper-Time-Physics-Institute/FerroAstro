@@ -27,8 +27,8 @@ related: [STD-005]
 verified_by_gate: "ci/rust/cargo fmt --all --check"
 notes: >-
   rustfmt.toml uses stable-only options (edition 2024, max_width 100). The
-  pinned channel 1.95.0 is a placeholder (ADR-0006), bumped to the then-current
-  stable at M0. Stabilisation status of imports_granularity / group_imports is
+  pinned channel is 1.99.0 (ADR-0006; bumped from the 1.95.0 placeholder to the
+  then-current stable, gh #23). Stabilisation status of imports_granularity / group_imports is
   UNVERIFIED, so they are avoided.
 ```
 

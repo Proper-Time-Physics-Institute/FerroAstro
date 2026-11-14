@@ -50,6 +50,10 @@ fn arcsec_per_rad() -> f64 {
 }
 
 /// Unwrap a sequence of angles (rad) so consecutive values differ by less than π.
+#[expect(
+    clippy::suboptimal_flops,
+    reason = "test oracle arithmetic kept bit-identical across the toolchain bump: fused multiply-add would alter rounding (gh #23)"
+)]
 fn unwrap(xs: &mut [f64]) {
     for k in 1..xs.len() {
         let d = xs[k] - xs[k - 1];

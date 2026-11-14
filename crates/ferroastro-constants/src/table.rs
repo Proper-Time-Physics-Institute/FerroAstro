@@ -471,7 +471,7 @@ mod tests {
                     "{}: citation {key} is neither DE440hdr nor Park21",
                     e.name
                 );
-                assert!(!t.citations()[key].trim().is_empty());
+                assert_ne!(t.citations()[key].trim(), "");
             }
             assert_eq!(e.open_item.as_deref(), spec.open_item);
             // Offline staleness check: the metadata must equal the generator's selection, so a

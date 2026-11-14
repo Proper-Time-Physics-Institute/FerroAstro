@@ -10,7 +10,7 @@ members = ["crates/*"]
 version = "0.0.0"
 edition = "2024"
 # MSRV (STD-005, ADR-0006): the highest minimum of the adopted dependencies, here bounded by edition 2024
-# (Rust 1.85). ADR-0006 caps it at the pinned toolchain (1.95.0) minus two minors, i.e. <= 1.93.
+# (Rust 1.85). ADR-0006 caps it at the pinned toolchain (1.99.0) minus two minors, i.e. <= 1.97.
 rust-version = "1.85"
 license = "Apache-2.0"
 authors = ["Proper-Time Physics Institute"]
