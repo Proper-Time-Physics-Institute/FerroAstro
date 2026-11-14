@@ -1,0 +1,139 @@
+# SPDX-FileCopyrightText: 2026 Proper-Time Physics Institute
+# SPDX-License-Identifier: Apache-2.0
+# M5 evidence values (PHY-014, PHY-004, PHY-010, PHY-011) as COMPUTED references: FerroAstro's own
+# nightly results, recorded so that the orbit viewer's comparison dashboard (API-004, F4 of the
+# conformal-gravity plan) can show them without copying numbers into JavaScript. Before this file the
+# values lived only in rationale text (eih.toml PHY014-EIH-FULL-RATE, viewer.toml VIEWER-E4/E5) and
+# in uncommitted evidence files under another user's target/ directory.
+#
+# These are NOT observations and NOT oracles for the ladder: each row is what one FerroAstro run
+# printed. The ladder's acceptance values stay where they are (eih.toml, park2017-table3.toml,
+# single-body-rungs.toml). The viewer embeds this file and passes the rows through its metadata
+# ("dashboard.m5"); crates/ferroastro-viewer/tests/viewer_dashboard.rs checks the pass-through.
+#
+# Run provenance (all rows): the M5 E2 nightly run of 2026-11-12/13 (cargo nextest, nightly profile)
+# at FerroAstro commit d1ccbae30d308446da84c47c95c9d434dca34b30 (on main), rustc 1.95.0 (59807616e
+# 2026-04-14) as pinned by that commit's rust-toolchain.toml, x86_64-unknown-linux-gnu; DE440
+# header.440 sha256 0f4636b663e6f00af9efa2b605ef23635489f56b23dd1a5e3821d3acc6ac3359. Run log
+# sha256 e0a4d75f057c18ed0667e51be51416b9094c412a42b5d7e4f7a65dbcf3fd527a (m5e2-nightly.log, kept by
+# the operator, not committed). Common estimator: Park2017 (NUM-011), Park17 mean-orbit plane, fit
+# window JD 2086295 .. 2816795 TDB (about 1000-3000 CE, J2000 +/- 1000 Julian yr), quadratic + 14
+# SW92 Table-2a terms, 20 jack-knife blocks; integration from JDEPOC 2440400.5 TDB.
+# Schema: ADR-0004.
+schema_version = 1
+
+[[vector]]
+id = "M5-EIH-FULL-RATE"
+requirement = ["PHY-014", "API-004"]
+quantity = "Mercury's total perihelion rate from FerroAstro's full EIH model (M5 evidence, computed): EIH 1PN for every moving body, solar J2 and Lense-Thirring with the DE440 constants, 343 asteroids, 3 KBOs and the 36-point KBO ring (393 bodies), IAS15 eps = 1e-9; Park17 mean-orbit frame, 1000-3000 CE, Park2017 estimator"
+value = "575.309161"
+unit = "arcsec/cy"
+kind = "computed-reference"
+source = "Test nightly_phy014_eih_full_rate_with_de440_constants (configuration eih-full) in the M5 E2 nightly run: 'PHY-014 EIH-FULL: 575.309161 arcsec/cy (formal 8.3e-4, jack-knife 1.5e-3) vs 575.3093 +/- 0.005: -0.000139, margin 0.028'; 8304 passages, 1034230 IAS15 steps, IC hash 9a6657c4e9f2193741cf81c938bc6b4dd125d67208161575a9f34ffe7066ba2e. Evidence file phy014-2086385.json, sha256 27a98feac8f7062a68d11ee4645d348dc9a16e9e0da371292b5db7140aeb593f (not committed)."
+citation = "FerroAstro M5 E2 nightly run, 2026-11-12/13, commit d1ccbae30d308446da84c47c95c9d434dca34b30; compared there with PHY014-EIH-FULL-RATE (tests/vectors/eih.toml: Park et al. 2017, AJ 153, 121, Table 3 total 575.3100 corrected to the DE440 J2, 575.3093 +/- 0.005)"
+retrieved = "2026-11-14"
+generated_by = "crates/ferroastro-diffrun/tests/nightly_phy014.rs@d1ccbae30d308446da84c47c95c9d434dca34b30"
+engine = { name = "FerroAstro", version = "workspace 0.0.0 at d1ccbae30d308446da84c47c95c9d434dca34b30, rustc 1.95.0 (59807616e 2026-04-14), x86_64-unknown-linux-gnu", settings = "IAS15 eps = 1e-9, safety 0.25, f64, dense output; EIH 1PN over the tiered interaction graph (WP22 D1), beta = gamma = 1; solar J2 and LT from header.440 (no overrides); header.440 ICs at JDEPOC 2440400.5 TDB; Park2017 estimator, window JD 2086295 .. 2816795 TDB" }
+tolerance = { abs = 1.531e-3 }
+tolerance_rationale = "The run's own jack-knife sigma (M5-EIH-FULL-RATE-JK-SIGMA). The same commit, toolchain and data reproduce the printed digits (IAS15 is deterministic); another platform or toolchain is expected within the statistical sigma. Display reference only: nothing gates on it."
+verified_by = "F4 author (viewer dashboard), 2026-11-14: copied from the run log line above and the configuration table row 'eih-full | ... | 575.309161 | 0.001531 | 0.000832 | ...'; it matches the WP22 prediction 575.30916 recorded in eih.toml before the run (+0.000001)."
+notes = "Computed, not observed. The viewer's own full model (bits 0-9) has Sun-only GR 1PN or EIH but no KBOs or ring and runs a forward window from 1969, so its total differs by the window and the omitted bodies (DESIGN section 8 E7)."
+
+[[vector]]
+id = "M5-EIH-FULL-RATE-JK-SIGMA"
+requirement = ["PHY-014", "API-004"]
+quantity = "jack-knife sigma (20 blocks) of M5-EIH-FULL-RATE"
+value = "0.001531"
+unit = "arcsec/cy"
+kind = "computed-reference"
+source = "Same run and configuration as M5-EIH-FULL-RATE: column 'jack-knife sigma' of the eih-full row (formal sigma 0.000832)."
+citation = "FerroAstro M5 E2 nightly run, 2026-11-12/13, commit d1ccbae30d308446da84c47c95c9d434dca34b30"
+retrieved = "2026-11-14"
+generated_by = "crates/ferroastro-diffrun/tests/nightly_phy014.rs@d1ccbae30d308446da84c47c95c9d434dca34b30"
+engine = { name = "FerroAstro", version = "workspace 0.0.0 at d1ccbae30d308446da84c47c95c9d434dca34b30, rustc 1.95.0 (59807616e 2026-04-14), x86_64-unknown-linux-gnu", settings = "as M5-EIH-FULL-RATE; 20 jack-knife blocks" }
+tolerance = { rel = 0.1 }
+tolerance_rationale = "A sigma is itself uncertain; a jack-knife with 20 blocks estimates it to roughly 1/sqrt(2 x 19) ~ 16 %, so 10 % flags only a changed estimator. Display only."
+verified_by = "F4 author (viewer dashboard), 2026-11-14: copied from the run's configuration table."
+
+[[vector]]
+id = "M5-GR-SUN-MERCURY-RATE"
+requirement = ["PHY-004", "API-004"]
+quantity = "GR contribution, Sun + Mercury only (M5 evidence, computed): rate(EIH 1PN) - rate(Newtonian) with the same header.440 ICs, IAS15, Park17 mean-orbit frame, 1000-3000 CE, Park2017 estimator"
+value = "42.980114"
+unit = "arcsec/cy"
+kind = "computed-reference"
+source = "Test nightly_stage_c_gr_contribution_reboundx_vs_ferroastro, S3 'Sun + Mercury, GR on - GR off, 1000-3000 CE': 'GR contribution FerroAstro gr_eih 42.980114 arcsec/cy; - 42.98 = +1.141e-4 (margin 0.114)'; legs FerroAstro newton 0.000000 (sigma_jk 1.71e-9) and gr_eih 42.980114 (sigma_jk 8.13e-10), 8304 passages each, IC hash 6d875b67c73d8a6973668f9f946e2046d13042c8111cd4faf8569f397bada552; REBOUNDx gr_full gave 42.980114 on the same rows."
+citation = "FerroAstro M5 E2 nightly run, 2026-11-12/13, commit d1ccbae30d308446da84c47c95c9d434dca34b30; compared there with PHY-005's 42.98 and PHY004-GR-RATE 42.9805 (Will 2014, Living Rev. Relativ. 17, 4, Eq. 65)"
+retrieved = "2026-11-14"
+generated_by = "crates/ferroastro-oracle/tests/nightly_stage_c.rs@d1ccbae30d308446da84c47c95c9d434dca34b30"
+engine = { name = "FerroAstro", version = "workspace 0.0.0 at d1ccbae30d308446da84c47c95c9d434dca34b30, rustc 1.95.0 (59807616e 2026-04-14), x86_64-unknown-linux-gnu", settings = "Sun + Mercury N-body, IAS15 eps = 1e-9; GR leg EIH 1PN (beta = gamma = 1), Newtonian leg without it; legs integrated backward and forward from JDEPOC 2440400.5 TDB; Park2017 estimator, window JD 2086295 .. 2816795 TDB" }
+tolerance = { abs = 1.9e-9 }
+tolerance_rationale = "The legs' jack-knife sigmas combined in quadrature (M5-GR-SUN-MERCURY-RATE-JK-SIGMA). Display reference only: nothing gates on it."
+verified_by = "F4 author (viewer dashboard), 2026-11-14: copied from the run log's S3 block."
+notes = "Computed, not observed. Two-body GR on - off, not a P-remove in the full system; the viewer labels the protocol. The 42.98 printed by PHY-005 and the analytic 42.9805 differ from it by the mean-vs-osculating elements and the window."
+
+[[vector]]
+id = "M5-GR-SUN-MERCURY-RATE-JK-SIGMA"
+requirement = ["PHY-004", "API-004"]
+quantity = "sigma of M5-GR-SUN-MERCURY-RATE: the two legs' jack-knife sigmas (1.71e-9 and 8.13e-10 arcsec/cy) in quadrature"
+value = "1.9e-9"
+unit = "arcsec/cy"
+kind = "computed-reference"
+source = "Same run as M5-GR-SUN-MERCURY-RATE: sqrt(1.71e-9^2 + 8.13e-10^2) = 1.893e-9, rounded to 2 significant digits. Shared ICs correlate the legs, so this is an upper estimate."
+citation = "FerroAstro M5 E2 nightly run, 2026-11-12/13, commit d1ccbae30d308446da84c47c95c9d434dca34b30"
+retrieved = "2026-11-14"
+generated_by = "crates/ferroastro-oracle/tests/nightly_stage_c.rs@d1ccbae30d308446da84c47c95c9d434dca34b30"
+engine = { name = "FerroAstro", version = "workspace 0.0.0 at d1ccbae30d308446da84c47c95c9d434dca34b30, rustc 1.95.0 (59807616e 2026-04-14), x86_64-unknown-linux-gnu", settings = "as M5-GR-SUN-MERCURY-RATE; 20 jack-knife blocks per leg" }
+tolerance = { rel = 0.1 }
+tolerance_rationale = "As M5-EIH-FULL-RATE-JK-SIGMA: a 20-block jack-knife sigma is uncertain by about 16 %. Display only."
+verified_by = "F4 author (viewer dashboard), 2026-11-14: arithmetic above from the logged leg sigmas."
+
+[[vector]]
+id = "M5-J2-PREMOVE-RATE"
+requirement = ["PHY-010", "API-004"]
+quantity = "solar J2 contribution under EIH (M5 evidence, computed): P-remove rate(base + J2 + LT) - rate(base + LT), 11 bodies (Sun, planets, geocentric Moon), EIH 1PN, J2 = 2.25e-7 (Park17's fitted value, NOT DE440's), WGCCRE 2015 pole, IAS15; Park17 mean-orbit frame, 1000-3000 CE, Park2017 estimator"
+value = "0.0284515"
+unit = "arcsec/cy"
+kind = "computed-reference"
+source = "Test nightly_num019_solar_j2_and_lense_thirring_contributions_under_eih: 'P-remove J2: +0.0284515 arcsec/cy'; P-add identical ('NUM-019 J2 P-add +0.0284515 vs PARK17-J2-RATE 0.0286: -0.0001485 arcsec/cy, margin 0.135'); solar overrides 'J2 = 2.25e-7 (source: WP20 N3: J2 = PARK17-J2SUN (Park17 Table 1); WGCCRE 2015 pole; DE440 spin)'; IC hash 1761981f75551fb2bcf9d4fddae35c8d72197d9885dcdf6fffc5f85cf19dcaa2. Evidence file num019-1311520.json, sha256 df1bce7aedf92b730391e662ca4847b137d842b9a232fffe3ea684a0a53c54ac (not committed)."
+citation = "FerroAstro M5 E2 nightly run, 2026-11-12/13, commit d1ccbae30d308446da84c47c95c9d434dca34b30; compared there with PARK17-J2-RATE (Park et al. 2017, AJ 153, 121, Table 3: 0.0286 +/- 0.0011 at J2 = 2.25e-7)"
+retrieved = "2026-11-14"
+generated_by = "crates/ferroastro-diffrun/tests/nightly_num019.rs@d1ccbae30d308446da84c47c95c9d434dca34b30"
+engine = { name = "FerroAstro", version = "workspace 0.0.0 at d1ccbae30d308446da84c47c95c9d434dca34b30, rustc 1.95.0 (59807616e 2026-04-14), x86_64-unknown-linux-gnu", settings = "11 Major bodies, EIH 1PN (beta = gamma = 1), solar J2 = 2.25e-7 with reaction, R = 696000 km, WGCCRE 2015 pole; IAS15 eps = 1e-9; header.440 ICs at JDEPOC 2440400.5 TDB; Park2017 estimator, window JD 2086295 .. 2816795 TDB" }
+tolerance = { abs = 2.165e-3 }
+tolerance_rationale = "The run's sigma_rss (M5-J2-LT-PREMOVE-SIGMA-RSS). Display reference only: nothing gates on it."
+verified_by = "F4 author (viewer dashboard), 2026-11-14: copied from the run log; the rate table gives base+J2+LT 575.308579 and base+LT 575.280128 (difference 0.028451)."
+notes = "Computed, not observed. At Park17's J2 = 2.25e-7, which is 2.4 % above DE440's; the viewer's nominal solar J2 is DE440's, so its live J2 row is expected near 0.0278, not this value. Earlier viewer text called 0.02845 'DE440 J2'; the run log shows the Park17 override."
+
+[[vector]]
+id = "M5-LT-PREMOVE-RATE"
+requirement = ["PHY-011", "API-004"]
+quantity = "solar Lense-Thirring contribution under EIH (M5 evidence, computed): P-remove rate(base + J2 + LT) - rate(base + J2), 11 bodies, EIH 1PN, DE440 solar spin, WGCCRE 2015 pole, IAS15; Park17 mean-orbit frame, 1000-3000 CE, Park2017 estimator"
+value = "-0.0020148"
+unit = "arcsec/cy"
+kind = "computed-reference"
+source = "Test nightly_num019_solar_j2_and_lense_thirring_contributions_under_eih: 'P-remove LT: -0.0020148 arcsec/cy'; P-add identical ('NUM-019 LT P-add -0.0020148 vs NUM019-NBODY-LT-CONTRIBUTION -0.002: -0.0000148 arcsec/cy, margin 0.074'); same run, ICs and evidence file as M5-J2-PREMOVE-RATE."
+citation = "FerroAstro M5 E2 nightly run, 2026-11-12/13, commit d1ccbae30d308446da84c47c95c9d434dca34b30; compared there with Park et al. 2017, AJ 153, 121, Table 3 (-0.0020 +/- 0.0002)"
+retrieved = "2026-11-14"
+generated_by = "crates/ferroastro-diffrun/tests/nightly_num019.rs@d1ccbae30d308446da84c47c95c9d434dca34b30"
+engine = { name = "FerroAstro", version = "workspace 0.0.0 at d1ccbae30d308446da84c47c95c9d434dca34b30, rustc 1.95.0 (59807616e 2026-04-14), x86_64-unknown-linux-gnu", settings = "as M5-J2-PREMOVE-RATE; Lense-Thirring with the DE440 spin (G S from header.440), reaction on the Sun" }
+tolerance = { abs = 2.165e-3 }
+tolerance_rationale = "The run's sigma_rss (M5-J2-LT-PREMOVE-SIGMA-RSS), larger than the value itself: the legs share ICs, so their errors largely cancel in the difference and the rss is a loose upper estimate. Display reference only: nothing gates on it."
+verified_by = "F4 author (viewer dashboard), 2026-11-14: copied from the run log; the rate table gives base+J2+LT 575.308579 and base+J2 575.310594 (difference -0.002015)."
+notes = "Computed, not observed."
+
+[[vector]]
+id = "M5-J2-LT-PREMOVE-SIGMA-RSS"
+requirement = ["PHY-010", "PHY-011", "API-004"]
+quantity = "sigma_rss of M5-J2-PREMOVE-RATE and M5-LT-PREMOVE-RATE: the two legs' jack-knife sigmas (0.001531 each) in quadrature"
+value = "0.002165"
+unit = "arcsec/cy"
+kind = "computed-reference"
+source = "Same run as M5-J2-PREMOVE-RATE: column 'sigma_rss' of the J2 and LT P-remove rows (sqrt(2) x 0.001531). Shared ICs correlate the legs, so this is an upper estimate."
+citation = "FerroAstro M5 E2 nightly run, 2026-11-12/13, commit d1ccbae30d308446da84c47c95c9d434dca34b30"
+retrieved = "2026-11-14"
+generated_by = "crates/ferroastro-diffrun/tests/nightly_num019.rs@d1ccbae30d308446da84c47c95c9d434dca34b30"
+engine = { name = "FerroAstro", version = "workspace 0.0.0 at d1ccbae30d308446da84c47c95c9d434dca34b30, rustc 1.95.0 (59807616e 2026-04-14), x86_64-unknown-linux-gnu", settings = "as M5-J2-PREMOVE-RATE; 20 jack-knife blocks per leg" }
+tolerance = { rel = 0.1 }
+tolerance_rationale = "As M5-EIH-FULL-RATE-JK-SIGMA. Display only."
+verified_by = "F4 author (viewer dashboard), 2026-11-14: copied from the run's P-remove table."

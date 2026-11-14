@@ -1,0 +1,40 @@
+# SPDX-FileCopyrightText: 2026 Proper-Time Physics Institute
+# SPDX-License-Identifier: Apache-2.0
+# Observational bounds that the orbit viewer's comparison dashboard (API-004, PHY-020, ADR-0016)
+# shows beside a comparison model's row. A bound is a published limit on an ANOMALOUS (non-GR)
+# perihelion advance; it applies to a comparison model such as conformal gravity, never to a ladder
+# term. The viewer embeds this file and passes the rows through its metadata ("dashboard.bound");
+# crates/ferroastro-viewer/tests/viewer_dashboard.rs checks the pass-through. No test asserts a
+# model against it (ADR-0016 decision D7: comparison-model tests use exaggerated parameters against
+# the analytic Gauss rates).
+# Schema: ADR-0004.
+schema_version = 1
+
+[[vector]]
+id = "INPOP15A-MERCURY-SUPPLEMENTARY-ADVANCE"
+requirement = ["PHY-020", "API-004"]
+quantity = "central value of a supplementary (non-GR) advance of Mercury's perihelion fitted with the INPOP15a planetary ephemeris (MESSENGER ranging), on top of GR"
+value = 0.0
+unit = "arcsec/cy"
+kind = "measured"
+source = "Fienga et al. 2016: supplementary Mercury advance 0.0 +/- 3.1 mas/cy (0.0 +/- 0.0031 arcsec/cy), as quoted in ADR-0016, PHY-020 and docs/viewer/DESIGN.md section 4.3."
+citation = "A. Fienga, J. Laskar, H. Manche and M. Gastineau, 'Tests of GR with INPOP15a planetary ephemerides: estimations of possible supplementary advances of perihelia for Mercury and Saturn', Proc. 14th Marcel Grossmann Meeting, arXiv:1601.00947 (2016); proceedings volume and page numbers not checked (ADR-0016, OPEN-ITEMS OI-79 'Related')"
+retrieved = "2026-11-14"
+tolerance = { abs = 0.0031 }
+tolerance_rationale = "The quoted interval itself (INPOP15A-MERCURY-SUPPLEMENTARY-ADVANCE-INTERVAL): an advance inside +/- 3.1 mas/cy is not excluded by INPOP15a. The viewer marks a comparison-model row 'within' when |rate| <= 0.0031 arcsec/cy and 'exceeds' otherwise; this is a display marker, not a test."
+verified_by = "F4 author (viewer dashboard), 2026-11-14: copied from ADR-0016 (merged with PR #61), which cites arXiv:1601.00947; the arXiv abstract was not re-read for this file."
+notes = "The same paper quotes a stricter criterion of +/- 1.05 mas/cy (viewer glossary 'inpop15a-bound'); the dashboard uses the wider +/- 3.1 mas/cy of ADR-0016."
+
+[[vector]]
+id = "INPOP15A-MERCURY-SUPPLEMENTARY-ADVANCE-INTERVAL"
+requirement = ["PHY-020", "API-004"]
+quantity = "half-width of the INPOP15a interval of a supplementary advance of Mercury's perihelion that the ephemeris does not exclude"
+value = 0.0031
+unit = "arcsec/cy"
+kind = "measured"
+source = "Fienga et al. 2016: 0.0 +/- 3.1 mas/cy, as quoted in ADR-0016 and PHY-020."
+citation = "A. Fienga, J. Laskar, H. Manche and M. Gastineau, Proc. 14th Marcel Grossmann Meeting, arXiv:1601.00947 (2016); proceedings volume and page numbers not checked (ADR-0016)"
+retrieved = "2026-11-14"
+tolerance = { abs = 5.0e-5 }
+tolerance_rationale = "Half a unit in the last printed digit of 3.1 mas/cy (0.05 mas/cy). Display only."
+verified_by = "F4 author (viewer dashboard), 2026-11-14: copied from ADR-0016 and PHY-020."
