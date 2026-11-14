@@ -11,7 +11,9 @@ value_change_k = 1
 # New gates matching one of these regexes (searched in the gate text) pass without approval;
 # everything else needs a maintainer. Gates are Rust `ignore`/`cfg`/`cfg_attr` attributes, in
 # rustfmt spelling after tools/ratchet.py normalises whitespace, and the Python skip/xfail and
-# collection gates that `python_gates` in tools/ratchet.py detects (none of which is listed). A
+# collection gates that `python_gates` in tools/ratchet.py detects (none of which is listed).
+# Other attributes that change a verdict, e.g. `should_panic`, are not gates and are not checked
+# (known_gap_rs_verdict_attribute in TST-006 notes). A
 # gate is new when it is new on its item (file, Rust item or Python function/class, text), so an
 # allowlisted text moved onto another item is checked again, and a non-listed one fails.
 # An allowlisted gate is NOT checked by the source scan, and some of the entries below CAN hide a

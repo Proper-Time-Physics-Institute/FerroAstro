@@ -65,7 +65,8 @@ listed in TST-006", #55, tracks them):
 * ``known_gap_py_runtime_gate``: a skip or ``__test__`` built at run time (``getattr(pytest,
   "sk" + "ip")``, ``setattr(f, "__test__", False)``, ``globals()["__test__"] = False``).
 * ``known_gap_py_existing_helper``: a new call to a helper that already existed and skips.
-* ``known_gap_hollowed_test``: a Python or Rust test that returns early or whose body is emptied.
+* ``known_gap_hollowed_test``: a Python or Rust test that returns early, whose body is emptied,
+  or whose assertions are put under dead code (Rust ``if false { ... }``).
 * ``known_gap_py_nondefault_name``: deleting a test pytest collects outside its default naming
   (``test*`` functions, ``test*`` methods of ``Test*`` classes), e.g. a method of a
   ``unittest.TestCase`` subclass not named ``Test*``.
@@ -83,6 +84,23 @@ listed in TST-006", #55, tracks them):
 * ``known_gap_rs_same_name_items``: items are keyed by inline ``mod`` path, kind and name, so a
   gate moved between two same-named fns of one module (two ``impl`` blocks) is not new.
 * ``known_gap_scan_scope``: only Rust under ``crates/`` and Python under ``tools/`` are scanned.
+* ``known_gap_py_outcome_exception``: raising pytest's outcome exceptions directly (``from
+  _pytest.outcomes import Skipped`` / ``XFailed`` / ``Exit`` / ``OutcomeException``, then ``raise
+  Skipped("x")``); the test reports as skipped.
+* ``known_gap_py_empty_parametrize``: ``@pytest.mark.parametrize("x", [])`` on a test; an empty
+  parameter set skips it.
+* ``known_gap_py_process_exit``: ``os._exit(0)`` or ``sys.exit(0)`` in a test file (e.g. a new
+  ``tools/tests/test_0.py``); pytest stops with exit 0 and no summary, so later tests never run.
+* ``known_gap_py_uncollectable_class``: ``__init__`` or ``__new__`` added to a ``Test*`` class;
+  pytest does not collect the class and only warns.
+* ``known_gap_py_fixture_on_test``: ``@pytest.fixture`` on a ``test*`` function; it is no longer
+  collected, yet :func:`python_test_names` still counts it as a test.
+* ``known_gap_py_assigned_hook``: a pytest hook bound by assignment (``pytest_collection_modifyitems
+  = lambda ...``), e.g. in a subdirectory ``conftest.py`` off the CODEOWNERS surface; only
+  ``def pytest_*`` is detected.
+* ``known_gap_rs_verdict_attribute``: ``#[should_panic]`` added to a failing Rust test turns the
+  failure into a pass; the test still runs, so ``test-count`` does not see it either. Only
+  ``ignore``/``cfg``/``cfg_attr`` are gate attributes.
 
 ``tools/pyproject.toml`` and ``tools/tests/conftest.py`` are also on the ORG-011 meta surface.
 """

@@ -576,6 +576,13 @@ KNOWN_GAPS = (
     "known_gap_rs_uncompiled_file",
     "known_gap_rs_same_name_items",
     "known_gap_scan_scope",
+    "known_gap_py_outcome_exception",
+    "known_gap_py_empty_parametrize",
+    "known_gap_py_process_exit",
+    "known_gap_py_uncollectable_class",
+    "known_gap_py_fixture_on_test",
+    "known_gap_py_assigned_hook",
+    "known_gap_rs_verdict_attribute",
 )
 
 PY_GAP_BASE = (
@@ -634,6 +641,9 @@ def test_known_gap_py_existing_helper(tmp_path: Path) -> None:
     assert py_gap(tmp_path, PY_GAP_BASE.replace("    assert 1", "    helper()")) == []
 
 
+DEAD_RS = "#[test]\nfn t() {\n    if false {\n        assert!(f());\n    }\n}\n"
+
+
 # Verifies: TST-006
 @pytest.mark.parametrize("body", ["    return\n    assert 1", "    pass"])
 def test_known_gap_hollowed_test(tmp_path: Path, body: str) -> None:
@@ -645,6 +655,12 @@ def test_known_gap_hollowed_test(tmp_path: Path, body: str) -> None:
         {"crates/c/tests/t.rs": "#[test]\nfn t() {\n    return;\n}\n"},
     )
     assert rs == []
+    dead = rs_gap(
+        tmp_path / "dead",
+        {"crates/c/tests/t.rs": "#[test]\nfn t() {\n    assert!(f());\n}\n"},
+        {"crates/c/tests/t.rs": DEAD_RS},
+    )
+    assert dead == []
 
 
 # Verifies: TST-006
@@ -738,3 +754,88 @@ def test_known_gap_scan_scope(tmp_path: Path) -> None:
     write(h, "tests/test_x.py", "import pytest\n\n\n@pytest.mark.skip\ndef test_x():\n    pass\n")
     write(h, "other/t.rs", "#[test]\n#[ignore]\nfn t() {}\n")
     assert ratchet.source_findings(base, h, CFG) == []
+
+
+# Verifies: TST-006
+@pytest.mark.parametrize(
+    "imported",
+    [
+        "from _pytest.outcomes import Skipped",
+        "from _pytest.outcomes import XFailed as Skipped",
+        "from _pytest.outcomes import Exit as Skipped",
+        "from _pytest.outcomes import OutcomeException as Skipped",
+    ],
+)
+def test_known_gap_py_outcome_exception(tmp_path: Path, imported: str) -> None:
+    """Raising pytest's outcome exceptions directly skips or stops a test without a gate name."""
+    head = PY_GAP_BASE.replace("import pytest\n", f"import pytest\n{imported}\n", 1).replace(
+        "    assert 1", "    raise Skipped('x')"
+    )
+    assert py_gap(tmp_path, head) == []
+
+
+# Verifies: TST-006
+def test_known_gap_py_empty_parametrize(tmp_path: Path) -> None:
+    """An empty parameter set makes pytest skip the test (empty_parameter_set_mark default)."""
+    head = PY_GAP_BASE.replace("def test_a():", "@pytest.mark.parametrize('x', [])\ndef test_a(x):")
+    assert py_gap(tmp_path, head) == []
+
+
+# Verifies: TST-006
+@pytest.mark.parametrize("stop", ["import os\nos._exit(0)\n", "import sys\nsys.exit(0)\n"])
+def test_known_gap_py_process_exit(tmp_path: Path, stop: str) -> None:
+    """A new test file that ends the process at import stops pytest with exit 0 and no summary."""
+    base, h = tmp_path / "b", tmp_path / "h"
+    write(base, "tools/tests/test_a.py", PY_GAP_BASE)
+    write(h, "tools/tests/test_a.py", PY_GAP_BASE)
+    write(h, "tools/tests/test_0.py", stop)
+    assert ratchet.source_findings(base, h, CFG) == []
+
+
+# Verifies: TST-006
+@pytest.mark.parametrize(
+    "ctor",
+    ["    def __init__(self):\n        pass\n", "    def __new__(cls):\n        return None\n"],
+)
+def test_known_gap_py_uncollectable_class(tmp_path: Path, ctor: str) -> None:
+    """pytest does not collect a Test* class with __init__/__new__ (a warning only)."""
+    base_text = PY_GAP_BASE + "\n\nclass TestK:\n    def test_k(self):\n        assert 1\n"
+    head = base_text.replace("class TestK:\n", f"class TestK:\n{ctor}\n", 1)
+    base, h = tmp_path / "b", tmp_path / "h"
+    write(base, "tools/tests/test_a.py", base_text)
+    write(h, "tools/tests/test_a.py", head)
+    assert ratchet.source_findings(base, h, CFG) == []
+
+
+# Verifies: TST-006
+def test_known_gap_py_fixture_on_test(tmp_path: Path) -> None:
+    """A fixture decorator on a test* function stops its collection; it still counts as a test."""
+    head = PY_GAP_BASE.replace("def test_a():", "@pytest.fixture\ndef test_a():")
+    assert py_gap(tmp_path, head) == []
+    assert "test_a" in ratchet.python_test_names(head)
+
+
+# Verifies: TST-006
+def test_known_gap_py_assigned_hook(tmp_path: Path) -> None:
+    """A pytest hook bound by assignment (not `def pytest_*`), e.g. in a subdirectory conftest."""
+    base, h = tmp_path / "b", tmp_path / "h"
+    write(base, "tools/tests/test_a.py", PY_GAP_BASE)
+    write(h, "tools/tests/test_a.py", PY_GAP_BASE)
+    write(
+        h,
+        "tools/tests/sub/conftest.py",
+        "pytest_collection_modifyitems = lambda session, config, items: items.clear()\n",
+    )
+    assert ratchet.source_findings(base, h, CFG) == []
+
+
+# Verifies: TST-006
+@pytest.mark.parametrize("attr", ["#[should_panic]", '#[should_panic(expected = "")]'])
+def test_known_gap_rs_verdict_attribute(tmp_path: Path, attr: str) -> None:
+    """`should_panic` turns a failing assertion into a pass; the test still runs and is counted."""
+    found = rs_gap(
+        tmp_path,
+        {"crates/c/tests/t.rs": "#[test]\nfn t() {\n    assert_eq!(1, 2);\n}\n"},
+        {"crates/c/tests/t.rs": f"#[test]\n{attr}\nfn t() {{\n    assert_eq!(1, 2);\n}}\n"},
+    )
+    assert found == []

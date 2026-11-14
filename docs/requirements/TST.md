@@ -232,7 +232,8 @@ notes: >-
   setattr(f, "__test__", False), globals()["__test__"] = False);
   known_gap_py_existing_helper, a new call to a helper that already existed
   and skips; known_gap_hollowed_test, a Python or Rust test that returns
-  early or whose body is emptied; known_gap_py_nondefault_name, deleting a
+  early, whose body is emptied, or whose assertions are put under dead code
+  (Rust if false { ... }); known_gap_py_nondefault_name, deleting a
   test pytest collects outside its default naming (e.g. a method of a
   unittest.TestCase subclass not named Test*); known_gap_py_no_count, there
   is no executed-test count for pytest, so nothing backstops a Python gap;
@@ -247,7 +248,24 @@ notes: >-
   caught only by the test count; known_gap_rs_same_name_items, a gate moved
   between two same-named Rust fns of one module (e.g. in two impl blocks);
   known_gap_scan_scope, only Rust under crates/ and Python under tools/ are
-  scanned. The Python gate names are matched on any expression, so args.skip
+  scanned; known_gap_py_outcome_exception, raising pytest's outcome
+  exceptions directly (from _pytest.outcomes import Skipped, XFailed, Exit or
+  OutcomeException, then raise Skipped("x")), reported as skipped;
+  known_gap_py_empty_parametrize, @pytest.mark.parametrize("x", []) on a
+  test, which an empty parameter set skips; known_gap_py_process_exit,
+  os._exit(0) or sys.exit(0) in a test file (e.g. a new
+  tools/tests/test_0.py), which stops pytest with exit 0 and no summary so
+  later tests never run; known_gap_py_uncollectable_class, __init__ or
+  __new__ added to a Test* class, which pytest then does not collect (a
+  warning only); known_gap_py_fixture_on_test, @pytest.fixture on a test*
+  function, no longer collected but still counted as a test by the deletion
+  check; known_gap_py_assigned_hook, a pytest hook bound by assignment
+  (pytest_collection_modifyitems = lambda ...), e.g. in a subdirectory
+  conftest.py off the CODEOWNERS surface (only def pytest_* is detected);
+  known_gap_rs_verdict_attribute, #[should_panic] added to a failing Rust
+  test, which turns the failure into a pass; the test still runs, so the
+  test count does not see it (only ignore, cfg and cfg_attr are gate
+  attributes). The Python gate names are matched on any expression, so args.skip
   in non-test code also needs approval (over-detection). tools/pyproject.toml
   (pytest options) and
   tools/tests/conftest.py are on the ORG-011 meta surface. A new Cargo
