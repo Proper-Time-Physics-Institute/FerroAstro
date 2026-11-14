@@ -771,7 +771,7 @@ statement: >-
 acceptance: >-
   (a) Linear term: a two-body Sun + test-body integration with an exaggerated
   γ, for both signs, gives a secular perihelion rate equal to
-  Δϖ = −πγa²√(1−e²)/β per orbit, β = GM/c²,
+  Δϖ = −πγa²√(1−e²)/β per orbit, β = GM☉/c²,
   within the tolerance the test states and justifies from its span and
   integrator floor. (b) Quadratic term: an exaggerated κ > 0 gives
   Δϖ = +3πκa³√(1−e²)/β per orbit (prograde) on
@@ -801,15 +801,22 @@ notes: >-
   use √(1−e²), not the (1−e²)² and (1−e²)³ factors printed by
   Sultana, Kazanas & Said 2012; the rd#88 physics note checked the √ form,
   including its sign, by numerical integration to 0.2 %, and for Mercury the
-  printed linear factor differs by about 7 %. β = GM/c² uses the
-  two-body Keplerian μ of OI-77 (GM of Sun + body), and the acceleration in
-  the Gauss average is the relative one, including the Sun's reaction. With
+  printed linear factor differs by about 7 %. β = GM☉/c² uses the Sun's GM
+  only, and a is the semi-major axis of the relative orbit. With the reaction
+  on the Sun, the relative perturbing acceleration is
+  R = −(γc²/2)(1 + m/M☉), and Gauss gives Δϖ = 2πR a²√(1−e²)/μ with the
+  two-body μ = G(M☉ + m); the factors (1 + m/M☉) cancel, and the same
+  cancellation holds for the κ term. For the massless test body of
+  acceptance (a) the two readings coincide; using β = G(M☉ + m)/c² with the
+  API γ would be off by m/M☉ (1.7e-7 for Mercury). OI-77's two-body μ
+  applies only to the per-orbit → ″/cy conversion (n), not to β. With
   velocity-dependent terms present (EIH, Lense–Thirring) the uniform drift
   enters only at O(v·Δv/c²), so (c) is asserted in a configuration
   with velocity-independent forces. Mercury numbers from the rd#88 notes,
   not yet reproduced in FerroAstro and not oracles: Sun-centred γ0 about
   −0.183 ″/cy (about 60× the INPOP15a bound of 0.0 ± 3.1 mas/cy); uniform
-  γ0 about 0; γ* and κ about 1e-11 ″/cy. Avoid the token
+  γ0 about 0; γ* and κ 1e-11 to 1e-12 ″/cy in magnitude, of opposite
+  signs (about −3.2e-12 and +9.9e-12). Avoid the token
   "nominal" in identifiers (PHY-003 scan). Implementation is the F2 engine PR
   of #59; the viewer bit is API-004 / ABI v2 in a later PR.
 ```

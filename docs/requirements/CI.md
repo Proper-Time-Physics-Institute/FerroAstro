@@ -78,7 +78,9 @@ notes: >-
   gamma0_centre = "sun" | "uniform" } plus the fixed direction for "uniform",
   for the default-off conformal-gravity comparison model. It is skipped when
   absent, so existing scenario digests do not change; the schema is
-  regenerated in the engine PR. It is not a ladder switch, and no ci/scenarios
+  regenerated in the engine PR, which SHALL also fix the units of
+  gamma0, gamma_star and kappa (the published fit values are in cm⁻¹ and
+  cm⁻², the engine works in km). It is not a ladder switch, and no ci/scenarios
   file that feeds an oracle comparison uses it.
   BUILD EVIDENCE (sync 2026-10-20; WP13, WP15, WP17, WP18 on
   m3-newtonian-nbody). Schema: ci/scenarios/scenario.schema.json is generated
