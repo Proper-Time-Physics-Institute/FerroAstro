@@ -348,7 +348,7 @@ impl ViewerConfig {
 
     /// True when the run uses DE440 J2 and spin and ε ≤ 1e-9 (DESIGN §4.3).
     #[must_use]
-    pub fn nominal(&self) -> bool {
+    pub fn is_nominal(&self) -> bool {
         self.j2_override().is_none()
             && self.spin_scale().is_none()
             && self.get(Param::Ias15Epsilon) <= DEFAULT_IAS15_EPSILON

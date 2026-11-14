@@ -40,7 +40,7 @@ pub(crate) fn json(cfg: &ViewerConfig, info: Option<&RunInfo>, fit: Option<&FitR
             |i| Value::from(i.mode),
         ),
         "engine": s(|i| &i.engine_label),
-        "nominal": cfg.nominal(),
+        "nominal": cfg.is_nominal(),
         "toggles": cfg.mask(),
         "params": params,
         "model": s(|i| &i.model),
