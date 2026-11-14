@@ -1,0 +1,67 @@
+# SPDX-FileCopyrightText: 2026 Proper-Time Physics Institute
+# SPDX-License-Identifier: Apache-2.0
+#
+# Evidence ratchet configuration (TST-006, ADR-0015). Read from the BASE tree by tools/ratchet.py,
+# so a PR cannot loosen the check that judges it. Meta surface (ORG-011): maintainer review only.
+
+# |Δvalue| > k · old effective tolerance needs a maintainer approval. k = 1: a value may move
+# within its own old pass band; anything larger is a new result, not a refinement.
+value_change_k = 1
+
+# New gates matching one of these regexes (searched in the gate text) pass without approval;
+# everything else needs a maintainer. The ratchet is a heuristic, non-adversarial scanner (TST-006
+# notes and the tools/ratchet.py docstring define each `detects_*` form and what "ordinary
+# syntax" means): in ordinary syntax it detects these forms of test weakening and claims nothing
+# else: deleted Rust and Python tests, new Rust `ignore`/`cfg`/`cfg_attr` attributes under
+# crates/, a fall in the nextest executed count, new Python skip/xfail/importorskip/unittest-skip
+# names, pytest `exit`, assignments to `pytestmark`/`__test__`/`collect_ignore`/
+# `collect_ignore_glob`, `def pytest_*` hooks and unparsable files under tools/, and pytest
+# configuration changes under tools/. Deliberately obfuscated or adversarially encoded code may
+# evade it. This allowlist applies to the Rust attributes, in rustfmt spelling after
+# tools/ratchet.py normalises whitespace; it lists no Python gate. Any other way of skipping,
+# deselecting, hiding or neutering a test is NOT detected, e.g. `should_panic` on a failing test
+# (known_gap_rs_verdict_attribute; the `known_gap_*` list in TST-006 notes is non-exhaustive);
+# reviewers must check for it. A gate is new when it is new on its item (file, Rust item or
+# Python function/class, text), so an allowlisted text moved onto another item is checked
+# again, and a non-listed one fails.
+# An allowlisted gate is NOT checked by the source scan, and some of the entries below CAN hide a
+# PR-tier test (known_gap_rs_allowlisted_gate in TST-006 notes and tools/ratchet.py): for those
+# the only backstop is `ratchet (test count)`, whose head listing is produced by PR code.
+# What is listed:
+# - cfg(test): it selects the test build, which is the build nextest runs, so it hides nothing
+#   from the nextest run. It does hide the item's doctests: rustdoc does not build doctests with
+#   cfg(test), so `cargo test --doc` no longer runs them. Doctests are outside the ratchet
+#   (known_gap_rs_doctest): `cargo nextest list` does not list them and the scan ignores them.
+#   cfg(doc) is NOT listed: nextest does not build with cfg(doc), so `#[cfg(doc)]` on a test
+#   removes it from the PR-tier run; it needs approval.
+# - One feature selection, `cfg(feature = "...")` or `cfg(not(feature = "..."))`, and only for a
+#   feature the base tree declares (ratchet.py turns an undeclared name into a finding).
+#   "Declares" means some crate under crates/ declares it (the union over crates); a feature
+#   that the crate using it does not declare is left to cargo's check-cfg, which clippy
+#   `-D warnings` turns into an `unexpected_cfgs` error. This CAN still hide a test from the
+#   PR-tier run, e.g. `cfg(not(feature = "std"))` while std is a default feature. Such a hide is
+#   caught only by `ratchet (test count)`, whose head listing is produced by PR code.
+# - `cfg(not(target_arch = "wasm32"))`: the PR-tier tests run on x86_64, so this hides nothing
+#   from the nextest run (it does drop the item from the wasm32 build check). Every other
+#   target_arch gate needs approval (`#![cfg(target_arch = "riscv64")]` would hide a whole file).
+# - serde derives and serde field attributes behind the `serde` feature: no test can hide there.
+# - Ignores of network-tier tests (reason starting `data` or `network`), which the nextest `data`
+#   profile runs. The reason text is not checked against what the test does, so this CAN move any
+#   test out of the PR tier; only `ratchet (test count)` sees that.
+# Moving a test to the nightly tier is NOT listed: it leaves PR CI, so it needs approval.
+gate_allowlist = [
+    '^cfg\(test\)$',
+    '^cfg\((?:not\()?feature = "[A-Za-z0-9_-]+"\)?\)$',
+    '^cfg\(not\(target_arch = "wasm32"\)\)$',
+    '^cfg_attr\(feature = "serde", derive\(serde::Serialize, serde::Deserialize\)\)$',
+    '^cfg_attr\(feature = "serde", serde\([^()\[\]]*\)\)$',
+    '^ignore = "(?:data|network)\b',
+]
+
+# Oracle strength, after docs/standards/testing.md item 4 (analytic formula > published value >
+# independent code). Lowering a vector's rank is a downgrade.
+[kind_rank]
+analytic = 3
+defined = 3
+measured = 2
+computed-reference = 1

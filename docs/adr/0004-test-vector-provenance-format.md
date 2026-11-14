@@ -10,7 +10,7 @@ date: 2026-10-14
 Expected values live in `tests/vectors/*.toml`, validated against `tests/vectors/schema.json`. Each vector has `id`, `requirement`, `quantity`, `value`, `unit`, `kind` (defined | measured | computed-reference | analytic), `source`, `citation`, `retrieved`, `tolerance` (abs/rel), `tolerance_rationale` and `verified_by`. `computed-reference` vectors also record `generated_by` (script@sha) and the engine version and settings. Tests load values by `id`, so bare physical literals in tests are rejected. Values from secondary sources ([S]) or UNVERIFIED values may not be used until closed in OPEN-ITEMS.md.
 
 ### Confirmation
-CI schema check plus a literal-lint script (TST-002/003). Changes to golden values need the `golden-change` label and a CODEOWNERS review (TST-004).
+CI schema check plus a literal-lint script (TST-002/003). Changes to golden values need the maintainer-applied `golden-change` label, new evidence in the same PR and a CODEOWNERS review, now through the ORG-011 meta surface; the `ratchet` check enforces the label and evidence rules (TST-004, TST-006, ADR-0015).
 
 ## Revision 2026-10-20 (proposed): the `blocked_by` field
 Recorded from the build branch `m3-newtonian-nbody` (WP14, `docs/strategy/IMPLEMENTATION-NOTES.md`); the schema change was made there by an agent and is still marked NEEDS HUMAN REVIEW (WP14 deviation 4). It becomes part of this decision once a maintainer confirms it.

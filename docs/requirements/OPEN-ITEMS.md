@@ -97,7 +97,7 @@ This checklist collects every claim in Journals #0–#6 (plus items raised by th
 - [ ] **OI-62** MCP tool errors via the `isError` result flag (check the spec's error-handling section). **Qualifies:** AGT-004.
 - [ ] **OI-63** Benchmark variance figures on shared GitHub runners. **Qualifies:** CI-008.
 - [ ] **OI-64** Whether release-please bumps Cargo-workspace internal dependencies (evaluate release-plz). **Qualifies:** STD-011.
-- [ ] **OI-65** Whether optional signed commits interact cleanly with agent workflows. **Qualifies:** ORG-009.
+- [ ] **OI-65** Whether optional signed commits interact cleanly with agent workflows. **Qualifies:** ORG-009, ORG-008. Decided 2026-10-14 (#12): signing is required, with a registered key and delegation record per agent (ADR-0015, ADR-0005 revision); to be ticked by a maintainer once `signed-commits` runs in `enforce` mode on agent PRs.
 - [ ] **OI-66** Fit of StrictDoc and OpenFastTrace (ADR-0010, `docs/adr/0010-requirements-tooling.md`, revisited at M2). **Qualifies:** ORG-003, ORG-004.
 - [ ] **OI-67** IERS EOP redistribution terms in test fixtures (open question 5). **Qualifies:** DEP-017, LIC-003.
 

@@ -3,7 +3,7 @@
 
 # AGT — Agent-facing conventions
 
-**Scope.** FerroAstro is built to be used and maintained by AI coding agents as well as people. These requirements cover the canonical `AGENTS.md`, `llms.txt` for the docs site, an `agent-task` issue form, and the structured-output contract of the future MCP server. Human oversight of agent PRs is ORG-009. Sign-off for agent commits is ORG-008. Source: Journal #5 §6 (`docs/strategy/journal/05-organization-standards.md`).
+**Scope.** FerroAstro is built to be used and maintained by AI coding agents as well as people. These requirements cover the canonical `AGENTS.md`, `llms.txt` for the docs site, an `agent-task` issue form, and the structured-output contract of the future MCP server. Merge rules for agent PRs (evidence-gated, with human-owned meta files) are ORG-009 and ORG-011. Sign-off and commit signing for agent commits are ORG-008. Source: Journal #5 §6 (`docs/strategy/journal/05-organization-standards.md`).
 
 ---
 

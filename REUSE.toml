@@ -16,6 +16,7 @@ path = [
     "ci/scenarios/scenario.schema.json",
     "ci/golden/**/MANIFEST.json",
     "ci/golden/**/*.json",
+    ".github/signing/keys/*.asc",
 ]
 SPDX-FileCopyrightText = "2026 Proper-Time Physics Institute"
 SPDX-License-Identifier = "Apache-2.0"

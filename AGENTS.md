@@ -47,8 +47,12 @@ Tests that need the cached `header.440` skip with a message when it is absent, a
 8. **UNVERIFIED values** listed in [docs/requirements/OPEN-ITEMS.md](docs/requirements/OPEN-ITEMS.md) must not
    be used as test oracles.
 9. **Python** under `tools/` must be ruff-clean (lint + format) and pass mypy strict (STD-009).
-10. **Commits:** Conventional Commits, with a DCO `Signed-off-by:` from the responsible human or organisation (ADR-0005).
-    Agent-authored PRs need human approval before merge.
+10. **Commits and merges:** Conventional Commits, with a DCO `Signed-off-by:` from the responsible human or
+    organisation, and signed with a key registered in `.github/signing/` whose delegation record names that
+    operator (ORG-008, ADR-0005). PRs, agent-authored or not, merge when every required evidence check passes
+    (ORG-009, ADR-0015). A maintainer's approval is needed only when the PR touches the meta surface in
+    `.github/CODEOWNERS` (ORG-011) or the `ratchet` check flags it (TST-006). Never set or clear `hold` or
+    `golden-change` yourself, and never edit a checker to make your own PR pass.
 
 ## Where things are
 | Path | What |
