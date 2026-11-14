@@ -355,6 +355,7 @@ dependencies = [
  "ferroastro-core",
  "ferroastro-ephem",
  "ferroastro-frames",
+ "ferroastro-integrators",
  "ferroastro-precession",
  "ferroastro-propagate",
  "ferroastro-scenario",
@@ -365,6 +366,7 @@ dependencies = [
  "proptest",
  "serde",
  "serde_json",
+ "sha2",
  "thiserror",
 ]
 

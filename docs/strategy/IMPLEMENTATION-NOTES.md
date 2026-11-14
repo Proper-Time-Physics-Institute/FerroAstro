@@ -5566,6 +5566,56 @@ deny; doc `-D warnings`; ruff, ruff format, mypy, pytest (86 passed, 4 skipped);
   is why the median of interleaved rounds is used. The earlier block measurement gave B/C = 3.37.
 - **Gates** (at `766e60b` + this notes commit): all exit 0. fmt, clippy `-D warnings`, nextest **302 passed, 49 skipped**, doctests, deny, doc `-D warnings`, ruff, ruff format, mypy, pytest (86 passed, 4 skipped), reuse, trace (121 requirements, 709 citing tests, 0 errors). Data tier: the combined E10 guard + E10b test passes (187 s); the diagnostic harness runs (Ceres row reproduced).
 
+### Test-honesty fixes #37, #38, #39 (PR #13 judge review follow-ups, 2026-11-13)
+- **#37, f128 runs in CI.** New `ci.yml` job `f128` on one pinned nightly (`nightly-2026-10-15`, bump via
+  PR): `cargo +nightly nextest run -p ferroastro-real --features f128 --no-tests=fail -E 'binary(num006_backends) &
+  test(=f128_backend_agrees_with_double_double)'`. `--no-tests=fail` turns a compiled-out test (no nightly detected,
+  feature lost) into a red job instead of a green one with nothing run. The other jobs are unchanged (stable keeps
+  compiling the backend out). Locally no nightly is installed (`RUSTUP_AUTO_INSTALL=0`), so the test was run on the
+  pinned 1.95.0 with `RUSTC_BOOTSTRAP=1 RUSTFLAGS="--cfg fa_nightly"` (demonstration only, not used in CI): 2 passed,
+  f128 vs DD ≤ 8.3e-33 (sqrt, exp, sin, ln). On stable `--list` shows only the generic test.
+- **#38, `child_locate_probe` no longer passes vacuously.** Run on its own it now locates `de440-header` through
+  `locate_product`, checks the path is under `data_dir()`, re-hashes the bytes and compares with the manifest pin;
+  spawned as the child it also asserts the refusal names the file under the `FA_DATA_DIR` override. Negative control:
+  with `FA_DATA_DIR` at a wrong-content or empty cache, the old test passes, the new one fails (FA-E0204).
+- **#39, speed-table nightly.** Every `$FA_BENCH_DIR/*/speed-table.json` (default `target/bench`; `FA_BENCH_DIR` is the
+  harness's own variable) must parse and validate, or the test fails naming each bad file; run directories without a
+  table are listed and passed over; a missing directory fails with the harness command instead of an `unwrap` panic;
+  `FA_BENCH_TABLES` errors name the file. Three PR-tier discovery tests use the committed run-1 table. Negative
+  control: two valid tables plus a newest truncated or schema-999 table pass the old test and fail the new one. On the
+  committed run1/run2 tables the test reaches E6 and fails on (d) only, as recorded (E6 unchanged; V3 partial-table
+  selection not addressed here). The maintainer's `FerroAstro-m0/target/bench` now fails on its schema-2
+  `wp28-20261021T0009Z` table, which the old test skipped silently.
+
+### Issue #31: the diffrun store key covers the integrator settings (2026-11-13)
+- **Bug.** The store file was `<scenario digest>.leg`. The scenario digest does not cover the IAS15 settings that live
+  only in `Ias15Config` (e.g. `pc_b_from_g`, whose default flipped in #13). A leg interrupted by one build could
+  therefore resume in a build with the other predictor, with no warning. `Ias15::restore` continues with the
+  checkpoint's own settings, while the model string names the new build's.
+- **Fix (`ferroastro-diffrun`, store format v2).** The file is now `<scenario digest>-<SHA-256 of the settings>.leg`
+  (`store_file`). "The settings" means the JSON of the whole `Ias15Config` that a fresh N-body leg uses
+  (`ferroastro_propagate::ias15_config(spec, true)`). Because the whole struct is serialised, a field added to
+  `Ias15Config` reaches the key without a code change. The header records the settings too. On resume, both the header
+  and the decoded checkpoint's `integrator.config` must equal this run's settings. If they differ, the file is refused
+  with `FA-E1402` and kept. A leg under other settings looks for its own file name, so it runs from the start and
+  leaves the other settings' file alone.
+- **Old stores.** A v1 file (`<scenario digest>.leg`, or any file whose format tag is not v2) is refused with
+  `FA-E1402`, and the message names the format and issue #31. It is never resumed. Delete it to rerun the leg. This
+  affects only interrupted nightly legs: completed legs are not kept.
+- **Tests** (unit tests in `run.rs`, because emulating another build's file needs the private store layout; PR tier,
+  header.440):
+  - `every_ias15_setting_changes_the_store_key` destructures `Ias15Config` exhaustively, so a new field breaks the
+    build until it is added. Changing any one field changes the file name.
+  - `interrupted_leg_resumes_only_under_the_same_integrator_settings`:
+    - Same settings: the leg resumes, with 0 differing words against the one-piece leg.
+    - The other predictor's file (`pc_b_from_g` flipped in the checkpoint and header): not reused. The leg runs all
+      segments, the result is bitwise equal and that file is untouched.
+    - Refused (`FA-E1402`): a header with other settings or a checkpoint with other settings under this run's name, and
+      a v1 file under either name.
+  - Mutation probes: dropping the checkpoint check, or the settings from the file name, fails the tests.
+- **Not changed (open):** the `RunOutput::model` string still does not name the predictor (issue #31's second
+  point). Changing it alters every report and the committed speed tables, so it is left for a separate change.
+
 ## IAS15 rejection rule decision (issue #20)
 
 Recorded 2026-11-14. **Decided by the principal on 2026-11-14:** keep the current step-rejection rule
