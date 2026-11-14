@@ -194,13 +194,13 @@ fn literature_rows_stop_applying_when_their_parameter_is_overridden() {
 
     // Park17's J2 row was computed at Park17's J2, not the viewer's nominal (DE440) J2: it applies
     // only with the override set to exactly that value.
-    let nominal = &meta(&viewer(bits::DEFAULT, &[]))["dashboard"]["literature"]["rows"];
+    let at_de440 = &meta(&viewer(bits::DEFAULT, &[]))["dashboard"]["literature"]["rows"];
     assert_eq!(
-        nominal["b7"]["applies"], false,
+        at_de440["b7"]["applies"], false,
         "J2 row at nominal (DE440) J2"
     );
     assert_eq!(
-        nominal["b8"]["applies"], true,
+        at_de440["b8"]["applies"], true,
         "GR row at nominal parameters"
     );
     let at_park = &meta(&viewer(bits::DEFAULT, &[(Param::J2Override, park_j2)]))["dashboard"]["literature"]
