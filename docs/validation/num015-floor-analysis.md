@@ -3,8 +3,7 @@
 
 # NUM-015 absolute floor: analysis for issue #36
 
-Status: analysis only. No vector, tolerance or requirement text is changed by this document. The
-principal decides; the exact edits each option implies are in [§6](#6-exact-changes-implied).
+Status: DECIDED 2026-11-14. The principal chose Option A: keep 1.17e-15 rad/orbit. Only the two wording edits of §6 were applied (NUM-015 notes; NUM015-ABS-FLOOR tolerance_rationale and verified_by). No value or tolerance changed. Original status: analysis only; the principal decides; the exact edits each option implies are in [§6](#6-exact-changes-implied).
 
 Base: `origin/main` at `826c298` (2026-11-14).
 

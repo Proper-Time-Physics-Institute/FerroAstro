@@ -337,8 +337,8 @@ source = "Red-team review section 1 (NUM-015 finding): use max(1e-6 rel, 1e-7 ar
 citation = "red-team REPORT.md section 1; FerroAstro docs/requirements/NUM.md NUM-015"
 retrieved = "2026-10-15"
 tolerance = { abs = 1.17e-15 }
-tolerance_rationale = "1e-7 arcsec/cy at 415.2 orbits/cy = 2.41e-10 arcsec = 1.168e-15 rad per orbit, rounded up to 1.17e-15. It matters only for J2 (3.6e-6 relative of its advance) and LT (4.8e-5 relative). Pre-registered in IMPLEMENTATION-NOTES WP4 before any run. deferred by the maintainer 2026-11-08 to issue #36: this floor is a red-team recommendation, not yet in NUM-015's text."
-verified_by = "WP4 builder agent, 2026-10-15: arithmetic above."
+tolerance_rationale = "1e-7 arcsec/cy at 415.2 orbits/cy = 2.41e-10 arcsec = 1.168e-15 rad per orbit, rounded up to 1.17e-15. It matters only for J2 (3.6e-6 relative of its advance) and LT (4.8e-5 relative). Pre-registered in IMPLEMENTATION-NOTES WP4 before any run. In NUM-015's acceptance since 7811132 (2026-10-19) as max(1e-6 relative, 1e-7 arcsec/cy absolute). Issue #36 (docs/validation/num015-floor-analysis.md): f64 estimator noise 1-sigma ~3-4e-17 rad/orbit at 1e3 orbits (passage-time rounding), worst of 20 runs 9.8e-17, so the floor sits 12x above the worst run; 2.9e-17 in the NUM-015 notes is the WP4 LT measurement, not a floor. Kept by the maintainer on 2026-11-14."
+verified_by = "WP4 builder agent, 2026-10-15: arithmetic above; issue #36 analysis 2026-11-14: re-measured, see docs/validation/num015-floor-analysis.md"
 
 [[vector]]
 id = "PARK17-J2-RATE"
