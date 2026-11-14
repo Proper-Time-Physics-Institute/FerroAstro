@@ -11,7 +11,13 @@ Every commit must carry a [Developer Certificate of Origin](https://developercer
 Signed-off-by: Your Name <you@example.org>
 ```
 Use `git commit -s`. For commits written by AI agents, the human or organisation operating the agent signs off
-and is responsible for the contribution. A Contributor License Agreement administered by the Proper-Time Physics
+and is responsible for the contribution. Commits must also be signed (SSH or OpenPGP) with a key registered in
+`.github/signing/`, whose delegation record names the operator in the `Signed-off-by` (ORG-008, ADR-0015).
+
+## How PRs merge
+A PR merges when every required check passes (ORG-009). A maintainer's approval is needed only if it touches the
+files listed in `.github/CODEOWNERS` (ORG-011) or the `ratchet` check reports a weakening of the evidence (TST-006).
+A maintainer can stop any merge with the `hold` label. A Contributor License Agreement administered by the Proper-Time Physics
 Institute will replace or supplement the DCO after legal review (ADR-0005).
 
 ## Before you open a PR

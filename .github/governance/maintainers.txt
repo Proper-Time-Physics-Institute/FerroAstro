@@ -1,0 +1,10 @@
+# SPDX-FileCopyrightText: 2026 Proper-Time Physics Institute
+# SPDX-License-Identifier: Apache-2.0
+#
+# Human maintainers (ORG-009, ORG-011, ADR-0015): one GitHub login per line. Only labels (`hold`,
+# `golden-change`) and reviews by these logins count in the hold and ratchet checks, which read
+# this file from the BASE branch. Keep it in step with .github/CODEOWNERS (checked by pytest).
+# An agent that runs under a listed account can satisfy these checks. Agents therefore need their
+# own accounts; until then this is an open residual risk (ADR-0015, "Agent identities").
+temoTxt
+Zorns-Lemmon

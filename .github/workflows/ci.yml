@@ -16,6 +16,8 @@ name: ci
 
 on:
   pull_request:
+  # Only fires if a maintainer enables the merge queue (ADR-0015); required checks must report there.
+  merge_group:
   push:
     branches: [main]
   schedule:

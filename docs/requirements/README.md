@@ -66,7 +66,7 @@ draft → approved → implemented → verified → retired
 | Status | Meaning | Who moves it |
 |---|---|---|
 | `draft` | Proposed. Wording, numbers or sources may still change. | Anyone, by PR |
-| `approved` | Accepted by a maintainer. From this point `trace.py --check` requires at least one citing test when `verification: test`. | Maintainer review (CODEOWNERS on `docs/requirements/`) |
+| `approved` | Accepted by a maintainer. From this point `trace.py --check` requires at least one citing test when `verification: test`. | Maintainer approval: the `ratchet` check fails any `status` change until a maintainer approves the PR head (ORG-011, TST-006) |
 | `implemented` | Code exists and the citing tests are present. | PR that adds the implementation |
 | `verified` | The acceptance criterion passed in CI (or the inspection/analysis/demonstration record exists), with evidence linked from TRACE.md. | CI evidence plus maintainer |
 | `retired` | No longer applies. The ID stays reserved and is never reused. | Maintainer, with a reason in `notes` |

@@ -1,0 +1,63 @@
+# SPDX-FileCopyrightText: 2026 Proper-Time Physics Institute
+# SPDX-License-Identifier: Apache-2.0
+#
+# The meta surface (ORG-011, ADR-0015): the files that define the evidence. A PR touching any of
+# them needs a maintainer's approval (ruleset: "Require review from Code Owners", 0 required
+# approvals otherwise). Everything not listed merges on the required evidence checks alone
+# (ORG-009). There is deliberately no `*` default owner.
+#
+# Field-level rules that CODEOWNERS cannot express (requirement `status` and `verified_by_gate`
+# anywhere; `statement`/`acceptance`, where values and tolerances live, in PHY.md and NUM.md) are
+# enforced by the ratchet check (tools/ratchet.py, TST-006) instead.
+#
+# Owners must match .github/governance/maintainers.txt (tools/tests/test_governance.py).
+# Order does not matter here: every pattern has the same owners.
+
+# Evidence: vectors, schema, goldens, data pins
+/tests/vectors/                 @temoTxt @Zorns-Lemmon
+# The harness that loads vectors and applies their tolerances (TST-002/003)
+/crates/ferroastro-vectors/     @temoTxt @Zorns-Lemmon
+/tests/goldens/                 @temoTxt @Zorns-Lemmon
+/tests/data/MANIFEST.toml       @temoTxt @Zorns-Lemmon
+/ci/                            @temoTxt @Zorns-Lemmon
+
+# CI definition, rules, this file, the governance registry
+/.github/                       @temoTxt @Zorns-Lemmon
+
+# Checkers and their configuration
+/tools/trace.py                 @temoTxt @Zorns-Lemmon
+/tools/lint_*.py                @temoTxt @Zorns-Lemmon
+/tools/check_layers.py          @temoTxt @Zorns-Lemmon
+/tools/validate_scenarios.py    @temoTxt @Zorns-Lemmon
+/tools/ratchet.py               @temoTxt @Zorns-Lemmon
+/tools/governance.py            @temoTxt @Zorns-Lemmon
+/tools/verify_signatures.py     @temoTxt @Zorns-Lemmon
+/tools/canary/                  @temoTxt @Zorns-Lemmon
+/tools/pyproject.toml           @temoTxt @Zorns-Lemmon
+/tools/uv.lock                  @temoTxt @Zorns-Lemmon
+/tools/tests/conftest.py        @temoTxt @Zorns-Lemmon
+/tools/tests/test_trace.py      @temoTxt @Zorns-Lemmon
+/tools/tests/test_lints.py      @temoTxt @Zorns-Lemmon
+/tools/tests/test_lint_canary.py @temoTxt @Zorns-Lemmon
+/tools/tests/test_check_layers.py @temoTxt @Zorns-Lemmon
+/tools/tests/test_validate_scenarios.py @temoTxt @Zorns-Lemmon
+/tools/tests/test_ratchet.py    @temoTxt @Zorns-Lemmon
+/tools/tests/test_governance.py @temoTxt @Zorns-Lemmon
+/tools/tests/test_verify_signatures.py @temoTxt @Zorns-Lemmon
+/.config/nextest.toml           @temoTxt @Zorns-Lemmon
+/clippy.toml                    @temoTxt @Zorns-Lemmon
+/rustfmt.toml                   @temoTxt @Zorns-Lemmon
+/deny.toml                      @temoTxt @Zorns-Lemmon
+/rust-toolchain.toml            @temoTxt @Zorns-Lemmon
+
+# Licensing and contribution terms
+/REUSE.toml                     @temoTxt @Zorns-Lemmon
+/LICENSE*                       @temoTxt @Zorns-Lemmon
+/LICENSES/                      @temoTxt @Zorns-Lemmon
+/NOTICE                         @temoTxt @Zorns-Lemmon
+/CONTRIBUTING.md                @temoTxt @Zorns-Lemmon
+
+# Agent rules and decisions
+AGENTS.md                       @temoTxt @Zorns-Lemmon
+/CLAUDE.md                      @temoTxt @Zorns-Lemmon
+/docs/adr/                      @temoTxt @Zorns-Lemmon

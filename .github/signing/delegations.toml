@@ -1,0 +1,24 @@
+# SPDX-FileCopyrightText: 2026 Proper-Time Physics Institute
+# SPDX-License-Identifier: Apache-2.0
+#
+# Delegation records for commit-signing keys (ORG-008, ADR-0005 revision 2026-11-14, ADR-0015).
+# Read from the BASE branch by tools/verify_signatures.py. Meta surface (ORG-011).
+
+# `report`: findings are printed as warnings and the `signatures` check passes. `enforce`: they
+# fail it. Starts in `report` so the check can be made required without blocking open PRs; the
+# maintainer switches to `enforce` once every active agent's key is registered below (ADR-0015).
+mode = "report"
+
+# Commit SHAs exempt from the check (full 40-hex). For commits that were already open in PRs when
+# `enforce` was switched on and that their authors do not re-sign. Never for new work.
+grandfathered = []
+
+# One table per registered key. Template (do not uncomment without a real key and record):
+# [[delegation]]
+# fingerprint = "SHA256:…"                  # `ssh-keygen -lf key.pub`, or a 40-hex OpenPGP fingerprint
+# principal   = "builder-agent@ferroastro"   # SSH only: the principal in allowed_signers
+# operator    = "Jane Doe <jane@example.org>" # exactly as in the commits' Signed-off-by
+# agent       = "Claude Code, builder role"
+# valid_from  = "2026-11-14"
+# valid_until = "2027-05-14"
+# record      = "https://github.com/Proper-Time-Physics-Institute/FerroAstro/issues/12#…"
