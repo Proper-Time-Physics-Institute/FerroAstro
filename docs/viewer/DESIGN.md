@@ -367,12 +367,13 @@ One object, keys fixed (UI builders may rely on them):
       "total_arcsec_per_cy": x, "gamma0_arcsec_per_cy": x, "basis": "<...>" } | null },
   "dashboard": {
     "analytic": { "label", "short", "frame", "window", "protocol",
-      "rows": { "b7" | "b8" | "b9" | "b11" | "b12" | "rung": { "value": x, "basis": "<...>" } } } | null,
-    "m5": { "label": "M5 evidence (computed, not observed)", "kind": "computed-reference", "short",
+      "unit": "arcsec/cy", "rows": { "b7" | "b8" | "b9" | "b11" | "b12" | "rung": { "value": x,
+      "basis": "<...>" } } } | null,
+    "m5": { "label": "M5 evidence (computed, not observed)", "kind": "computed-reference", "short", "unit",
       "source", "run", "frame", "window", "protocol",
       "rows": { "total" | "b7" | "b8" | "b9" | "b11": { "id", "value", "sigma", "sigma_id",
         "protocol", "note", "quantity" } } },
-    "literature": { "label": "Park et al. 2017, Table 3", "short", "source", "frame", "window",
+    "literature": { "label": "Park et al. 2017, Table 3", "short", "unit", "source", "frame", "window",
       "protocol", "rows": { "b0" … "b11" | "cross_js": { "id", "value", "note", "quantity",
         "applies": bool } } },
     "bound": { "id", "interval_id", "label", "short", "value": 0.0, "half_width": x, "unit",
@@ -396,7 +397,8 @@ Lense–Thirring with the run's spin, the Rung-lab rungs in 1PN units, the confo
 rate; `null` without `embed-header`), the M5 evidence rows read from
 `tests/vectors/m5-evidence.toml` (FerroAstro's own nightly results, `kind = "computed-reference"`,
 never observations or ladder oracles), the Park17 literature rows from the existing vectors (with
-`applies = false` when the run overrides that effect's own parameter) and the INPOP15a bound from
+`applies = false` when the run overrides that effect's own parameter; the J2 row, computed at
+Park17's J2 = 2.25e-7, applies only when the J2 override equals that value) and the INPOP15a bound from
 `tests/vectors/comparison-bounds.toml`, which applies to comparison models only. The keys `b0`…`b12`
 are toggle bits and `rung` the Rung-lab rung, as in the table. `tests/viewer_dashboard.rs` checks
 the pass-through against the vector files and the estimates against the ladder's analytic vectors.
@@ -522,11 +524,18 @@ For the current toggle set S (the "full" configuration) and every effect X ∈ S
   every reference number comes from the metadata's `dashboard` object, §4.5):
   effect | live ϖ̇(S) − ϖ̇(S\X) (″/cy) ± √(σ²+σ²) jack-knife | engine analytic estimate (where a
   closed form exists) | M5 evidence (computed, not observed; ± its sigma) | literature (Park17
-  Table 3; "not applied" when the run overrides that effect's parameter) | difference (live −
+  Table 3; "not applied" when the run's parameter differs from Park17's, including the J2 row at
+  the nominal DE440 J2) | difference (live −
   literature where it applies, else live − analytic; never against M5) | observational bound
   (INPOP15a 0.0 ± 3.1 mas/cy, comparison models only, with ✓ within / ✗ exceeds / ? unresolved
   markers for the analytic and the live value; "n/a" on ladder terms) | P-add (optional) | leg IC
-  hash (short) and engine. The conformal-gravity row (bit 12) is labelled "comparison model"; with
+  hash (short) and engine. The bound markers use the page's 3σ convention on the interval
+  (`FAV.boundVerdict` in `fav.js`, criterion text in `dashboard.bound.criterion`): with
+  d = |rate − centre| and w the half-width, within if d + 3σ ≤ w, exceeds if d − w > 3σ,
+  otherwise unresolved (the 3σ band straddles an edge); the analytic estimate has σ = 0, so it is
+  never unresolved. A wide live σ alone never makes a far-outside value unresolved. Every reference
+  column's sub-label ends with the unit its metadata states (`unit`, arcsec/cy), and the bound cell
+  repeats it. The conformal-gravity row (bit 12) is labelled "comparison model"; with
   the uniform γ0 centring its bound cell repeats that the zero is exact only with
   velocity-independent forces (EIH and Lense–Thirring add an O(v·Δv/c²) drift).
 * The M5 total (575.309161 ″/cy, a 393-body EIH model) appears beside ϖ̇(S) only when S is the

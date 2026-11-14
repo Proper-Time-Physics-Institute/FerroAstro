@@ -471,7 +471,7 @@
     short: "The linear-potential coefficient attributed to the rest of the universe. Its galactic-fit value is unverified (OI-79). Where it is centred decides whether it acts on Mercury at all.",
     typical: "fit 3.06×10⁻³⁰ cm⁻¹ (default, unverified); input range ±10⁻²⁵ cm⁻¹, signed",
     long: "Rotation-curve fits write the linear coefficient as γ = N*γ* + γ0, with N* the source mass in solar masses ([[gamma-star]]). Mannheim derives γ0 from a negatively curved Robertson–Walker cosmology seen by an observer at rest in a galaxy, and the fits measure γ0c²R/2 from each galaxy's centre. The sources leave open where it is centred in the solar system ([[gamma0-centring]]). γ > 0 attracts and makes the perihelion regress. Any value other than the fit value marks the run as [[physical-exaggeration|exaggerated physics]].",
-    mercury: "Sun-centred at the fit value: Gauss −0.183 ″/cy, about 60× the [[inpop15a-bound]]; uniform: 0. Sultana, Kazanas and Said (2012) bound a Sun-centred γ below 1.5×10⁻³¹ cm⁻¹.",
+    mercury: "Sun-centred at the fit value: Gauss −0.183 ″/cy, about 59× the [[inpop15a-bound]]; uniform: 0. Sultana, Kazanas and Said (2012) bound a Sun-centred γ below 1.5×10⁻³¹ cm⁻¹.",
     see: ["gamma0-centring", "gamma-star", "cg-fit-values", "inpop15a-bound"],
   };
   E["gamma-star"] = {
@@ -503,7 +503,7 @@
     short: "The INPOP15a planetary ephemeris finds no supplementary advance of Mercury's perihelion: 0.0 ± 3.1 mas/cy (0.0 ± 0.0031 ″/cy).",
     typical: "0.0 ± 3.1 mas/cy (stricter criterion: ± 1.05 mas/cy); EPM2011: −2 ± 3 mas/cy",
     long: "Fienga, Laskar, Manche and Gastineau (2016, arXiv:1601.00947), with MESSENGER ranging, fit a supplementary perihelion advance on top of GR and find it consistent with zero. Any extra term must therefore give |Δϖ̇| within a few mas/cy at Mercury; for a Sun-centred linear potential that means |γ| ≲ 5×10⁻³² cm⁻¹. The proceedings volume and pages have not been checked (ADR-0016).",
-    mercury: "A Sun-centred γ0 at the fit value (−183 mas/cy) misses it by a factor of about 60; a uniform γ0 passes trivially.",
+    mercury: "A Sun-centred γ0 at the fit value (−183 mas/cy) misses it by a factor of about 59; a uniform γ0 passes trivially.",
     see: ["gamma0-centring", "gamma0", "comparison-model"],
   };
   E["cg-gauss-reference"] = {
@@ -870,16 +870,16 @@
   };
   E["literature-value"] = {
     term: "Literature value (Park17)", group: "table",
-    short: "Park et al. (2017) Table 3: each effect's contribution from JPL's DE430 fit, P-remove over a 2000-year window centred on J2000, on the Park17 plane. Greyed with \"not applied\" when you override that effect's parameter.",
-    long: "Planets, solar oblateness (at Park's J2 = 2.25×10⁻⁷, 2.4 % above DE440's), the gravitoelectric GR row, Lense–Thirring and the asteroids, read from the repository's vectors. Park's values describe nominal physics, so a J2, spin or β/γ override stops the row from being used for the [[diff]]; the analytic estimate is used instead. There is no literature value for a [[comparison-model]]. The window differs from the viewer's forward window from 1969, so short spans differ by the periodic terms (DESIGN §8 E6).",
+    short: "Park et al. (2017) Table 3: each effect's contribution from JPL's DE430 fit, P-remove over a 2000-year window centred on J2000, on the Park17 plane. Greyed with \"not applied\" when the run's parameters differ from Park's (an override, or the J2 row at the nominal DE440 J2).",
+    long: "Planets, solar oblateness (at Park's J2 = 2.25×10⁻⁷, 2.4 % above DE440's), the gravitoelectric GR row, Lense–Thirring and the asteroids, read from the repository's vectors. Park's values describe Park's own parameters, so a spin or β/γ override stops the row from being used for the [[diff]], and the J2 row is used only when the J2 override equals Park's 2.25×10⁻⁷ (at the nominal DE440 J2 it is shown but not applied); the analytic estimate is used instead. There is no literature value for a [[comparison-model]]. The window differs from the viewer's forward window from 1969, so short spans differ by the periodic terms (DESIGN §8 E6).",
     mercury: "Venus 277.4176, Jupiter 153.9899, Earth–Moon 90.8881, GR 42.9799 ″/cy.",
     see: ["park17", "reference-value", "diff", "p-remove"],
   };
   E["observational-bound"] = {
     term: "Observational bound", group: "table",
-    short: "A published limit on an anomalous (non-GR) perihelion advance, shown only for comparison models: INPOP15a allows 0.0 ± 3.1 mas/cy at Mercury. Marked ✓ within, ✗ exceeds, or ? unresolved when the run's σ is wider than the bound.",
-    long: "The [[inpop15a-bound]] limits any supplementary advance on top of GR, so it applies to a [[comparison-model]] such as [[conformal-gravity]], never to a ladder term (those are part of GR or Newtonian physics, shown as n/a). The cell gives two markers: the engine's analytic Gauss rate and the live value; the live marker reads unresolved when its σ exceeds 3.1 mas/cy, because the run cannot test the bound at that span. The criterion |rate| ≤ 3.1 mas/cy comes with the bound in the metadata. With the default uniform [[gamma0-centring]] the rate is exactly zero only with velocity-independent forces; EIH and Lense–Thirring add a tiny O(v·Δv/c²) drift.",
-    mercury: "At the fit values a uniform γ0 passes (≈ 0); a Sun-centred γ0 gives −0.183 ″/cy and exceeds the bound about 59-fold.",
+    short: "A published limit on an anomalous (non-GR) perihelion advance, shown only for comparison models: INPOP15a allows 0.0 ± 3.1 mas/cy (0 ± 0.0031 ″/cy) at Mercury. Marked ✓ within or ✗ exceeds when the value ± 3σ lies wholly inside or wholly outside the bound, ? unresolved when it straddles an edge.",
+    long: "The [[inpop15a-bound]] limits any supplementary advance on top of GR, so it applies to a [[comparison-model]] such as [[conformal-gravity]], never to a ladder term (those are part of GR or Newtonian physics, shown as n/a). The cell gives two markers: the engine's analytic Gauss rate and the live value. Both follow the page's [[three-sigma]] convention on the interval: with d = |rate − centre|, a marker reads within if d + 3σ ≤ 3.1 mas/cy, exceeds if d − 3.1 mas/cy > 3σ, and unresolved otherwise, when the live value's 3σ band straddles an edge of the bound and the span cannot decide. The analytic estimate has no σ, so it is never unresolved. A large live σ alone does not make a marker unresolved: a value far outside the bound exceeds it at any span. The criterion text comes with the bound in the metadata. With the default uniform [[gamma0-centring]] the rate is exactly zero only with velocity-independent forces; EIH and Lense–Thirring add a tiny O(v·Δv/c²) drift.",
+    mercury: "At the fit values a uniform γ0 passes (≈ 0); a Sun-centred γ0 gives −0.183 ″/cy and exceeds the bound about 59×.",
     see: ["inpop15a-bound", "comparison-model", "gamma0-centring", "reference-value"],
   };
   E["diff"] = {

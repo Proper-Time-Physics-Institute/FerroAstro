@@ -869,7 +869,7 @@
     );
     // The bound's numbers come from the engine (metadata "dashboard.bound", tests/vectors).
     const b = boundFor(meta, "b" + B.CONFORMAL);
-    if (b) el.cgRef.append(termButton("inpop15a-bound", "INPOP15a"), " allows " + b.value + " ± " + b.half_width + " ″/cy.");
+    if (b) el.cgRef.append(termButton("inpop15a-bound", "INPOP15a"), " allows " + b.value + " ± " + b.half_width + " " + (unitText(b) || "″/cy") + ".");
     if (uniform) {
       const note = document.createElement("span");
       note.className = "cg-caveat";
@@ -2098,20 +2098,39 @@
     return { S, K, out, meta };
   }
 
-  // Pass/fail of a rate against the observational bound (display only; criterion in the metadata):
-  // within when |rate − centre| ≤ half-width, exceeds otherwise, and unresolved when the live σ is
-  // itself wider than the bound (the run cannot test it at this span).
+  // The unit a reference column states in the metadata, as the page prints it ("arcsec/cy" → ″/cy).
+  function unitText(c) {
+    const u = c && typeof c.unit === "string" ? c.unit : "";
+    return u === "arcsec/cy" ? "″/cy" : u;
+  }
+  // Pass/fail of a rate against the observational bound (display only; the rule is FAV.boundVerdict,
+  // the page's 3σ convention on the bound interval, and its criterion text is in the metadata):
+  // within when the 3σ interval lies inside the bound, exceeds when it lies wholly outside, unresolved
+  // when it straddles an edge. The analytic estimate has no σ, so it is never unresolved.
   function boundVerdict(v, s, b) {
-    if (!b || !Number.isFinite(v)) return null;
-    if (Number.isFinite(s) && s > b.half_width) return { cls: "unres", mark: "?", text: "unresolved", title: "σ " + s.toExponential(1) + " ″/cy is wider than the bound: this span cannot test it" };
-    const off = Math.abs(v - b.value);
-    if (off <= b.half_width) return { cls: "pass", mark: "✓", text: "within", title: "|rate| " + off.toExponential(2) + " ≤ " + b.half_width + " ″/cy" };
-    const k = off / b.half_width;
-    return { cls: "fail", mark: "✗", text: "exceeds ×" + (k >= 10 ? k.toFixed(0) : k.toFixed(1)), title: "|rate| " + off.toExponential(2) + " > " + b.half_width + " ″/cy" };
+    const r = FAV.boundVerdict(v, s, b);
+    if (!r) return null;
+    const u = " " + (unitText(b) || "″/cy");
+    const w = b.half_width;
+    const sig = Number.isFinite(s) && s > 0;
+    const m = sig ? " ± 3σ (3σ = " + (3 * s).toExponential(1) + u + ")" : "";
+    const offTxt = "|rate − " + b.value + "| = " + r.off.toExponential(2) + u;
+    if (r.verdict === "within") return { cls: "pass", mark: "✓", text: "within", title: offTxt + m + " lies inside ± " + w + u };
+    if (r.verdict === "unresolved") {
+      return { cls: "unres", mark: "?", text: "unresolved", title: offTxt + m + " straddles the edge ± " + w + u + ": this span cannot decide; a longer span shrinks σ" };
+    }
+    const k = r.factor;
+    return {
+      cls: "fail", mark: "✗", text: "exceeds ×" + (k >= 10 ? k.toFixed(0) : k.toFixed(1)),
+      title: offTxt + " is " + k.toFixed(k >= 10 ? 0 : 1) + "× the half-width " + w + u + (sig ? "; outside the bound edge by " + r.sigmas.toFixed(1) + "σ (> 3σ)" : ""),
+    };
   }
   function verdictHtml(who, vd) {
     if (!vd) return "";
-    return '<span class="verdict ' + vd.cls + '" title="' + escapeHtml(who + ": " + vd.title) + '"><span aria-hidden="true">' + vd.mark + "</span> " + escapeHtml(who) + " " + escapeHtml(vd.text) + "</span>";
+    // The detail is in the title for pointer users and repeated as sr-only text, since touch and
+    // screen-reader users may never reach a title attribute.
+    return '<span class="verdict ' + vd.cls + '" title="' + escapeHtml(who + ": " + vd.title) + '"><span aria-hidden="true">' + vd.mark + "</span> " + escapeHtml(who) + " " + escapeHtml(vd.text) +
+      '<span class="sr-only">: ' + escapeHtml(vd.title) + "</span></span>";
   }
   // A reference value at its own precision (not the live σ's): `sig` significant digits with
   // trailing zeros dropped, so 42.9805, 42.980114 and 42.9799 stay distinguishable.
@@ -2143,12 +2162,17 @@
     const span = table.plan ? table.span : Number(el.tSpan && el.tSpan.value) || 200;
     const lab = table.cfg ? table.cfg.params[P.MODE] === 1 : state.applied && state.applied.params[P.MODE] === 1;
     set("col-live-sub", (lab ? "initial orbit plane" : "Park17 plane") + " · " + span + " yr forward from JD " + (meta && meta.epoch_jd_tdb ? meta.epoch_jd_tdb : state.epochJd || "epoch") + " · P-remove, this run");
-    const col = (c) => (c ? [c.short || columnLabel(c), columnLabel(c) + (c.run ? " · " + c.run : "") + (c.criterion ? " · " + c.criterion : "")] : ["–", ""]);
+    // Each reference column's sub-label ends with the unit its metadata states.
+    const col = (c) => {
+      if (!c) return ["–", ""];
+      const u = unitText(c) ? " · " + unitText(c) : "";
+      return [(c.short || columnLabel(c)) + u, columnLabel(c) + (c.run ? " · " + c.run : "") + (c.criterion ? " · " + c.criterion : "") + u];
+    };
     const [anS, anT] = d && d.analytic ? col(d.analytic) : ["needs the engine's DE440 constants", ""];
     set("col-an-sub", anS, anT);
     set("col-m5-sub", ...col(d && d.m5));
     set("col-lit-sub", ...col(d && d.literature));
-    set("col-diff-sub", "live − literature, or − analytic where no literature value applies");
+    set("col-diff-sub", "live − literature, or − analytic where no literature value applies · ″/cy");
     set("col-bound-sub", ...col(d && d.bound));
   }
 
@@ -2165,12 +2189,12 @@
       const comparison = row.r.key === "b" + B.CONFORMAL;
       const anTxt = row.an ? fmtRef(row.an.value, 6) : "–";
       const litApplies = row.lit && row.lit.applies !== false;
-      const litTitle = row.lit ? row.lit.id + (row.lit.note ? "; " + row.lit.note : "") + (litApplies ? "" : ". Not applied: this run overrides the effect's parameter, so the difference uses the analytic estimate.") : "";
+      const litTitle = row.lit ? row.lit.id + (row.lit.note ? "; " + row.lit.note : "") + (litApplies ? "" : ". Not applied: this run's parameter differs from Park17's (an override, or for J2 the nominal DE440 value), so the difference uses the analytic estimate.") : "";
       let boundCell = '<td class="col-bound muted" title="The bound limits anomalous (non-GR) advances; it does not apply to a ladder term.">n/a</td>';
       if (row.bound) {
         const vLive = boundVerdict(row.v, row.s, row.bound);
         const vAn = row.an ? boundVerdict(row.an.value, NaN, row.bound) : null;
-        boundCell = '<td class="col-bound">' + "<span class=\"num\">" + escapeHtml((row.bound.value === 0 ? "0" : String(row.bound.value)) + " ± " + row.bound.half_width) + "</span>" +
+        boundCell = '<td class="col-bound">' + "<span class=\"num\">" + escapeHtml((row.bound.value === 0 ? "0" : String(row.bound.value)) + " ± " + row.bound.half_width + (unitText(row.bound) ? " " + unitText(row.bound) : "")) + "</span>" +
           verdictHtml("analytic", vAn) + verdictHtml("live", vLive) +
           (comparison && meta && meta.conformal && meta.conformal.gamma0_centre === "uniform"
             ? '<span class="ref-src cg-caveat">Uniform ' + termHtml("gamma0-centring", "γ0") + ": exactly 0 only with velocity-independent forces; EIH and Lense–Thirring add a tiny O(v·Δv/c²) drift.</span>"
@@ -2208,7 +2232,8 @@
     const m5Total = dashRow(meta, "m5", "total");
     const m5S = m5Total && isFullModel(table.cfg)
       ? m5Cell(m5Total)
-      : '<td class="num col-m5 muted" title="The M5 total is a full EIH model (planets, J2, LT, 1PN, 343 asteroids, KBOs), a GR-ladder result: shown only beside the viewer\'s full model without a comparison model.">–</td>';
+      : '<td class="num col-m5 muted" title="' + escapeHtml("The M5 total" + (m5Total && m5Total.quantity ? " (" + m5Total.quantity + ")" : "") +
+        " is a GR-ladder result: shown only beside the viewer's full model without a comparison model.") + '">–</td>';
     const xRow = dashRow(meta, "literature", "cross_js");
     el.tFoot.innerHTML =
       '<tr><th scope="row">Σ contributions ' + tipHtml("sum-contributions") + '</th><td class="num col-live">' + sumTxt + "</td>" + refBlanks + pc + "<td></td></tr>" +
@@ -2338,15 +2363,17 @@
     if (meta.fit) lines.push("# fit " + JSON.stringify(meta.fit));
     const d = dashboardOf(meta);
     for (const [k, c] of [["analytic", d && d.analytic], ["m5", d && d.m5], ["literature", d && d.literature], ["bound", d && d.bound]]) {
-      if (c) lines.push("# column " + k + ": " + (c.label ? c.label + "; " : "") + columnLabel(c) + (c.run ? "; " + c.run : ""));
+      if (c) lines.push("# column " + k + ": " + (c.label ? c.label + "; " : "") + columnLabel(c) + (c.run ? "; " + c.run : "") + (c.unit ? "; unit " + c.unit : ""));
     }
+    if (d && d.bound && d.bound.criterion) lines.push("# bound_live, bound_analytic: " + d.bound.criterion);
     lines.push("# m5 values are computed references (FerroAstro's own nightly results), not observations");
     lines.push("effect,protocol,rate_arcsec_per_cy,sigma_jackknife,analytic,analytic_basis,m5_evidence,m5_sigma,m5_id,literature,literature_id,literature_applies,difference,difference_vs,bound_centre,bound_half_width,bound_live,bound_analytic,padd_info_only,padd_sigma,leg_ic_hash");
     const blank = (n) => new Array(n).fill("");
     for (const row of out) {
       const leg = table.plan.legs.get(row.r.without);
-      const vl = boundVerdict(row.v, row.s, row.bound);
-      const va = row.an ? boundVerdict(row.an.value, NaN, row.bound) : null;
+      // The plain verdict word (within / exceeds / unresolved) of the same 3σ rule the cell shows.
+      const vl = FAV.boundVerdict(row.v, row.s, row.bound);
+      const va = row.an ? FAV.boundVerdict(row.an.value, NaN, row.bound) : null;
       lines.push(
         [
           q(row.label), "P-remove", row.v, row.s,
@@ -2354,7 +2381,7 @@
           row.m5 ? row.m5.value : "", row.m5 ? row.m5.sigma : "", q(row.m5 ? row.m5.id : ""),
           row.lit ? row.lit.value : "", q(row.lit ? row.lit.id : ""), row.lit ? row.lit.applies !== false : "",
           Number.isFinite(row.diff) ? row.diff : "", row.diffVs,
-          row.bound ? row.bound.value : "", row.bound ? row.bound.half_width : "", vl ? vl.text : "", va ? va.text : "",
+          row.bound ? row.bound.value : "", row.bound ? row.bound.half_width : "", vl ? vl.verdict : "", va ? va.verdict : "",
           Number.isFinite(row.addV) ? row.addV : "", Number.isFinite(row.addS) ? row.addS : "", q(leg && leg.meta ? leg.meta.ic_hash || "" : ""),
         ].join(","),
       );

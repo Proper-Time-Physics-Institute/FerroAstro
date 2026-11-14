@@ -131,7 +131,8 @@ fn dashboard_passes_m5_evidence_literature_and_bound_through() {
         assert_eq!(row["id"], id);
         let want = vs.get(id).unwrap().value().unwrap();
         assert_eq!(f(&row["value"]).to_bits(), want.to_bits(), "{key}: {id}");
-        assert_eq!(row["applies"], true, "{key}: nominal parameters");
+        // The J2 row is at Park17's own J2, so at the nominal (DE440) J2 it does not apply.
+        assert_eq!(row["applies"], key != "b7", "{key}: nominal parameters");
     }
     assert!(
         lit["rows"]["b12"].is_null(),
@@ -159,10 +160,16 @@ fn dashboard_passes_m5_evidence_literature_and_bound_through() {
     for k in ["frame", "window", "protocol", "criterion"] {
         assert!(labelled(&b[k]), "bound.{k} labelled");
     }
+    // Every reference column states its unit, so the page never assumes one (the analytic column,
+    // which needs the DE440 constants, is checked in the analytic test below).
+    for col in ["m5", "literature", "bound"] {
+        assert_eq!(d[col]["unit"], "arcsec/cy", "{col}.unit");
+    }
 }
 
 /// An override of an effect's own parameter marks its Park17 row as not applying (nominal physics
-/// only), so the page differences against the engine's analytic estimate instead.
+/// only), so the page differences against the engine's analytic estimate instead; the J2 row,
+/// computed at Park17's own J2, applies only with the override at that value.
 ///
 /// Verifies: API-004
 #[test]
@@ -172,7 +179,7 @@ fn literature_rows_stop_applying_when_their_parameter_is_overridden() {
     let v = viewer(
         bits::DEFAULT,
         &[
-            (Param::J2Override, park_j2),
+            (Param::J2Override, 2.0 * park_j2),
             (Param::SpinScale, 2.0),
             (Param::PpnBeta, 0.5),
         ],
@@ -184,6 +191,21 @@ fn literature_rows_stop_applying_when_their_parameter_is_overridden() {
     for key in ["b0", "b3", "b10"] {
         assert_eq!(rows[key]["applies"], true, "{key}");
     }
+
+    // Park17's J2 row was computed at Park17's J2, not the viewer's nominal (DE440) J2: it applies
+    // only with the override set to exactly that value.
+    let nominal = &meta(&viewer(bits::DEFAULT, &[]))["dashboard"]["literature"]["rows"];
+    assert_eq!(
+        nominal["b7"]["applies"], false,
+        "J2 row at nominal (DE440) J2"
+    );
+    assert_eq!(
+        nominal["b8"]["applies"], true,
+        "GR row at nominal parameters"
+    );
+    let at_park = &meta(&viewer(bits::DEFAULT, &[(Param::J2Override, park_j2)]))["dashboard"]["literature"]
+        ["rows"];
+    assert_eq!(at_park["b7"]["applies"], true, "J2 row at Park17's J2");
 }
 
 /// The engine analytic estimates agree with the ladder's analytic vectors (System mode and the
@@ -202,6 +224,10 @@ fn analytic_estimates_match_the_ladder_analytic_vectors() {
         return;
     }
     let vs = vectors();
+    assert_eq!(
+        m["dashboard"]["analytic"]["unit"], "arcsec/cy",
+        "analytic.unit"
+    );
     let rows = &m["dashboard"]["analytic"]["rows"];
     check(&vs, "PHY004-GR-RATE", f(&rows["b8"]["value"]));
     assert_eq!(

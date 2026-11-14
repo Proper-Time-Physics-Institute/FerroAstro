@@ -410,7 +410,7 @@ fieldset.cg.off .lab, fieldset.cg.off .cg-ref { opacity: 0.6; }
 .budget-key li { display: inline-flex; align-items: center; gap: 0.35rem; }
 .budget-key .v { color: var(--muted); font-variant-numeric: tabular-nums; }
 
-.table-scroll { overflow-x: auto; overscroll-behavior-x: contain; }
+.table-scroll { position: relative; overflow-x: auto; overscroll-behavior-x: contain; } /* positioned: sr-only text inside stays in the scroll box */
 table { border-collapse: collapse; width: 100%; font-size: 0.875rem; }
 th, td { padding: 0.4rem 0.5rem; border-bottom: 1px solid var(--border); text-align: left; vertical-align: top; }
 th { font-weight: 600; color: var(--muted); }
@@ -457,7 +457,7 @@ td.err, .err { color: var(--err-fg); }
 @media (max-width: 600px) {
   #contrib { font-size: 0.8125rem; }
   #contrib th, #contrib td { padding: 0.35rem 0.4rem; }
-  #contrib th.effect, #contrib tbody th, #contrib tfoot th { min-width: 7.5rem; max-width: 9.5rem; }
+  #contrib th.effect, #contrib tbody th, #contrib tfoot th { min-width: 6.5rem; max-width: 8rem; }
   #contrib .col-sub { max-width: 9rem; }
 }
 

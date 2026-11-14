@@ -122,7 +122,8 @@ const LITERATURE_ROWS: [(&str, &str, &str, &str); 13] = [
         "b7",
         RUNG_VECTORS,
         "PARK17-J2-RATE",
-        "at Park17's J2 = 2.25e-7; the viewer's nominal J2 is DE440's",
+        "at Park17's J2 = 2.25e-7; applies only with the J2 override set to that value (the \
+         viewer's nominal J2 is DE440's, about 2.4 % lower)",
     ),
     (
         "b8",
@@ -161,6 +162,12 @@ pub const BOUND_ID: &str = "INPOP15A-MERCURY-SUPPLEMENTARY-ADVANCE";
 /// The id of the `INPOP15a` interval half-width.
 pub const BOUND_INTERVAL_ID: &str = "INPOP15A-MERCURY-SUPPLEMENTARY-ADVANCE-INTERVAL";
 
+/// Park17's solar J2 (`PARK17-J2SUN`), at which its J2 row was computed; parsed once.
+fn park17_j2() -> Option<f64> {
+    static J2: OnceLock<Option<f64>> = OnceLock::new();
+    *J2.get_or_init(|| vector(RUNG_VECTORS, "PARK17-J2SUN").ok().map(|(v, _)| v))
+}
+
 /// The parts that do not depend on the configuration, parsed once.
 fn fixed() -> Result<&'static Value, ViewerError> {
     static F: OnceLock<Result<Value, String>> = OnceLock::new();
@@ -192,6 +199,7 @@ fn fixed() -> Result<&'static Value, ViewerError> {
                 "label": "M5 evidence (computed, not observed)",
                 "short": "Park17 plane · 1000-3000 CE · computed, not observed",
                 "kind": "computed-reference",
+                "unit": "arcsec/cy",
                 "source": "tests/vectors/m5-evidence.toml",
                 "run": "M5 E2 nightly run 2026-11-12/13, FerroAstro commit d1ccbae, rustc 1.95.0",
                 "frame": PARK17_FRAME,
@@ -202,6 +210,7 @@ fn fixed() -> Result<&'static Value, ViewerError> {
             "literature": {
                 "label": "Park et al. 2017, Table 3",
                 "short": "Park17 plane · 2000 yr centred on J2000 · P-remove",
+                "unit": "arcsec/cy",
                 "source": "tests/vectors (park2017-table3, single-body-rungs, phy004-gr-analytic)",
                 "frame": PARK17_FRAME,
                 "window": "2000 yr centred on J2000 (DE430 fit)",
@@ -221,7 +230,9 @@ fn fixed() -> Result<&'static Value, ViewerError> {
                 "window": "INPOP15a data span, with MESSENGER ranging",
                 "protocol": "supplementary (non-GR) advance fitted on top of GR",
                 "applies_to": ["b12"],
-                "criterion": "within if |rate| <= half_width, otherwise exceeds; applies to \
+                "criterion": "with off = |rate - value| and s = 3 sigma (0 for the analytic \
+                              estimate): within if off + s <= half_width, exceeds if \
+                              off - half_width > s, otherwise unresolved; applies to \
                               comparison models only, never to a ladder term",
             },
         }))
@@ -324,7 +335,12 @@ pub fn analytic(cfg: &ViewerConfig) -> Result<Map<String, Value>, ViewerError> {
 /// override of the effect's own parameter makes the row informative only.
 fn literature_applies(cfg: &ViewerConfig, key: &str) -> bool {
     match key {
-        "b7" => cfg.j2_override().is_none(),
+        // Park17's J2 row is at Park17's own J2, not DE440's: like-for-like only when the run
+        // overrides J2 to exactly that value.
+        "b7" => match (cfg.j2_override(), park17_j2()) {
+            (Some(j2), Some(park)) => (j2 - park).abs() <= 1e-12 * park.abs(),
+            _ => false,
+        },
         "b8" | "b11" => cfg.ppn_is_gr(),
         "b9" => cfg.spin_scale().is_none() && cfg.ppn_is_gr(),
         _ => true,
@@ -354,6 +370,7 @@ pub(crate) fn json(cfg: &ViewerConfig) -> Value {
         json!({
             "label": "engine analytic estimate",
             "short": "secular, no window · SW92 mean a, e · first order",
+            "unit": "arcsec/cy",
             "frame": "orbit plane (secular rate of the longitude of perihelion)",
             "window": "none (secular average)",
             "protocol": "first-order closed form for Mercury's SW92 J2000 mean a, e, DE440 constants",
