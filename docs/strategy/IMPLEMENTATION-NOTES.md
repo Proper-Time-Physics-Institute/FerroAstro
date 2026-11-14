@@ -5563,3 +5563,24 @@ deny; doc `-D warnings`; ruff, ruff format, mypy, pytest (86 passed, 4 skipped);
   pass)**, **C/D = 0.238 (< 1, pass)**, B/A = 47.1 (reported). Round-to-round scatter is ±20% (B 46.8–65.4 s), which
   is why the median of interleaved rounds is used. The earlier block measurement gave B/C = 3.37.
 - **Gates** (at `766e60b` + this notes commit): all exit 0. fmt, clippy `-D warnings`, nextest **302 passed, 49 skipped**, doctests, deny, doc `-D warnings`, ruff, ruff format, mypy, pytest (86 passed, 4 skipped), reuse, trace (121 requirements, 709 citing tests, 0 errors). Data tier: the combined E10 guard + E10b test passes (187 s); the diagnostic harness runs (Ceres row reproduced).
+
+### Test-honesty fixes #37, #38, #39 (PR #13 judge review follow-ups, 2026-11-13)
+- **#37, f128 runs in CI.** New `ci.yml` job `f128` on one pinned nightly (`nightly-2026-10-15`, bump via
+  PR): `cargo +nightly nextest run -p ferroastro-real --features f128 --no-tests=fail -E 'binary(num006_backends) &
+  test(=f128_backend_agrees_with_double_double)'`. `--no-tests=fail` turns a compiled-out test (no nightly detected,
+  feature lost) into a red job instead of a green one with nothing run. The other jobs are unchanged (stable keeps
+  compiling the backend out). Locally no nightly is installed (`RUSTUP_AUTO_INSTALL=0`), so the test was run on the
+  pinned 1.95.0 with `RUSTC_BOOTSTRAP=1 RUSTFLAGS="--cfg fa_nightly"` (demonstration only, not used in CI): 2 passed,
+  f128 vs DD ≤ 8.3e-33 (sqrt, exp, sin, ln). On stable `--list` shows only the generic test.
+- **#38, `child_locate_probe` no longer passes vacuously.** Run on its own it now locates `de440-header` through
+  `locate_product`, checks the path is under `data_dir()`, re-hashes the bytes and compares with the manifest pin;
+  spawned as the child it also asserts the refusal names the file under the `FA_DATA_DIR` override. Negative control:
+  with `FA_DATA_DIR` at a wrong-content or empty cache, the old test passes, the new one fails (FA-E0204).
+- **#39, speed-table nightly.** Every `$FA_BENCH_DIR/*/speed-table.json` (default `target/bench`; `FA_BENCH_DIR` is the
+  harness's own variable) must parse and validate, or the test fails naming each bad file; run directories without a
+  table are listed and passed over; a missing directory fails with the harness command instead of an `unwrap` panic;
+  `FA_BENCH_TABLES` errors name the file. Three PR-tier discovery tests use the committed run-1 table. Negative
+  control: two valid tables plus a newest truncated or schema-999 table pass the old test and fail the new one. On the
+  committed run1/run2 tables the test reaches E6 and fails on (d) only, as recorded (E6 unchanged; V3 partial-table
+  selection not addressed here). The maintainer's `FerroAstro-m0/target/bench` now fails on its schema-2
+  `wp28-20261021T0009Z` table, which the old test skipped silently.
