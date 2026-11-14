@@ -53,7 +53,12 @@ fn stage_b_ferroastro_matches_the_orekit_golden_in_the_de440_field() {
     );
 
     // The same constants: every field GM Orekit used against the header.440 value.
-    let de = De440::load().unwrap();
+    let Some(de) = De440::load_cached_or_skip(
+        "stage_b_ferroastro_matches_the_orekit_golden_in_the_de440_field",
+    )
+    .unwrap() else {
+        return;
+    };
     let cat = Catalogue::de440_major(&de);
     let spec = ScenarioSpec::parse(&text).unwrap();
     for b in &spec.bodies {
@@ -87,7 +92,15 @@ fn stage_b_ferroastro_matches_the_orekit_golden_in_the_de440_field() {
     let spk = Spk::parse(&bytes).unwrap();
     let prov = bsp.provenance();
     let t0 = std::time::Instant::now();
-    let out = run(&spec, &DataSources::none().with_spk(&spk, &prov)).unwrap();
+    // The DE440 constants are read from the pinned header.440 at run time (#22).
+    let hf = ferroastro_testdata::locate_product("de440-header").unwrap();
+    let htext = std::fs::read_to_string(&hf.path).unwrap();
+    let header = ferroastro_constants::header440::Header::parse(&htext).unwrap();
+    let hprov = hf.provenance();
+    let data = DataSources::none()
+        .with_header(&header, &hprov)
+        .with_spk(&spk, &prov);
+    let out = run(&spec, &data).unwrap();
     println!(
         "FerroAstro: {} ({:.1} s), IC hash {}, IC source {}",
         out.model,

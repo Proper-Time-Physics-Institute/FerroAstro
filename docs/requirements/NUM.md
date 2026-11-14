@@ -639,10 +639,17 @@ notes: >-
   is used for every ″/cy conversion (details in PHY-004 notes). The
   per-orbit comparison this acceptance makes does not depend on n. OI-35
   (R3b): evidence available, pending human sign-off (PHY-011 notes); R3b
-  matches Park 2017 Eq. 2 to 1.25e-6 relative in equatorial geometry
-  (passing only through the 1e-7 ″/cy floor; 2.9e-17 rad/orbit absolute,
-  26× the measured estimator noise floor) and 7.7e-8 in the real geometry
-  (WP4).
+  matched Park 2017 Eq. 2 to 1.25e-6 relative in equatorial geometry at WP4
+  (a measured deviation of 2.9e-17 rad/orbit, which passed only through the
+  absolute floor) and 7.7e-8 in the real geometry. ABSOLUTE FLOOR (issue
+  #36; docs/validation/num015-floor-analysis.md): the 10⁻⁷ ″/cy of the
+  acceptance is applied per orbit as 1.17×10⁻¹⁵ rad/orbit (10⁻⁷ ″/cy at
+  415.2 orbits/cy, rounded up; vector NUM015-ABS-FLOOR). It is 3.5×10⁻⁶ of
+  the J₂ and 5×10⁻⁵ of the LT per-orbit advance, and about 30× the f64
+  estimator noise (1σ ≈ 3–4×10⁻¹⁷ rad/orbit over 10³ orbits, set by f64
+  passage-time rounding). Whether LT passes 10⁻⁶ relative in f64 is noise
+  (2.3e-7 to 2.9e-6 across 250–2000 orbits), so the floor is needed. In
+  double-double every rung passes 10⁻⁶ relative directly (≤1.4e-10).
 ```
 
 ### NUM-016 — SR rung documents its Hamiltonian

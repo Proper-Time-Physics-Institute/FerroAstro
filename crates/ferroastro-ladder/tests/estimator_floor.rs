@@ -13,7 +13,9 @@ use ferroastro_ladder::single_body::{Model, Rung};
 /// Verifies: PHY-001, NUM-015
 #[test]
 fn newtonian_test_particle_has_no_advance() {
-    let c = common::ctx();
+    let Some(c) = common::ctx() else {
+        return;
+    };
     let zero = PnCoefficients {
         a: 0.0,
         b: 0.0,

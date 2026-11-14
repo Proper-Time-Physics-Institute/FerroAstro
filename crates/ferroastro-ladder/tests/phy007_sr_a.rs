@@ -10,7 +10,9 @@ use ferroastro_forces::Gauge;
 /// Verifies: PHY-007, NUM-015, NUM-016
 #[test]
 fn sr_a_gives_one_sixth_of_gr() {
-    let c = common::ctx();
+    let Some(c) = common::ctx() else {
+        return;
+    };
     let r = c.setup.run(&c.rung("SR-a")).unwrap();
     common::show(&r);
     assert_eq!(r.gauge, Gauge::SpecialRelativistic);

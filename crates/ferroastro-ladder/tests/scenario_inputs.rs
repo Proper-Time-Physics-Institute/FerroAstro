@@ -7,7 +7,9 @@ mod common;
 /// Verifies: PHY-010, PHY-005
 #[test]
 fn scenario_inputs_match_vectors() {
-    let c = common::ctx();
+    let Some(c) = common::ctx() else {
+        return;
+    };
     let el = c.scn.elements;
     for (id, got) in [
         ("SW92-MERCURY-A", el.a_au),

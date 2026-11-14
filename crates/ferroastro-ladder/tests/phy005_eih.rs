@@ -72,7 +72,9 @@ fn rate(out: &RunOutput, plane: &OrbitPlane) -> f64 {
 /// Verifies: PHY-005, NUM-013, NUM-017
 #[test]
 fn eih_and_nbody_central_rung_reproduce_gr_schw_and_the_r3_run() {
-    let c = common::ctx();
+    let Some(c) = common::ctx() else {
+        return;
+    };
     let (h, prov) = header();
     let data = DataSources::none().with_header(&h, &prov);
     let pl = plane(&h, c.de.gm_sun().km3_per_s2());
@@ -121,7 +123,9 @@ fn eih_and_nbody_central_rung_reproduce_gr_schw_and_the_r3_run() {
 /// Verifies: PHY-006, REF-010
 #[test]
 fn eih_rate_scales_as_two_plus_two_gamma_minus_beta_over_three() {
-    let c = common::ctx();
+    let Some(c) = common::ctx() else {
+        return;
+    };
     let (h, prov) = header();
     let data = DataSources::none().with_header(&h, &prov);
     let pl = plane(&h, c.de.gm_sun().km3_per_s2());

@@ -159,7 +159,7 @@ struct Slopes {
     reason = "test helper: failure is a test failure; checkpoint indices are in range by construction"
 )]
 fn ensemble(runs: u32, orbits: u32) -> Slopes {
-    let de = De440::load().unwrap();
+    let de = De440::load_cached().unwrap();
     let vs = VectorSet::load_canonical().unwrap();
     let (gm_sun, gm_me) = two_body::gms(&de);
     let mu = gm_sun + gm_me;
@@ -304,7 +304,7 @@ fn nightly_num023_long_ensemble_brouwer_slopes_ias15_f64() {
 #[test]
 #[ignore = "nightly tier"]
 fn nightly_num023_forward_backward_reversibility() {
-    let de = De440::load().unwrap();
+    let de = De440::load_cached().unwrap();
     let vs = VectorSet::load_canonical().unwrap();
     let (gm_sun, gm_me) = two_body::gms(&de);
     let mu = gm_sun + gm_me;

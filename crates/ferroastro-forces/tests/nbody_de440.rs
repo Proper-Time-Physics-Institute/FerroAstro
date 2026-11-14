@@ -34,7 +34,11 @@ use ferroastro_system::InitialConditions;
 /// Verifies: NUM-009
 #[test]
 fn newtonian_mutual_equals_the_m0_kernel_bitwise() {
-    let de = De440::load().unwrap();
+    let Some(de) =
+        De440::load_cached_or_skip("newtonian_mutual_equals_the_m0_kernel_bitwise").unwrap()
+    else {
+        return;
+    };
     let (h, prov) = header();
     let ic = InitialConditions::<f64>::from_header(&h, &prov).unwrap();
     let all = ids(true);
@@ -84,7 +88,7 @@ fn newtonian_mutual_equals_the_m0_kernel_bitwise() {
 
 /// Sun + 8 planets + geocentric Moon, Newtonian + solar J2 with reaction, f64, from header.440.
 fn wp12_model_run(years: f64, samples: u32) -> (Vec<f64>, u64, f64) {
-    let de = De440::load().unwrap();
+    let de = De440::load_cached().unwrap();
     let (h, prov) = header();
     let ic = InitialConditions::<f64>::from_header(&h, &prov).unwrap();
     let m = model::<f64>(&de, &ids(false), Moon::Geocentric, true);
@@ -148,7 +152,11 @@ fn momentum_is_conserved_with_j2_and_runs_are_bitwise_reproducible() {
 /// Verifies: TST-005
 #[test]
 fn double_double_runs_are_bitwise_reproducible() {
-    let de = De440::load().unwrap();
+    let Some(de) =
+        De440::load_cached_or_skip("double_double_runs_are_bitwise_reproducible").unwrap()
+    else {
+        return;
+    };
     let (h, prov) = header();
     let ic = InitialConditions::<DoubleDouble>::from_header(&h, &prov).unwrap();
     let run = || {
@@ -202,7 +210,7 @@ struct Row {
 /// One 10-yr run against de440.bsp; returns the per-body rows (body order of `ids`) and the
 /// geocentric-Moon row.
 fn residuals(with_pluto: bool, spk: &Spk<'_>) -> (Vec<(NaifId, Row)>, Row, u64) {
-    let de = De440::load().unwrap();
+    let de = De440::load_cached().unwrap();
     let (h, prov) = header();
     let ic = InitialConditions::<f64>::from_header(&h, &prov).unwrap();
     let body_ids = ids(with_pluto);

@@ -14,7 +14,9 @@ use ferroastro_core::units::TimeSpan;
 /// Verifies: NUM-012
 #[test]
 fn single_body_estimators_agree() {
-    let c = common::ctx();
+    let Some(c) = common::ctx() else {
+        return;
+    };
     let cadence = TimeSpan::from_seconds(2.0 * SECONDS_PER_DAY).unwrap();
     println!(
         "| rung | passages | LRL | Park2017 linear (jk sigma) | Park2017 quadratic | analytic | spread | IC hash |"

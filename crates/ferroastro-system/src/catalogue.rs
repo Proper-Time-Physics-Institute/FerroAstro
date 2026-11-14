@@ -3,7 +3,8 @@
 //! The body catalogue: NAIF id, name, GM from a constants set, and the tier (NUM-009).
 //!
 //! GMs come from a constants set, never from source literals (REF-002):
-//! [`Catalogue::de440_major`] from the committed DE440 table ([`De440`]), and
+//! [`Catalogue::de440_major`] from the DE440 constants ([`De440`], read at run time from the
+//! hash-verified `header.440`; no value is committed, #22), and
 //! [`Catalogue::from_header`] from a parsed `header.440` at run time, which adds the asteroid
 //! masses (`MAnnnn`). Both convert au³/d² to km³/s² with the header `AU` and the exact 86 400 s
 //! day, and split the Earth–Moon GM with `EMRAT` exactly as [`De440`] does, so the two sets agree
@@ -159,7 +160,8 @@ fn gm_value(name: &str, km3s2: f64) -> Result<GravParam, SystemError> {
 
 impl Catalogue {
     /// The 11 DE440 major bodies (Sun, Mercury, Venus, Earth, Moon, Mars…Pluto systems), GMs
-    /// from the committed DE440 table, all [`Tier::Major`].
+    /// from the DE440 constants (read at run time from the pinned `header.440`), all
+    /// [`Tier::Major`].
     #[must_use]
     pub fn de440_major(de: &De440) -> Self {
         let bodies = DE440_MAJOR
@@ -187,8 +189,10 @@ impl Catalogue {
         Self {
             bodies,
             unidentified: Vec::new(),
-            constants: "DE440 committed table (ferroastro-constants, generated from header.440)"
-                .to_owned(),
+            constants: format!(
+                "DE440 constants (ferroastro-constants, read at run time from header.440 sha256 {})",
+                de.table().source().sha256
+            ),
         }
     }
 
@@ -337,7 +341,12 @@ mod tests {
     /// Verifies: NUM-009
     #[test]
     fn de440_major_bodies_are_major_and_tiers_are_assignable() {
-        let de = De440::load().unwrap();
+        let Some(de) =
+            De440::load_cached_or_skip("de440_major_bodies_are_major_and_tiers_are_assignable")
+                .unwrap()
+        else {
+            return;
+        };
         let mut cat = Catalogue::de440_major(&de);
         assert_eq!(cat.bodies().len(), DE440_MAJOR.len());
         assert_eq!(cat.ids_in(Tier::Major).count(), DE440_MAJOR.len());

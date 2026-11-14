@@ -1,10 +1,13 @@
 // SPDX-FileCopyrightText: 2026 Proper-Time Physics Institute
 // SPDX-License-Identifier: Apache-2.0
-//! Offline checks of the committed DE440 constants table against provenance-tracked vectors
-//! (PHY-002, REF-002). The `data` test `data_de440_table_matches_header` checks the same table
-//! against a fresh download of header.440.
+//! The DE440 constants, read at run time from the pinned header.440, against provenance-tracked
+//! vectors (PHY-002, REF-002). The repository commits no header value (#22): tests that need the
+//! values read the cached header (`tools/fetch_jpl.py`) and skip with a message when it is absent
+//! outside CI (`De440::load_cached_or_skip`). The metadata checks run offline. The exact
+//! agreement of every parsed value with independent readers of the same JPL data is the live
+//! cross-check `SYSTEM-HEADER-LIVE-CROSSCHECK-MAX-ULP` (data and oracle tiers).
 
-use ferroastro_constants::table::{CITE_HEADER, CITE_PARK21, Table};
+use ferroastro_constants::table::{CITE_HEADER, CITE_PARK21, Metadata};
 use ferroastro_constants::{Body, De440};
 use ferroastro_core::time::SECONDS_PER_DAY;
 use ferroastro_vectors::{VectorError, VectorSet};
@@ -25,7 +28,9 @@ fn check(id: &str, measured: f64, vectors: &VectorSet) -> Result<(), VectorError
 /// Verifies: PHY-002
 #[test]
 fn asserted_de440_constants() {
-    let de = De440::load().unwrap();
+    let Some(de) = De440::load_cached_or_skip("asserted_de440_constants").unwrap() else {
+        return;
+    };
     let v = VectorSet::load_workspace().unwrap();
     check("DE440-GMS-KM3S2", de.gm_sun().km3_per_s2(), &v).unwrap();
     check("CONST-CLIGHT-SI", de.speed_of_light().km_per_s(), &v).unwrap();
@@ -34,18 +39,20 @@ fn asserted_de440_constants() {
     check("DE440-MOISUN", de.sun_moment_of_inertia(), &v).unwrap();
     check("DE440-EMRAT", de.earth_moon_mass_ratio(), &v).unwrap();
     let omega_rad_d = de.sun_rotation_rate().rad_per_s() * SECONDS_PER_DAY;
-    check("DE440-OMGSUN-RADD", omega_rad_d, &v).unwrap();
     check("PARK21-OMGSUN-DEGD", omega_rad_d.to_degrees(), &v).unwrap();
-    check("DE440-J2SUN", de.sun_j2(), &v).unwrap();
+    // GMS, J2SUN and OMGSUN in rad/d have no oracle independent of the header itself; their
+    // exact parse is the live cross-check against tools/oracles/header440.py and Orekit (#22).
     let gms = de.table().get("GMS").unwrap();
     assert_eq!(gms.unit, "au^3/d^2");
-    check("DE440-GMS-AU3D2", gms.value(), &v).unwrap();
+    assert!(de.sun_j2() > 0.0 && de.sun_j2().is_finite());
 }
 
 /// Verifies: PHY-002
 #[test]
 fn planetary_gms_match_park21_table_2() {
-    let de = De440::load().unwrap();
+    let Some(de) = De440::load_cached_or_skip("planetary_gms_match_park21_table_2").unwrap() else {
+        return;
+    };
     let v = VectorSet::load_workspace().unwrap();
     for (body, id) in [
         (Body::Mercury, "DE440-GM-MERCURY-KM3S2"),
@@ -70,23 +77,25 @@ fn planetary_gms_match_park21_table_2() {
 /// Verifies: REF-002
 #[test]
 fn table_scalars_and_counts() {
-    let de = De440::load().unwrap();
+    let Some(de) = De440::load_cached_or_skip("table_scalars_and_counts").unwrap() else {
+        return;
+    };
     let v = VectorSet::load_workspace().unwrap();
     let epoch = de.initial_epoch().unwrap();
     assert_eq!(epoch.scale_name(), "TDB");
     check("DE440-JDEPOC", epoch.jd(), &v).unwrap();
     check("DE440-BETA", de.ppn_beta(), &v).unwrap();
     check("DE440-GAMMA", de.ppn_gamma(), &v).unwrap();
-    let src = de.table().source();
+    let t = de.table();
     check(
         "DE440-CONSTANT-COUNT",
-        f64::from(u32::try_from(src.constant_count).unwrap()),
+        f64::from(u32::try_from(t.constant_count()).unwrap()),
         &v,
     )
     .unwrap();
     check(
         "DE440-MA-COUNT",
-        f64::from(u32::try_from(src.ma_count).unwrap()),
+        f64::from(u32::try_from(t.ma_count()).unwrap()),
         &v,
     )
     .unwrap();
@@ -94,8 +103,8 @@ fn table_scalars_and_counts() {
 
 /// Verifies: PHY-002, REF-002
 #[test]
-fn table_is_cited_versioned_and_pinned_to_the_manifest() {
-    let t = Table::de440().unwrap();
+fn metadata_is_cited_versioned_and_pinned_to_the_manifest() {
+    let t = Metadata::de440().unwrap();
     let pinned = ferroastro_testdata::product(&t.source().product).unwrap();
     assert_eq!(
         t.source().sha256,
@@ -114,8 +123,8 @@ fn table_is_cited_versioned_and_pinned_to_the_manifest() {
         );
     }
     println!(
-        "table v{} ({}) from {} sha256={} retrieved={}",
-        t.table_version(),
+        "metadata v{} ({}) for {} sha256={} retrieved={}",
+        t.metadata_version(),
         t.ephemeris(),
         t.source().url,
         t.source().sha256,
@@ -127,9 +136,15 @@ fn table_is_cited_versioned_and_pinned_to_the_manifest() {
 #[test]
 fn open_item_entries_are_flagged_and_not_exposed() {
     // OI-04 (GMSDOT units) and OI-23 (CENTER meaning) are UNVERIFIED: never used as values here.
-    let t = Table::de440().unwrap();
-    assert_eq!(t.get("GMSDOT").unwrap().open_item.as_deref(), Some("OI-04"));
-    assert_eq!(t.get("CENTER").unwrap().open_item.as_deref(), Some("OI-23"));
+    let t = Metadata::de440().unwrap();
+    let item = |n: &str| {
+        t.entries()
+            .iter()
+            .find(|e| e.name == n)
+            .and_then(|e| e.open_item.clone())
+    };
+    assert_eq!(item("GMSDOT").as_deref(), Some("OI-04"));
+    assert_eq!(item("CENTER").as_deref(), Some("OI-23"));
     let flagged: Vec<&str> = t
         .entries()
         .iter()

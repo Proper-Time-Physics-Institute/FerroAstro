@@ -24,7 +24,9 @@ fn units(c: &common::Ctx, k: PnCoefficients) -> f64 {
 /// Verifies: PHY-009
 #[test]
 fn each_coefficient_alone_gives_its_units() {
-    let c = common::ctx();
+    let Some(c) = common::ctx() else {
+        return;
+    };
     let zero = PnCoefficients {
         a: 0.0,
         b: 0.0,

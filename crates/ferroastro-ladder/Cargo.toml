@@ -24,6 +24,8 @@ thiserror.workspace = true
 toml.workspace = true
 
 [dev-dependencies]
+# Tests read the pinned header.440 from the data cache (De440::load_cached, #22).
+ferroastro-constants = { workspace = true, features = ["fs"] }
 ferroastro-scenario.workspace = true
 criterion.workspace = true
 ferroastro-frames.workspace = true

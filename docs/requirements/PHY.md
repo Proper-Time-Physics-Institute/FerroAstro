@@ -63,12 +63,16 @@ statement: >-
   The constants SHALL be loaded from a single versioned constants table in
   which every entry records its source citation.
 acceptance: >-
-  A unit test reads the constants table and asserts
-  GM☉ = 132712440041.279419 km³ s⁻² (= 2.95912208284119561×10⁻⁴ au³ d⁻²) and
+  A unit test reads the constants (parsed at run time from the hash-pinned
+  header.440 through the committed, value-free metadata table; #22) and asserts
+  GM☉ = 132712440041.279419 km³ s⁻² (Park21 Table 2) and
   c = 299792.458 km/s. The test also asserts au = 149597870.700 km,
-  ASUN = 696000 km, MOISUN = 0.06884, OMGSUN = 0.247564432907 rad/day and
-  EMRAT = 81.3005682214972154. Every table entry has a non-empty citation
-  (DE440hdr or Park21). The table matches header.440 entry by entry (REF-002).
+  ASUN = 696000 km, MOISUN = 0.06884, OMGSUN = 14.1844 °/day (Park21) and
+  EMRAT = GMEarth/GMMoon of Park21 Table 2 to the printed precision. Every
+  metadata entry has a non-empty citation (DE440hdr or Park21). The run-time
+  values equal independent readers of the same JPL data bit for bit (live
+  cross-check SYSTEM-HEADER-LIVE-CROSSCHECK-MAX-ULP: tools/oracles/header440.py
+  and Orekit; REF-002). No header.440 value is committed to the repository.
 source: >-
   docs/strategy/journal/01-physics-truth-data.md §4 and PHY-002; Park et al.
   2021, AJ 161, 105, doi:10.3847/1538-3881/abd414; DE440 ASCII header.440
@@ -79,17 +83,23 @@ notes: >-
   Overlap with REF-002: REF-002 is authoritative for HOW the constants are
   obtained (parsed from header.440, never hand-transcribed). PHY-002 is
   authoritative for WHICH constants are used and the asserted values. The
-  versioned table SHALL be generated from header.440. UNVERIFIED: the units of
-  GMSDOT (−9.0×10⁻¹⁴; adopted inference 2026-10-20: a fractional rate in yr⁻¹,
+  versioned table SHALL be built from header.440 (since #22: committed
+  metadata, values read at run time from the hash-pinned file). UNVERIFIED: the units of
+  GMSDOT (value read from header.440, not reproduced, #22; adopted inference 2026-10-20: a fractional rate in yr⁻¹,
   confirmed at M5 by a fit against de440.bsp, OI-04; it no longer blocks this
   requirement, because the table carries it with open_item and never asserts it);
   whether the DE440 paper quotes a GM☉ uncertainty or a J2 rationale (OI-06,
   qualifies only). Closed 2026-10-20: the exact au (OI-05: IAU 2012
   Resolution B2 read, au = 149 597 870 700 m exactly) and the header state
   frame and units (OI-23: SSB-centred ICRF, au and au/day; see REF-002 notes).
-  Build evidence (WP2, m3-newtonian-nbody): crates/ferroastro-constants/data/de440-constants.toml is generated from header.440 by the gen_de440_table
-  example; the data test data_de440_table_matches_header checks 23/23 entries
-  token for token. Planetary GMs (km³ s⁻²):
+  Build evidence (WP2, m3-newtonian-nbody; revised by #22, maintainer decision
+  2026-11-14): the committed crates/ferroastro-constants/data/de440-metadata.toml
+  holds names, units, citations and the header pin only, no value; De440 reads
+  the values at run time from the SHA-256-verified header.440
+  (from_header_bytes, load_cached, embedded). The metadata-consistency test
+  checks the pin against tests/data/MANIFEST.toml, and the live cross-check
+  found 23/23 constants bit-identical with tools/oracles/header440.py and with
+  Orekit 13.1.9 (orekit-data DE440 binary) on 2026-11-14. Planetary GMs (km³ s⁻²):
   Mercury 22031.868551, Venus 324858.592, Earth 398600.435507, Moon 4902.800118,
   Mars 42828.375816, Jupiter 126712764.1, Saturn 37940584.8418, Uranus 5794556.4,
   Neptune 6836527.10058, Pluto 975.5 (Park21 [P]).
@@ -332,7 +342,7 @@ statement: >-
   solar pole orientation used SHALL be documented.
 acceptance: >-
   Analytic: 0.02860 ″/cy at J2 = 2.25×10⁻⁷ and 0.02792 ″/cy at the DE440
-  J2 = 2.19613915165298248×10⁻⁷. Numerical rung matches the analytic value
+  J2SUN (read from header.440 at run time; #22). Numerical rung matches the analytic value
   within ±0.0005 ″/cy. Pole orientation is recorded in the output metadata.
 source: >-
   docs/strategy/journal/01-physics-truth-data.md §2 rungs J2 / J2-DE440 and

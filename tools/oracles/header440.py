@@ -8,10 +8,22 @@ the SSB-centred initial conditions under the interpretation FerroAstro documents
 ``HEADER_STATE_INTERPRETATION`` (OI-23): ``CENTER = 0``; ``X/Y/Z`` in au and ``XD/YD/ZD`` in au/day
 at ``JDEPOC`` (TDB), ICRF-aligned axes; suffixes ``1, 2, 4…9`` are planetary-system barycentres,
 ``B`` the Earth-Moon barycentre, ``S`` the Sun and ``M`` the Moon relative to the Earth.
+
+As a command it prints the constants it parsed as JSON (shortest round-trip decimal and binary64
+bits), the format of ``ferroastro-constants``' ``header_constants_json`` example. That is oracle (a)
+of the live cross-check ``SYSTEM-HEADER-LIVE-CROSSCHECK-MAX-ULP`` (#22; compared by
+:mod:`oracles.header_crosscheck`); the output is never committed::
+
+    uv run python -m oracles.header440 --header H.440 --names-from FERROASTRO.json
 """
 
 from __future__ import annotations
 
+import argparse
+import json
+import struct
+import sys
+from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -128,3 +140,46 @@ class Header440:
             )
         msg = f"unknown scenario body {body!r}"
         raise KeyError(msg)
+
+
+def bits_hex(value: float) -> str:
+    """Return the binary64 bits of ``value`` as 16 lowercase hex digits."""
+    return struct.pack(">d", value).hex()
+
+
+def constants_json(header: Header440, names: Iterable[str], source: str) -> str:
+    """JSON of the named constants (``repr`` and binary64 bits), in the order given."""
+    doc = {
+        "reader": "tools/oracles/header440.py (independent Python reader)",
+        "source": source,
+        "constants": {
+            n: {"repr": repr(header.value(n)), "bits": bits_hex(header.value(n))} for n in names
+        },
+    }
+    return json.dumps(doc, indent=2) + "\n"
+
+
+def main(argv: Sequence[str] | None = None) -> int:
+    """Print the constants named in ``--names`` / ``--names-from`` (default: all) as JSON."""
+    ap = argparse.ArgumentParser(description="Print header.440 constants as JSON (oracle a).")
+    ap.add_argument("--header", type=Path, required=True)
+    ap.add_argument("--names", default="", help="comma-separated GROUP 1040 names")
+    ap.add_argument(
+        "--names-from", type=Path, help="a header_constants_json document whose names to print"
+    )
+    args = ap.parse_args(argv)
+    header = Header440.read(args.header)
+    names: list[str] = [n for n in args.names.split(",") if n]
+    if args.names_from is not None:
+        names += list(json.loads(args.names_from.read_text(encoding="utf-8"))["constants"])
+    try:
+        text = constants_json(header, names or header.names, str(args.header))
+    except KeyError as e:
+        print(f"header440: {e}", file=sys.stderr)
+        return 1
+    sys.stdout.write(text)
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

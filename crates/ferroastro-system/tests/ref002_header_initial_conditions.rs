@@ -231,7 +231,11 @@ fn ref002_header_initial_conditions_equal_de440_at_jdepoc() {
 #[test]
 fn emrat_split_recombines_to_gmb_at_the_ulp_level() {
     let v = vectors();
-    let de = De440::load().unwrap();
+    let Some(de) =
+        De440::load_cached_or_skip("emrat_split_recombines_to_gmb_at_the_ulp_level").unwrap()
+    else {
+        return;
+    };
     let cat = Catalogue::de440_major(&de);
     let gmb = de.gm(ferroastro_constants::Body::EarthMoon).km3_per_s2();
     let sum =
@@ -245,15 +249,16 @@ fn emrat_split_recombines_to_gmb_at_the_ulp_level() {
 }
 
 /// WP11 check 3 and the asteroid counts: the catalogue built from the header at run time equals
-/// the committed table bit for bit on the 11 major bodies; it holds the numbered asteroids as
-/// Minor bodies and keeps the unidentified MA entries apart.
+/// `Catalogue::de440_major` of the DE440 constants read from the same pinned header (#22: no
+/// committed value table any more) bit for bit on the 11 major bodies; it holds the numbered
+/// asteroids as Minor bodies and keeps the unidentified MA entries apart.
 ///
 /// Verifies: REF-002, NUM-009
 #[test]
-fn header_catalogue_equals_the_committed_table_and_tiers_the_asteroids() {
+fn header_catalogue_equals_de440_and_tiers_the_asteroids() {
     let v = vectors();
     let (h, hprov) = header();
-    let de = De440::load().unwrap();
+    let de = De440::from_header(&h).unwrap();
     let table = Catalogue::de440_major(&de);
     let cat = Catalogue::from_header(&h, &hprov).unwrap();
     let mut m = Max::default();
@@ -264,7 +269,7 @@ fn header_catalogue_equals_the_committed_table_and_tiers_the_asteroids() {
         });
         assert_eq!(cat.get(b.id()).unwrap().tier(), Tier::Major);
     }
-    check(&v, "SYSTEM-HEADER-CATALOGUE-VS-TABLE-GM-DIFF", &m);
+    check(&v, "SYSTEM-HEADER-CATALOGUE-VS-DE440-GM-DIFF", &m);
     // NAIF numbering of asteroids: 2 000 000 + the asteroid number of the header symbol MAnnnn.
     for b in cat.bodies().iter().filter(|b| b.tier() == Tier::Minor) {
         let number: i32 = b.gm_source().trim_start_matches("MA").parse().unwrap();
@@ -320,7 +325,12 @@ fn header_catalogue_equals_the_committed_table_and_tiers_the_asteroids() {
 fn header_barycentre_is_reported_and_rebarycentring_removes_it() {
     let v = vectors();
     let (h, hprov) = header();
-    let de = De440::load().unwrap();
+    let Some(de) =
+        De440::load_cached_or_skip("header_barycentre_is_reported_and_rebarycentring_removes_it")
+            .unwrap()
+    else {
+        return;
+    };
     let cat = Catalogue::from_header(&h, &hprov).unwrap();
     let c = de.speed_of_light();
     let mut ic = InitialConditions::<f64>::from_header(&h, &hprov).unwrap();
@@ -394,7 +404,12 @@ fn geocentric_moon_round_trips_through_the_split() {
 #[test]
 fn relativistic_mass_correction_is_bounded_by_the_virial_cancellation() {
     let (h, hprov) = header();
-    let de = De440::load().unwrap();
+    let Some(de) = De440::load_cached_or_skip(
+        "relativistic_mass_correction_is_bounded_by_the_virial_cancellation",
+    )
+    .unwrap() else {
+        return;
+    };
     let c = de.speed_of_light().km_per_s();
     let cat = Catalogue::from_header(&h, &hprov).unwrap();
     let ic = InitialConditions::<f64>::from_header(&h, &hprov).unwrap();

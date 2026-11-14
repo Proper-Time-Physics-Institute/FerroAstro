@@ -129,7 +129,7 @@ fn data_wp22_mercury_regression_diagnostic() {
     let bf = ferroastro_testdata::locate_product("de440-bsp").unwrap();
     let bytes = std::fs::read(&bf.path).unwrap();
     let spk = Spk::parse(&bytes).unwrap();
-    let de = De440::load().unwrap();
+    let de = De440::load_cached().unwrap();
     let ic = InitialConditions::<f64>::from_header(&h, &hprov).unwrap();
     let mut cat = Catalogue::from_header(&h, &hprov).unwrap();
     let root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../..");

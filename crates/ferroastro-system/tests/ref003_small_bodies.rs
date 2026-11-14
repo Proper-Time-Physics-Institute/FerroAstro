@@ -254,7 +254,10 @@ fn kbo_ring_points_are_fixed_on_the_44_au_ecliptic_circle() {
 fn ssb_of_the_full_placed_body_set_at_jdepoc() {
     let v = VectorSet::load_canonical().unwrap();
     let (h, hprov) = header();
-    let de = De440::load().unwrap();
+    let Some(de) = De440::load_cached_or_skip("ssb_of_the_full_placed_body_set_at_jdepoc").unwrap()
+    else {
+        return;
+    };
     let s = small_bodies();
     let ic = InitialConditions::<f64>::from_header(&h, &hprov).unwrap();
     let mut cat = Catalogue::from_header(&h, &hprov).unwrap();

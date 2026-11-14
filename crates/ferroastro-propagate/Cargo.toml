@@ -34,6 +34,8 @@ default = []
 parallel = ["dep:rayon"]
 
 [dev-dependencies]
+# Tests read the pinned header.440 from the data cache (De440::load_cached, #22).
+ferroastro-constants = { workspace = true, features = ["fs"] }
 proptest.workspace = true
 ferroastro-testdata.workspace = true
 ferroastro-vectors.workspace = true

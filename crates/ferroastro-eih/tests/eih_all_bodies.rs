@@ -70,7 +70,12 @@ fn rel_diff(a: [f64; 3], b: [f64; 3]) -> f64 {
 /// Verifies: NUM-009, NUM-020, PHY-014
 #[test]
 fn a_single_minor_body_gets_the_same_eih_terms_as_a_major_body() {
-    let de = De440::load().unwrap();
+    let Some(de) =
+        De440::load_cached_or_skip("a_single_minor_body_gets_the_same_eih_terms_as_a_major_body")
+            .unwrap()
+    else {
+        return;
+    };
     let (h, prov) = header();
     let ic = InitialConditions::<f64>::from_header(&h, &prov).unwrap();
     let cat = Catalogue::from_header(&h, &prov).unwrap();
@@ -259,7 +264,12 @@ fn tiered(b: &[Body]) -> impl Fn(usize, usize) -> bool + '_ {
 /// Verifies: NUM-009, NUM-020, PHY-014
 #[test]
 fn eih_over_the_tiered_graph_matches_an_independent_evaluation() {
-    let de = De440::load().unwrap();
+    let Some(de) =
+        De440::load_cached_or_skip("eih_over_the_tiered_graph_matches_an_independent_evaluation")
+            .unwrap()
+    else {
+        return;
+    };
     let c = de.speed_of_light();
     let b = synthetic();
     let n = b.len();
@@ -359,7 +369,12 @@ fn max_linear_deviation(t: &[f64], p: &[[f64; 3]]) -> f64 {
 /// Verifies: NUM-009, NUM-018, PHY-014
 #[test]
 fn the_tiered_eih_model_conserves_its_relativistic_centre_of_mass() {
-    let de = De440::load().unwrap();
+    let Some(de) = De440::load_cached_or_skip(
+        "the_tiered_eih_model_conserves_its_relativistic_centre_of_mass",
+    )
+    .unwrap() else {
+        return;
+    };
     let (h, prov) = header();
     let ic = InitialConditions::<f64>::from_header(&h, &prov).unwrap();
     let cat = Catalogue::de440_major(&de);
@@ -492,7 +507,11 @@ fn the_tiered_eih_model_conserves_its_relativistic_centre_of_mass() {
 /// Verifies: NUM-009
 #[test]
 fn eih_minor_reaction_must_match_minor_from_majors() {
-    let de = De440::load().unwrap();
+    let Some(de) =
+        De440::load_cached_or_skip("eih_minor_reaction_must_match_minor_from_majors").unwrap()
+    else {
+        return;
+    };
     let b = synthetic();
     let bodies: Vec<NBody> = b
         .iter()
@@ -534,7 +553,12 @@ fn eih_minor_reaction_must_match_minor_from_majors() {
 /// Verifies: NUM-009, NUM-020
 #[test]
 fn ring_bodies_enter_eih_with_zero_velocity_whatever_is_stored() {
-    let de = De440::load().unwrap();
+    let Some(de) =
+        De440::load_cached_or_skip("ring_bodies_enter_eih_with_zero_velocity_whatever_is_stored")
+            .unwrap()
+    else {
+        return;
+    };
     let b = synthetic();
     let bodies: Vec<NBody> = b
         .iter()

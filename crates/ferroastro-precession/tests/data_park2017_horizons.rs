@@ -281,7 +281,7 @@ fn data_park17_rate_from_horizons_de441_mean_orbit() {
     );
     // Known model differences, reported (not subtracted): DE440 J2 vs Park17 J2 scales the Park17
     // solar-oblateness contribution; Park17's fitted beta shifts GE by -(beta-1)/3 of it.
-    let j2_de440 = ferroastro_constants::De440::load().unwrap().sun_j2();
+    let j2_de440 = ferroastro_constants::De440::load_cached().unwrap().sun_j2();
     let j2_park = value(&vs, "PARK17-J2SUN");
     let j2_shift = value(&vs, "PARK17-J2-RATE") * (j2_de440 / j2_park - 1.0);
     println!(

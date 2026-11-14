@@ -34,7 +34,7 @@ fn rho_of<R: Real>(s: &SystemState<Icrf, Barycentric, R>) -> [R; 3] {
 
 /// Moon − Earth every 10 d over 10 yr, in `R`, and the step count.
 fn run<R: Real>(moon: Moon, epsilon: f64) -> (Vec<[R; 3]>, u64) {
-    let de = De440::load().unwrap();
+    let de = De440::load_cached().unwrap();
     let (h, prov) = header();
     let ic = InitialConditions::<R>::from_header(&h, &prov).unwrap();
     let m = model::<R>(&de, &ids(false), moon, true);

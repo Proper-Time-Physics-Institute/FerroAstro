@@ -22,7 +22,7 @@ GROUP   1040
 GROUP   1041
 
      4
-  0.244040050000000000D+07  0.149597870700000000D+09  0.1D-12  0.2D-11
+  0.245100000000000000D+07  0.150000000000000000D+09  0.1D-12  0.2D-11
 
 GROUP   1050
 """
@@ -31,7 +31,7 @@ GROUP   1050
 # Verifies: REF-003
 def test_header_constants_and_asteroid_symbols() -> None:
     c = sample_sb441.header_constants(TOY_HEADER)
-    assert c["JDEPOC"] == 2440400.5  # lint: allow-literal(toy header value)
+    assert c["JDEPOC"] == 2451000.0  # lint: allow-literal(toy header value)
     assert c["MA8001"] == 0.2e-11  # lint: allow-literal(toy header value)
     # Only numbered asteroids (MAnnnn, nnnn < 8000) get a symbol; MA8001 is a KBO (OI-24).
     expected = {2_000_001: "MA0001"}  # lint: allow-literal(NAIF id of the toy asteroid MA0001)

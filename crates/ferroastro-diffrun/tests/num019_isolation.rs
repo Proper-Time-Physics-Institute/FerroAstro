@@ -105,7 +105,7 @@ struct Analytic {
 }
 
 fn analytic(data: &DataSources<'_>, j2: f64, pole: [f64; 3]) -> Analytic {
-    let de = De440::load().unwrap();
+    let de = De440::load_cached().unwrap();
     let (r0, v0, mu1, ratio) = initial_orbit(data);
     let el = Elements::from_vectors(r0, v0, mu1).unwrap();
     let mu = GravParam::from_km3_per_s2(mu1).unwrap();
@@ -223,7 +223,12 @@ fn equatorial_nbody_j2_and_lt_match_their_analytic_rates() {
     let data5 = DataSources::none()
         .with_header(&h, &prov)
         .with_solar_overrides(&ov5);
-    let de = De440::load().unwrap();
+    let Some(de) =
+        De440::load_cached_or_skip("equatorial_nbody_j2_and_lt_match_their_analytic_rates")
+            .unwrap()
+    else {
+        return;
+    };
     let r5 = run(&data5, false, &vs);
     let a5 = analytic(&data5, de.sun_j2(), pole);
     let j2_de = row(&r5, "J2");

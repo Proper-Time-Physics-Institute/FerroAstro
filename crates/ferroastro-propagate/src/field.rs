@@ -190,10 +190,10 @@ pub(crate) fn run(
     data: &DataSources<'_>,
 ) -> Result<RunOutput, PropagateError> {
     let n = spec.name.as_str();
-    let de = De440::load()?;
     let (spk, prov) = data
         .spk()
         .ok_or_else(|| setup(n, "no SPK", "pass DataSources::with_spk (de440.bsp)"))?;
+    let de = data.de440(n)?;
     let (_, jd) = epoch::<f64>(spec, data)?;
     let (r0, v0, source) = relative_state(spec, data, jd)?;
     let (central, particle, field_bodies, mu, bodies) = field_bodies(spec, &de)?;
@@ -317,10 +317,10 @@ mod tests {
     #[test]
     fn field_bodies_and_gms_equal_the_scenario_and_header440() {
         let s = spec();
-        let de = De440::load().unwrap();
         let hf = ferroastro_testdata::locate_product("de440-header").unwrap();
         println!("de440-header: {}", hf.provenance());
         let h = Header::parse(&std::fs::read_to_string(&hf.path).unwrap()).unwrap();
+        let de = De440::from_header(&h).unwrap();
         let (central, particle, names, mu, bodies) = field_bodies(&s, &de).unwrap();
         let expected: Vec<i32> = s
             .bodies
