@@ -6735,6 +6735,7 @@ Provenance: header.440 `0f4636b6…6ac3359` and de440.bsp `a4ce9bf9…fff7c4b5`.
    - The derivation (first order in ε, stage pairs at a_i = i h) is in this section and in `tools/symplectic_correctors.py`.
    - It is validated by W3 (gain 656), by W4 (corrected error 3e-12 against 1.2e-9 uncorrected), and by the mutation probe on the direction.
    - A maintainer with access to WHT96 or Wisdom 2006 should compare the β_i, or the structure of the stage pairs. Equivalent first-order correctors need not have identical coefficients.
+   - **Checked (issue #43):** see "Corrector coefficients vs Wisdom (2006)" at the end of this file. No coefficient disagrees.
 4. **~~NEEDS HUMAN REVIEW~~ REVIEWED (#18 questionnaire, maintainer 2026-11-12): superseded on main by the maintainer decision of 2026-11-08 (PR #13, golden-change): Swiftest stage A now runs at dt = 1/16 d against a 2 km bound (`ORACLE-STAGE-A-SWIFTEST-MAX-DR`), which this branch carries; the 60 km widening and the 1/128 d setting below are historical. — S1 locates the WP17 Swiftest stage A discrepancy in the Swiftest run, not in the Wisdom–Holman method.**
    - FerroAstro's independent WH at Swiftest's step agrees with IAS15 to ≤ 0.1 km.
    - Swiftest's golden differs from both by the WP17 amounts (Mars 28.7 km), so WH truncation at 1/128 d is not the cause.
@@ -6750,7 +6751,7 @@ Provenance: header.440 `0f4636b6…6ac3359` and de440.bsp `a4ce9bf9…fff7c4b5`.
 ### Remaining after WP29
 - NUM-005, Saha–Tremaine: blocked by OI-34.
 - The cause of the Swiftest stage A discrepancy (item 4).
-- A maintainer check of the corrector coefficients (item 3).
+- A maintainer check of the corrector coefficients (item 3). Done independently in issue #43 (end of this file); a maintainer still has to review it.
 - WP27, WP22, WP23 and V2, as before.
 
 ### WP29 gate results (local, 2026-10-21, toolchain 1.95.0 and MSRV 1.85.0)
@@ -7027,3 +7028,43 @@ several threads (local run: 0 differing words, speed-up 3.85 on 32 threads).
 **Long runs for the reviewer:** the wp28 speed-table suite on a quiet machine (rows (i), (j) under the all-body EIH,
 with the new warm-up); P7 `tools/simd_identity.py` on `wp26-p7-epm16-majors-20yr`; `nightly_ephemeris_mode`,
 `nightly_speed_table`, `data_num024_de440` (the `bench-h` / `ephemeris-mixed` scenarios now run "majors").
+
+## Corrector coefficients vs Wisdom (2006) — independent check (issue #43)
+An agent session checked the WP29 symplectic-corrector table against published values, without changing the integrator. The check is `tools/verify_symplectic_correctors.py`, pinned by `tools/tests/test_verify_symplectic_correctors.py` (NUM-004).
+
+**Sources.**
+- Wisdom 2006, AJ 131, 2294, "Symplectic correctors for canonical heliocentric n-body maps". Appendix eqs. 29–33 give correctors of orders 3, 5, 7 and 11, plus the order-17 table of Wisdom, Holman & Touma (1996), marked "(corrected)". The PDF came from `web.mit.edu/wisdom/www/correctors2006.pdf` (sha256 `f2846ae6f7d4306146e09b0eb07d6f0d66681ed379a9ab22d1ee76b3824b67eb`, fetched 2026-11-13). The numbers were read from the rendered appendix pages, because text extraction drops the minus signs.
+- WHT96 itself was fetched from the same page (`Symplectic_Correctors.pdf`, sha256 `a9b4bcc3…71476ca8`). It is a scanned image with no text layer, so it was not used.
+- **Deviation from the task text:** the task asked for a comparison with REBOUND's `integrator_whfast.c`. That was **not done**. AGENTS.md rule 7 and DEP-008 say contributors shall not consult GPL REBOUND source. The published paper is the primary source anyway.
+
+**Method.** None of WP29's arithmetic is reused.
+- To first order in ε, `e^{tA}(1 + ε f(ad_A) B)` is a pair `(t, f)`, with product `(t₁, f₁)(t₂, f₂) = (t₁ + t₂, e^{−t₂x} f₁ + f₂)`, where `x = ad_A`.
+- The exact flow, the WH step `A(h/2) B(h) A(h/2)` and every corrector are composed literally in this algebra from their stage lists `X(a, b) = A(a) B(b) A(−a)` and `Z(a, b) = X(a, b) X(−a, −b)`. The flow comes out as `(h, (1 − e^{−hx})/x)`.
+- The required corrector series is `g = (w − F)/(1 − e^{−hx})`, from `C W C⁻¹ = flow`, obtained by power-series division. A corrector has order m when its series equals s·g up to `x^m`, exclusive, with one global sign s.
+- An exact Gauss–Jordan solve in Q(α), with α² = 7/40, gives the unique coefficients for any set of stage positions.
+
+**Results.** All comparisons are exact rational equalities.
+
+| check | result |
+|---|---|
+| `g` from the first-order algebra vs WP29's Bernoulli closed form `(φ(x) − 1)/x` (x⁰ … x¹⁹) | equal |
+| FerroAstro `corrector_table.rs` (stages at `a = i h`), orders 3/5/7/11 | stated order exactly (first mismatch at `x^order`), sign s = +1. The independent solve reproduces every β_i. |
+| Wisdom 2006, orders 3/5/7/11 and WHT96 order 17 (stages at `a = k α h`, `b = r β h`, `β = 1/(48α)`, mirrored second half) | each has its stated order with s = −1. The independent solve at Wisdom's positions reproduces every published `r`. |
+| WHT96 order 17, `b₁` with the numerator sign as printed (positive) | fails the lowest condition (m = 1). With the sign of the printed decimal (≈ −0.0000870 β), order 17 holds. This is a sign typo in the 2006 print. |
+
+**Interpretation.**
+- The WP29 derivation and Wisdom's corrector theory impose the same first-order conditions. Wisdom's printed tables satisfy them, and FerroAstro's table is the unique solution of those conditions for its stage positions.
+- The coefficients are **not numerically identical to Wisdom's**, and should not be. FerroAstro places its stage pairs at integer multiples of h (α = 1), whereas WHT96 and Wisdom 2006 use α = (7/40)^{1/2}.
+- The global sign difference (s = +1 vs −1) is the convention for which of C and C⁻¹ maps real to mapping coordinates. FerroAstro fixes it empirically with W3 and its direction mutant.
+- **No coefficient disagrees.** Nothing in `ferroastro-symplectic` was changed.
+
+**Open questions for the maintainer** (no action taken).
+1. Why does WHT96 choose α = (7/40)^{1/2}? It may reduce the O(ε²) or higher-order remainder. The scanned paper was not read for this. If α matters at that level, a switch to Wisdom's positions would be a separate, pre-registered change with W3/W4 re-run.
+2. FerroAstro applies the inverse corrector by negating β in the same stage order. Wisdom's eq. 27 reverses the order of the Z factors and negates b. Both are inverses only to first order in ε, and they differ at O(ε²). Their effect on the round trip from real coordinates to kernel coordinates and back was not measured.
+
+**Gates run** as `workflow_user` on the build host:
+- `(cd tools && uv run ruff check && uv run ruff format --check && uv run mypy .)`: clean.
+- `uv run pytest`: 115 passed, 4 skipped (`erfa` not installed). The run sets `safe.directory` for this worktree. Without it, `test_fetch_jpl::test_no_jpl_sofa_or_novas_file_is_tracked` fails on git's "dubious ownership" check for `workflow_user`, an environment issue that predates this change.
+- `lint_literals`: 0 findings.
+- `trace.py`: TRACE.md regenerated with the 4 new citing tests, then `--check` reports 0 errors.
+- `reuse lint`: compliant (625/625).
