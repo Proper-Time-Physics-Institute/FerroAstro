@@ -36,3 +36,9 @@ fa-data/
 # cached them in a crate directory); the small derived vectors live in tests/vectors instead.
 *.bsp
 *.bsp.provenance.toml
+# JPL ASCII products (header.440, testpo.440, ascp*.440) and anything derived from header.440 values:
+# never committed (#22). Backstop for the orbit viewer, which includes header.440 only from OUT_DIR
+# (feature embed-header) and once kept a committed excerpt.
+*.440
+*.440.provenance.toml
+header440-excerpt*
