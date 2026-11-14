@@ -20,7 +20,7 @@ at build time (DESIGN.md §5). Fetch it once, or point `FA_DATA_DIR` at a direct
 (cd tools && uv run python fetch_jpl.py de440-header)   # once: into $FA_DATA_DIR (default target/fa-data), SHA-256 checked
 # or: export FA_DATA_DIR=/path/to/dir/with/header.440
 crates/ferroastro-viewer/web/build.sh            # cargo build --release --target wasm32-unknown-unknown --features embed-header, copy the .wasm into web/
-crates/ferroastro-viewer/web/build.sh --smoke    # same, then run the node smoke test
+crates/ferroastro-viewer/web/build.sh --smoke    # same, then run the node smoke test and the glossary check
 crates/ferroastro-viewer/web/build.sh --serve    # same, then serve web/ on http://localhost:8000/
 ```
 
@@ -67,6 +67,9 @@ test needs node 18 or later and no packages.
 | `viewer.js` | main thread: controls, orbit canvas, ϖ(t) chart, contribution table, transport bar |
 | `worker.js` | Web Worker hosting one wasm instance: sizes `fav_run` chunks, copies buffers, runs table legs |
 | `fav.js` | ABI v1 constants and a thin wrapper (instantiate, call, copy buffers, decode UTF-8); shared by the workers and the smoke test |
+| `glossary.js` | every explanation on the page, keyed by id: the tooltip text and the longer glossary entry of each term (display text only) |
+| `glossary-ui.js` | the accessible tooltips (hover, keyboard focus, tap) and the searchable glossary drawer, both fed from `glossary.js` |
+| `check-glossary.mjs` | node static check: every `data-term`/`data-tip` and every id `viewer.js` generates names a non-empty glossary entry |
 | `smoke.mjs` | node smoke test of the `.wasm` through `fav.js` (DESIGN.md §9) |
 | `build.sh` | build and copy the `.wasm`; optional `--smoke`, `--serve` |
 
@@ -76,6 +79,13 @@ most 8), in parallel with the live run.
 
 ## Using it
 
+* **Explanations**: every control, label, readout, chart key entry, table column and row, and technical term has
+  an explanation. Hover or keyboard-focus a dotted term or a small *i* button for a short tooltip with the unit and
+  a typical value; tap or press Enter on it to pin the tooltip open, then Tab to reach its glossary link; Esc closes it. Each tooltip links to its
+  entry in the **Glossary** (header button, or "Open the glossary" above the explainer): a drawer with every term
+  grouped by topic (bodies and orbits, frames, effects, integrators, time and units, fit and statistics, the
+  contribution table, data, controls), a longer explanation, why it matters for Mercury's perihelion, and links
+  to related terms. The filter box searches all of the text.
 * **Presets**: Kepler only (mask 0, the integrator floor, expect 0), Planets only, GR only, Full model (bits 0–9).
   Any toggle or parameter change restarts the live run. If more than 10 s of integration would be thrown away,
   the page asks first.
@@ -104,6 +114,18 @@ most 8), in parallel with the live run.
 
 Short spans give wobbly rates, because the periodic perturbations do not average out. Literature comparisons need
 1000 years or more (DESIGN.md §8 E6/E7).
+
+## Glossary check
+
+```sh
+node crates/ferroastro-viewer/web/check-glossary.mjs
+```
+
+It needs no wasm. It checks that every glossary entry is complete (term, group, tooltip text, long text, the
+Mercury note), that every cross-link names an existing entry, and that every `data-term` / `data-tip` in
+`index.html` and every glossary id `viewer.js` writes into generated markup (effect toggles, legend, readout
+parts, table rows and footer, budget key) names one. It prints the coverage counts. To change an explanation,
+edit `glossary.js` only: the tooltip and the glossary entry read the same record.
 
 ## Smoke test
 
