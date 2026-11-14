@@ -8,6 +8,9 @@
 //! 10.56 for `k = 1/6` between ε = 1e-3 and 1e-10). These tests therefore look at **one**
 //! proposal: (a) from the same first step, the proposal scales as `ε^k`; (b) the proposal does
 //! not depend on the length of the step just taken (`1 − 7k = 0`, a dead-beat controller).
+//! (c) The step-rejection rule kept by the principal on issue #20 (2026-11-14):
+//! reject when `dt_required < safety·dt_trial`. A step in the band where this rule and R&S 2015's
+//! `dt_required < dt_trial` disagree is accepted as tried.
 //! The Kepler problem is dimensionless (GM = 1, a = 1).
 
 #![expect(
@@ -15,7 +18,7 @@
     reason = "the test system indexes fixed-length state slices of its own dimension"
 )]
 
-use ferroastro_integrators::{Ias15, Ias15Config, IntegratorError, SecondOrderSystem};
+use ferroastro_integrators::{Ias15, Ias15Config, Ias15Stats, IntegratorError, SecondOrderSystem};
 use ferroastro_vectors::VectorSet;
 
 /// Eccentricity of the test orbit (R&S 2015 Kepler test orbit); start at pericentre.
@@ -109,4 +112,79 @@ fn step_proposal_is_dead_beat() {
         v.tolerance.allowed(0.0)
     );
     v.check(slope).unwrap();
+}
+
+/// One step from pericentre with first trial step `dt0`: the report, the counters, and the step
+/// the controller proposes next.
+#[expect(
+    clippy::unwrap_used,
+    reason = "test helper: an integrator error is a test failure"
+)]
+fn first_step(dt0: f64) -> (f64, Ias15Stats, f64) {
+    let x0 = [1.0 - E, 0.0];
+    let v0 = [0.0, ((1.0 + E) / (1.0 - E)).sqrt()];
+    let mut ias = Ias15::new(2, 0.0, &x0, &v0, dt0, Ias15Config::default()).unwrap();
+    let report = ias.step(&Kepler, f64::INFINITY).unwrap();
+    (report.dt_done, ias.stats(), ias.next_dt())
+}
+
+/// Issue #20 (principal decision of 2026-11-14): the rejection rule is
+/// `|dt_required| < safety·|dt_trial|`, not R&S 2015's stated `dt_required < dt_trial`.
+///
+/// The two rules disagree exactly when `safety·dt_trial ≤ dt_required < dt_trial`. Eq. 11 is
+/// dead-beat (`step_proposal_is_dead_beat`), so a trial step of `(1 + 1/safety)/2` times the
+/// controller's own step `h` from the same state gets `dt_required ≈ h`, in the middle of that
+/// band. The test checks that the step lands in the band, then that it is accepted as tried:
+/// no rejection, `dt_done == dt_trial` bit for bit. Under `dt_required < dt_trial` it would be
+/// rejected and redone with a shorter step.
+///
+/// Verifies: NUM-001
+#[test]
+fn step_between_safety_and_full_trial_step_is_accepted() {
+    let safety = Ias15Config::default().safety;
+    let h = proposal(DT_START, Ias15Config::default().epsilon);
+    let trial = h * (1.0 + 1.0 / safety) / 2.0;
+    let (dt_done, stats, dt_required) = first_step(trial);
+    println!(
+        "IAS15 rejection band (#20): h = {h:e}, dt_trial = {trial:e}, dt_required = \
+         {dt_required:e} (ratio {:.4}; band [{safety}, 1)), dt_done = {dt_done:e}, rejected = {}",
+        dt_required / trial,
+        stats.rejected
+    );
+    assert!(
+        dt_required >= safety * trial && dt_required < trial,
+        "test set-up: dt_required/dt_trial = {} is outside [{safety}, 1), where the rules differ",
+        dt_required / trial
+    );
+    assert_eq!(stats.rejected, 0, "step in the band was rejected");
+    assert_eq!(stats.steps, 1);
+    assert!(
+        (dt_done - trial).abs() <= 0.0,
+        "step in the band was not taken as tried: {dt_done} vs {trial}"
+    );
+}
+
+/// Issue #20 companion: both rules reject a step whose `dt_required` is below `safety·dt_trial`
+/// (here a trial step of `2h/safety`), so the band test above is not passed by a controller that
+/// never rejects.
+///
+/// Verifies: NUM-001
+#[test]
+fn step_below_safety_times_trial_step_is_rejected() {
+    let safety = Ias15Config::default().safety;
+    let h = proposal(DT_START, Ias15Config::default().epsilon);
+    let trial = 2.0 * h / safety;
+    let (dt_done, stats, _) = first_step(trial);
+    println!(
+        "IAS15 rejection (#20): h = {h:e}, dt_trial = {trial:e}, dt_done = {dt_done:e}, \
+         rejected = {}",
+        stats.rejected
+    );
+    assert!(stats.rejected >= 1, "oversized step was not rejected");
+    assert_eq!(stats.steps, 1);
+    assert!(
+        dt_done < safety * trial,
+        "accepted step {dt_done} is not below safety·dt_trial = {}",
+        safety * trial
+    );
 }

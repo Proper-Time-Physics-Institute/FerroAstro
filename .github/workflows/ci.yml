@@ -1,9 +1,9 @@
 # SPDX-FileCopyrightText: 2026 Proper-Time Physics Institute
 # SPDX-License-Identifier: Apache-2.0
 #
-# PR gates: the AGENTS.md command list, verbatim, plus MSRV (STD-005), DCO (ORG-008) and the
-# lint-config canary (STD-003, TST-001; tools/lint_canary.py). The PR-title lint (STD-011) is in
-# pr-title.yml.
+# PR gates: the AGENTS.md command list, verbatim, plus MSRV (STD-005), the f128 backend on a pinned
+# nightly (DEP-007), DCO (ORG-008) and the lint-config canary (STD-003, TST-001;
+# tools/lint_canary.py). The PR-title lint (STD-011) is in pr-title.yml.
 # Real-data tier: the `data` job runs the #[ignore]d network tests on a schedule / by hand only,
 # so PR CI never depends on JPL availability (whether this weekly job may stay on GitHub-hosted
 # runners is an open maintainer question, IMPLEMENTATION-NOTES WP7). The `long` job (nightly_*
@@ -112,6 +112,32 @@ jobs:
       - name: Build and test on MSRV
         run: cargo +1.85.0 nextest run --workspace -E 'not binary(compile_fail)'
 
+  # DEP-007: the f128 backend is nightly-only (build.rs probes the compiler), so every other job
+  # compiles it and its test out (issue #37). This job runs exactly that test on one pinned
+  # nightly; `--no-tests=fail` makes the job fail if the test is compiled out again (no nightly
+  # detected, feature lost), instead of passing with nothing run. Bump the date via PR.
+  f128:
+    name: f128 backend (pinned nightly, ferroastro-real --features f128)
+    if: github.event_name != 'schedule'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    env:
+      FA_F128_TOOLCHAIN: nightly-2026-10-15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Install the pinned nightly toolchain
+        run: rustup toolchain install "$FA_F128_TOOLCHAIN" --profile minimal && rustc +"$FA_F128_TOOLCHAIN" -vV
+      - uses: taiki-e/install-action@1168f6810a3cb30a3514bf5756a3b7f0422c6df8 # v2.87.28
+        with:
+          tool: cargo-nextest@0.9.148
+      - name: Run the f128 test (fails if it is not compiled in)
+        run: >-
+          cargo +"$FA_F128_TOOLCHAIN" nextest run -p ferroastro-real --features f128
+          --no-tests=fail --success-output immediate
+          -E 'binary(num006_backends) & test(=f128_backend_agrees_with_double_double)'
+
   wasm32:
     name: wasm32 (real, core, erfa, time, integrators, forces, analytic, frames, ephem, eih)
     if: github.event_name != 'schedule'
@@ -167,6 +193,10 @@ jobs:
         run: cd tools && uv sync --locked
       - name: ruff + mypy (AGENTS.md)
         run: (cd tools && uv run ruff check && uv run ruff format --check && uv run mypy .)
+      # LIC-001 / STD-009: no GPL/LGPL/AGPL distribution in the locked tools/ environment. The
+      # oracle images under ci/oracles/ are outside it (LIC-005); `reuse` is the documented CLI exemption.
+      - name: licence guard (LIC-001)
+        run: (cd tools && uv run python license_guard.py)
       - name: pytest (STD-009)
         run: (cd tools && uv run pytest)
       - name: doctest coverage of public fns (API-003; report-only until a maintainer sets a ratio)

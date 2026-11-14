@@ -23,6 +23,15 @@
 //! proposed successor is smaller than `safety·Δt` is rejected and redone; growth is capped at
 //! `Δt/safety`.
 //!
+//! **Rejection rule (issue #20, decided by the principal on 2026-11-14): keep
+//! `|Δt_required| < safety·|Δt_trial|`.** Rein & Spiegel 2015 state the stricter condition
+//! `Δt_required < Δt_trial` (reject whenever the proposal is shorter than the step just tried).
+//! The two rules differ only when `safety·Δt_trial ≤ Δt_required < Δt_trial`. There this
+//! implementation accepts the step as tried and takes `Δt_required` as the next trial step, where
+//! the stricter rule would redo the step. The test
+//! `step_between_safety_and_full_trial_step_is_accepted` (`tests/ias15_step_control.rs`) builds
+//! such a step and fails if the stricter rule is substituted.
+//!
 //! # Units and precision
 //! The integrator is unit-agnostic: it advances raw coordinates of a second-order system
 //! `ẍ = f(t, x, ẋ)`. Typed quantities (ADR-0001) live at the force-model boundary
@@ -639,6 +648,8 @@ impl<R: Real> Ias15<R> {
             let (iterations, max_a, exit) = self.correct(sys, dt)?;
 
             let mut dt_new = self.proposal(dt, max_a)?;
+            // Rejection rule kept by the principal's decision on issue #20 (2026-11-14); see the
+            // module docs. Not R&S 2015's `dt_new < dt`.
             if dt_new.abs() < safety * dt.abs() {
                 rejections += 1;
                 self.stats.rejected += 1;
