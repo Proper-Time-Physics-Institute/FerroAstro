@@ -83,3 +83,40 @@ parent: null
 related: [STD-004, ORG-002, AGT-001]
 notes: null
 ```
+
+### API-004 — Interactive orbit viewer
+
+```yaml
+id: API-004
+title: "An interactive orbit viewer built only from FerroAstro crates, wasm32 with no imports, every rate labelled"
+status: draft
+criticality: low
+verification: test
+statement: >-
+  The orbit viewer (crates/ferroastro-viewer, docs/viewer/DESIGN.md) SHALL be
+  built only from FerroAstro crates: its scenarios run through
+  ferroastro-propagate, its rung models come from ferroastro-ladder and
+  ferroastro-forces, and its rates from the ferroastro-precession /
+  ferroastro-diffrun Park2017 estimator, with no force model, integrator or
+  estimator of its own and no physics in JS. It SHALL label every rate with the
+  PHY-015 metadata (frame, epoch, span, fit model, constants, gauge, IC hash),
+  compute per-effect contributions with the ADR-0014 P-remove protocol, and
+  build for wasm32-unknown-unknown as a module with no imports and the
+  version-1 extern "C" ABI of the design.
+acceptance: >-
+  Native tests cover the ABI round trip and every status code, the Kepler-only
+  baseline, the GR, PPN, J2, Lense-Thirring and SR-rung rates, a single-planet
+  rate, first-order additivity, chunking invariance and bitwise equality of
+  the passages with a ferroastro-propagate run of the exported scenario
+  through the diffrun estimator (tests/vectors/viewer.toml); a node smoke test
+  instantiates the release .wasm and checks that it has zero imports and runs
+  a short configuration through the exported functions.
+source: >-
+  docs/viewer/DESIGN.md (principal's request: see the orbits and toggle the
+  perturbations while probing Mercury's perihelion).
+parent: null
+related: [API-002, PHY-015, CI-009, CI-010, DEP-006]
+notes: >-
+  Proposed with the viewer (NEEDS HUMAN REVIEW). The ABI shims need the
+  unsafe-attribute lint exception of DESIGN §2.2 (AGENTS.md rule 5, STD-003).
+```

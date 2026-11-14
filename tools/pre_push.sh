@@ -29,6 +29,8 @@ step cargo fmt --all --check
 (cd tools && step uv run python fetch_jpl.py)
 step cargo clippy --workspace --all-targets --all-features -- -D warnings
 step cargo nextest run --workspace
+# #22: the orbit viewer's System-mode tests need its embed-header feature (as CI's rust job).
+step cargo nextest run -p ferroastro-viewer --features embed-header
 # WP26: the SoA SIMD-vs-scalar bitwise checks run only with the simd feature (as CI's rust job).
 step cargo nextest run -p ferroastro-forces -p ferroastro-eih -p ferroastro-propagate --features ferroastro-propagate/simd -E 'binary(soa_kernels) | binary(eih_soa) | binary(simd_soa)'
 step cargo test --doc --workspace
