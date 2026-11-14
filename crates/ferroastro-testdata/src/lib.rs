@@ -160,7 +160,9 @@ fn workspace_root() -> PathBuf {
 /// The download cache directory (see the crate docs for the lookup order).
 #[must_use]
 pub fn data_dir() -> PathBuf {
-    if let Some(dir) = std::env::var_os(DATA_DIR_ENV) {
+    // An empty `FA_DATA_DIR` counts as unset: as a relative path it would cache the products in
+    // the current directory (a crate directory under cargo test), next to tracked files (WP29).
+    if let Some(dir) = std::env::var_os(DATA_DIR_ENV).filter(|d| !d.is_empty()) {
         return PathBuf::from(dir);
     }
     let target = std::env::var_os("CARGO_TARGET_DIR")

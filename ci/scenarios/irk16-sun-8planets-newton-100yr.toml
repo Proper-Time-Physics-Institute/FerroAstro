@@ -1,0 +1,32 @@
+# SPDX-FileCopyrightText: 2026 Proper-Time Physics Institute
+# SPDX-License-Identifier: Apache-2.0
+# WP29 (NUM-003): the stage A system (Sun + 8 planets, EMB as one body, Newtonian point masses,
+# header.440 ICs) under the Gauss-Legendre IRK16 reference integrator, h = 2 d, compensated
+# state update; yearly samples from the collocation polynomial (dense output).
+# FerroAstro only: every oracle runner refuses integrator "irk16" by name (REF-011).
+schema_version = 1
+name = "irk16-sun-8planets-newton-100yr"
+description = "WP29: stage A system under IRK16 (Gauss-Legendre s = 8), h = 2 d, 100 yr"
+mode = "n-body"
+bodies = ["Sun", "Mercury", "Venus", "EMB", "Mars", "Jupiter", "Saturn", "Uranus", "Neptune"]
+central_body = "Sun"
+
+[initial_conditions]
+source = "de440-header"
+
+[constants]
+gm_set = "de440"
+
+[forces]
+newton = true
+
+[integrator]
+name = "irk16"
+precision = "f64"
+step_days = 2.0
+
+[span]
+years = 100.0
+
+[output]
+cadence_days = 365.25

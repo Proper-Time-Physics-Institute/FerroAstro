@@ -197,7 +197,9 @@ statement: >-
   Subbotin mixed scheme: state, integrator sums and coefficients in
   double-double; forces in f64.
 acceptance: >-
-  Mercury round-off over 40 yr ≤ 1 cm relative to a full double-double run.
+  In ephemeris mode, Mercury's round-off over 40 yr is ≤ 3 cm relative to a
+  full double-double run in mixed double-double (measured 2.04 cm, WP25
+  run 2); Subbotin et al. 2023's 8.4 mm is reported (maintainer decision 2026-11-12, #18 review; previously: "≤ 1 cm").
 source: >-
   docs/strategy/journal/04-numerical-methods.md §2 and NUM-007; Subbotin et al.
   2023 (mixed DD ≈ 3× f64 cost; Mercury 8.4 mm / 40 yr).
@@ -272,6 +274,15 @@ statement: >-
   1PN terms from other Minor bodies. (Amended 2026-11-12 to match the
   maintainer's tier rules of 2026-11-11; it previously read "with the sums
   over all bodies; tiering does not restrict the 1PN terms".)
+  The above is the default EIH scope (scenario eih_scope = "all", matching
+  DE440). A scenario MAY instead select the source-specific scope
+  eih_scope = "majors" (EPM2021, Subbotin et al. 2023): the 1PN EIH
+  acceleration is then evaluated for the Major bodies only, with the 1PN
+  sums, U and the right-hand-side a_j over the Major bodies; Minor and Ring
+  bodies stay Newtonian. The scope SHALL be recorded in every run's model
+  provenance. (Amended 2026-11-13: the statement previously admitted only
+  the "all" scope, so the "majors" mode added on M5 was described only in
+  the notes; maintainer decision 2026-11-13, NUM-020 row 12 re-check.)
 acceptance: >-
   With the DE440 asteroid set as Minor bodies and EIH evaluated for every
   moving body, the run costs < 5× the same tiered run without EIH, and the
@@ -339,6 +350,24 @@ notes: >-
   bodies; Ring masses are 1PN sources only (v = a = 0) and receive nothing.
   (3) MinorReaction::Off also switches off the Lense–Thirring reaction that
   Minor bodies send to the Sun (fixed in wp22-eih-all-bodies, 15615ca).
+  SOURCE-SPECIFIC TIERING (maintainer decision 2026-11-12, #18 review
+  WP25-4/5): tiering accuracy depends on the reference ephemeris. With
+  Subbotin et al. 2023's EPM2021 tiering (16 Majors including (1) Ceres,
+  (2) Pallas, (4) Vesta, (7) Iris, (324) Bamberga; scenario
+  eih_scope = "majors"), tiering costs < 1 cm (planets) and < 1 mm (Moon)
+  over 40 yr for their body set. For the DE440 set (eih_scope = "all", D1)
+  FerroAstro measures Mars 2.2 cm (WP25 N4), reported.
+  EIH_SCOPE = "majors" OPEN POINTS (NUM-020 row 12 re-check, 2026-11-13):
+  (1) Under MinorReaction::On the Majors are integrated with the Minor
+  bodies' Newtonian reaction included, but the 1PN right-hand side uses a
+  Majors-only Newtonian a_j. The mismatch is O(GM_ast/c²). Recorded as a
+  known deviation until it is confirmed against EPM2021's practice.
+  (2) The reading of Subbotin et al. 2023 is still owed (human, against the
+  typeset page): that EPM2021 (a) evaluates the 1PN terms for its 16 Majors
+  only, (b) sums U and a_j over those 16 only, and (c) uses the 16 named
+  above (OI-78). Until then the "majors" scope is checked against its own
+  documentation only (crates/ferroastro-eih/tests/eih_scope.rs, 3 tests),
+  not against EPM2021, and NUM-020 row 12 stays unsigned for it.
 ```
 
 ### NUM-010 — Dense output and perihelion event location
@@ -970,8 +999,11 @@ statement: >-
   sweeps, plus optional SIMD batch-lane integration of independent initial
   conditions.
 acceptance: >-
-  Throughput scales linearly with core count when the number of runs is at
-  least the number of cores.
+  Throughput scales linearly with the number of performance cores of a
+  homogeneous, otherwise idle runner (SMT off) when the number of runs is at
+  least the number of cores; heterogeneous or shared machines report the
+  efficiency (maintainer decision 2026-11-12, #18 review; previously: no hardware qualifier; WP26-3 failed beyond 4
+  threads on a shared machine).
 source: >-
   docs/strategy/journal/04-numerical-methods.md §5 and NUM-022.
 parent: null
@@ -1036,8 +1068,11 @@ statement: >-
   + 343 Minor bodies in f64 and in mixed DD, and SHALL publish wall times
   against Subbotin's 81 s (f64) and 246 s (mixed DD), hardware-normalised.
 acceptance: >-
-  Criterion benchmarks run in CI (CI-008 conditions). Target: within 1× of
-  81 s / 246 s on comparable hardware.
+  Criterion benchmarks run in CI (CI-008 conditions). The 40-yr NUM-024 runs
+  (16 Major + 338 Minor, DE440 set) are timed and reported against Subbotin
+  et al. 2023 Table 1 (81 s / 246 s) as context only. The comparison is not
+  assessed while hardware (OI-44) and workload (~338 vs ~642 small bodies)
+  differ (maintainer decision 2026-11-12, #18 review; previously: "within 1× of 81 s / 246 s on comparable hardware").
 source: >-
   docs/strategy/journal/04-numerical-methods.md §1.4, §5 and NUM-024; Subbotin
   et al. 2023 Table 1.

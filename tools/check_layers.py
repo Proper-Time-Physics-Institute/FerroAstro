@@ -58,6 +58,7 @@ LAYERS: dict[str, int] = {
     "ferroastro-cli": 12,
     "ferroastro-mcp": 12,
     "ferroastro-wasm": 12,
+    "ferroastro-viewer": 12,
     "ferroastro-py": 12,
 }
 

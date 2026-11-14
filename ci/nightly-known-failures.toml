@@ -1,0 +1,126 @@
+# SPDX-FileCopyrightText: 2026 Proper-Time Physics Institute
+# SPDX-License-Identifier: Apache-2.0
+#
+# Known nightly-tier failures (WP28; progress review W3 after WP26). Every entry is a pre-registered
+# bound that fails, is disclosed with a NEEDS HUMAN REVIEW item, and was NOT loosened. The list
+# changes no bound and no test: `tools/nightly_summary.py` reads it with a nextest log and labels
+# each failure "known (value unchanged)", "known (value changed)" or "NEW", so that a new
+# regression stands out from the known failures. Remove an entry only when its NEEDS HUMAN REVIEW
+# item is resolved (and record that in IMPLEMENTATION-NOTES).
+#
+# Fields: test (nextest test name), vector (the failing vector id, or a check name), review (where
+# the NEEDS HUMAN REVIEW item is), last_value + unit (the last measured value), measured_on,
+# value_regex (one capture group: the measured value in the test's output, in `unit`) and
+# rel_change (the relative difference above which the value counts as changed; it reflects the
+# digits the test prints).
+schema_version = 1
+
+[[failure]]
+test = "nightly_abm_vs_ias15_forty_year_mercury_bound"
+vector = "ABM-VS-IAS15-MERCURY-40YR-DR"
+review = "IMPLEMENTATION-NOTES WP24 (B2, PROVISIONAL 1 m bound) and the WP26 progress review W3"
+last_value = 0.002073811
+unit = "km"
+measured_on = "2026-11-12, M5 review fixes (the same f64-vs-f64 comparison inside nightly_abm_vs_ias15_forty_years_in_double_double, printed to 7 digits; 2.241986e-3 km at 6cae36b before the M4/D1 merge changed the EIH summation order)"
+value_regex = 'id: "ABM-VS-IAS15-MERCURY-40YR-DR".*?measured: ([0-9.eE+-]+)'
+rel_change = 1e-6 # the last value was read from a 7-digit print (M5 review fixes)
+
+[[failure]]
+test = "nightly_mu_star_rate_pre_registered_bound"
+vector = "EPH-MUSTAR-RATE-REL"
+review = "IMPLEMENTATION-NOTES WP25, NEEDS HUMAN REVIEW 3 (C3b: the estimate omitted (2 pi)^2)"
+last_value = 3.9266828032997374e-6
+unit = "1"
+measured_on = "2026-10-20, WP26 progress review at 6cae36b"
+value_regex = 'id: "EPH-MUSTAR-RATE-REL".*?measured: ([0-9.eE+-]+)'
+rel_change = 1e-9
+
+[[failure]]
+test = "nightly_wp25_subbotin_table1_mixed_mode"
+vector = "EPH-MIXED-MERCURY-40YR-KM"
+review = "IMPLEMENTATION-NOTES WP25, NEEDS HUMAN REVIEW 1 (NUM-007 N1, options a/b/c)"
+last_value = 2.0381630955744124e-5
+unit = "km"
+measured_on = "2026-10-20, WP26 progress review at 6cae36b"
+value_regex = 'FAIL EPH-MIXED-MERCURY-40YR-KM: FA-E0105: EPH-MIXED-MERCURY-40YR-KM .*?measured ([0-9.eE+-]+) km'
+rel_change = 1e-9
+
+[[failure]]
+test = "nightly_wp25_subbotin_table1_mixed_mode"
+vector = "EPH-TIERING-PLANETS-40YR-KM"
+review = "IMPLEMENTATION-NOTES WP25, NEEDS HUMAN REVIEW 4 (N4 Mars tiering 2.2 cm; NUM-009 wording)"
+last_value = 2.1798887998775823e-5
+unit = "km"
+measured_on = "2026-10-20, WP26 progress review at 6cae36b (mixed mode)"
+value_regex = 'FAIL N4 Mars: FA-E0105: EPH-TIERING-PLANETS-40YR-KM .*?measured ([0-9.eE+-]+) km'
+rel_change = 1e-9
+
+[[failure]]
+test = "nightly_wp25_subbotin_table1_mixed_mode"
+vector = "N4 Mercury UNRESOLVED"
+review = "IMPLEMENTATION-NOTES WP25, N4 resolvability condition (Mercury round-off 2.04 cm > bound/3)"
+last_value = 2.038e-5
+unit = "km"
+measured_on = "2026-10-20, WP26 progress review at 6cae36b"
+value_regex = 'FAIL N4 Mercury: UNRESOLVED \(sqrt\(2\) x round-off ([0-9.eE+-]+) km'
+rel_change = 1e-3
+
+[[failure]]
+test = "nightly_wp25_subbotin_table1_mixed_mode"
+vector = "N4 Moon UNRESOLVED"
+review = "IMPLEMENTATION-NOTES WP25, N4 resolvability condition (Moon round-off 0.74 mm > bound/3)"
+last_value = 7.430e-7
+unit = "km"
+measured_on = "2026-10-20, WP26 progress review at 6cae36b"
+value_regex = 'FAIL N4 Moon: UNRESOLVED \(sqrt\(2\) x round-off ([0-9.eE+-]+) km'
+rel_change = 1e-3
+
+[[failure]]
+test = "nightly_wp25_tiering_double_double"
+vector = "EPH-TIERING-PLANETS-40YR-KM"
+review = "IMPLEMENTATION-NOTES WP25, NEEDS HUMAN REVIEW 4 (N4 Mars tiering, confirmed in double-double)"
+last_value = 2.181566386308863e-5
+unit = "km"
+measured_on = "2026-10-20 15:08-21:25 UTC, WP25 builder (double-double follow-up)"
+value_regex = 'FAIL N4 Mars: FA-E0105: EPH-TIERING-PLANETS-40YR-KM .*?measured ([0-9.eE+-]+) km'
+rel_change = 1e-9
+
+[[failure]]
+test = "nightly_two_consecutive_speed_tables_are_stable_and_complete"
+vector = "E6 (d) oracle-stage-b-mercury-de440-field-100yr"
+review = "IMPLEMENTATION-NOTES WP18, NEEDS HUMAN REVIEW 1 (E6 stability criterion)"
+last_value = 0.492
+unit = "s"
+measured_on = "2026-10-20, WP26 progress review at 6cae36b (tables run1 and run2)"
+value_regex = 'oracle-stage-b-mercury-de440-field-100yr: median [0-9.]+ -> [0-9.]+ s, \|delta\| ([0-9.]+) s'
+rel_change = 1e-3
+
+[[failure]]
+test = "nightly_irk16_i2_pre_registered_f64_order"
+vector = "IRK16-OBSERVED-ORDER"
+review = "IMPLEMENTATION-NOTES WP29 (I2, plan addendum 1) and the progress review after WP29 (X4, X6); restored as a known failure in the M5 review fixes"
+last_value = 0.685
+unit = "1"
+measured_on = "2026-11-12, M5 review fixes (m5-review-fixes)"
+value_regex = 'id: "IRK16-OBSERVED-ORDER".*?measured: ([0-9.eE+-]+)'
+rel_change = 1e-3
+
+[[failure]]
+test = "nightly_irk16_i2b_pre_registered_dd_order"
+vector = "IRK16-OBSERVED-ORDER-DD"
+review = "IMPLEMENTATION-NOTES WP29 (I2b, plan addendum 1) and the progress review after WP29 (X4); restored as a known failure in the M5 review fixes"
+last_value = 11.79131228864861
+unit = "1"
+measured_on = "2026-11-12, M5 review fixes (m5-review-fixes)"
+value_regex = 'id: "IRK16-OBSERVED-ORDER-DD".*?measured: ([0-9.eE+-]+)'
+rel_change = 1e-9
+
+[[failure]]
+test = "nightly_irk16_compensation_gain_pre_registered"
+vector = "IRK16-COMPENSATION-GAIN-MIN"
+review = "IMPLEMENTATION-NOTES M5 review fixes (X2: the pre-registered gain >= 3 failed at 1.98)"
+last_value = 1.9820
+unit = "1"
+measured_on = "2026-11-12, M5 review fixes (m5-review-fixes)"
+value_regex = 'X2 \(pre-registered\):.*ratio ([0-9.eE+-]+)'
+rel_change = 1e-3

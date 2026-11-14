@@ -42,8 +42,6 @@ fn rdotv<R: Real>(_t: R, x: &[R], v: &[R]) -> R {
     x[0] * v[0] + x[1] * v[1]
 }
 
-/// Metres per kilometre (SI prefix, exact).
-const M_PER_KM: f64 = 1000.0; // lint: allow-literal(SI prefix)
 /// First trial step as a fraction of the period; the controller adapts it.
 const FIRST_STEP_PER_PERIOD: f64 = 1.0 / 64.0; // lint: allow-literal(first trial step fraction)
 /// First trial step of the dimensionless dense-output checks.
@@ -59,7 +57,9 @@ struct Orbit<R: Real> {
 fn orbit<R: Real>(vs: &VectorSet) -> Orbit<R> {
     let val = |id: &str| R::from_f64(vs.get(id).unwrap().value().unwrap());
     let mu = val("DE440-GMS-KM3S2");
-    let au = val("CONST-AU-IAU2012") / R::from_f64(M_PER_KM);
+    // CONST-AU-IAU2012 is in km (M5 review #18, WP24-6: this line divided it by 1000 until
+    // 2026-11-12, which made the "Mercury-like" orbit a = 5.79e4 km, P ~ 240 s).
+    let au = val("CONST-AU-IAU2012");
     let a = val("SW92-MERCURY-A") * au;
     let e = val("SW92-MERCURY-E");
     let ra = a * (R::ONE + e);

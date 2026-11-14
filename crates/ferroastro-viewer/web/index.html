@@ -1,0 +1,334 @@
+<!doctype html>
+<!-- SPDX-FileCopyrightText: 2026 Proper-Time Physics Institute -->
+<!-- SPDX-License-Identifier: Apache-2.0 -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="light dark">
+<meta name="theme-color" content="#e6ecf1" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0a1c2e" media="(prefers-color-scheme: dark)">
+<meta name="description" content="Integrate the Sun, Mercury and the planets with the FerroAstro engine and watch Mercury's perihelion advance, one perturbation at a time.">
+<title>FerroAstro orbit viewer</title>
+<link rel="stylesheet" href="viewer.css">
+</head>
+<body>
+<a class="skip" href="#controls">Skip to controls</a>
+
+<header class="top">
+  <div class="brand">
+    <p class="brand-name" translate="no">FerroAstro orbit viewer</p>
+    <h1>The advance of Mercury's perihelion</h1>
+    <p class="sub">Switch perturbations on and off and watch the perihelion turn. Every number comes from the FerroAstro engine (wasm); this page only draws it.</p>
+  </div>
+  <div class="top-side">
+    <div class="badges">
+      <span id="badge-mode" class="badge">System mode</span>
+      <span id="badge-engine" class="badge" title="Resolved integrator">engine: –</span>
+      <span id="badge-nominal" class="badge warn" hidden>Exaggerated physics</span>
+    </div>
+    <div class="seg theme-switch" role="group" aria-label="Colour theme">
+      <button type="button" data-theme-set="auto" aria-pressed="true">Auto</button>
+      <button type="button" data-theme-set="light" aria-pressed="false">Light</button>
+      <button type="button" data-theme-set="dark" aria-pressed="false">Dark</button>
+    </div>
+  </div>
+</header>
+
+<div id="status" class="status" role="status" aria-live="polite">Loading the engine…</div>
+<div id="error" class="error" role="alert" hidden></div>
+
+<main class="layout">
+  <!-- ============================== orbit view ============================== -->
+  <section class="panel orbit-panel" aria-labelledby="orbit-h">
+    <div class="panel-head">
+      <h2 id="orbit-h">Orbits <span class="muted small">top-down on the J2000 ecliptic, heliocentric</span></h2>
+      <div class="seg" role="group" aria-label="Zoom preset">
+        <button type="button" id="zoom-mercury" aria-pressed="false">Mercury</button>
+        <button type="button" id="zoom-inner" aria-pressed="true">Inner system</button>
+        <button type="button" id="zoom-full" aria-pressed="false">Full system</button>
+      </div>
+    </div>
+    <div class="canvas-wrap orbit-wrap">
+      <canvas id="orbit" tabindex="0" role="img"
+        aria-label="Orbit view. Focus and use plus, minus and arrow keys to zoom and pan, 0 to reset."></canvas>
+      <div id="exag-badge" class="sr-only" aria-live="polite"></div>
+    </div>
+    <div id="orbit-legend" class="legend" aria-label="Bodies on the plate"></div>
+    <p id="advance" class="advance" aria-live="off">The perihelion markers appear after Mercury's first pass.</p>
+    <div class="ramp" aria-hidden="true">
+      <span id="ramp-t0">first passage</span>
+      <span class="ramp-bar"></span>
+      <span id="ramp-t1">latest</span>
+    </div>
+    <p class="help">Perihelion markers and chart dots share this time colour. The faint ellipse is Mercury's orbit at the first passage; the solid one is its orbit now.</p>
+    <div class="orbit-tools">
+      <label class="slider" for="exag">
+        <span class="slider-label"><span>Display exaggeration</span> <output id="exag-out" for="exag">×1</output></span>
+        <input type="range" id="exag" min="0" max="5" step="0.05" value="0"
+          aria-describedby="exag-help">
+      </label>
+      <p id="exag-help" class="help">Rotates only the drawn Mercury ellipse and perihelion markers by (k−1)·Δϖ. It never changes the physics, the chart or the table.</p>
+      <div class="checks-inline">
+        <label class="check"><input type="checkbox" id="show-ellipse" checked> Osculating ellipse</label>
+        <label class="check"><input type="checkbox" id="show-markers" checked> Perihelion markers</label>
+        <label class="check"><input type="checkbox" id="show-trails" checked> Trails</label>
+      </div>
+      <p class="help">Wheel or pinch to zoom, drag to pan, double-click to reset. With the plate focused: + and − zoom, arrows pan, 0 resets.</p>
+    </div>
+  </section>
+
+  <div class="side">
+    <!-- ============================== varpi chart ============================== -->
+    <section class="panel chart-panel" aria-labelledby="chart-h">
+      <div class="panel-head">
+        <h2 id="chart-h">Longitude of perihelion ϖ(t)</h2>
+        <span class="muted small">Park17 mean-Mercury-orbit plane</span>
+      </div>
+      <div class="readout">
+        <div class="rate" id="rate-readout" title="">ϖ̇ = – ″/cy</div>
+        <div class="rate-sub parts" id="rate-sub">Needs at least 20 perihelion passages (about 5 years).</div>
+        <details class="fit-details">
+          <summary>Fit model and metadata</summary>
+          <pre id="fit-details">No fit yet.</pre>
+        </details>
+      </div>
+      <div class="canvas-wrap chart-wrap">
+        <canvas id="chart" role="img" aria-label="Chart of perihelion longitude against time"></canvas>
+      </div>
+      <ul class="chart-key">
+        <li><span class="key-dots" aria-hidden="true"></span>Perihelion passages (fitted), by time</li>
+        <li><span class="key-line fit" aria-hidden="true"></span>Fitted rate</li>
+        <li><span class="key-line osc" aria-hidden="true"></span>Osculating ϖ (drawn only)</li>
+        <li><span class="key-line ecl" aria-hidden="true"></span>ϖ on J2000 ecliptic</li>
+        <li><span class="key-fan" aria-hidden="true"></span>Per-effect wedges (from the table)</li>
+      </ul>
+      <p class="help">x: years since the run epoch (TDB), calendar year along the top. y: arcsec relative to the first passage.</p>
+      <div class="spark-row">
+        <div class="spark"><span class="spark-label">e(t)</span><canvas id="spark-e" role="img" aria-label="Eccentricity against time"></canvas><span id="spark-e-val" class="spark-val"></span></div>
+        <div class="spark"><span class="spark-label">a(t), au</span><canvas id="spark-a" role="img" aria-label="Semi-major axis against time"></canvas><span id="spark-a-val" class="spark-val"></span></div>
+      </div>
+      <div class="chart-tools">
+        <label class="check"><input type="checkbox" id="show-osc" checked> Osculating ϖ</label>
+        <label class="check"><input type="checkbox" id="show-ecl"> ϖ on J2000 ecliptic</label>
+        <label class="check"><input type="checkbox" id="detrend"> Subtract fitted rate</label>
+        <label class="check"><input type="checkbox" id="show-fan" checked> Per-effect wedges</label>
+        <label class="check">Fit window
+          <select id="fit-window">
+            <option value="all">all passages</option>
+            <option value="1000">last 1000 yr</option>
+            <option value="100">last 100 yr</option>
+            <option value="20">last 20 yr</option>
+          </select>
+        </label>
+      </div>
+    </section>
+
+    <!-- ============================== controls ============================== -->
+    <section class="panel controls-panel" id="controls" aria-labelledby="controls-h" tabindex="-1">
+      <div class="panel-head">
+        <h2 id="controls-h">Physics</h2>
+        <div class="seg radios" role="radiogroup" aria-label="Mode">
+          <label class="check"><input type="radio" name="mode" value="0" checked> System</label>
+          <label class="check"><input type="radio" name="mode" value="1"> Rung lab</label>
+        </div>
+      </div>
+
+      <div class="presets" role="group" aria-label="Presets">
+        <button type="button" data-preset="kepler">Kepler only</button>
+        <button type="button" data-preset="planets">Planets only</button>
+        <button type="button" data-preset="gr">GR only</button>
+        <button type="button" data-preset="full">Full model</button>
+      </div>
+
+      <p id="mode-note" class="note" hidden>Rung lab: Mercury as a test particle about a fixed Sun (Standish &amp; Williams 1992 J2000 mean elements, epoch J2000.0). The special-relativity rungs exist only here, because ADR-0012 defines them for the test-particle problem; with planets on they have no meaning. The SR/GR split is not observable.</p>
+
+      <fieldset id="rung-fs" hidden>
+        <legend>Rung</legend>
+        <label for="rung">Central-force model</label>
+        <select id="rung">
+          <option value="0">Newton only (expect 0)</option>
+          <option value="1">SR-a, SrKepler, gauge “SR, no PN gauge” (7.1634 ″/cy)</option>
+          <option value="2">SR-b, PPN isotropic/harmonic (50.144 ″/cy)</option>
+          <option value="3">SR-b, Schwarzschild areal, pedagogical (35.817 ″/cy)</option>
+          <option value="4" selected>GR, PPN Schwarzschild with β, γ (42.98 ″/cy)</option>
+        </select>
+      </fieldset>
+
+      <fieldset>
+        <legend>Effects <span class="muted small">expected contribution to ϖ̇</span></legend>
+        <ul class="toggles" id="toggles"></ul>
+      </fieldset>
+
+      <fieldset class="grid2">
+        <legend>Parameters</legend>
+        <label for="p-beta">PPN β</label>
+        <input id="p-beta" name="ppn-beta" type="number" step="0.1" value="1" inputmode="decimal" autocomplete="off" aria-describedby="ppn-help">
+        <label for="p-gamma">PPN γ</label>
+        <input id="p-gamma" name="ppn-gamma" type="number" step="0.1" value="1" inputmode="decimal" autocomplete="off" aria-describedby="ppn-help">
+        <p id="ppn-help" class="help span2">Used by GR 1PN, EIH, Lense–Thirring and the Rung lab GR rung. GR advance scales as (2+2γ−β)/3. WHFast takes GR only with β = γ = 1.</p>
+
+        <label for="p-engine">Engine</label>
+        <div class="row">
+          <select id="p-engine" name="engine">
+            <option value="0" selected>AUTO</option>
+            <option value="1">WHFast</option>
+            <option value="2">IAS15</option>
+          </select>
+          <span id="engine-resolved" class="muted small"></span>
+        </div>
+        <label for="p-whstep">WHFast step (days)</label>
+        <input id="p-whstep" name="wh-step" type="number" min="0.125" max="4" step="0.125" value="1" inputmode="decimal" autocomplete="off">
+        <label for="p-eps">IAS15 ε</label>
+        <div class="row">
+          <select id="p-eps" name="ias15-eps">
+            <option value="1e-12">1e-12</option>
+            <option value="1e-11">1e-11</option>
+            <option value="1e-10">1e-10</option>
+            <option value="1e-9" selected>1e-9 (nominal)</option>
+            <option value="1e-8">1e-8 (fast, reduced accuracy)</option>
+            <option value="1e-7">1e-7 (fast, reduced accuracy)</option>
+            <option value="1e-6">1e-6 (fast, reduced accuracy)</option>
+          </select>
+        </div>
+        <label for="p-span">Run span (years)</label>
+        <input id="p-span" name="span" type="number" min="1" max="20000" step="1" value="1000" inputmode="numeric" autocomplete="off">
+        <label for="p-cadence">Display cadence (days)</label>
+        <input id="p-cadence" name="cadence" type="number" min="0.5" max="50" step="0.5" value="4" inputmode="decimal" autocomplete="off">
+        <label for="p-ast">Asteroid count</label>
+        <input id="p-ast" name="asteroids" type="number" min="1" max="343" step="1" value="16" inputmode="numeric" autocomplete="off">
+        <label for="p-fitper">Fit model</label>
+        <select id="p-fitper" name="fit-model">
+          <option value="1" selected>B + ϖ̇t (+ Qt², periodic terms the span resolves)</option>
+          <option value="0">B + ϖ̇t only</option>
+        </select>
+      </fieldset>
+
+      <details class="advanced">
+        <summary>Physical exaggeration (marks the run non-nominal)</summary>
+        <div class="grid2">
+          <label for="p-j2">Solar J2 override</label>
+          <input id="p-j2" name="j2" type="number" min="0" max="0.001" step="any" placeholder="DE440 J2SUN" inputmode="decimal" autocomplete="off" aria-describedby="j2-help">
+          <p id="j2-help" class="help span2">Empty = DE440 J2SUN. Range 0 … 1e-3.</p>
+          <label for="p-spin">Solar spin scale</label>
+          <input id="p-spin" name="spin" type="number" min="0" max="1000000" step="any" value="1" inputmode="decimal" autocomplete="off" aria-describedby="spin-help">
+          <p id="spin-help" class="help span2">Multiplies the DE440 solar angular momentum G·S used by Lense–Thirring. Range 0 … 1e6.</p>
+        </div>
+      </details>
+
+      <div class="apply-row">
+        <button type="button" id="copy-scenario" title="Copy the run's ScenarioSpec (TOML) to reproduce with the CLI">Copy scenario TOML</button>
+        <span id="meta-line" class="muted small parts"></span>
+      </div>
+    </section>
+
+    <!-- ============================== contribution table ============================== -->
+    <section class="panel table-panel" aria-labelledby="table-h">
+      <div class="panel-head">
+        <h2 id="table-h">Per-effect contributions</h2>
+        <span class="muted small">ADR-0014 P-remove: ϖ̇(S) − ϖ̇(S∖X)</span>
+      </div>
+      <div class="table-tools">
+        <label for="t-span">Compute contributions over</label>
+        <input id="t-span" name="table-span" type="number" min="10" max="20000" step="10" value="200" inputmode="numeric" autocomplete="off">
+        <span>years</span>
+        <label class="check"><input type="checkbox" id="t-padd"> Also P-add</label>
+        <button type="button" id="t-run" class="primary">Compute</button>
+        <button type="button" id="t-cancel" hidden>Cancel</button>
+        <button type="button" id="t-csv" disabled>Export CSV</button>
+      </div>
+      <p class="help">Each leg is an independent run in its own worker: the same engine, span, estimator and initial conditions, differing only by the one effect removed. Rows within 3σ of zero are greyed: below resolution for this span.</p>
+      <div id="budget" class="budget" hidden>
+        <div id="budget-bar" class="budget-bar" aria-hidden="true"></div>
+        <ul id="budget-key" class="budget-key" aria-label="Positive contributions, largest first"></ul>
+      </div>
+      <div id="t-meta" class="table-meta parts"></div>
+      <div class="table-scroll" tabindex="0" role="region" aria-labelledby="table-h">
+        <table id="contrib">
+          <caption class="sr-only">Perihelion-rate contribution of each effect</caption>
+          <thead>
+            <tr>
+              <th scope="col">Effect</th>
+              <th scope="col" class="num">ϖ̇(S)−ϖ̇(S∖X) ″/cy</th>
+              <th scope="col" class="num">Reference</th>
+              <th scope="col" class="num">Diff</th>
+              <th scope="col" class="num padd-col" hidden>P-add (info only)</th>
+              <th scope="col">Leg</th>
+            </tr>
+          </thead>
+          <tbody id="contrib-body">
+            <tr><td colspan="6" class="muted">Not computed yet. Press Compute to run one leg per switched-on effect.</td></tr>
+          </tbody>
+          <tfoot id="contrib-foot"></tfoot>
+        </table>
+      </div>
+    </section>
+  </div>
+</main>
+
+<!-- ============================== explainer ============================== -->
+<section class="explain" aria-labelledby="explain-h">
+  <h2 id="explain-h">What you are looking at</h2>
+  <div class="explain-grid">
+    <details open>
+      <summary>The measurement</summary>
+      <p>The engine integrates the Sun, Mercury and whichever bodies are switched on, from the DE440 initial conditions at JD 2440400.5 TDB (1969-06-28). At each perihelion passage it records the longitude of Mercury's position projected on the Park et al. (2017) mean-orbit plane (ADR-0011). A least-squares fit of those longitudes against time gives the advance rate ϖ̇ in arcseconds per Julian century, with a jack-knife uncertainty. The thin wiggly line is the osculating ϖ, which swings by tens of arcseconds with the planets' synodic periods; it is drawn, not fitted.</p>
+      <p>Short spans give wobbly rates: the periodic perturbations do not average out. Park's literature numbers use a 2000-year window; for a comparable figure run 1000 years or more.</p>
+    </details>
+    <details>
+      <summary>Planets (Newtonian pull)</summary>
+      <p>Each planet's gravity tugs Mercury's orbit around. Removing a planet from the integration is Park's “GM set to zero” (ADR-0014 P-remove). Venus (≈277 ″/cy), Jupiter (≈154) and the Earth–Moon barycentre (≈91) dominate; Saturn adds ≈7, Mars ≈2.5, Uranus and Neptune a fraction of an arcsecond. Together ≈532 ″/cy, the part Le Verrier could explain.</p>
+    </details>
+    <details>
+      <summary>General relativity</summary>
+      <p>The 1PN Schwarzschild field of the Sun adds 6πGM/(c²a(1−e²)) per orbit: ≈42.98 ″/cy, the famous anomaly. With PPN parameters it scales as (2+2γ−β)/3. The “EIH” option applies 1PN among all bodies instead of the Sun alone (IAS15 only). WHFast uses a GR potential that reproduces the same secular advance, only for β = γ = 1.</p>
+    </details>
+    <details>
+      <summary>Solar J2 and Lense–Thirring</summary>
+      <p>The Sun is slightly oblate (J2 ≈ 2.2×10⁻⁷), adding ≈0.03 ″/cy. Its spin drags inertial frames (Lense–Thirring), about −0.002 ″/cy. Both are tiny: you need hundreds of years before they rise above the uncertainty. The J2 and spin overrides scale the real physics and mark the run non-nominal; the display exaggeration only changes the drawing.</p>
+    </details>
+    <details>
+      <summary>Asteroids</summary>
+      <p>The first N numbered asteroids of DE440 (default 16) as point masses. Park finds ≈0.001 ″/cy for 343 of them, below what the viewer can resolve on spans under about 1000 years.</p>
+    </details>
+    <details>
+      <summary>Rung lab</summary>
+      <p>Mercury alone around a fixed Sun, to compare central-force models: Newton (0), special relativity in two gauges (SR-a 7.16, SR-b 50.14 or 35.82 ″/cy) and GR (42.98). The SR rungs show how much a “relativistic” label alone fixes; the split between SR and GR parts depends on the gauge and is not observable (ADR-0012).</p>
+    </details>
+    <details id="frame-caveat">
+      <summary>Why not 5600 ″/cy?</summary>
+      <ul>
+        <li>This simulation is inertial: ICRF axes, no rotating reference frame.</li>
+        <li>The observed ≈5600 ″/cy (Clemence 1947: 5599.74 ± 0.41 ″/cy) is measured against the equinox of date. It includes about 5025 ″/cy of general precession of the equinoxes (Clemence's value; the IAU 2006 p<sub>A</sub> = 5028.796195 ″/cy is marked UNVERIFIED in PHY-017). No inertial-frame simulation shows that part.</li>
+        <li>Totals depend on the reference plane: ≈575.31 ″/cy on the Park17 mean-orbit plane and ≈577.72 ″/cy on the fixed J2000 ecliptic (ADR-0011).</li>
+        <li>Adding 575.31 and 5028.80 does not reproduce the equinox-referred value, because the two numbers refer to different planes. The viewer makes no comparison with the observed value tighter than ±0.41 ″/cy.</li>
+      </ul>
+    </details>
+  </div>
+</section>
+
+<!-- ============================== transport ============================== -->
+<footer class="transport" aria-label="Playback">
+  <button type="button" id="play" class="primary" aria-pressed="false" disabled>Play</button>
+  <button type="button" id="restart" disabled>Restart</button>
+  <span class="tgroup">
+    <label for="speed">Speed</label>
+    <select id="speed" name="speed">
+      <option value="0.1">0.1 yr/s</option>
+      <option value="1" selected>1 yr/s</option>
+      <option value="10">10 yr/s</option>
+      <option value="100">100 yr/s</option>
+      <option value="max">max</option>
+    </select>
+  </span>
+  <div class="tstat"><span class="muted">Date (TDB)</span> <span id="t-date">–</span></div>
+  <div class="tstat"><span class="muted">Integrated</span> <span id="t-span-done">–</span></div>
+  <div class="tstat"><span class="muted">Speed</span> <span id="t-rate">–</span></div>
+  <div class="tstat"><span class="muted">Engine</span> <span id="t-engine">–</span></div>
+  <progress id="t-progress" max="1" value="0" aria-label="Fraction of the run span integrated"></progress>
+</footer>
+
+<script src="fav.js"></script>
+<script src="viewer.js"></script>
+</body>
+</html>

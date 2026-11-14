@@ -1,0 +1,31 @@
+# SPDX-FileCopyrightText: 2026 Proper-Time Physics Institute
+# SPDX-License-Identifier: Apache-2.0
+[package]
+name = "ferroastro-abm"
+description = "Fixed-step Adams-Bashforth-Moulton PECE/PECEC integrator, order 8-14, with a DP8 Runge-Kutta start-up, exact rational coefficients, dense output and bitwise checkpoints, generic over the scalar backend"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+authors.workspace = true
+repository.workspace = true
+
+[dependencies]
+ferroastro-integrators.workspace = true
+ferroastro-real.workspace = true
+serde = { workspace = true, optional = true }
+
+[features]
+default = []
+# Serialize/Deserialize for the settings, counters and checkpoint snapshots (CI-010).
+serde = ["dep:serde", "ferroastro-integrators/serde"]
+
+[dev-dependencies]
+ferroastro-analytic.workspace = true
+ferroastro-core.workspace = true
+ferroastro-vectors.workspace = true
+postcard.workspace = true
+serde_json.workspace = true
+
+[lints]
+workspace = true

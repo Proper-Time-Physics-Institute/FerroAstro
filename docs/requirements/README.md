@@ -114,15 +114,15 @@ def test_horizons_cross_check() -> None: ...
 | PHY | 19 | [PHY.md](PHY.md) |
 | NUM | 25 | [NUM.md](NUM.md) |
 | TST | 5 | [TST.md](TST.md) |
-| API | 3 | [API.md](API.md) |
+| API | 4 | [API.md](API.md) |
 | AGT | 4 | [AGT.md](AGT.md) |
 | DEP | 17 | [DEP.md](DEP.md) |
 | REF | 11 | [REF.md](REF.md) |
 | CI | 10 | [CI.md](CI.md) |
 | LIC | 5 | [LIC.md](LIC.md) |
-| **Total** | **121** | |
+| **Total** | **122** | |
 
-Criticality split: 74 high, 32 medium, 15 low.
+Criticality split: 74 high, 32 medium, 16 low (API-004, the orbit viewer, proposed 2026-11-14 as a draft).
 
 Counts re-checked on 2026-10-20 after the build-evidence sync: unchanged (no requirement added, retired or re-rated; every status is still `draft`). Open items: 78 in total (OI-01…OI-78), 2 closed (OI-05, OI-23), 76 open; OI-73…OI-78 are new.
 

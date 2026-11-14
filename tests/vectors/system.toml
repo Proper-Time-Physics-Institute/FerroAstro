@@ -125,7 +125,7 @@ notes = "kind = measured because ADR-0004 has no 'data-product fact' kind."
 [[vector]]
 id = "SYSTEM-REBARYCENTRE-POS-RESIDUAL"
 requirement = ["NUM-018"]
-quantity = "|sum mu_i* r_i / sum mu_i*| after two rebarycentring passes of the header.440 bodies (relativistic DE440 masses), f64"
+quantity = "|sum mu_i* r_i / sum mu_i*| after two rebarycentring passes of the header.440 bodies (relativistic DE440 masses), f64 (ferroastro_system::rebarycentre called with iterations = 2 in ref002_header_initial_conditions.rs; the propagate re-barycentring of initial_conditions.barycentre does three passes and is covered by EIH-REBARY-RESIDUAL-KM; clarified 2026-11-12, M5 review #18 SF2, text only)"
 value = 0.0
 unit = "km"
 kind = "analytic"

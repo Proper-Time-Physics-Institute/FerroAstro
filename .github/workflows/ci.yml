@@ -76,6 +76,17 @@ jobs:
         run: (cd tools && uv run --locked python lint_canary.py)
       - name: cargo nextest + doctests
         run: cargo nextest run --workspace && cargo test --doc --workspace
+      # #22 / docs/viewer/DESIGN.md section 5: the orbit viewer's System-mode tests need the
+      # header.440 that only its `embed-header` feature includes (fetched above, never committed);
+      # without it they skip with a message.
+      - name: cargo nextest + doctests (orbit viewer with embed-header)
+        run: cargo nextest run -p ferroastro-viewer --features embed-header && cargo test --doc -p ferroastro-viewer --features embed-header
+      # WP26 (NUM-021, TST-005): the SoA kernel tests again with the `simd` feature, so the
+      # SIMD-vs-scalar bitwise checks (cfg(feature = "simd")) run on every PR.
+      - name: cargo nextest (SoA kernels with the simd feature)
+        # M5 review #18 (nit): with `parallel` too, so P5 (batch_thread_counts_are_bitwise_for_both_kernels)
+        # really runs the batch on several threads instead of sequentially.
+        run: cargo nextest run -p ferroastro-forces -p ferroastro-eih -p ferroastro-propagate --features ferroastro-propagate/simd,ferroastro-propagate/parallel -E 'binary(soa_kernels) | binary(eih_soa) | binary(simd_soa)'
       - name: cargo deny check
         run: cargo deny check
       - name: cargo doc
@@ -141,7 +152,7 @@ jobs:
           -E 'binary(num006_backends) & test(=f128_backend_agrees_with_double_double)'
 
   wasm32:
-    name: wasm32 (real, core, erfa, time, integrators, forces, analytic, frames, ephem, eih)
+    name: wasm32 (real, core, erfa, time, integrators, forces, analytic, frames, ephem, eih, viewer)
     if: github.event_name != 'schedule'
     runs-on: ubuntu-24.04
     timeout-minutes: 20
@@ -157,12 +168,37 @@ jobs:
       # wasm32-unknown-unknown (DEP-006);
       # ferroastro-real also as no_std with the pure-Rust libm (no default features).
       - name: Build for wasm32-unknown-unknown
-        run: cargo build -p ferroastro-real -p ferroastro-core -p ferroastro-erfa -p ferroastro-time -p ferroastro-integrators -p ferroastro-forces -p ferroastro-eih -p ferroastro-analytic -p ferroastro-frames -p ferroastro-ephem -p ferroastro-system -p ferroastro-scenario -p ferroastro-propagate -p ferroastro-diffrun --target wasm32-unknown-unknown
+        run: cargo build -p ferroastro-real -p ferroastro-core -p ferroastro-erfa -p ferroastro-time -p ferroastro-integrators -p ferroastro-forces -p ferroastro-eih -p ferroastro-abm -p ferroastro-analytic -p ferroastro-frames -p ferroastro-ephem -p ferroastro-system -p ferroastro-scenario -p ferroastro-propagate -p ferroastro-diffrun -p ferroastro-precession -p ferroastro-symplectic -p ferroastro-ladder -p ferroastro-viewer --target wasm32-unknown-unknown
       # #22: the default wasm32 build above is offline. ferroastro-constants is linked without its
       # `fs` feature (workspace default-features = false), so wasm32 code gets the DE440 constants
       # only from header.440 bytes it is handed (De440::from_header_bytes, SHA-256 checked).
       - name: Build ferroastro-constants offline (bytes API only) for wasm32-unknown-unknown
         run: cargo build -p ferroastro-constants --no-default-features --target wasm32-unknown-unknown
+      # API-004 (docs/viewer/DESIGN.md section 9): the orbit viewer's release module must have no
+      # imports and run short configurations through its ABI v1 exports, raw (tools/viewer) and
+      # through the page's JS glue (web/). Node is preinstalled on the runner; no npm packages.
+      # #22: without data the viewer builds (above) and refuses System mode and the Rung lab with
+      # FA-E0303; the page smoke test checks that refusal text. Then, as ferroastro-constants' embed-header build,
+      # fetch the hash-pinned header.440 (never committed) and build the module that includes it.
+      - name: Orbit viewer without embed-header refuses System mode and the Rung lab (release wasm32, no data)
+        run: |
+          cargo build -p ferroastro-viewer --release --target wasm32-unknown-unknown
+          node crates/ferroastro-viewer/web/smoke.mjs --expect-no-header target/wasm32-unknown-unknown/release/ferroastro_viewer.wasm
+      - uses: astral-sh/setup-uv@1c37ad07a6a961277cf70c0d37d6f313000f5884 # v10.3.0
+      - name: Fetch the hash-pinned header.440 (viewer embed-header build only)
+        run: cd tools && uv run python fetch_jpl.py de440-header
+        env:
+          FA_DATA_DIR: ${{ github.workspace }}/.fa-data-embed
+      - name: Build the orbit viewer with embed-header (release wasm32) and run its node smoke tests
+        run: |
+          cargo build -p ferroastro-viewer --release --target wasm32-unknown-unknown --features embed-header
+          node tools/viewer/smoke.mjs target/wasm32-unknown-unknown/release/ferroastro_viewer.wasm
+          node crates/ferroastro-viewer/web/smoke.mjs target/wasm32-unknown-unknown/release/ferroastro_viewer.wasm
+        env:
+          FA_DATA_DIR: ${{ github.workspace }}/.fa-data-embed
+      # WP26: the optional SoA SIMD lanes (wide) build for wasm32 too (per-lane f64 without simd128).
+      - name: Build the SoA kernels with the simd feature for wasm32-unknown-unknown
+        run: cargo build -p ferroastro-forces -p ferroastro-eih -p ferroastro-propagate --features ferroastro-propagate/simd --target wasm32-unknown-unknown
       - name: Build ferroastro-real and ferroastro-erfa no_std (libm) for wasm32-unknown-unknown
         run: cargo build -p ferroastro-real -p ferroastro-erfa --no-default-features --features libm --target wasm32-unknown-unknown
       # DEP-010 / WP8: the optional hifitime (UTC) feature must build for wasm32 too.
