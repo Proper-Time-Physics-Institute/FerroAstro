@@ -95,6 +95,9 @@ pub(crate) fn json(cfg: &ViewerConfig, info: Option<&RunInfo>, fit: Option<&FitR
         "j2_nominal": crate::ic::de440().map_or(Value::Null, |d| num(d.sun_j2())),
         // ABI v2: the conformal-gravity comparison model (bit 12; ADR-0016, PHY-020).
         "conformal": conformal(cfg),
+        // The comparison dashboard's reference columns (engine analytic estimates, M5 evidence,
+        // Park17 literature, the INPOP15a bound), so the page holds no physics numbers.
+        "dashboard": crate::dashboard::json(cfg),
     });
     v.to_string()
 }

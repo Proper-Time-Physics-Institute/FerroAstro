@@ -266,6 +266,8 @@ canvas:focus-visible { outline-offset: -3px; }
   align-items: start;
 }
 .side { display: grid; gap: 1rem; min-width: 0; }
+/* The contribution table (the comparison dashboard) spans the page: it has nine columns. */
+.layout > .table-panel { grid-column: 1 / -1; }
 @media (max-width: 1020px) {
   .layout { grid-template-columns: minmax(0, 1fr); }
 }
@@ -408,24 +410,56 @@ fieldset.cg.off .lab, fieldset.cg.off .cg-ref { opacity: 0.6; }
 .budget-key li { display: inline-flex; align-items: center; gap: 0.35rem; }
 .budget-key .v { color: var(--muted); font-variant-numeric: tabular-nums; }
 
-.table-scroll { overflow-x: auto; overscroll-behavior-x: contain; }
+.table-scroll { position: relative; overflow-x: auto; overscroll-behavior-x: contain; } /* positioned: sr-only text inside stays in the scroll box */
 table { border-collapse: collapse; width: 100%; font-size: 0.875rem; }
 th, td { padding: 0.4rem 0.5rem; border-bottom: 1px solid var(--border); text-align: left; vertical-align: top; }
 th { font-weight: 600; color: var(--muted); }
 thead th { border-bottom: 2px solid var(--border); }
 td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
-td.effect { min-width: 9rem; }
-td.effect .lbl { display: inline-flex; align-items: center; gap: 0.45rem; font-weight: 600; }
+th.effect, td.effect { min-width: 9rem; }
+th.effect .lbl, td.effect .lbl { display: inline-flex; align-items: center; gap: 0.45rem; font-weight: 600; }
 tr.unresolved td.val { color: var(--muted); }
-tr.unresolved td.effect .lbl { font-weight: 400; }
-tfoot td { font-weight: 600; }
-tfoot tr:first-child td { border-top: 2px solid var(--border); }
-tfoot tr.cross td { font-weight: 400; color: var(--muted); }
+tr.unresolved th.effect .lbl { font-weight: 400; }
+tfoot td, tfoot th { font-weight: 600; }
+tfoot tr:first-child td, tfoot tr:first-child th { border-top: 2px solid var(--border); }
+tfoot tr.cross td, tfoot tr.cross th { font-weight: 400; color: var(--muted); }
 td .ref-src { display: block; font-size: 0.75rem; color: var(--muted); font-weight: 400; white-space: normal; }
 td progress { width: 5rem; height: 0.6rem; vertical-align: middle; accent-color: var(--accent); }
 td.leg { font-size: 0.75rem; color: var(--muted); white-space: nowrap; }
 td.leg .hash { font-family: var(--mono); }
 td.err, .err { color: var(--err-fg); }
+
+/* Comparison dashboard (F4): reference columns, each headed by its frame, window and protocol. */
+.col-pick { display: flex; flex-wrap: wrap; gap: 0 1rem; align-items: center; margin: 0.5rem 0; }
+.col-pick legend { padding: 0 0.25rem; }
+.col-pick .small { flex: 1 1 100%; }
+#contrib .col-h { display: inline-flex; align-items: center; gap: 0.1rem; white-space: nowrap; }
+#contrib .col-sub { display: block; max-width: 12rem; margin-top: 0.15rem; font-size: 0.75rem; font-weight: 400; line-height: 1.3; white-space: normal; color: var(--muted); }
+#contrib th.num .col-sub { margin-left: auto; }
+#contrib tbody th, #contrib tfoot th { text-align: left; color: var(--fg); }
+#contrib tbody th { font-weight: 400; }
+#contrib tfoot tr.cross th { color: var(--muted); }
+/* The effect column stays in view while the reference columns scroll sideways (phone widths). */
+#contrib thead th.effect, #contrib tbody th, #contrib tfoot th { position: sticky; left: 0; z-index: 1; background: var(--panel); box-shadow: inset -1px 0 0 var(--border); }
+#contrib tr.comparison th.effect { box-shadow: inset 3px 0 0 var(--fx-cg), inset -1px 0 0 var(--border); }
+#contrib td.muted { color: var(--muted); }
+#contrib .pm { color: var(--muted); }
+#contrib td.num .ref-src { white-space: nowrap; }
+#contrib td.col-bound { min-width: 9rem; }
+#contrib th.effect { min-width: 12rem; }
+#contrib td.col-bound .num { display: block; font-variant-numeric: tabular-nums; }
+.verdict { display: block; margin-top: 0.15rem; font-size: 0.75rem; font-weight: 600; white-space: nowrap; }
+.verdict.pass { color: var(--fg); }
+.verdict.fail { color: var(--err-fg); }
+.verdict.unres { color: var(--muted); font-weight: 400; }
+#contrib.hide-col-an .col-an, #contrib.hide-col-m5 .col-m5, #contrib.hide-col-lit .col-lit,
+#contrib.hide-col-diff .col-diff, #contrib.hide-col-bound .col-bound { display: none; }
+@media (max-width: 600px) {
+  #contrib { font-size: 0.8125rem; }
+  #contrib th, #contrib td { padding: 0.35rem 0.4rem; }
+  #contrib th.effect, #contrib tbody th, #contrib tfoot th { min-width: 6.5rem; max-width: 8rem; }
+  #contrib .col-sub { max-width: 9rem; }
+}
 
 /* ---------------------------------------------------------------- explainer */
 .explain { padding: 0.75rem 1rem 1.25rem; }

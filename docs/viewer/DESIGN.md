@@ -98,6 +98,7 @@ the crate exports no allocator.
 | `lab` | Rung lab: test-particle model from `ferroastro_ladder::single_body` |
 | `meta` | PHY-015 metadata JSON (frame, epoch, span, fit model, constants version, IC hash, model string) |
 | `reference` | ABI v2: the conformal-gravity comparison model's analytic Gauss reference for the current parameters, composed from `ferroastro_analytic` and the DE440 constants (§4.5); no formula of its own |
+| `dashboard` | the comparison dashboard's reference columns (§6.4): engine analytic estimates for the current parameters, the M5 evidence (`tests/vectors/m5-evidence.toml`, computed references), the Park17 literature rows and the INPOP15a bound (`tests/vectors/comparison-bounds.toml`), each with frame, window and protocol labels |
 | `ffi` | the C ABI (only module allowed the unsafe attribute) |
 
 The state lives in `thread_local! { static ENGINE: RefCell<Option<Engine>> }`. wasm is
@@ -363,7 +364,21 @@ One object, keys fixed (UI builders may rely on them):
     "gamma_star_per_cm": 5.42e-41, "kappa_per_cm2": 9.54e-54, "gamma0_centre": "uniform" | "sun",
     "exaggerated": false, "fit_values": "<the defaults and OI-79>", "uniform_caveat": "<...>",
     "reference": { "linear_arcsec_per_cy": x, "quadratic_arcsec_per_cy": x,
-      "total_arcsec_per_cy": x, "gamma0_arcsec_per_cy": x, "basis": "<...>" } | null } }
+      "total_arcsec_per_cy": x, "gamma0_arcsec_per_cy": x, "basis": "<...>" } | null },
+  "dashboard": {
+    "analytic": { "label", "short", "frame", "window", "protocol",
+      "unit": "arcsec/cy", "rows": { "b7" | "b8" | "b9" | "b11" | "b12" | "rung": { "value": x,
+      "basis": "<...>" } } } | null,
+    "m5": { "label": "M5 evidence (computed, not observed)", "kind": "computed-reference", "short", "unit",
+      "source", "run", "frame", "window", "protocol",
+      "rows": { "total" | "b7" | "b8" | "b9" | "b11": { "id", "value", "sigma", "sigma_id",
+        "protocol", "note", "quantity" } } },
+    "literature": { "label": "Park et al. 2017, Table 3", "short", "unit", "source", "frame", "window",
+      "protocol", "rows": { "b0" … "b11" | "cross_js": { "id", "value", "note", "quantity",
+        "applies": bool } } },
+    "bound": { "id", "interval_id", "label", "short", "value": 0.0, "half_width": x, "unit",
+      "quantity", "frame", "window", "protocol", "applies_to": ["b12"], "criterion" },
+    "comparison_bits": [12] } }
 ```
 
 `conformal` (ABI v2) is always present, so the page can show the engine's analytic reference before
@@ -374,6 +389,19 @@ evaluates a formula itself. It is `null` without `embed-header` (no DE440 consta
 
 `j2_nominal` (added with #22) lets the page scale its `J2_OVERRIDE` reference values without
 copying a header.440 value into JS.
+
+`dashboard` (F4 of the conformal-gravity plan; additive, still ABI v2) holds every number the
+contribution table shows beside a live value, so the page carries none: the engine's analytic
+estimates for the current parameters (GR 1PN × (2 + 2γ − β)/3, planar solar J2 at the run's J2,
+Lense–Thirring with the run's spin, the Rung-lab rungs in 1PN units, the conformal-gravity Gauss
+rate; `null` without `embed-header`), the M5 evidence rows read from
+`tests/vectors/m5-evidence.toml` (FerroAstro's own nightly results, `kind = "computed-reference"`,
+never observations or ladder oracles), the Park17 literature rows from the existing vectors (with
+`applies = false` when the run overrides that effect's own parameter; the J2 row, computed at
+Park17's J2 = 2.25e-7, applies only when the J2 override equals that value) and the INPOP15a bound from
+`tests/vectors/comparison-bounds.toml`, which applies to comparison models only. The keys `b0`…`b12`
+are toggle bits and `rung` the Rung-lab rung, as in the table. `tests/viewer_dashboard.rs` checks
+the pass-through against the vector files and the estimates against the ladder's analytic vectors.
 
 ## 5. Initial conditions (embedded at build time, no network or file access at run time)
 
@@ -492,15 +520,35 @@ For the current toggle set S (the "full" configuration) and every effect X ∈ S
   and **one estimator** (§6.2 on the same window). Legs are independent `fav_configure` /
   `fav_run` sequences, so the page runs them in parallel in N leg workers
   (N = `navigator.hardwareConcurrency − 1`, at least 1) while the live view keeps running.
-* Columns: effect | ϖ̇(S) − ϖ̇(S\X) (″/cy) ± √(σ²+σ²) jack-knife | reference value (§8, with its
-  source and frame) | difference | leg IC hash (short) | engine. The conformal-gravity row (bit 12)
-  is labelled "comparison model" and its reference is the engine's Gauss value (§4.5).
+* Columns (the comparison dashboard, F4; every header names its frame, window and protocol, and
+  every reference number comes from the metadata's `dashboard` object, §4.5):
+  effect | live ϖ̇(S) − ϖ̇(S\X) (″/cy) ± √(σ²+σ²) jack-knife | engine analytic estimate (where a
+  closed form exists) | M5 evidence (computed, not observed; ± its sigma) | literature (Park17
+  Table 3; "not applied" when the run's parameter differs from Park17's, including the J2 row at
+  the nominal DE440 J2) | difference (live −
+  literature where it applies, else live − analytic; never against M5) | observational bound
+  (INPOP15a 0.0 ± 3.1 mas/cy, comparison models only, with ✓ within / ✗ exceeds / ? unresolved
+  markers for the analytic and the live value; "n/a" on ladder terms) | P-add (optional) | leg IC
+  hash (short) and engine. The bound markers use the page's 3σ convention on the interval
+  (`FAV.boundVerdict` in `fav.js`, criterion text in `dashboard.bound.criterion`): with
+  d = |rate − centre| and w the half-width, within if d + 3σ ≤ w, exceeds if d − w > 3σ,
+  otherwise unresolved (the 3σ band straddles an edge); the analytic estimate has σ = 0, so it is
+  never unresolved. A wide live σ alone never makes a far-outside value unresolved. Every reference
+  column's sub-label ends with the unit its metadata states (`unit`, arcsec/cy), and the bound cell
+  repeats it. The conformal-gravity row (bit 12) is labelled "comparison model"; with
+  the uniform γ0 centring its bound cell repeats that the zero is exact only with
+  velocity-independent forces (EIH and Lense–Thirring add an O(v·Δv/c²) drift).
+* The M5 total (575.309161 ″/cy, a 393-body EIH model) appears beside ϖ̇(S) only when S is the
+  viewer's full model (planets, J2, LT, GR 1PN or EIH, System mode).
+* Narrow screens: the effect column is sticky while the table scrolls sideways inside its own
+  region, and checkboxes above the table hide reference columns (a per-viewer choice kept in
+  localStorage when available).
 * Contributions can be negative (Lense–Thirring, a Sun-centred γ0). The budget strip draws them to
   the left of a zero mark and the chart's per-effect wedges below the Kepler floor, hatched, with a
   dashed net-sum ray; nothing is dropped as "not drawn".
 * Footer rows: the sum of contributions, ϖ̇(S), ϖ̇(Kepler-only) (its integrator floor), and the
   residual ϖ̇(S) − Σ − ϖ̇(Kepler-only) labelled "interaction (cross) terms; not an error" (Park's
-  Jupiter+Saturn cross row is 0.0411 ″/cy).
+  Jupiter+Saturn cross row, PARK17-T3-X-JUPITER-SATURN from the metadata, for scale).
 * An optional "also P-add" button computes ϖ̇({☉,☿} ∪ X) − ϖ̇({☉,☿}) per X, shown as an
   **informational** column labelled "P-add (information only, ADR-0014)".
 * Each row is labelled with its protocol. The table header carries the PHY-015 metadata (frame,

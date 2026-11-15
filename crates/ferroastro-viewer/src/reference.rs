@@ -52,15 +52,16 @@ pub struct ConformalReference {
 
 /// The constants of the reference: `GM☉`, `c`, the two-body `GM☉ + GM☿`, Mercury's `a` and `e`.
 #[derive(Debug, Clone, Copy)]
-struct Inputs {
-    gm_sun: GravParam,
-    c: Velocity,
-    a: Length,
-    e: f64,
-    orbits_per_century: f64,
+pub(crate) struct Inputs {
+    pub(crate) gm_sun: GravParam,
+    pub(crate) c: Velocity,
+    pub(crate) a: Length,
+    pub(crate) e: f64,
+    pub(crate) orbits_per_century: f64,
 }
 
-fn inputs() -> Result<Inputs, ViewerError> {
+/// The shared inputs (also used by [`crate::dashboard`]'s analytic estimates).
+pub(crate) fn inputs() -> Result<Inputs, ViewerError> {
     static I: OnceLock<Result<Inputs, String>> = OnceLock::new();
     I.get_or_init(|| {
         let de = crate::ic::de440().map_err(|e| e.message)?;

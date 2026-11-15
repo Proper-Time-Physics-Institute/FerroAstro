@@ -20,7 +20,10 @@
 // from tests/vectors (AGENTS.md rule 1); the metadata JSON has every documented key; bit 12 (the
 // conformal-gravity comparison model, ABI v2) runs, a Sun-centred exaggerated gamma0 gives a
 // retrograde advance matching the engine's own Gauss reference, and the default uniform centring
-// gives ~0 (no oracle beyond the engine's analytic value; the fit values of OI-79 are never used).
+// gives ~0 (no oracle beyond the engine's analytic value; the fit values of OI-79 are never used);
+// the metadata's comparison dashboard carries the M5 evidence and the INPOP15a bound from tests/vectors,
+// with units; the bound markers' 3σ rule (FAV.boundVerdict) gives exceeds for a Sun-centred gamma0 and
+// within or unresolved for a uniform one, also when the live σ is wider than the bound.
 // Verifies: API-004 (proposed in DESIGN.md section 9)
 
 import { readFileSync } from "node:fs";
@@ -140,10 +143,44 @@ let cfg = eng.configure(0, kParams);
 check(cfg.engine === FAV.ENGINE_RESOLVED.WHFAST, "mask 0 with ENGINE=WHFAST resolves to WHFast", cfg.engine);
 check(cfg.epochJd === 2440400.5, "System-mode epoch is JDEPOC 2440400.5", cfg.epochJd);
 const keys = ["abi", "mode", "engine", "nominal", "toggles", "params", "model", "gauge", "frame", "display_frame",
-  "epoch_jd_tdb", "time_scale", "ic_source", "ic_hash", "constants", "scenario_digest", "estimator", "fit", "j2_nominal", "conformal"];
+  "epoch_jd_tdb", "time_scale", "ic_source", "ic_hash", "constants", "scenario_digest", "estimator", "fit", "j2_nominal", "conformal", "dashboard"];
 const missing = keys.filter((k) => !cfg.meta || !(k in cfg.meta));
 check(missing.length === 0, "metadata JSON has every documented key", missing.join(", ") || "all present");
 check(cfg.scenario.length > 0, "fav_scenario returns the ScenarioSpec TOML", cfg.scenario.length + " bytes");
+// The comparison dashboard (F4): the M5 evidence and the INPOP15a bound reach the page through the
+// metadata unchanged from tests/vectors (the page carries none of them), and the engine's analytic
+// GR estimate is PHY004-GR-RATE within that vector's own tolerance.
+const dash = cfg.meta && cfg.meta.dashboard;
+const m5v = loadVector("m5-evidence.toml", "M5-EIH-FULL-RATE");
+check(dash && dash.m5 && dash.m5.kind === "computed-reference" && dash.m5.rows.total.value === m5v,
+  "metadata dashboard carries the M5 total from tests/vectors/m5-evidence.toml (computed, not observed)", dash && dash.m5 ? dash.m5.rows.total.value : "missing");
+const bw = loadVector("comparison-bounds.toml", "INPOP15A-MERCURY-SUPPLEMENTARY-ADVANCE-INTERVAL");
+check(dash && dash.bound && dash.bound.half_width === bw && dash.bound.applies_to.join() === "b" + FAV.BIT.CONFORMAL,
+  "metadata dashboard carries the INPOP15a bound for the comparison model only", dash && dash.bound ? dash.bound.half_width + " " + dash.bound.applies_to : "missing");
+check(dash && dash.bound && dash.bound.unit === "arcsec/cy" && ["m5", "literature"].every((k) => dash[k].unit === "arcsec/cy"),
+  "every reference column states its unit (arcsec/cy)", dash && dash.bound ? dash.bound.unit : "missing");
+// FAV.boundVerdict, the rule behind the bound markers (the page's 3σ convention on the interval).
+// The first case is the one a 200-yr preview showed wrongly as unresolved: -0.183 +- 0.051 sits about
+// 3.5σ outside the edge of +- 0.0031 (rule inputs only, not a physics reference).
+{
+  const b = { value: 0, half_width: bw };
+  const cases = [
+    [-0.183, 0.051, "exceeds", "far outside, σ wider than the bound (preview case)"],
+    [-59.8, 5, "exceeds", "exaggerated gamma0, wide σ"],
+    [0, 0.19, "unresolved", "uniform, 100 yr"],
+    [-0.0001, 1e-4, "within", "inside with a small σ"],
+    [0.004, 1e-4, "exceeds", "just outside with a small σ"],
+    [0.004, 0.001, "unresolved", "just outside, 3σ reaches back in"],
+    [6.67e-12, NaN, "within", "analytic, no σ"],
+    [-0.183, NaN, "exceeds", "analytic Sun-centred, no σ"],
+  ];
+  for (const [v, sg, want, what] of cases) {
+    const got = FAV.boundVerdict(v, sg, b);
+    check(got && got.verdict === want, "bound verdict " + what + ": " + want, v + " +- " + sg + " -> " + (got ? got.verdict : "null"));
+  }
+}
+const grAn = dash && dash.analytic && dash.analytic.rows.b8 ? dash.analytic.rows.b8.value : NaN;
+check(Math.abs(grAn - loadVector("phy004-gr-analytic.toml", "PHY004-GR-RATE")) <= 1e-4, "engine analytic GR estimate matches PHY004-GR-RATE (+/- 1e-4)", grAn);
 
 let t0 = performance.now();
 const chunked = runChunked(eng, KEPLER_SPAN_YEARS, 0.25);
@@ -205,14 +242,23 @@ check(cfg.meta.nominal === false, "an exaggerated gamma0 marks the run non-nomin
 const cgRef = cgMeta && cgMeta.reference ? cgMeta.reference.total_arcsec_per_cy : NaN;
 runChunked(eng, KEPLER_SPAN_YEARS, 1.0);
 f = eng.fit(NaN, NaN);
-const kepRate = (() => {
+const [kepRate, kepSigma] = (() => {
   eng.configure(0, { [P.ENGINE]: FAV.ENGINE_PARAM.WHFAST, [P.SPAN_YEARS]: 100 });
   runChunked(eng, KEPLER_SPAN_YEARS, 1.0);
   const k = eng.fit(NaN, NaN);
-  return k.fit ? k.fit[FAV.FIT.RATE] : NaN;
+  return k.fit ? [k.fit[FAV.FIT.RATE], k.fit[FAV.FIT.JACKKNIFE_SIGMA]] : [NaN, NaN];
 })();
+// The live contribution's σ as the page forms it: the two legs' jack-knife σ in quadrature.
+const legSigma = (fit) => Math.hypot(fit[FAV.FIT.JACKKNIFE_SIGMA], kepSigma);
+const bound = dash && dash.bound;
 if (f.fit) {
   const d = f.fit[FAV.FIT.RATE] - kepRate;
+  // The bound marker (FAV.boundVerdict, the page's 3σ rule): a Sun-centred gamma0 far outside the
+  // INPOP15a interval exceeds it even though its σ is wider than the bound's half-width.
+  const vd = FAV.boundVerdict(d, legSigma(f.fit), bound);
+  check(vd && vd.verdict === "exceeds", "Sun-centred live contribution exceeds the INPOP15a bound (3σ rule)",
+    d + " +- " + legSigma(f.fit) + ": " + (vd ? vd.verdict : "no verdict"));
+  check(FAV.boundVerdict(cgRef, NaN, bound).verdict === "exceeds", "Sun-centred analytic Gauss reference exceeds the bound", cgRef);
   check(d < 0 && cgRef < 0, "Sun-centred exaggerated gamma0 gives a retrograde advance", d + " arcsec/cy");
   check(Math.abs(d / cgRef - 1) <= CG_REL_BOUND, "Sun-centred gamma0 within " + CG_REL_BOUND * 100 + " % of the engine's Gauss reference " + cgRef,
     d + " over " + KEPLER_SPAN_YEARS + " yr");
@@ -226,6 +272,9 @@ f = eng.fit(NaN, NaN);
 if (f.fit) {
   const d = f.fit[FAV.FIT.RATE] - kepRate;
   check(Math.abs(d) <= CG_UNIFORM_BOUND, "uniform exaggerated gamma0 leaves the rate unchanged (|d| <= " + CG_UNIFORM_BOUND + " arcsec/cy)", d);
+  const vd = FAV.boundVerdict(d, legSigma(f.fit), bound);
+  check(vd && (vd.verdict === "unresolved" || vd.verdict === "within"), "uniform live contribution is within or unresolved against the bound, never exceeds",
+    d + " +- " + legSigma(f.fit) + ": " + (vd ? vd.verdict : "no verdict"));
 } else {
   check(false, "fav_fit for uniform gamma0", f.status + " " + (f.message || ""));
 }

@@ -2,9 +2,10 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 // fav.js: constants of the ferroastro-viewer C ABI v2 (docs/viewer/DESIGN.md section 4) and a small
-// wrapper around the wasm exports. It is shared by worker.js (classic worker, importScripts) and
-// smoke.mjs (node, loaded with vm). It does no physics: it calls the fav_* exports, copies buffers out
-// of linear memory and decodes UTF-8.
+// wrapper around the wasm exports. It is shared by worker.js (classic worker, importScripts), the page
+// and smoke.mjs (node, loaded with vm). It does no physics: it calls the fav_* exports, copies buffers
+// out of linear memory and decodes UTF-8, plus one pure display rule (FAV.boundVerdict) kept here so
+// the smoke test checks the same code the page runs.
 //
 // Buffer rule (section 4.1): a pointer is valid only until the next fav_* call other than its _len
 // partner, and memory may grow during any call. So every read here is ptr(), len(), then a fresh view
@@ -361,6 +362,25 @@
       }
     }
     return WebAssembly.compile(await response.arrayBuffer());
+  };
+
+  /**
+   * Verdict of a rate against an observational bound (display only; the criterion travels with the
+   * bound in the metadata, `dashboard.bound.criterion`). It uses the page's 3σ convention on the
+   * interval [centre − half_width, centre + half_width]: with off = |v − centre| and m = 3σ,
+   * "within" if off + m ≤ half_width, "exceeds" if off − half_width > m, else "unresolved" (the run's
+   * uncertainty straddles an edge). A missing or non-finite σ (the analytic estimate) counts as 0,
+   * so an exact value is never unresolved. Returns null without a bound or a finite rate.
+   * `factor` is off / half_width; `sigmas` is (off − half_width) / σ (NaN when σ is 0).
+   */
+  FAV.boundVerdict = function (v, sigma, bound) {
+    if (!bound || !Number.isFinite(v) || !Number.isFinite(bound.value) || !Number.isFinite(bound.half_width)) return null;
+    const s = Number.isFinite(sigma) && sigma > 0 ? sigma : 0;
+    const off = Math.abs(v - bound.value);
+    const w = bound.half_width;
+    const m = 3 * s;
+    const verdict = off + m <= w ? "within" : off - w > m ? "exceeds" : "unresolved";
+    return { verdict, off, factor: w > 0 ? off / w : Infinity, sigmas: s > 0 ? (off - w) / s : NaN };
   };
 
   /** Formats a FavError or Error for display. */

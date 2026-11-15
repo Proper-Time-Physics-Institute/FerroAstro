@@ -79,6 +79,7 @@
 // of `ffi` (DESIGN §2.2). Every other module forbids it itself; the lint table denies it.
 
 pub mod config;
+pub mod dashboard;
 mod engine;
 pub mod ffi;
 mod fit;

@@ -259,49 +259,62 @@
       </div>
     </section>
 
-    <!-- ============================== contribution table ============================== -->
-    <section class="panel table-panel" aria-labelledby="table-h">
-      <div class="panel-head">
-        <div class="head-l"><h2 id="table-h">Per-effect contributions</h2><button type="button" class="tip" data-tip="contribution-table"></button></div>
-        <span class="muted small"><button type="button" class="term" data-tip="reference-ids">ADR-0014</button> <button type="button" class="term" data-tip="p-remove">P-remove</button>: ϖ̇(S) − ϖ̇(S∖X)</span>
-      </div>
-      <div class="table-tools">
-        <span class="lab"><label for="t-span" data-term="table-span">Compute contributions over</label><button type="button" class="tip" data-tip="table-span"></button></span>
-        <input id="t-span" name="table-span" type="number" min="10" max="20000" step="10" value="200" inputmode="numeric" autocomplete="off">
-        <span>years</span>
-        <span class="check-wrap"><label class="check" data-term="p-add"><input type="checkbox" id="t-padd"> Also P-add</label><button type="button" class="tip" data-tip="p-add"></button></span>
-        <button type="button" id="t-run" class="primary" data-term="contribution-table">Compute</button>
-        <button type="button" id="t-cancel" data-term="leg" hidden>Cancel</button>
-        <span class="check-wrap"><button type="button" id="t-csv" disabled>Export CSV</button><button type="button" class="tip" data-tip="export-csv"></button></span>
-      </div>
-      <p class="help">Each <button type="button" class="term" data-tip="leg">leg</button> is an independent run in its own worker: the same engine, span, <button type="button" class="term" data-tip="estimator">estimator</button> and <button type="button" class="term" data-tip="initial-conditions">initial conditions</button>, differing only by the one effect removed. Rows within <button type="button" class="term" data-tip="three-sigma">3σ of zero</button> are greyed: below resolution for this span.</p>
-      <div id="budget" class="budget" hidden>
-        <p class="budget-head"><button type="button" class="term" data-tip="budget">Rate budget</button> <span class="muted small">every contribution to one scale; negative ones left of the zero mark, hatched</span></p>
-        <div id="budget-bar" class="budget-bar" aria-hidden="true"></div>
-        <ul id="budget-key" class="budget-key" aria-label="Contributions: positive largest first, then negative"></ul>
-      </div>
-      <div class="with-tip top"><div id="t-meta" class="table-meta parts"></div><button type="button" class="tip" data-tip="metadata"></button></div>
-      <div class="table-scroll" tabindex="0" role="region" aria-labelledby="table-h">
-        <table id="contrib">
-          <caption class="sr-only">Perihelion-rate contribution of each effect</caption>
-          <thead>
-            <tr>
-              <th scope="col">Effect <button type="button" class="tip" data-tip="effects-toggles"></button></th>
-              <th scope="col" class="num">ϖ̇(S)−ϖ̇(S∖X) ″/cy <button type="button" class="tip" data-tip="p-remove"></button></th>
-              <th scope="col" class="num">Reference <button type="button" class="tip" data-tip="reference-value"></button></th>
-              <th scope="col" class="num">Diff <button type="button" class="tip" data-tip="diff"></button></th>
-              <th scope="col" class="num padd-col" hidden>P-add (info only) <button type="button" class="tip" data-tip="p-add"></button></th>
-              <th scope="col">Leg <button type="button" class="tip" data-tip="leg"></button></th>
-            </tr>
-          </thead>
-          <tbody id="contrib-body">
-            <tr><td colspan="6" class="muted">Not computed yet. Press Compute to run one leg per switched-on effect.</td></tr>
-          </tbody>
-          <tfoot id="contrib-foot"></tfoot>
-        </table>
-      </div>
-    </section>
   </div>
+
+  <!-- ============================== contribution table ============================== -->
+  <section class="panel table-panel" aria-labelledby="table-h">
+    <div class="panel-head">
+      <div class="head-l"><h2 id="table-h">Per-effect contributions</h2><button type="button" class="tip" data-tip="contribution-table"></button></div>
+      <span class="muted small"><button type="button" class="term" data-tip="reference-ids">ADR-0014</button> <button type="button" class="term" data-tip="p-remove">P-remove</button>: ϖ̇(S) − ϖ̇(S∖X)</span>
+    </div>
+    <div class="table-tools">
+      <span class="lab"><label for="t-span" data-term="table-span">Compute contributions over</label><button type="button" class="tip" data-tip="table-span"></button></span>
+      <input id="t-span" name="table-span" type="number" min="10" max="20000" step="10" value="200" inputmode="numeric" autocomplete="off">
+      <span>years</span>
+      <span class="check-wrap"><label class="check" data-term="p-add"><input type="checkbox" id="t-padd"> Also P-add</label><button type="button" class="tip" data-tip="p-add"></button></span>
+      <button type="button" id="t-run" class="primary" data-term="contribution-table">Compute</button>
+      <button type="button" id="t-cancel" data-term="leg" hidden>Cancel</button>
+      <span class="check-wrap"><button type="button" id="t-csv" disabled>Export CSV</button><button type="button" class="tip" data-tip="export-csv"></button></span>
+    </div>
+    <fieldset class="col-pick" aria-describedby="col-pick-help">
+      <legend><button type="button" class="term" data-tip="reference-value">Reference columns</button></legend>
+      <label class="check" data-term="engine-analytic"><input type="checkbox" data-col="an" checked> Engine analytic</label>
+      <label class="check" data-term="m5-evidence"><input type="checkbox" data-col="m5" checked> M5 evidence</label>
+      <label class="check" data-term="literature-value"><input type="checkbox" data-col="lit" checked> Literature</label>
+      <label class="check" data-term="diff"><input type="checkbox" data-col="diff" checked> Difference</label>
+      <label class="check" data-term="observational-bound"><input type="checkbox" data-col="bound" checked> Bound</label>
+      <span id="col-pick-help" class="muted small">Hide columns to narrow the table; each header names its frame, window and protocol.</span>
+    </fieldset>
+    <p class="help">Each <button type="button" class="term" data-tip="leg">leg</button> is an independent run in its own worker: the same engine, span, <button type="button" class="term" data-tip="estimator">estimator</button> and <button type="button" class="term" data-tip="initial-conditions">initial conditions</button>, differing only by the one effect removed. Rows within <button type="button" class="term" data-tip="three-sigma">3σ of zero</button> are greyed: below resolution for this span.</p>
+    <div id="budget" class="budget" hidden>
+      <p class="budget-head"><button type="button" class="term" data-tip="budget">Rate budget</button> <span class="muted small">every contribution to one scale; negative ones left of the zero mark, hatched</span></p>
+      <div id="budget-bar" class="budget-bar" aria-hidden="true"></div>
+      <ul id="budget-key" class="budget-key" aria-label="Contributions: positive largest first, then negative"></ul>
+    </div>
+    <div class="with-tip top"><div id="t-meta" class="table-meta parts"></div><button type="button" class="tip" data-tip="metadata"></button></div>
+    <div class="table-scroll" tabindex="0" role="region" aria-labelledby="table-h">
+      <table id="contrib">
+        <caption class="sr-only">Perihelion-rate contribution of each effect</caption>
+        <thead>
+          <tr>
+            <th scope="col" class="effect">Effect <button type="button" class="tip" data-tip="effects-toggles"></button></th>
+            <th scope="col" class="num col-live"><span class="col-h">Live ϖ̇(S)−ϖ̇(S∖X) ± σ ″/cy <button type="button" class="tip" data-tip="live-value"></button></span><span class="col-sub" id="col-live-sub"></span></th>
+            <th scope="col" class="num col-an"><span class="col-h">Engine analytic <button type="button" class="tip" data-tip="engine-analytic"></button></span><span class="col-sub" id="col-an-sub"></span></th>
+            <th scope="col" class="num col-m5"><span class="col-h">M5 evidence <button type="button" class="tip" data-tip="m5-evidence"></button></span><span class="col-sub" id="col-m5-sub"></span></th>
+            <th scope="col" class="num col-lit"><span class="col-h">Literature <button type="button" class="tip" data-tip="literature-value"></button></span><span class="col-sub" id="col-lit-sub"></span></th>
+            <th scope="col" class="num col-diff"><span class="col-h">Difference <button type="button" class="tip" data-tip="diff"></button></span><span class="col-sub" id="col-diff-sub"></span></th>
+            <th scope="col" class="col-bound"><span class="col-h">Observational bound <button type="button" class="tip" data-tip="observational-bound"></button></span><span class="col-sub" id="col-bound-sub"></span></th>
+            <th scope="col" class="num padd-col" hidden>P-add (info only) <button type="button" class="tip" data-tip="p-add"></button></th>
+            <th scope="col">Leg <button type="button" class="tip" data-tip="leg"></button></th>
+          </tr>
+        </thead>
+        <tbody id="contrib-body">
+          <tr><td colspan="9" class="muted">Not computed yet. Press Compute to run one leg per switched-on effect.</td></tr>
+        </tbody>
+        <tfoot id="contrib-foot"></tfoot>
+      </table>
+    </div>
+  </section>
 </main>
 
 <!-- ============================== explainer ============================== -->
