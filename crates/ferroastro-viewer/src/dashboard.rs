@@ -221,7 +221,8 @@ fn fixed() -> Result<&'static Value, ViewerError> {
                 "id": BOUND_ID,
                 "interval_id": BOUND_INTERVAL_ID,
                 "label": "INPOP15a (Fienga et al. 2016)",
-                "short": "INPOP15a · anomalous advance · comparison models only",
+                "short": "INPOP15a · data span with MESSENGER ranging · anomalous advance · \
+                          comparison models only",
                 "value": num(b),
                 "half_width": num(w),
                 "unit": "arcsec/cy",
@@ -230,7 +231,8 @@ fn fixed() -> Result<&'static Value, ViewerError> {
                 "window": "INPOP15a data span, with MESSENGER ranging",
                 "protocol": "supplementary (non-GR) advance fitted on top of GR",
                 "applies_to": ["b12"],
-                "criterion": "with off = |rate - value| and s = 3 sigma (0 for the analytic \
+                "criterion": "with off = |rate - value| and s = 3 sigma (sigma the live \
+                              contribution's paired-difference jack-knife, 0 for the analytic \
                               estimate): within if off + s <= half_width, exceeds if \
                               off - half_width > s, otherwise unresolved; applies to \
                               comparison models only, never to a ladder term",

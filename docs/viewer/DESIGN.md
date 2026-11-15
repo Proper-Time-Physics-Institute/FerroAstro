@@ -260,6 +260,10 @@ the module, and the version-1 URL fragment (13 parameters) is read with ids 13�
 | `fav_meta_ptr() -> *const u8`, `fav_meta_len() -> u32` | UTF-8 JSON metadata of the current run and last fit (§4.5) |
 | `fav_scenario_ptr() -> *const u8`, `fav_scenario_len() -> u32` | the run's `ScenarioSpec` as TOML (System mode), for "reproduce with the CLI" |
 | `fav_error_ptr() -> *const u8`, `fav_error_len() -> u32` | last error message |
+| `fav_pair_clear() -> i32` | empty the paired-difference legs (additive in v2, §6.4) |
+| `fav_pair_push(leg: u32, t_years: f64, lon_arcsec: f64) -> i32` | append one passage row (`t`, `varpi_proj_arcsec` of the passages buffer) to leg 0 (with the effect) or 1 (without); scalars only, so JS still never writes into wasm memory |
+| `fav_pair_fit(mask_a: u32, mask_b: u32, flags: u32, epoch_jd: f64) -> i32` | paired-difference jack-knife of leg 0 − leg 1 (flags: bit 0 `FIT_PERIODIC`, bit 1 Rung lab); `FAV_E_FIT` for too few passages |
+| `fav_pair_ptr() -> *const f64`, `fav_pair_len() -> u32` | pair record (stride 6): `difference, paired_sigma, independent_sigma, blocks, n_a, n_b` (″/cy) |
 
 The engine never calls into JS; the module has **no imports** (checked in CI, §9).
 
@@ -348,7 +352,8 @@ One object, keys fixed (UI builders may rely on them):
 
 ```json
 { "abi": 2, "mode": "system" | "rung-lab", "engine": "whfast h=1 d" | "ias15 eps=1e-9" | ...,
-  "nominal": true, "toggles": 1023, "params": {"beta":1,"gamma":1, ...},
+  "nominal": true, "comparison_model": null | "<conformal gravity ...: not the real solar system>",
+  "toggles": 1023, "params": {"beta":1,"gamma":1, ...},
   "model": "<propagate RunOutput.model string: every force term, its gauge and parameters>",
   "gauge": "PPN isotropic/harmonic" | "Newtonian" | ...,
   "frame": "Park17 mean Mercury orbit plane, ICRF pole RA 280.9876 deg Dec 61.4481 deg",
@@ -386,6 +391,12 @@ bit 12 is switched on. `reference` is Mercury's first-order Gauss secular rate f
 parameters (`ferroastro_analytic::advance::conformal_{linear,quadratic}_advance`, SW92 J2000 mean
 a and e, β = GM☉/c², n from GM☉ + GM☿), labelled "comparison model"; the page shows it and never
 evaluates a formula itself. It is `null` without `embed-header` (no DE440 constants).
+
+`nominal` says only that nothing is exaggerated (DE440 J2 and spin, IAS15 ε ≤ 1e-9, the
+conformal-gravity fit values). A run with a comparison model on is **not** a description of the
+real solar system even when it is nominal: `comparison_model` is then a non-null text saying so
+(null otherwise), and the page shows a "Comparison model on" badge beside the nominal one. The key
+names keep `nominal` (PHY-003 scans for it).
 
 `j2_nominal` (added with #22) lets the page scale its `J2_OVERRIDE` reference values without
 copying a header.440 value into JS.
@@ -522,7 +533,7 @@ For the current toggle set S (the "full" configuration) and every effect X ∈ S
   (N = `navigator.hardwareConcurrency − 1`, at least 1) while the live view keeps running.
 * Columns (the comparison dashboard, F4; every header names its frame, window and protocol, and
   every reference number comes from the metadata's `dashboard` object, §4.5):
-  effect | live ϖ̇(S) − ϖ̇(S\X) (″/cy) ± √(σ²+σ²) jack-knife | engine analytic estimate (where a
+  effect | live ϖ̇(S) − ϖ̇(S\X) (″/cy) ± paired-difference jack-knife σ (below) | engine analytic estimate (where a
   closed form exists) | M5 evidence (computed, not observed; ± its sigma) | literature (Park17
   Table 3; "not applied" when the run's parameter differs from Park17's, including the J2 row at
   the nominal DE440 J2) | difference (live −
@@ -538,6 +549,22 @@ For the current toggle set S (the "full" configuration) and every effect X ∈ S
   repeats it. The conformal-gravity row (bit 12) is labelled "comparison model"; with
   the uniform γ0 centring its bound cell repeats that the zero is exact only with
   velocity-independent forces (EIH and Lense–Thirring add an O(v·Δv/c²) drift).
+* σ of a contribution (and of the P-add column): a **paired-difference jack-knife**, computed in the
+  engine (`fav_pair_clear` / `fav_pair_push` / `fav_pair_fit` / `fav_pair_ptr`, §4; additive in
+  ABI v2). The two legs share initial conditions and the estimator, so most of their fit residuals
+  (the planets' periodic signatures, the sampling phase) are common; combining each leg's own
+  jack-knife as independent, √(σ_S² + σ_W²), counts that shared error twice. Each leg is fitted
+  with its own model (§6.3, as `fav_fit` fits it), the same block is deleted from both legs, and the
+  jack-knife runs on the replicate differences. Blocks are `G = clamp(min(n_S, n_W)/20, 2, 10)`
+  equal **time** slices of the legs' common span (the legs' passages need not fall on the same
+  indices); a passage outside the common span joins the nearest end block. The page posts each
+  finished leg's passage rows (`t`, `varpi_proj_arcsec`) to one extra worker and shows "σ…" until
+  the engine answers; it does no statistics itself. The record also carries the independent
+  combination, which the cell's tooltip shows; if pairing fails the cell falls back to it, marked
+  "σ unpaired (upper estimate)". With the uniform γ0 centring and velocity-independent forces both
+  legs follow the same heliocentric orbit, so the conformal-gravity row's paired σ is at round-off
+  and it reads "within" the bound instead of "unresolved". The 3σ rules (greying, bound markers)
+  are unchanged and use this σ.
 * The M5 total (575.309161 ″/cy, a 393-body EIH model) appears beside ϖ̇(S) only when S is the
   viewer's full model (planets, J2, LT, GR 1PN or EIH, System mode).
 * Narrow screens: the effect column is sticky while the table scrolls sideways inside its own

@@ -756,9 +756,17 @@
     term: "Jack-knife σ", group: "fit",
     short: "The uncertainty shown after ±: the passages are split into consecutive blocks, the fit is redone leaving out one block at a time, and σ comes from the spread.",
     typical: "between 2 and 10 blocks (number of passages ÷ 20)",
-    long: "The delete-one-block jack-knife estimates the standard error without assuming that the residuals are independent. Residuals from orbital fits are strongly correlated in time, so the [[formal-sigma]] understates the true error; the jack-knife is the honest one and is what the readout and the table use. In the table, a difference of two legs gets σ = √(σ₁² + σ₂²).",
+    long: "The delete-one-block jack-knife estimates the standard error without assuming that the residuals are independent. Residuals from orbital fits are strongly correlated in time, so the [[formal-sigma]] understates the true error; the jack-knife is the honest one and is what the readout and the table use. In the table, a contribution's σ is a [[paired-jackknife]] on the difference of its two legs, not √(σ₁² + σ₂²).",
     mercury: "The ± shrinks as the run gets longer and the periodic terms average out.",
-    see: ["formal-sigma", "three-sigma", "least-squares"],
+    see: ["formal-sigma", "three-sigma", "least-squares", "paired-jackknife"],
+  };
+  E["paired-jackknife"] = {
+    term: "Paired-difference jack-knife", group: "table",
+    short: "How the table gets a contribution's σ: the engine deletes the same time block from both legs, refits each, and takes the jack-knife spread of the differences, so the residuals the legs share cancel.",
+    typical: "between 2 and 10 blocks (the smaller leg's passages ÷ 20), equal slices of the common span",
+    long: "The two legs of a [[p-remove]] row start from the same initial conditions and use the same [[estimator]], so most of their fit residuals (the planets' periodic signatures, the sampling phase) are the same in both. Combining the legs' own [[jackknife]] σ as if independent, √(σ₁² + σ₂²), counts that shared error twice and overstates the uncertainty of the difference. The engine instead fits each leg with its own model, deletes one time block from both legs at a time, and computes the jack-knife on the replicate differences (fav_pair_fit, DESIGN §6.4); the page does no statistics. The cell's tooltip also shows what the independent combination would have been. If the engine cannot pair two legs the cell says \"σ unpaired (upper estimate)\" and falls back to the independent combination.",
+    mercury: "With the default uniform [[gamma0-centring]] the conformal-gravity row's two legs follow the same heliocentric orbit, so its paired σ is at round-off and the row reads within the bound instead of unresolved.",
+    see: ["jackknife", "live-value", "three-sigma", "leg"],
   };
   E["formal-sigma"] = {
     term: "Formal σ", group: "fit",
@@ -842,10 +850,10 @@
   };
   E["live-value"] = {
     term: "Live value ± jack-knife σ", group: "table",
-    short: "This run's contribution, ϖ̇(S) − ϖ̇(S∖X), with the two legs' jack-knife σ combined in quadrature. Frame, span and epoch are in the column header.",
-    long: "Computed in your browser from two legs of the [[contribution-table]] ([[p-remove]]), each fitted by the same [[estimator]] on the [[park17-plane]] (the initial orbit plane in the [[rung-lab]]), over the table's [[table-span|span]] forward from the run epoch. The σ is the [[jackknife]] estimate of each leg, combined as if independent; the legs share initial conditions, so it is an upper estimate.",
-    mercury: "Over 200 years σ is about 0.01–0.02 ″/cy: enough for the planets and GR, not for Lense–Thirring.",
-    see: ["p-remove", "jackknife", "table-span", "three-sigma"],
+    short: "This run's contribution, ϖ̇(S) − ϖ̇(S∖X), with the engine's jack-knife σ of the difference of the two legs. Frame, span and epoch are in the column header.",
+    long: "Computed by the engine in your browser from two legs of the [[contribution-table]] ([[p-remove]]), each fitted by the same [[estimator]] on the [[park17-plane]] (the initial orbit plane in the [[rung-lab]]), over the table's [[table-span|span]] forward from the run epoch. The σ is the [[paired-jackknife]]: the same time block is deleted from both legs, so the error they share cancels. It is smaller than the legs' σ combined as if independent (the tooltip shows both). While the engine pairs the legs the cell shows σ….",
+    mercury: "Rows the legs' own σ would have greyed, such as the uniform conformal-gravity row, resolve once the shared error cancels.",
+    see: ["p-remove", "jackknife", "paired-jackknife", "table-span", "three-sigma"],
   };
   E["engine-analytic"] = {
     term: "Engine analytic estimate", group: "table",
@@ -892,7 +900,7 @@
   E["three-sigma"] = {
     term: "Below resolution (3σ)", group: "table",
     short: "Rows whose value is within three standard deviations of zero are greyed: the run is too short to tell that effect from zero.",
-    long: "With σ the combined [[jackknife]] uncertainty of the two legs, a result with |value| < 3σ cannot be told apart from zero at the 3σ level (for a Gaussian error, a true zero lands outside ±3σ only about 0.3 % of the time). Longer spans shrink σ.",
+    long: "With σ the [[paired-jackknife]] uncertainty of the difference of the two legs, a result with |value| < 3σ cannot be told apart from zero at the 3σ level (for a Gaussian error, a true zero lands outside ±3σ only about 0.3 % of the time). Longer spans shrink σ.",
     mercury: "Lense–Thirring (−0.002 ″/cy) and the asteroids (0.001 ″/cy) are greyed on short spans.",
     see: ["jackknife", "table-span"],
   };
@@ -922,7 +930,7 @@
   E["leg"] = {
     term: "Leg", group: "table",
     short: "One independent integration in the table (S, Kepler only, or S without one effect). The column shows each leg's short IC hash and engine.",
-    long: "Legs run in parallel in their own workers with the same engine, span, estimator and initial conditions, differing only by the switched-off effect. A progress bar shows each running leg; an error is shown in place with the message on hover.",
+    long: "Legs run in parallel in their own workers with the same engine, span, estimator and initial conditions, differing only by the switched-off effect. A progress bar shows each running leg; an error is shown in place with the message on hover. Each finished leg hands its passages to one more worker, where the engine forms the [[paired-jackknife]] σ of each row.",
     mercury: "A table for the full model runs 12 legs.",
     see: ["ic-hash", "contribution-table"],
   };
@@ -1036,10 +1044,10 @@
   };
   E["nominal-run"] = {
     term: "Nominal run", group: "data",
-    short: "A run with the real DE440 J₂ and solar spin, IAS15 ε ≤ 10⁻⁹ and, with conformal gravity on, its fit coefficients. Anything else is non-nominal and labelled.",
-    long: "Only nominal runs describe the real solar system at full accuracy. The metadata field \"nominal\" records it; the header badge and readout show \"Exaggerated physics\" or \"non-nominal\" otherwise ([[physical-exaggeration]]).",
-    mercury: "Literature comparisons need a nominal run.",
-    see: ["physical-exaggeration", "metadata"],
+    short: "A run with nothing exaggerated: the real DE440 J₂ and solar spin, IAS15 ε ≤ 10⁻⁹ and, if conformal gravity is on, its fit coefficients. Nominal is not the same as the real solar system: a comparison model never is.",
+    long: "\"Nominal\" means only that no knob exaggerates the physics. A nominal run without a [[comparison-model]] is the viewer's model of the real solar system at full accuracy. A run with the conformal-gravity comparison model on is NOT a description of the real solar system, even at its fit values (which are themselves unverified, OI-79): it is GR plus a different theory's term, for comparison. The metadata field \"nominal\" records the first; \"comparison_model\" (a text, null when off) records the second, and the header shows a \"Comparison model on\" badge. The header badge and readout show \"Exaggerated physics\" or \"non-nominal\" for an exaggerated run ([[physical-exaggeration]]).",
+    mercury: "Literature comparisons need a nominal run without a comparison model.",
+    see: ["physical-exaggeration", "comparison-model", "metadata"],
   };
   E["error-codes"] = {
     term: "Error codes (FA-E…)", group: "data",

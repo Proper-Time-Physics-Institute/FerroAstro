@@ -23,7 +23,10 @@
 // gives ~0 (no oracle beyond the engine's analytic value; the fit values of OI-79 are never used);
 // the metadata's comparison dashboard carries the M5 evidence and the INPOP15a bound from tests/vectors,
 // with units; the bound markers' 3σ rule (FAV.boundVerdict) gives exceeds for a Sun-centred gamma0 and
-// within or unresolved for a uniform one, also when the live σ is wider than the bound.
+// within for a uniform one, with the live σ from the engine's paired-difference jack-knife
+// (fav_pair_*), which is at most the legs' σ combined as if independent; the glossary's
+// conformal-gravity numbers (the Gauss rates at the fit values, which no vector holds) match the
+// engine's reference.
 // Verifies: API-004 (proposed in DESIGN.md section 9)
 
 import { readFileSync } from "node:fs";
@@ -103,6 +106,10 @@ check(/^FA-E\d{4}/.test(msg), "error message starts with FA-Exxxx", JSON.stringi
 st = eng.x.fav_set_param(999, 1) | 0;
 check(st === FAV.STATUS.E_ARG, "unknown param id returns E_ARG", st);
 check(Number.isNaN(eng.getParam(999)), "fav_get_param(unknown) is NaN");
+st = eng.x.fav_pair_push(2, 0, 0) | 0;
+check(st === FAV.STATUS.E_ARG, "fav_pair_push to an unknown leg returns E_ARG", st);
+check(eng.pair({ t: [], lon: [], mask: 0 }, { t: [], lon: [], mask: 0 }, 1, 2451545).status === FAV.STATUS.E_FIT,
+  "fav_pair_fit without passages returns E_FIT (not fatal)");
 
 // header.440 (#22): is it embedded? A build without embed-header refuses System mode.
 let noHeader = null;
@@ -240,19 +247,40 @@ check(/comparison model/.test(cfg.meta.gauge || "") && /conformal = \{.*gamma0_c
   "gauge and scenario carry the comparison model", cfg.meta.gauge);
 check(cfg.meta.nominal === false, "an exaggerated gamma0 marks the run non-nominal");
 const cgRef = cgMeta && cgMeta.reference ? cgMeta.reference.total_arcsec_per_cy : NaN;
-runChunked(eng, KEPLER_SPAN_YEARS, 1.0);
+const cgEpoch = cfg.epochJd;
+const sunRun = runChunked(eng, KEPLER_SPAN_YEARS, 1.0);
 f = eng.fit(NaN, NaN);
-const [kepRate, kepSigma] = (() => {
+const [kepRate, kepRun] = (() => {
   eng.configure(0, { [P.ENGINE]: FAV.ENGINE_PARAM.WHFAST, [P.SPAN_YEARS]: 100 });
-  runChunked(eng, KEPLER_SPAN_YEARS, 1.0);
+  const run = runChunked(eng, KEPLER_SPAN_YEARS, 1.0);
   const k = eng.fit(NaN, NaN);
-  return k.fit ? [k.fit[FAV.FIT.RATE], k.fit[FAV.FIT.JACKKNIFE_SIGMA]] : [NaN, NaN];
+  return [k.fit ? k.fit[FAV.FIT.RATE] : NaN, run];
 })();
-// The live contribution's σ as the page forms it: the two legs' jack-knife σ in quadrature.
-const legSigma = (fit) => Math.hypot(fit[FAV.FIT.JACKKNIFE_SIGMA], kepSigma);
+// The live contribution's σ as the page forms it: the engine's jack-knife on the difference of
+// the two legs (fav_pair_*), from the legs' passage rows.
+const legCols = (run, mask) => {
+  const t = [];
+  const lon = [];
+  for (let k = 0; k + FAV.STRIDE.passages <= run.passages.length; k += FAV.STRIDE.passages) {
+    t.push(run.passages[k + FAV.PASS.T]);
+    lon.push(run.passages[k + FAV.PASS.VARPI_ARCSEC]);
+  }
+  return { t: Float64Array.from(t), lon: Float64Array.from(lon), mask };
+};
+const pairWithKepler = (run) => {
+  const r = eng.pair(legCols(run, 1 << FAV.BIT.CONFORMAL), legCols(kepRun, 0), FAV.PAIR_FLAG.FIT_PERIODIC, cgEpoch);
+  return r.pair ? { s: r.pair[FAV.PAIR.PAIRED_SIGMA], indep: r.pair[FAV.PAIR.INDEPENDENT_SIGMA], d: r.pair[FAV.PAIR.DIFFERENCE] } : { s: NaN, indep: NaN, d: NaN };
+};
+const legSigmaOf = (run) => {
+  const p = pairWithKepler(run);
+  check(Number.isFinite(p.s) && p.s <= p.indep, "paired sigma is finite and at most the independent combination", p.s + " vs " + p.indep);
+  return p.s;
+};
 const bound = dash && dash.bound;
 if (f.fit) {
   const d = f.fit[FAV.FIT.RATE] - kepRate;
+  const sSun = legSigmaOf(sunRun);
+  const legSigma = () => sSun;
   // The bound marker (FAV.boundVerdict, the page's 3σ rule): a Sun-centred gamma0 far outside the
   // INPOP15a interval exceeds it even though its σ is wider than the bound's half-width.
   const vd = FAV.boundVerdict(d, legSigma(f.fit), bound);
@@ -267,16 +295,47 @@ if (f.fit) {
 }
 cfg = eng.configure(1 << FAV.BIT.CONFORMAL, Object.assign({}, cgSun, { [P.CG_GAMMA0_CENTRE]: FAV.CG_CENTRE.UNIFORM }));
 check(cfg.meta.conformal.reference && cfg.meta.conformal.reference.gamma0_arcsec_per_cy === 0, "uniform centring: the reference's gamma0 share is 0");
-runChunked(eng, KEPLER_SPAN_YEARS, 1.0);
+const uniRun = runChunked(eng, KEPLER_SPAN_YEARS, 1.0);
 f = eng.fit(NaN, NaN);
 if (f.fit) {
   const d = f.fit[FAV.FIT.RATE] - kepRate;
+  const sUni = legSigmaOf(uniRun);
+  const legSigma = () => sUni;
+  check(sUni <= CG_UNIFORM_BOUND, "uniform: the paired sigma is at round-off (<= " + CG_UNIFORM_BOUND + " arcsec/cy)", sUni);
   check(Math.abs(d) <= CG_UNIFORM_BOUND, "uniform exaggerated gamma0 leaves the rate unchanged (|d| <= " + CG_UNIFORM_BOUND + " arcsec/cy)", d);
   const vd = FAV.boundVerdict(d, legSigma(f.fit), bound);
-  check(vd && (vd.verdict === "unresolved" || vd.verdict === "within"), "uniform live contribution is within or unresolved against the bound, never exceeds",
+  check(vd && vd.verdict === "within", "uniform live contribution reads within the bound (paired sigma)",
     d + " +- " + legSigma(f.fit) + ": " + (vd ? vd.verdict : "no verdict"));
 } else {
   check(false, "fav_fit for uniform gamma0", f.status + " " + (f.message || ""));
+}
+
+// The glossary quotes the engine's Gauss reference at the fit values (no vector holds it, so
+// check-glossary.mjs cannot): the Sun-centred gamma0 term, the gamma* and kappa terms, and the
+// ratio to the INPOP15a half-width.
+{
+  const gctx = {};
+  vm.createContext(gctx);
+  vm.runInContext(readFileSync(join(here, "glossary.js"), "utf8"), gctx, { filename: "glossary.js" });
+  const ge = gctx.FA_GLOSSARY.entries;
+  const gtext = Object.keys(ge).map((k) => [ge[k].short, ge[k].long, ge[k].mercury, ge[k].typical || ""].join("\n")).join("\n");
+  const fitCfg = eng.configure(1 << FAV.BIT.CONFORMAL, { [P.ENGINE]: FAV.ENGINE_PARAM.WHFAST, [P.SPAN_YEARS]: 1, [P.CG_GAMMA0_CENTRE]: FAV.CG_CENTRE.SUN });
+  const ref = fitCfg.meta && fitCfg.meta.conformal && fitCfg.meta.conformal.reference;
+  check(fitCfg.meta && fitCfg.meta.nominal === true && typeof fitCfg.meta.comparison_model === "string",
+    "a run at the fit values is nominal and still marked as a comparison model (not the real solar system)", fitCfg.meta && fitCfg.meta.comparison_model);
+  if (ref) {
+    const quotes = [
+      ["Gauss −0.183 ″/cy", -0.183, 5e-4, ref.gamma0_arcsec_per_cy, "Sun-centred gamma0 term"],
+      ["γ* term −3.2×10⁻¹² ″/cy", -3.2e-12, 5e-14, ref.linear_arcsec_per_cy - ref.gamma0_arcsec_per_cy, "gamma* term"],
+      ["κ term +9.9×10⁻¹² ″/cy", 9.9e-12, 5e-14, ref.quadratic_arcsec_per_cy, "kappa term"],
+      ["about 59× the [[inpop15a-bound]]", 59, 0.5, Math.abs(ref.gamma0_arcsec_per_cy) / bw, "ratio to the INPOP15a half-width"],
+    ];
+    for (const [lit, printed, tol, engine, what] of quotes) {
+      check(gtext.includes(lit) && Math.abs(engine - printed) <= tol, "glossary quotes the engine's " + what + " as \"" + lit + "\"", engine);
+    }
+  } else {
+    check(false, "the engine's conformal-gravity reference at the fit values", "null");
+  }
 }
 
 // A forced WHFast with an IAS15-only effect is refused with FA-E1201.

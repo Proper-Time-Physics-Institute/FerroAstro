@@ -109,10 +109,25 @@ fn abi_v2_defines_bit_12_and_parameters_13_to_16() {
         meta["nominal"], false,
         "a non-fit coefficient is exaggerated physics"
     );
+    assert!(
+        meta["comparison_model"]
+            .as_str()
+            .is_some_and(|t| t.contains("not a description of the real solar system")),
+        "{}",
+        meta["comparison_model"]
+    );
+    // At the fit values the run is nominal, and still not the real solar system.
+    for p in [Param::CgGamma0, Param::CgGammaStar, Param::CgKappa] {
+        assert_eq!(v.set_param(id(p), ViewerConfig::default().get(p)), FAV_OK);
+    }
+    let meta: serde_json::Value = serde_json::from_str(&v.meta_json()).unwrap();
+    assert_eq!(meta["nominal"], true);
+    assert!(meta["comparison_model"].is_string());
     assert_eq!(v.reset(), FAV_OK);
     let meta: serde_json::Value = serde_json::from_str(&v.meta_json()).unwrap();
     assert_eq!(meta["conformal"]["enabled"], false);
     assert_eq!(meta["conformal"]["exaggerated"], false);
+    assert!(meta["comparison_model"].is_null());
 }
 
 /// Sun-centred exaggerated γ0 in System mode (`WHFast`, Sun + Mercury, 100 yr): the P-remove

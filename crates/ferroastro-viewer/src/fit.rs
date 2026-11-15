@@ -148,6 +148,112 @@ pub(crate) fn fit(
     })
 }
 
+/// f64 in the paired-difference record ([`paired`]).
+pub(crate) const PAIR_STRIDE: usize = 6;
+
+/// One leg of a paired difference: its passages (TDB s from J2000, unwrapped projected longitude
+/// in rad) and the fit-model choice of its own run.
+#[derive(Debug, Clone, Copy)]
+pub(crate) struct Leg<'a> {
+    pub(crate) t_s: &'a [f64],
+    pub(crate) lon: &'a [f64],
+    pub(crate) choice: ModelChoice,
+}
+
+/// A leg's full fit with its own model (the same fit `fav_fit` gives that leg over every
+/// passage).
+fn leg_fit(leg: Leg<'_>) -> Result<(Park2017Fit, FitModel), ViewerError> {
+    let n = leg.t_s.len();
+    if n < MIN_PASSAGES || leg.lon.len() != n {
+        return Err(ViewerError::fit(format!(
+            "FA-E0603: a paired leg has {n} passages and {} longitudes (need >= {MIN_PASSAGES} \
+             of each)",
+            leg.lon.len()
+        )));
+    }
+    let (first, last) = match (leg.t_s.first(), leg.t_s.last()) {
+        (Some(a), Some(b)) => (*a, *b),
+        _ => return Err(ViewerError::fit("FA-E0603: no passages")),
+    };
+    let m = model((last - first) / (100.0 * SECONDS_PER_YEAR), leg.choice)?;
+    let f = fit_longitudes(leg.t_s, leg.lon, &m, jackknife_blocks(n))
+        .map_err(|e| ViewerError::fit(e.to_string()))?;
+    Ok((f, m))
+}
+
+/// The rate of `leg` refitted with `m` after deleting the passages for which `drop` is true.
+fn refit(leg: Leg<'_>, m: &FitModel, drop: impl Fn(f64) -> bool) -> Result<f64, ViewerError> {
+    let (ts, ls): (Vec<f64>, Vec<f64>) = leg
+        .t_s
+        .iter()
+        .zip(leg.lon)
+        .filter(|(t, _)| !drop(**t))
+        .map(|(t, l)| (*t, *l))
+        .unzip();
+    // Two blocks: the replicate's own jack-knife is not used, only its rate.
+    fit_longitudes(&ts, &ls, m, 2)
+        .map(|f| f.arcsec_per_century())
+        .map_err(|e| ViewerError::fit(format!("FA-E0603: paired jack-knife replicate: {e}")))
+}
+
+/// The paired-difference jack-knife of `ϖ̇(a) − ϖ̇(b)` for two legs that share initial conditions
+/// and the estimator (DESIGN §6.4): each leg keeps its own fit model, the same time block is
+/// deleted from both legs, and the jack-knife runs on the replicate *differences*, so the
+/// correlated residuals the legs share (the planets' periodic signatures, sampling phase) cancel
+/// instead of being added in quadrature.
+///
+/// The blocks are `G = jackknife_blocks(min(n_a, n_b))` equal slices of the common span
+/// `[max(first), min(last)]`; a passage outside it belongs to the nearest end block.
+///
+/// Returns `[difference, paired_sigma, independent_sigma, blocks, n_a, n_b]` in ″/cy, where
+/// `independent_sigma = √(σ_a² + σ_b²)` from each leg's own jack-knife (the old combination,
+/// kept for comparison).
+///
+/// # Errors
+/// `FAV_E_FIT` for fewer than [`MIN_PASSAGES`] passages in a leg, legs that do not overlap in
+/// time, or an ill-posed fit.
+pub(crate) fn paired(a: Leg<'_>, b: Leg<'_>) -> Result<[f64; PAIR_STRIDE], ViewerError> {
+    let (fa, ma) = leg_fit(a)?;
+    let (fb, mb) = leg_fit(b)?;
+    let n = a.t_s.len().min(b.t_s.len());
+    let blocks = jackknife_blocks(n);
+    let t0 = fa.span_s.0.max(fb.span_s.0);
+    let t1 = fa.span_s.1.min(fb.span_s.1);
+    if !(t1 - t0).is_finite() || t1 <= t0 {
+        return Err(ViewerError::fit(
+            "FA-E0603: the two legs of a paired difference do not overlap in time",
+        ));
+    }
+    #[expect(clippy::cast_precision_loss, reason = "block counts are small")]
+    let g = blocks as f64;
+    let block = |t: f64| ((t - t0) / (t1 - t0) * g).floor().clamp(0.0, g - 1.0);
+    let mut d = Vec::with_capacity(blocks);
+    for k in 0..blocks {
+        #[expect(clippy::cast_precision_loss, reason = "block counts are small")]
+        let k = k as f64;
+        let ra = refit(a, &ma, |t| (block(t) - k).abs() < 0.5)?;
+        let rb = refit(b, &mb, |t| (block(t) - k).abs() < 0.5)?;
+        d.push(ra - rb);
+    }
+    let mean = d.iter().sum::<f64>() / g;
+    let paired_sigma = ((g - 1.0) / g * d.iter().map(|x| (x - mean).powi(2)).sum::<f64>()).sqrt();
+    let independent = fa
+        .jackknife_sigma_arcsec_per_century()
+        .hypot(fb.jackknife_sigma_arcsec_per_century());
+    #[expect(
+        clippy::cast_precision_loss,
+        reason = "passage counts are far below 2^53"
+    )]
+    Ok([
+        fa.arcsec_per_century() - fb.arcsec_per_century(),
+        paired_sigma,
+        independent,
+        g,
+        a.t_s.len() as f64,
+        b.t_s.len() as f64,
+    ])
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -167,5 +273,106 @@ mod tests {
         assert_eq!(long.frequencies.len(), PARK17_TABLE2.len());
         assert_eq!(model(10.0, c(0)).unwrap().frequencies.len(), 0);
         assert_eq!(jackknife_blocks(MIN_PASSAGES), 2);
+    }
+
+    // The synthetic signal of `legs` (not physical values: a shaped test input).
+    const STEP_DAYS: f64 = 88.0; // lint: allow-literal(one passage per Mercury orbit, roughly)
+    const LCG_MUL: u64 = 6_364_136_223_846_793_005; // lint: allow-literal(Knuth's MMIX LCG multiplier)
+    const WALK_STEP: f64 = 0.02; // lint: allow-literal(random-walk step of the shared residual, arcsec)
+    const SINE_AMPL: f64 = 0.3; // lint: allow-literal(shared periodic residual amplitude, arcsec)
+    const SINE_PER_CY: f64 = 4.0; // lint: allow-literal(shared periodic residual, cycles per century)
+    const TREND_A: f64 = 43.0; // lint: allow-literal(leg a trend, arcsec/cy)
+    const TREND_B: f64 = 42.9; // lint: allow-literal(leg b trend, arcsec/cy)
+    const TREND_DIFF: f64 = 0.1; // lint: allow-literal(TREND_A - TREND_B)
+    const DIFF_TOL: f64 = 1e-2; // lint: allow-literal(slack on the recovered trend difference)
+    const OWN_NOISE: [f64; 3] = [0.0, 1e-3, 1e-2]; // lint: allow-literal(per-leg white noise, arcsec)
+    const ROUND_OFF: f64 = 1e-9; // lint: allow-literal(round-off relative to the independent sigma)
+    const ZERO: f64 = 1e-12; // lint: allow-literal(identical legs: zero to round-off)
+    const CENTURY_YEARS: f64 = 100.0; // lint: allow-literal(a century of synthetic passages)
+    const HALF_CENTURY_YEARS: f64 = 50.0; // lint: allow-literal(half a century of synthetic passages)
+
+    /// Synthetic legs over `years`, one passage per [`STEP_DAYS`]: a shared correlated signal (a
+    /// sinusoid and a red random walk) on top of a linear trend per leg, plus `own` of white
+    /// noise that differs between the legs.
+    #[expect(
+        clippy::cast_possible_truncation,
+        clippy::cast_sign_loss,
+        clippy::cast_precision_loss,
+        clippy::suboptimal_flops,
+        reason = "a synthetic test signal: small positive counts, readability over fused ops"
+    )]
+    fn legs(years: f64, own: f64) -> (Vec<f64>, Vec<f64>, Vec<f64>) {
+        let step = STEP_DAYS * ferroastro_core::time::SECONDS_PER_DAY;
+        let n = (years * SECONDS_PER_YEAR / step) as usize;
+        let mut seed = 0x2545_f491_u64;
+        let mut rnd = || {
+            seed = seed.wrapping_mul(LCG_MUL).wrapping_add(1);
+            ((seed >> 11) as f64 / (1_u64 << 53) as f64) - 0.5
+        };
+        let (mut t, mut a, mut b) = (Vec::new(), Vec::new(), Vec::new());
+        let mut walk = 0.0;
+        let rad = |x: f64| x / crate::observe::arcsec(1.0);
+        for k in 0..n {
+            let ts = step * k as f64;
+            let cy = ts / (CENTURY_YEARS * SECONDS_PER_YEAR);
+            walk += WALK_STEP * rnd();
+            let common = SINE_AMPL * (TAU * cy * SINE_PER_CY).sin() + walk;
+            t.push(ts);
+            a.push(rad(TREND_A * cy + common + own * rnd()));
+            b.push(rad(TREND_B * cy + common + own * rnd()));
+        }
+        (t, a, b)
+    }
+
+    const ONE_BODY: ModelChoice = ModelChoice {
+        mask: 0,
+        periodic: false,
+        single_body: true,
+    };
+
+    /// Verifies: NUM-011
+    #[test]
+    fn paired_sigma_is_at_most_the_independent_combination() {
+        for own in OWN_NOISE {
+            let (t, a, b) = legs(CENTURY_YEARS, own);
+            let leg = |lon| Leg {
+                t_s: &t,
+                lon,
+                choice: ONE_BODY,
+            };
+            let r = paired(leg(&a), leg(&b)).unwrap();
+            let [diff, paired_sigma, independent, blocks, n_a, n_b] = r;
+            assert!(
+                (diff - TREND_DIFF).abs() < paired_sigma.mul_add(10.0, DIFF_TOL),
+                "{r:?}"
+            );
+            assert!(paired_sigma <= independent, "{r:?}");
+            assert!(paired_sigma >= 0.0 && blocks >= 2.0 && n_a.to_bits() == n_b.to_bits());
+            if own <= 0.0 {
+                // Only the trends differ: the shared residuals cancel to round-off.
+                assert!(paired_sigma < ROUND_OFF * independent.max(1.0), "{r:?}");
+            }
+        }
+    }
+
+    /// Verifies: NUM-011
+    #[test]
+    fn paired_sigma_of_identical_legs_is_zero() {
+        // The uniform γ0 centring with velocity-independent forces: both legs are the same run.
+        let (t, a, _) = legs(HALF_CENTURY_YEARS, DIFF_TOL);
+        let leg = Leg {
+            t_s: &t,
+            lon: &a,
+            choice: ONE_BODY,
+        };
+        let r = paired(leg, leg).unwrap();
+        assert!(r[0].abs() < ZERO && r[1] < ZERO, "{r:?}");
+        assert!(r[2] > 0.0, "the independent combination is not zero: {r:?}");
+        let short = Leg {
+            t_s: &t[..5],
+            lon: &a[..5],
+            choice: ONE_BODY,
+        };
+        assert!(paired(short, leg).is_err());
     }
 }

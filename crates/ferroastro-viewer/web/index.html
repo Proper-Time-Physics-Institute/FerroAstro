@@ -26,6 +26,7 @@
       <span class="badge" data-term="system-mode"><span id="badge-mode">System mode</span><button type="button" class="tip" id="badge-mode-tip" data-tip="system-mode"></button></span>
       <span class="badge" data-term="integrator"><span id="badge-engine">engine: –</span><button type="button" class="tip" data-tip="integrator"></button></span>
       <span id="badge-nominal" class="badge warn" hidden><span id="badge-nominal-text">Exaggerated physics</span><button type="button" class="tip" data-tip="physical-exaggeration"></button></span>
+      <span id="badge-cm" class="badge cm" hidden><span>Comparison model on: not the real solar system</span><button type="button" class="tip" data-tip="comparison-model"></button></span>
     </div>
     <button type="button" class="gloss-btn" data-glossary-open aria-haspopup="dialog">Glossary</button>
     <div class="seg theme-switch" role="group" aria-label="Colour theme">
@@ -285,7 +286,7 @@
       <label class="check" data-term="observational-bound"><input type="checkbox" data-col="bound" checked> Bound</label>
       <span id="col-pick-help" class="muted small">Hide columns to narrow the table; each header names its frame, window and protocol.</span>
     </fieldset>
-    <p class="help">Each <button type="button" class="term" data-tip="leg">leg</button> is an independent run in its own worker: the same engine, span, <button type="button" class="term" data-tip="estimator">estimator</button> and <button type="button" class="term" data-tip="initial-conditions">initial conditions</button>, differing only by the one effect removed. Rows within <button type="button" class="term" data-tip="three-sigma">3σ of zero</button> are greyed: below resolution for this span.</p>
+    <p class="help">Each <button type="button" class="term" data-tip="leg">leg</button> is an independent run in its own worker: the same engine, span, <button type="button" class="term" data-tip="estimator">estimator</button> and <button type="button" class="term" data-tip="initial-conditions">initial conditions</button>, differing only by the one effect removed. A row's σ is the engine's <button type="button" class="term" data-tip="paired-jackknife">jack-knife on the difference</button> of its two legs, so the error they share cancels. Rows within <button type="button" class="term" data-tip="three-sigma">3σ of zero</button> are greyed: below resolution for this span.</p>
     <div id="budget" class="budget" hidden>
       <p class="budget-head"><button type="button" class="term" data-tip="budget">Rate budget</button> <span class="muted small">every contribution to one scale; negative ones left of the zero mark, hatched</span></p>
       <div id="budget-bar" class="budget-bar" aria-hidden="true"></div>

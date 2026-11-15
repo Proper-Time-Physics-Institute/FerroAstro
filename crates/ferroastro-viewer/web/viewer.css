@@ -249,6 +249,7 @@ canvas:focus-visible { outline-offset: -3px; }
   border: 1px solid var(--border); border-radius: 999px; padding: 0.2rem 0.7rem; font-size: 0.875rem;
   background: var(--panel); white-space: nowrap;
 }
+.badge.cm { border: 1px dashed var(--fx-cg); font-weight: 600; white-space: normal; }
 .badge.warn { background: var(--warn-bg); color: var(--warn-fg); border-color: var(--warn-fg); font-weight: 600; white-space: normal; }
 
 .status { padding: 0 1rem; color: var(--muted); font-size: 0.9rem; min-height: 1.5em; }

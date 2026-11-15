@@ -10,6 +10,10 @@ use crate::engine::RunInfo;
 use crate::fit::FitResult;
 use serde_json::{Map, Value, json};
 
+/// The metadata's `comparison_model` text while bit 12 is on.
+pub(crate) const COMPARISON_MODEL_NOTE: &str = "conformal gravity (ADR-0016), a comparison model outside \
+     the GR ladder: this run is not a description of the real solar system, even at the fit values";
+
 fn num(x: f64) -> Value {
     serde_json::Number::from_f64(x).map_or(Value::Null, Value::Number)
 }
@@ -76,6 +80,11 @@ pub(crate) fn json(cfg: &ViewerConfig, info: Option<&RunInfo>, fit: Option<&FitR
         ),
         "engine": s(|i| &i.engine_label),
         "nominal": cfg.is_nominal(),
+        // A comparison model on (even at its fit values) means the run is not a description of
+        // the real solar system; `nominal` only says nothing is exaggerated (DESIGN §4.5).
+        "comparison_model": cfg.conformal().map_or(Value::Null, |_| {
+            Value::from(COMPARISON_MODEL_NOTE)
+        }),
         "toggles": cfg.mask(),
         "params": params,
         "model": s(|i| &i.model),

@@ -12,7 +12,11 @@
 //   {op:"play", speed} / {op:"pause"} / {op:"speed", speed}   (live loop; speed = sim yr per wall s,
 //                                                 Infinity = back to back)
 //   {op:"fit", t0, t1, id}                      -> {op:"fit", id, status, fit, meta, message}
-//   {op:"leg", id, mask, params, spanYears}     -> {op:"progress", id, t} ... {op:"legDone", id, ...}
+//   {op:"leg", id, mask, params, spanYears}     -> {op:"progress", id, t} ... {op:"legDone", id, ...,
+//                                                 epochJd, pt, plon}  (the leg's passage times and
+//                                                 longitudes, for the paired difference)
+//   {op:"pair", id, a, b, flags, epochJd}       -> {op:"pair", id, status, pair, message}
+//                                                 (a, b = {t, lon, mask}; fav_pair_*, section 6.4)
 //   {op:"cancel"}                               stops a play loop or a leg
 // Errors come back as {op:"error", status, message, context, id}.
 
@@ -140,6 +144,9 @@ function runLeg(msg) {
   let years = startChunk(cfg.engine);
   let nPassages = 0;
   let lastProgress = 0;
+  // The passage times and longitudes, kept for the paired-difference jack-knife (section 6.4).
+  const pt = [];
+  const plon = [];
   const legT0 = performance.now();
   post({ op: "legConfigured", id, engine: cfg.engine, meta: cfg.meta, scenario: cfg.scenario });
 
@@ -151,7 +158,12 @@ function runLeg(msg) {
       // Several calls per macrotask; yield every ~100 ms so cancel messages get through.
       do {
         const r = runOnce(years);
-        nPassages += r.chunk.passages.length / FAV.STRIDE.passages;
+        const p = r.chunk.passages;
+        for (let k = 0; k + FAV.STRIDE.passages <= p.length; k += FAV.STRIDE.passages) {
+          pt.push(p[k + FAV.PASS.T]);
+          plon.push(p[k + FAV.PASS.VARPI_ARCSEC]);
+        }
+        nPassages += p.length / FAV.STRIDE.passages;
         years = adapt(years, r.ms);
         status = r.status;
       } while (status !== FAV.STATUS.DONE && performance.now() < sliceEnd);
@@ -186,8 +198,11 @@ function runLeg(msg) {
       passages: nPassages,
       t: eng.timeYears(),
       wallMs: performance.now() - legT0,
+      epochJd: cfg.epochJd,
+      pt: Float64Array.from(pt),
+      plon: Float64Array.from(plon),
     };
-    post(msgOut, f.fit ? [f.fit.buffer] : []);
+    post(msgOut, (f.fit ? [f.fit.buffer] : []).concat([msgOut.pt.buffer, msgOut.plon.buffer]));
   };
   setTimeout(step, 0);
 }
@@ -273,6 +288,15 @@ self.onmessage = (ev) => {
         );
       } catch (err) {
         postError(err, "fit", msg.id);
+      }
+      break;
+    }
+    case "pair": {
+      try {
+        const r = eng.pair(msg.a, msg.b, msg.flags, msg.epochJd);
+        post({ op: "pair", id: msg.id, status: r.status, pair: r.pair, message: r.message }, r.pair ? [r.pair.buffer] : []);
+      } catch (err) {
+        postError(err, "pair", msg.id);
       }
       break;
     }
