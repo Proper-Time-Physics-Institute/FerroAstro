@@ -4,7 +4,7 @@
 //!
 //! The engine of the FerroAstro orbit viewer (CRATE-PLAN L12, surfaces; API-004;
 //! `docs/viewer/DESIGN.md`): Mercury's orbit and perihelion, with the planets, solar J2, GR,
-//! Lense–Thirring, asteroids and the conformal-gravity comparison model switched on and off,
+//! Lense–Thirring, asteroids and the conformal-gravity and Proper Time comparison models switched on and off,
 //! built only from FerroAstro crates and
 //! exported to the browser as a `wasm32-unknown-unknown` module with **no imports** and a small
 //! `extern "C"` ABI (§4 of the design; the UI lives in `web/`).
@@ -24,12 +24,15 @@
 //!
 //! No force model, integrator or estimator is written in this crate: it composes them.
 //!
-//! ## ABI version 2
+//! ## ABI version 3
 //!
-//! Version 2 (ADR-0016 decision D5) defines toggle bit 12 (conformal gravity, a **comparison
+//! Version 2 (ADR-0016 decision D5) defined toggle bit 12 (conformal gravity, a **comparison
 //! model** outside the GR ladder) and parameters 13–16 (γ0, γ\*, κ and the γ0 centring); the
-//! metadata gains the `conformal` object with the engine's analytic reference. Everything else is
-//! as in version 1.
+//! metadata gained the `conformal` object with the engine's analytic reference. Version 3
+//! (ADR-0016 decision D6, PHY-021) defines toggle bit 13 (the Proper Time (Gill) kernel, the
+//! second comparison model) and the metadata's `proper_time` object; it adds no parameter. The
+//! version changes because a reserved bit becomes defined, the rule D5 applied to bit 12: a
+//! version-2 page would treat bit 13 as reserved. Everything else is as in version 2.
 //!
 //! Every export is `extern "C"`, prefixed `fav_`, and takes and returns `i32`, `u32` or `f64`;
 //! pointer results are `*const f64` / `*const u8` (on wasm32, byte offsets into the exported
@@ -40,14 +43,15 @@
 //! | [`FAV_OK`] | 0 | success |
 //! | [`FAV_DONE`] | 1 | the span is reached |
 //! | [`FAV_E_STATE`] | −1 | call out of order |
-//! | [`FAV_E_ARG`] | −2 | bad id, value out of range, reserved bit (13–31) |
+//! | [`FAV_E_ARG`] | −2 | bad id, value out of range, reserved bit (14–31) |
 //! | [`FAV_E_UNSUPPORTED`] | −3 | propagate refused the combination (`FA-E1201`), or System mode in a build without `embed-header` (`FA-E0303`) |
 //! | [`FAV_E_RUN`] | −4 | propagation or model error |
 //! | [`FAV_E_FIT`] | −5 | too few passages (not fatal) |
 //!
 //! Toggle bits ([`config::bits`]): 0 Venus, 1 Earth–Moon barycentre, 2 Mars, 3 Jupiter,
 //! 4 Saturn, 5 Uranus, 6 Neptune, 7 solar J2, 8 GR 1PN (Sun), 9 Lense–Thirring, 10 asteroids,
-//! 11 EIH among all bodies, 12 conformal gravity (comparison model); 13–31 reserved. Parameter
+//! 11 EIH among all bodies, 12 conformal gravity (comparison model), 13 Proper Time (Gill) kernel
+//! (comparison model; replaces bits 8, 9 and 11); 14–31 reserved. Parameter
 //! ids: [`config::Param`].
 //!
 //! Buffers (f64, row-major; `t` in TDB Julian years since [`Viewer::epoch_jd`]):
@@ -60,7 +64,7 @@
 //! | fit | [`FIT_STRIDE`] | `rate, formal_sigma, jackknife_sigma, Q, rms, n, t_first, t_last, n_periodic, B` |
 //! | pair | [`PAIR_STRIDE`] | `difference, paired_sigma, independent_sigma, blocks, n_a, n_b` |
 //!
-//! The pair exports (additive within version 2) compute a contribution's σ in the engine: the
+//! The pair exports (added within version 2) compute a contribution's σ in the engine: the
 //! page pushes two legs' passage rows with `fav_pair_push(leg, t, varpi_proj_arcsec)` (scalars
 //! only), calls `fav_pair_fit(mask_a, mask_b, flags, epoch_jd)` and reads `fav_pair_ptr/len`:
 //! a delete-one-block jack-knife on the **difference** of the two legs (same initial conditions,
@@ -99,8 +103,9 @@ pub mod reference;
 pub use config::ViewerConfig;
 pub use engine::{Viewer, estimator};
 
-/// ABI version of the `fav_*` exports (2: bit 12 and parameters 13–16, ADR-0016).
-pub const ABI_VERSION: u32 = 2;
+/// ABI version of the `fav_*` exports (2: bit 12 and parameters 13–16, ADR-0016 D5; 3: bit 13,
+/// the Proper Time comparison model, ADR-0016 D6, PHY-021).
+pub const ABI_VERSION: u32 = 3;
 /// Success.
 pub const FAV_OK: i32 = 0;
 /// The span is reached; nothing more to run.

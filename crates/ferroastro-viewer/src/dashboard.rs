@@ -14,7 +14,10 @@
 //! * **Literature**: Park et al. 2017 Table 3, embedded from the vectors that already carry it
 //!   (`park2017-table3.toml`, `single-body-rungs.toml`, `phy004-gr-analytic.toml`).
 //! * **Observational bound**: the `INPOP15a` supplementary-advance interval, embedded from
-//!   `tests/vectors/comparison-bounds.toml`; it applies to comparison models only.
+//!   `tests/vectors/comparison-bounds.toml`; it applies to comparison models only (bits 12, 13).
+//! * **Derivation reference** of the Proper Time (Gill) comparison model (bit 13, PHY-021): the
+//!   research value for Mercury from the relativistic-dynamics#88 report, shown in the literature
+//!   column with `kind = "derivation"`. It is a display value, not a vector and never an oracle.
 //!
 //! Each column carries its frame, window and protocol, so the page can label it. The values are
 //! passed through unchanged; `tests/viewer_dashboard.rs` checks that against the vector files.
@@ -157,6 +160,31 @@ const LITERATURE_ROWS: [(&str, &str, &str, &str); 13] = [
     ),
 ];
 
+/// The Proper Time derivation reference: the relativistic-dynamics#88 synthesis report's Mercury
+/// value for Gill's flat `H₁` (50-digit apsidal quadrature, referee-reproduced), ″/cy.
+pub const PROPER_TIME_DERIVATION_VALUE: f64 = -7.163_432_586; // lint: allow-literal(display reference of the rd#88 report, never an oracle)
+/// Its id in the metadata and the CSV.
+pub const PROPER_TIME_DERIVATION_ID: &str = "RD88-REPORT-GILL-H1-MERCURY";
+
+/// The Proper Time derivation reference as a literature-column row (`kind = "derivation"`).
+#[must_use]
+pub fn proper_time_derivation() -> Value {
+    json!({
+        "id": PROPER_TIME_DERIVATION_ID,
+        "value": num(PROPER_TIME_DERIVATION_VALUE),
+        "kind": "derivation",
+        "quantity": "Mercury's perihelion advance under Gill's flat-space H1 (Proper Time \
+                     comparison model), -0.1666666678 of GR 1PN",
+        "source": "relativistic-dynamics#88 synthesis report 'Proper-time Hamiltonian beyond the \
+                   conformally flat sector, and the physical meaning of tau' (2026-11-14), section \
+                   1.3 table, a = 0.38709893 au, e = 0.20563069; research packages \
+                   research/2026-11-14/ (RD88-A Bridge A); not panel-confirmed",
+        "note": "derivation, not Park17: a research-report value shown for comparison, never an \
+                 oracle; the report's a, e and period differ slightly from the viewer's SW92 \
+                 inputs",
+    })
+}
+
 /// The id of the `INPOP15a` central value.
 pub const BOUND_ID: &str = "INPOP15A-MERCURY-SUPPLEMENTARY-ADVANCE";
 /// The id of the `INPOP15a` interval half-width.
@@ -230,7 +258,7 @@ fn fixed() -> Result<&'static Value, ViewerError> {
                 "frame": "Mercury's perihelion in the INPOP15a ephemeris fit",
                 "window": "INPOP15a data span, with MESSENGER ranging",
                 "protocol": "supplementary (non-GR) advance fitted on top of GR",
-                "applies_to": ["b12"],
+                "applies_to": ["b12", "b13"],
                 "criterion": "with off = |rate - value| and s = 3 sigma (sigma the live \
                               contribution's paired-difference jack-knife, 0 for the analytic \
                               estimate): within if off + s <= half_width, exceeds if \
@@ -249,7 +277,7 @@ fn est(value: f64, basis: &str) -> Value {
 }
 
 /// The engine analytic estimates for `cfg`, keyed by effect (`b7`, `b8`, `b9`, `b11`, `b12`,
-/// `rung`); effects without a closed form (the planets, the asteroids) have no entry.
+/// `b13`, `rung`); effects without a closed form (the planets, the asteroids) have no entry.
 ///
 /// # Errors
 /// `FAV_E_UNSUPPORTED` without `embed-header`; `FAV_E_RUN` if a formula refuses its inputs.
@@ -278,6 +306,7 @@ pub fn analytic(cfg: &ViewerConfig) -> Result<Map<String, Value>, ViewerError> {
         lense_thirring_rate(gs, i.c, gamma, i.a, i.e, zero).map_err(|e| run(&e))?,
     );
     let cg = crate::reference::conformal_reference(&cfg.conformal_settings())?;
+    let pt = crate::reference::proper_time_reference()?;
 
     let mut m = Map::new();
     m.insert(
@@ -310,6 +339,14 @@ pub fn analytic(cfg: &ViewerConfig) -> Result<Map<String, Value>, ViewerError> {
         est(
             cg.total,
             "comparison model: first-order Gauss secular average (conformal.reference)",
+        ),
+    );
+    m.insert(
+        "b13".into(),
+        est(
+            pt.rate,
+            "comparison model: -1/6 x 6 pi GM/(c^2 p) per orbit, Gill's force law = PPN (1/2, -1) \
+             (proper_time.reference)",
         ),
     );
     if cfg.is_lab() {
@@ -349,7 +386,7 @@ fn literature_applies(cfg: &ViewerConfig, key: &str) -> bool {
     }
 }
 
-/// The metadata's `dashboard` object (ABI v2, additive): the fixed reference columns, the engine
+/// The metadata's `dashboard` object (additive in ABI v2; the `b13` rows in ABI v3): the fixed reference columns, the engine
 /// analytic estimates for `cfg` (`null` without `embed-header`), and per-row literature
 /// applicability. `null` only if an embedded vector file is unreadable (a build error in practice).
 pub(crate) fn json(cfg: &ViewerConfig) -> Value {
@@ -367,6 +404,11 @@ pub(crate) fn json(cfg: &ViewerConfig) -> Value {
                 o.insert("applies".into(), Value::Bool(literature_applies(cfg, key)));
             }
         }
+        let mut pt = proper_time_derivation();
+        if let Some(o) = pt.as_object_mut() {
+            o.insert("applies".into(), Value::Bool(true));
+        }
+        rows.insert("b13".into(), pt);
     }
     let analytic = analytic(cfg).map_or(Value::Null, |m| {
         json!({
@@ -383,7 +425,10 @@ pub(crate) fn json(cfg: &ViewerConfig) -> Value {
         o.insert("analytic".into(), analytic);
         o.insert(
             "comparison_bits".into(),
-            json!([bits::CONFORMAL.trailing_zeros()]),
+            json!([
+                bits::CONFORMAL.trailing_zeros(),
+                bits::PROPER_TIME.trailing_zeros()
+            ]),
         );
     }
     v

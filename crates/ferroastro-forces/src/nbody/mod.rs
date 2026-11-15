@@ -14,8 +14,8 @@ pub use propagator::NBodyPropagator;
 pub use terms::{
     ConformalPotential, ConformalUniformGamma0, ForceTerm, GeocentricMoon, GrPotential, LtReaction,
     MOON_TAYLOR_Q_MAX, MOON_TAYLOR_TERMS_DEFAULT, MOON_TAYLOR_TERMS_MIN, MinorFromMajors,
-    MinorReaction, NewtonianMutual, RingMasses, SolarJ2WithReaction, SolarLenseThirring,
-    TermParameter,
+    MinorReaction, NewtonianMutual, ProperTimeKernel, RingMasses, SolarJ2WithReaction,
+    SolarLenseThirring, TermParameter,
 };
 
 #[cfg(test)]

@@ -50,6 +50,7 @@ const GR_BOUND = 1.0; // arcsec/cy over 10 yr (section 9)
 const CG_GAMMA0 = 1e-27;
 const CG_REL_BOUND = 0.02;
 const CG_UNIFORM_BOUND = 1e-6; // arcsec/cy: the P-remove of a uniform gamma0, Newtonian forces
+const PT_REL_BOUND = 0.02; // Proper Time over 6 yr: the Kepler floor 0.05 arcsec/cy is 0.7 % of 7.16
 
 let failures = 0;
 function check(cond, what, detail) {
@@ -89,17 +90,19 @@ const wasmPath = args.find((a) => !a.startsWith("--")) || join(here, "ferroastro
 const module = await WebAssembly.compile(readFileSync(wasmPath));
 check(WebAssembly.Module.imports(module).length === 0, "module has no imports", WebAssembly.Module.imports(module).length);
 const eng = await FAV.instantiate(module);
-check(eng.abi === FAV.ABI_VERSION && eng.abi === 2, "fav_abi_version() === 2", eng.abi);
+check(eng.abi === FAV.ABI_VERSION && eng.abi === 3, "fav_abi_version() === 3", eng.abi);
 
 // Error paths.
 eng.reset();
 let st = eng.x.fav_run(1.0) | 0;
 check(st === FAV.STATUS.E_STATE, "fav_run before fav_configure returns E_STATE", st);
-st = eng.x.fav_set_toggles(1 << 13) | 0;
+st = eng.x.fav_set_toggles(1 << 14) | 0;
 const msg = eng.errorMessage();
-check(st === FAV.STATUS.E_ARG, "reserved toggle bit 13 returns E_ARG", st);
+check(st === FAV.STATUS.E_ARG, "reserved toggle bit 14 returns E_ARG", st);
 st = eng.x.fav_set_toggles(1 << FAV.BIT.CONFORMAL) | 0;
 check(st === FAV.STATUS.OK, "toggle bit 12 (conformal gravity, ABI v2) is accepted", st);
+st = eng.x.fav_set_toggles(1 << FAV.BIT.PROPER_TIME) | 0;
+check(st === FAV.STATUS.OK, "toggle bit 13 (Proper Time, ABI v3) is accepted", st);
 check(eng.getParam(P.CG_GAMMA0) === FAV.PARAM_DEFAULTS[P.CG_GAMMA0] && eng.getParam(P.CG_GAMMA0_CENTRE) === 0,
   "parameters 13-16 exist with the documented defaults (uniform centring)", eng.getParam(P.CG_GAMMA0));
 check(/^FA-E\d{4}/.test(msg), "error message starts with FA-Exxxx", JSON.stringify(msg.slice(0, 80)));
@@ -150,7 +153,7 @@ let cfg = eng.configure(0, kParams);
 check(cfg.engine === FAV.ENGINE_RESOLVED.WHFAST, "mask 0 with ENGINE=WHFAST resolves to WHFast", cfg.engine);
 check(cfg.epochJd === 2440400.5, "System-mode epoch is JDEPOC 2440400.5", cfg.epochJd);
 const keys = ["abi", "mode", "engine", "nominal", "toggles", "params", "model", "gauge", "frame", "display_frame",
-  "epoch_jd_tdb", "time_scale", "ic_source", "ic_hash", "constants", "scenario_digest", "estimator", "fit", "j2_nominal", "conformal", "dashboard"];
+  "epoch_jd_tdb", "time_scale", "ic_source", "ic_hash", "constants", "scenario_digest", "estimator", "fit", "j2_nominal", "conformal", "proper_time", "dashboard"];
 const missing = keys.filter((k) => !cfg.meta || !(k in cfg.meta));
 check(missing.length === 0, "metadata JSON has every documented key", missing.join(", ") || "all present");
 check(cfg.scenario.length > 0, "fav_scenario returns the ScenarioSpec TOML", cfg.scenario.length + " bytes");
@@ -162,8 +165,8 @@ const m5v = loadVector("m5-evidence.toml", "M5-EIH-FULL-RATE");
 check(dash && dash.m5 && dash.m5.kind === "computed-reference" && dash.m5.rows.total.value === m5v,
   "metadata dashboard carries the M5 total from tests/vectors/m5-evidence.toml (computed, not observed)", dash && dash.m5 ? dash.m5.rows.total.value : "missing");
 const bw = loadVector("comparison-bounds.toml", "INPOP15A-MERCURY-SUPPLEMENTARY-ADVANCE-INTERVAL");
-check(dash && dash.bound && dash.bound.half_width === bw && dash.bound.applies_to.join() === "b" + FAV.BIT.CONFORMAL,
-  "metadata dashboard carries the INPOP15a bound for the comparison model only", dash && dash.bound ? dash.bound.half_width + " " + dash.bound.applies_to : "missing");
+check(dash && dash.bound && dash.bound.half_width === bw && dash.bound.applies_to.join() === "b" + FAV.BIT.CONFORMAL + ",b" + FAV.BIT.PROPER_TIME,
+  "metadata dashboard carries the INPOP15a bound for the comparison models only", dash && dash.bound ? dash.bound.half_width + " " + dash.bound.applies_to : "missing");
 check(dash && dash.bound && dash.bound.unit === "arcsec/cy" && ["m5", "literature"].every((k) => dash[k].unit === "arcsec/cy"),
   "every reference column states its unit (arcsec/cy)", dash && dash.bound ? dash.bound.unit : "missing");
 // FAV.boundVerdict, the rule behind the bound markers (the page's 3σ convention on the interval).
@@ -336,6 +339,49 @@ if (f.fit) {
   } else {
     check(false, "the engine's conformal-gravity reference at the fit values", "null");
   }
+}
+
+// The Proper Time (Gill) comparison model (bit 13, ABI v3; PHY-021), WHFast, Sun + Mercury: the
+// live contribution against the engine's analytic reference (-1/6 of GR's), the bound verdict
+// (excluded grossly) and the glossary's quoted numbers; bit 13 beside GR 1PN is refused.
+{
+  const ptParams = { [P.ENGINE]: FAV.ENGINE_PARAM.WHFAST, [P.SPAN_YEARS]: 100 };
+  cfg = eng.configure(1 << FAV.BIT.PROPER_TIME, ptParams);
+  const pt = cfg.meta && cfg.meta.proper_time;
+  check(pt && pt.label === "comparison model" && pt.enabled === true && pt.ppn_preset && pt.ppn_preset.beta === 0.5 && pt.ppn_preset.gamma === -1,
+    "metadata labels bit 13 as a comparison model with its PPN (1/2, -1) preset", pt ? pt.label : "no proper_time object");
+  check(/comparison model/.test(cfg.meta.gauge || "") && /proper_time_kernel = true/.test(cfg.scenario) && typeof cfg.meta.comparison_model === "string",
+    "gauge, scenario and comparison-model note carry the Proper Time model", cfg.meta.gauge);
+  const ref = pt && pt.reference ? pt.reference.arcsec_per_cy : NaN;
+  check(pt && pt.reference && Math.abs(pt.reference.ratio_to_gr + 1 / 6) <= 1e-12, "the engine's reference is -1/6 of its GR rate", pt && pt.reference ? pt.reference.ratio_to_gr : "null");
+  const ptLit = dash && dash.literature && dash.literature.rows["b" + FAV.BIT.PROPER_TIME];
+  check(ptLit && ptLit.kind === "derivation" && Number.isFinite(ptLit.value), "the literature column carries the Proper Time derivation reference", ptLit ? ptLit.id : "missing");
+  runChunked(eng, KEPLER_SPAN_YEARS, 1.0);
+  const fpt = eng.fit(NaN, NaN);
+  if (fpt.fit) {
+    const d = fpt.fit[FAV.FIT.RATE] - kepRate;
+    check(d < 0 && Math.abs(d / ref - 1) <= PT_REL_BOUND, "Proper Time live contribution within " + PT_REL_BOUND * 100 + " % of the engine's reference " + ref,
+      d + " over " + KEPLER_SPAN_YEARS + " yr");
+    check(FAV.boundVerdict(d, 0, bound).verdict === "exceeds" && FAV.boundVerdict(ref, NaN, bound).verdict === "exceeds",
+      "the Proper Time contribution exceeds the INPOP15a bound", d);
+  } else {
+    check(false, "fav_fit for the Proper Time kernel", fpt.status + " " + (fpt.message || ""));
+  }
+  const gctx = {};
+  vm.createContext(gctx);
+  vm.runInContext(readFileSync(join(here, "glossary.js"), "utf8"), gctx, { filename: "glossary.js" });
+  const ge = gctx.FA_GLOSSARY.entries;
+  const gtext = Object.keys(ge).map((k) => [ge[k].short, ge[k].long, ge[k].mercury, ge[k].typical || ""].join("\n")).join("\n");
+  for (const [lit, printed, tol, engine, what] of [
+    ["−7.163 ″/cy", -7.163, 5e-4, ref, "Proper Time reference"],
+    ["about 2300×", 2300, 50, Math.abs(ref) / bw, "Proper Time ratio to the INPOP15a half-width"],
+  ]) {
+    check(gtext.includes(lit) && Math.abs(engine - printed) <= tol, "glossary quotes the engine's " + what + " as \"" + lit + "\"", engine);
+  }
+  eng.reset();
+  eng.setToggles((1 << FAV.BIT.PROPER_TIME) | (1 << FAV.BIT.GR_1PN));
+  st = eng.x.fav_configure() | 0;
+  check(st === FAV.STATUS.E_ARG && /bit 13/.test(eng.errorMessage()), "bit 13 beside GR 1PN (bit 8) returns E_ARG", st);
 }
 
 // A forced WHFast with an IAS15-only effect is refused with FA-E1201.

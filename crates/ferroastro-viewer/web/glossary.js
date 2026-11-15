@@ -313,8 +313,8 @@
     term: "PPN parameters", group: "effects",
     short: "The parametrized post-Newtonian formalism describes many theories of gravity with a few numbers; GR has β = γ = 1. The GR advance scales as (2 + 2γ − β)/3.",
     long: "PPN theory writes the 1PN metric with coefficients that differ between theories. The viewer exposes two: [[ppn-beta|β]] and [[ppn-gamma|γ]]. They are used by [[gr-1pn]] (IAS15), [[eih]], the Rung-lab GR rung and, through γ, [[lense-thirring]]. [[whfast|WHFast]] can only do β = γ = 1. Solar-system experiments find both equal to 1 to within about 10⁻⁴ or better.",
-    mercury: "Mercury's perihelion is one of the classic measurements of 2γ − β: change β or γ and watch the GR contribution scale.",
-    see: ["ppn-beta", "ppn-gamma", "gr"],
+    mercury: "Mercury's perihelion is one of the classic measurements of 2γ − β: change β or γ and watch the GR contribution scale. At [[ppn-beta-gamma-half-minus-one|(1/2, −1)]] it becomes the Proper Time comparison model's −1/6.",
+    see: ["ppn-beta", "ppn-gamma", "gr", "ppn-beta-gamma-half-minus-one"],
   };
   E["ppn-beta"] = {
     term: "PPN β", sym: "β", group: "effects",
@@ -439,9 +439,39 @@
   E["comparison-model"] = {
     term: "Comparison model", group: "comparison",
     short: "A beyond-GR term the viewer can switch on to compare with GR. It is off by default and never part of the GR ladder, the 575.31 ″/cy total or any reference value.",
-    long: "FerroAstro's ladder reproduces the observed advance from Newtonian planets, solar J2 and GR only. A comparison model (ADR-0016) is a different theory's term, added on request so its prediction can be set against GR and against ephemeris bounds such as the [[inpop15a-bound]]. Wherever one appears (toggle, preset, table row, gauge, scenario, metadata) it says \"comparison model\". Its table reference is the engine's own [[cg-gauss-reference|Gauss estimate]], not a literature or ladder value. The first one is [[conformal-gravity]] (toggle bit 12, viewer ABI v2).",
+    long: "FerroAstro's ladder reproduces the observed advance from Newtonian planets, solar J2 and GR only. A comparison model (ADR-0016) is a different theory's term, added on request so its prediction can be set against GR and against ephemeris bounds such as the [[inpop15a-bound]]. Wherever one appears (toggle, preset, table row, gauge, scenario, metadata) it says \"comparison model\". Its table reference is the engine's own analytic estimate (the [[cg-gauss-reference|Gauss estimate]] for conformal gravity, −1/6 of GR for the Proper Time kernel), not a ladder value. The first one is [[conformal-gravity]] (toggle bit 12, viewer ABI v2); the second is the [[proper-time-gill]] kernel (toggle bit 13, viewer ABI v3), which replaces the GR 1PN sector instead of adding to it.",
     mercury: "With the default uniform [[gamma0-centring]] it adds about nothing; Sun-centred, its γ0 term is about −0.18 ″/cy, some 60 times the INPOP15a bound.",
-    see: ["conformal-gravity", "cg-gauss-reference", "inpop15a-bound", "cg-fit-values"],
+    see: ["conformal-gravity", "proper-time-gill", "cg-gauss-reference", "inpop15a-bound", "cg-fit-values"],
+  };
+  E["proper-time-gill"] = {
+    term: "Proper Time (Gill) kernel (comparison model)", sym: "PT", group: "comparison",
+    short: "Gill's flat-space force law a = −(∇V/m)(1 + V/mc²): Newton plus a repulsive (GM)²/(c²r³). Its perihelion advance is −1/6 of GR's. Toggle bit 13, off by default; a comparison model that replaces GR 1PN, Lense–Thirring and EIH.",
+    typical: "Mercury: −7.163 ″/cy (engine analytic estimate; GR +42.98 ″/cy)",
+    long: "The Proper Time framework (T. L. Gill, \"Relativistic Newtonian Theory\") puts the potential into the mass: H₁ = √(c²p² + (mc² + V)²), with proper-time generator K = p²/2m + mc² + V + V²/(2mc²). For V = −GMm/r the extra V²/(2mc²) is a potential +(GM)²/(2c²r²) per unit mass. Per orbit that gives −πGM/(c²a(1−e²)), which is minus one sixth of GR's 6πGM/(c²a(1−e²)). By [[bridge-a]] the same motion is a geodesic of a [[conformally-flat]] metric with [[ppn-beta-gamma-half-minus-one|PPN β = 1/2, γ = −1]], so the [[preset-pt-ppn]] preset is an independent second route to the same number. The engine adds the kernel as one velocity-independent, Sun-sourced term with reaction on the Sun (it runs under WHFast). Its gauge is relativistic: it stands for the whole 1PN sector of another theory, so the viewer refuses it beside GR 1PN, EIH and Lense–Thirring.",
+    mercury: "Replacing GR's +42.98 ″/cy by −7.163 ″/cy cannot match the observed 575.31 ″/cy. As an extra term, −7.163 ″/cy is about 2300× the [[inpop15a-bound]] half-width, so the bound marks it excluded grossly. Its table reference is the engine's −1/6 GR estimate; the literature column shows the rd#88 research report's −7.163432586 ″/cy, labelled derivation (not Park17, never an oracle).",
+    see: ["bridge-a", "conformally-flat", "ppn-beta-gamma-half-minus-one", "preset-full-pt", "preset-pt-ppn", "comparison-model", "inpop15a-bound"],
+  };
+  E["bridge-a"] = {
+    term: "Bridge A", group: "comparison",
+    short: "Gill's interaction Hamiltonian H₁ is exactly a constant-mass particle on a geodesic of the conformally flat metric (1 + V/mc²)² η. For V = −GMm/r that metric has PPN β = 1/2, γ = −1.",
+    long: "The relativistic-dynamics#88 research package RD88-A shows, with no approximation, that H₁ = √(c²p² + (mc² + V)²) is the mass-shell energy of the metric Ω²η with Ω = 1 + V/(mc²). Read the other way, it is a particle in flat spacetime whose mass is the field m + V/c², the form conformal gravity's matter sector uses. The metric is [[conformally-flat]], so its Weyl tensor vanishes: it lies entirely in the part of geometry that the [[weyl-action]] does not see. Gill's parameter τ obeys dt/dτ = E/(mc²), a constant on each orbit, so integrating his force law in coordinate time gives the same orbits.",
+    mercury: "It is why the viewer can check the [[proper-time-gill]] kernel against the GR 1PN term at [[ppn-beta-gamma-half-minus-one|(β, γ) = (1/2, −1)]]: two different equations of motion, one physics, the same −1/6 of GR.",
+    see: ["proper-time-gill", "conformally-flat", "ppn-beta-gamma-half-minus-one"],
+  };
+  E["ppn-beta-gamma-half-minus-one"] = {
+    term: "PPN (β, γ) = (1/2, −1)", group: "comparison",
+    short: "The PPN parameters of the conformally flat metric (1 − GM/(rc²))² η of Gill's H₁. The advance factor (2 + 2γ − β)/3 is then −1/6, and light is not deflected if it follows that metric's null geodesics.",
+    typical: "Mercury: −1/6 × 42.98 ≈ −7.163 ″/cy",
+    long: "Expanding (1 − U)² with U = GM/(rc²) gives g₀₀ = 1 − 2U + U², so β = 1/2 (GR: g₀₀ = 1 − 2U + 2U²), and g_ij = −(1 − 2U + …)δ_ij, so γ = −1 (GR: +1). With these values the GR 1PN term ([[gr-1pn]] with the [[ppn]] fields) is the 1PN expansion of [[bridge-a|Gill's H₁]]: velocity-dependent and in coordinate time, while the [[proper-time-gill]] kernel is velocity-independent. Light deflection (1 + γ)/2 = 0 holds only if light follows the same metric, which Gill's paper does not specify. Solar-system tests put γ within about 10⁻⁵ of 1, so γ = −1 is excluded independently of the perihelion.",
+    mercury: "The [[preset-pt-ppn]] preset sets these values on the GR bit (IAS15). FerroAstro's tests check that this run and the kernel agree and that both are −1/6 of the GR run.",
+    see: ["ppn", "ppn-beta", "ppn-gamma", "bridge-a", "proper-time-gill", "preset-pt-ppn"],
+  };
+  E["conformally-flat"] = {
+    term: "Conformally flat metric", group: "comparison",
+    short: "A metric that is flat spacetime multiplied by a positive function, g = Ω²η. Its Weyl tensor is zero, and its null geodesics are the straight light rays of flat spacetime.",
+    long: "Rescaling a metric by Ω² preserves angles and light cones but changes lengths and clock rates. Every Ω²η has zero Weyl curvature, so it is invisible to the [[weyl-action]] of conformal gravity; in that sense the whole of Gill's H₁-gravity is conformal gauge ([[bridge-a]]). The [[mannheim-kazanas-metric]] is not conformally flat: its Weyl tensor is proportional to its β = GM/c² term, which carries GR's 43 ″/cy and the light bending.",
+    mercury: "With Ω = 1 − GM/(rc²) it is the geometry of the [[proper-time-gill]] kernel, whose advance is −1/6 of GR's: the β term needs Weyl curvature to give the observed +42.98 ″/cy.",
+    see: ["bridge-a", "proper-time-gill", "weyl-action", "mannheim-kazanas-metric"],
   };
   E["conformal-gravity"] = {
     term: "Conformal gravity (comparison model)", sym: "CG", group: "comparison",
@@ -1075,9 +1105,9 @@
   E["presets"] = {
     term: "Presets", group: "controls",
     short: "One-click toggle sets: Kepler only (no perturbations), Planets only, GR only, Full model (planets, J2, GR, Lense–Thirring) and Full model + CG (adds the conformal-gravity comparison model).",
-    long: "[[preset-kepler]] checks the [[integrator-floor]]; [[preset-planets]] gives the Newtonian ≈ 532 ″/cy; [[preset-gr]] gives ≈ 42.98 ″/cy; [[preset-full]] gives ≈ 575.31 ″/cy; [[preset-full-cg]] adds the [[comparison-model]] on top. In the Rung lab the presets choose a rung instead (Planets only is unavailable).",
+    long: "[[preset-kepler]] checks the [[integrator-floor]]; [[preset-planets]] gives the Newtonian ≈ 532 ″/cy; [[preset-gr]] gives ≈ 42.98 ″/cy; [[preset-full]] gives ≈ 575.31 ″/cy; [[preset-full-cg]] adds the [[comparison-model]] on top; [[preset-full-pt]] and [[preset-pt-ppn]] show the [[proper-time-gill]] comparison model by its two routes. In the Rung lab the presets choose a rung instead (Planets only is unavailable).",
     mercury: "Compare the presets to see the classic split: Newtonian planets versus relativity.",
-    see: ["preset-kepler", "preset-planets", "preset-gr", "preset-full", "preset-full-cg"],
+    see: ["preset-kepler", "preset-planets", "preset-gr", "preset-full", "preset-full-cg", "preset-full-pt", "preset-pt-ppn"],
   };
   E["preset-kepler"] = {
     term: "Kepler only", group: "controls",
@@ -1119,10 +1149,26 @@
     mercury: "Its CG row is never part of the 575.31 ″/cy budget.",
     see: ["preset-full", "conformal-gravity", "comparison-model"],
   };
+  E["preset-full-pt"] = {
+    term: "Proper Time model", group: "controls",
+    short: "Planets and solar J2 with the Proper Time (Gill) kernel (bit 13) in place of GR 1PN and Lense–Thirring: the PHY-021 route 2, a comparison model.",
+    typical: "Proper Time row ≈ −7.163 ″/cy; total far from the observed 575.31 ″/cy",
+    long: "Bits 0–7 and 13. The kernel replaces the whole GR 1PN sector, so GR 1PN, Lense–Thirring and EIH are switched off; it runs under WHFast. In the Rung lab (which has no bit 13) it selects the GR PPN rung with J2 and the [[ppn-beta-gamma-half-minus-one|(1/2, −1)]] preset, the same physics by [[bridge-a]].",
+    mercury: "Compare its row with the [[preset-pt-ppn]] preset's GR row: two routes, the same −1/6 of GR.",
+    see: ["proper-time-gill", "preset-pt-ppn", "comparison-model"],
+  };
+  E["preset-pt-ppn"] = {
+    term: "PPN (½, −1) preset", group: "controls",
+    short: "Planets, solar J2 and the GR 1PN bit with β = 1/2, γ = −1 (IAS15): the PHY-021 route 1 to the Proper Time comparison model's advance.",
+    typical: "GR row ≈ −7.163 ″/cy (−1/6 of +42.98)",
+    long: "Bits 0–8 with the PPN fields set to the values of the [[conformally-flat]] metric of [[bridge-a|Gill's H₁]]. WHFast can only do β = γ = 1, so AUTO resolves to IAS15. Leaving it with another GR preset restores β = γ = 1. In the Rung lab it selects the GR PPN rung with the same values.",
+    mercury: "It is the GR row that changes: the table labels it GR 1PN, and its Park17 reference stops applying (non-GR PPN values).",
+    see: ["ppn-beta-gamma-half-minus-one", "proper-time-gill", "preset-full-pt", "ppn"],
+  };
   E["effects-toggles"] = {
     term: "Effects (toggles)", group: "controls",
     short: "Switch each perturbation on or off. The figure on the right is its expected contribution to ϖ̇; \"IAS15 only\" means WHFast cannot model it.",
-    long: "Any change restarts the live run (after asking if more than 10 s of integration would be lost). The expected values are approximate literature numbers on the Park17 plane; the table computes the actual contributions. Below a dashed line, [[conformal-gravity]] is a [[comparison-model]], not part of the GR ladder: its figure is the engine's [[cg-gauss-reference|Gauss reference]] for the current settings. In the Rung lab only Solar J2, Lense–Thirring and conformal gravity are available.",
+    long: "Any change restarts the live run (after asking if more than 10 s of integration would be lost). The expected values are approximate literature numbers on the Park17 plane; the table computes the actual contributions. Below a dashed line, [[conformal-gravity]] is a [[comparison-model]], not part of the GR ladder: its figure is the engine's [[cg-gauss-reference|Gauss reference]] for the current settings. The [[proper-time-gill]] kernel shows the engine's −1/6 GR estimate and switches GR 1PN, Lense–Thirring and EIH off (and they switch it off). In the Rung lab only Solar J2, Lense–Thirring and conformal gravity are available.",
     mercury: "Together the switched-on effects make up the advance shown in the readout.",
     see: ["planetary-perturbations", "gr-1pn", "solar-j2", "lense-thirring", "asteroids", "eih", "conformal-gravity"],
   };

@@ -68,7 +68,9 @@ pub struct TestParticle<F: Frame, R: Real = f64> {
     mu: R,
     terms: Vec<Box<dyn CentralTerm<F, R>>>,
     gauge: Gauge,
-    /// True if a term is a comparison model (ADR-0016).
+    /// True if a term declares the conformal-gravity comparison gauge
+    /// [`Gauge::StaticWeakFieldPotential`] (ADR-0016); the relativistic Proper Time comparison
+    /// gauge (PHY-021) shows in `gauge` itself.
     comparison: bool,
 }
 
@@ -93,7 +95,7 @@ impl<F: Frame, R: Real> TestParticle<F, R> {
         let mut comparison = false;
         for t in &terms {
             let g = t.gauge();
-            comparison |= g.is_comparison_model();
+            comparison |= g == Gauge::StaticWeakFieldPotential;
             if !g.is_relativistic() {
                 continue;
             }

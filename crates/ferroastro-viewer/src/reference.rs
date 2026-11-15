@@ -1,10 +1,12 @@
 // SPDX-FileCopyrightText: 2026 Proper-Time Physics Institute
 // SPDX-License-Identifier: Apache-2.0
-//! The engine-computed analytic reference of the conformal-gravity **comparison model** (toggle
-//! bit 12, ABI v2; ADR-0016, PHY-020): the Gauss secular rates of
+//! The engine-computed analytic references of the **comparison models** (ADR-0016): for conformal
+//! gravity (toggle bit 12, ABI v2; PHY-020) the Gauss secular rates of
 //! [`ferroastro_analytic::advance::conformal_linear_advance`] and
 //! [`ferroastro_analytic::advance::conformal_quadratic_advance`] for Mercury and the current
-//! parameters 13–16, so the page never evaluates a formula itself (DESIGN §1: no physics in JS).
+//! parameters 13–16, and for the Proper Time (Gill) kernel (bit 13, ABI v3; PHY-021) the
+//! first-order [`ferroastro_analytic::advance::proper_time_advance`], −1/6 of GR's, so the page
+//! never evaluates a formula itself (DESIGN §1: no physics in JS).
 //!
 //! Nothing here is new physics: it composes the analytic crate with the DE440 constants of the
 //! embedded header.440 and the SW92 J2000 mean elements of the Rung lab
@@ -16,7 +18,8 @@
 use crate::ViewerError;
 use crate::config::{ConformalSettings, Gamma0Centring};
 use ferroastro_analytic::advance::{
-    conformal_linear_advance, conformal_quadratic_advance, keplerian_period,
+    conformal_linear_advance, conformal_quadratic_advance, keplerian_period, proper_time_advance,
+    schwarzschild_advance,
 };
 use ferroastro_core::time::{DAYS_PER_JULIAN_CENTURY, SECONDS_PER_DAY};
 use ferroastro_core::units::{GravParam, Length, Velocity};
@@ -36,6 +39,50 @@ pub const BASIS: &str = "comparison model (ADR-0016, PHY-020), not part of the G
 pub const UNIFORM_CAVEAT: &str = "a uniform gamma0 leaves heliocentric motion unchanged exactly \
      only with velocity-independent forces; with EIH or Lense-Thirring on, the common drift \
      enters at O(v dv/c^2), a tiny but non-zero change far below any resolvable rate";
+
+/// What the Proper Time analytic reference is, for the metadata and the page.
+pub const PROPER_TIME_BASIS: &str = "comparison model (ADR-0016 D6, PHY-021), not part of the GR \
+     ladder: first-order advance of Gill's flat-space force law a = -(grad V/m)(1 + V/(m c^2)), \
+     -pi GM_sun/(c^2 a (1-e^2)) per orbit = -1/6 of GR's 6 pi GM_sun/(c^2 a (1-e^2)) (the PPN \
+     factor (2 + 2 gamma - beta)/3 at beta = 1/2, gamma = -1), DE440 GM_sun and c, Mercury's SW92 \
+     J2000 mean a and e, rate = per orbit x n with n = sqrt((GM_sun + GM_Mercury)/a^3)";
+
+/// Bridge A, the statement that makes the PPN (1/2, −1) run a second route to the same physics.
+pub const BRIDGE_A: &str = "Bridge A: Gill's interaction Hamiltonian H1 = sqrt(c^2 p^2 + (m c^2 + \
+     V)^2) is exactly a constant-mass particle on a geodesic of the conformally flat metric (1 + \
+     V/(m c^2))^2 eta = (1 - GM/(r c^2))^2 eta (Weyl tensor zero), whose PPN parameters are \
+     beta = 1/2, gamma = -1 (relativistic-dynamics#88, research/2026-11-14, RD88-A)";
+
+/// Mercury's analytic rate under the Proper Time (Gill) kernel and under GR 1PN, ″/cy.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct ProperTimeReference {
+    /// The Proper Time kernel's first-order rate, ″/cy (comparison model).
+    pub rate: f64,
+    /// GR's first-order rate for the same inputs, ″/cy.
+    pub gr: f64,
+}
+
+/// The Proper Time analytic reference for Mercury (comparison model, PHY-021).
+///
+/// # Errors
+/// `FAV_E_UNSUPPORTED` in a build without `embed-header` (no DE440 constants);
+/// `FAV_E_RUN` if an analytic formula refuses its inputs.
+pub fn proper_time_reference() -> Result<ProperTimeReference, ViewerError> {
+    if crate::ic::HEADER_440.is_none() {
+        return Err(ViewerError::new(
+            crate::FAV_E_UNSUPPORTED,
+            crate::ic::WITHOUT_EMBED_HEADER,
+        ));
+    }
+    let i = inputs()?;
+    let run = |e: &dyn std::fmt::Display| ViewerError::run(e.to_string());
+    let rate = proper_time_advance(i.gm_sun, i.c, i.a, i.e).map_err(|e| run(&e))?;
+    let gr = schwarzschild_advance(i.gm_sun, i.c, i.a, i.e, i.gm_sun).map_err(|e| run(&e))?;
+    Ok(ProperTimeReference {
+        rate: rate.arcsec() * i.orbits_per_century,
+        gr: gr.per_orbit.arcsec() * i.orbits_per_century,
+    })
+}
 
 /// Mercury's analytic rate under the conformal-gravity terms, ″/cy (comparison model).
 #[derive(Debug, Clone, Copy, PartialEq)]

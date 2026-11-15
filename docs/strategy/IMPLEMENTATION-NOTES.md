@@ -7251,3 +7251,38 @@ decisions D1–D7 of 2026-11-14 (Bernard, rd#88). No viewer or web change (that 
 
 **Not done here.** Viewer bit 12 / ABI v2 (F3, after #58); the comparison dashboard (F4); the Proper Time −7.17″/cy
 row (F4b, D6); OI-79 stays open.
+
+## F4b — Proper Time (Gill) comparison model: PPN (1/2, −1) run and dashboard row (ADR-0016 D6, PHY-021)
+
+Maintainer approval 2026-11-15 (Bernard: the PPN (1/2, −1) run plus the Proper Time dashboard row, plan items
+F4b/D6). Stacked on the dashboard follow-up PR #65. Sources: the relativistic-dynamics#88 synthesis report on the
+proper-time Hamiltonian (§§1, 3, 5) and the research packages `research/2026-11-14/` (RD88-A Bridge A, RD88-B).
+
+**Physics.** Gill's `K = π²/2m + mc² + V + V²/(2mc²)` gives, for `V = −GMm/r`, the force law
+`a = −(GM/r²) r̂ + (GM)² r̂/(c² r³)`, i.e. the extra potential `+(GM)²/(2c²r²)` per unit mass and the advance
+`−πGM/(c²a(1−e²))` per orbit, −1/6 of GR's. By Bridge A the same orbits are geodesics of `(1 − GM/(rc²))² η`,
+PPN β = 1/2, γ = −1, so the PPN 1PN term at (1/2, −1) is a second, velocity-dependent route to the same number.
+Gill's law is a flow in `τ_K` with `dt/dτ_K = E/(mc²)` constant per orbit, so integrating it in `t` keeps the
+orbit and the advance per orbit.
+
+**Engine.** `ferroastro_forces::ProperTimeKernel` (n-body, Sun-sourced, reaction on the Sun, potential
+implemented, on the WHFast list) and `ProperTimeCentral` (test particle). New `Gauge::ProperTimeKernel`:
+relativistic (like `GrEffectivePotential`, it stands for a theory's whole 1PN sector), so FA-E0502 refuses it beside
+GR 1PN, EIH, the GR potential and Lense–Thirring; `is_comparison_model()` covers it and its label says "comparison
+model". `NBodyModel`/`TestParticle` now append the conformal-gravity label only for a `StaticWeakFieldPotential`
+term, so Gill + CG reads "Proper Time …; + conformal-gravity …". `ferroastro_analytic::advance::proper_time_advance`
+(one negative 1PN unit). Scenario switch `forces.proper_time_kernel` (bool, skipped when false: digests unchanged;
+refused beside the GR switches with FA-E1203; n-body only, FA-E1201 otherwise); schema regenerated.
+
+**Viewer (ABI v3).** Bit 13 `PROPER_TIME`, System mode only, exclusive with bits 8, 9, 11; metadata `proper_time`
+(engine reference −7.163413 ″/cy for SW92 a, e; GR +42.980479; ratio −1/6; the rd#88 report's −7.163432586 as a
+labelled derivation value, never an oracle; the PPN preset); dashboard `b13` analytic and literature (derivation)
+rows; INPOP15a bound applies to b12 and b13 ("exceeds ×2300"). Presets "Proper Time model" (bits 0–7, 13) and
+"PPN (½, −1)" (bits 0–8 at β = 1/2, γ = −1). Glossary: proper-time-gill, bridge-a, ppn-beta-gamma-half-minus-one,
+conformally-flat, preset-full-pt, preset-pt-ppn. The version is 3 because a reserved bit became defined (D5's rule).
+
+**Measured.** Scale-free (x = GM/(c²p) ≈ 1e-6): kernel vs closed form ≤ 1.0e-6 relative (m/M = 1e-3 and 0, e = 0.2,
+0.5); PPN (1/2, −1) vs Gill ≤ 6.7e-7; each / GR (1, 1) = −1/6 to ≤ 4.2e-6; energy 1.3e-15 over 20 orbits.
+Mercury (DE440 ICs, 20 yr, n-body): GR +42.980122, PPN (1/2, −1) −7.163354, kernel −7.163353 ″/cy; ratios
+−0.166666679 and −0.166666652. Viewer, 100 yr: bit 13 (WHFast) −7.163353, PPN preset (IAS15) −7.163354 against
+the engine's −7.163413 (8e-6 relative).

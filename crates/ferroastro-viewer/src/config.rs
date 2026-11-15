@@ -39,12 +39,20 @@ pub mod bits {
     /// `forces.conformal` with γ0, γ\*, κ and the γ0 centring of parameters 13–16. Never in the
     /// default mask.
     pub const CONFORMAL: u32 = 1 << 12;
+    /// The Proper Time (Gill) kernel, a **comparison model** outside the GR ladder (ABI v3;
+    /// ADR-0016 decision D6, PHY-021): `forces.proper_time_kernel`. It replaces the GR 1PN
+    /// sector, so it excludes [`GR_1PN`], [`LENSE_THIRRING`] and [`EIH`]. Never in the default
+    /// mask.
+    pub const PROPER_TIME: u32 = 1 << 13;
     /// The seven planet bits.
     pub const PLANETS: u32 = 0x7f;
-    /// Every defined bit (0–12).
-    pub const ALL: u32 = 0x1fff;
-    /// The default mask: bits 0–9 (planets, J2, GR, Lense–Thirring); conformal gravity stays off.
+    /// Every defined bit (0–13).
+    pub const ALL: u32 = 0x3fff;
+    /// The default mask: bits 0–9 (planets, J2, GR, Lense–Thirring); the comparison models stay
+    /// off.
     pub const DEFAULT: u32 = 0x3ff;
+    /// The bits the Proper Time kernel replaces (the GR 1PN sector: GR 1PN, Lense–Thirring, EIH).
+    pub const GR_SECTOR: u32 = GR_1PN | LENSE_THIRRING | EIH;
 }
 
 /// Parameter ids of `fav_set_param` / `fav_get_param` (DESIGN §4.3).
@@ -316,11 +324,11 @@ impl ViewerConfig {
     /// Set the toggle mask.
     ///
     /// # Errors
-    /// `FAV_E_ARG` for a reserved bit (13–31).
+    /// `FAV_E_ARG` for a reserved bit (14–31).
     pub fn set_mask(&mut self, mask: u32) -> Result<(), ViewerError> {
         if mask & !bits::ALL != 0 {
             return Err(ViewerError::arg(format!(
-                "FA-E0002: toggle mask {mask:#x} sets reserved bits {:#x} (only bits 0-12 are defined)",
+                "FA-E0002: toggle mask {mask:#x} sets reserved bits {:#x} (only bits 0-13 are defined)",
                 mask & !bits::ALL
             )));
         }
@@ -478,6 +486,25 @@ impl ViewerConfig {
         (self.mask & bits::CONFORMAL != 0).then(|| self.conformal_settings())
     }
 
+    /// True when bit 13, the Proper Time (Gill) comparison model, is on.
+    #[must_use]
+    pub const fn proper_time(&self) -> bool {
+        self.mask & bits::PROPER_TIME != 0
+    }
+
+    /// The comparison-model note of the metadata, or `None` when no comparison model is on.
+    #[must_use]
+    pub fn comparison_models(&self) -> Option<String> {
+        let mut names = Vec::new();
+        if self.conformal().is_some() {
+            names.push("conformal gravity");
+        }
+        if self.proper_time() {
+            names.push("the Proper Time (Gill) kernel");
+        }
+        (!names.is_empty()).then(|| names.join(" and "))
+    }
+
     /// True when the linear-plus-periodic fit is requested.
     #[must_use]
     pub fn fit_periodic(&self) -> bool {
@@ -496,7 +523,8 @@ impl ViewerConfig {
     /// Check the toggles against the mode (DESIGN §3.1, §3.3).
     ///
     /// # Errors
-    /// `FAV_E_ARG` for bits 8 and 11 together, or planet, asteroid or EIH bits in Rung lab.
+    /// `FAV_E_ARG` for bits 8 and 11 together, bit 13 with bit 8, 9 or 11, or planet,
+    /// asteroid, EIH or Proper Time bits in Rung lab.
     pub fn validate(&self) -> Result<(), ViewerError> {
         let m = self.mask;
         if m & bits::GR_1PN != 0 && m & bits::EIH != 0 {
@@ -504,6 +532,20 @@ impl ViewerConfig {
                 "FA-E0002: toggle bits 8 (GR 1PN of the Sun) and 11 (EIH among all bodies) are \
                  mutually exclusive: EIH contains the Sun's 1PN field",
             ));
+        }
+        if self.is_lab() && m & bits::PROPER_TIME != 0 {
+            return Err(ViewerError::arg(
+                "FA-E0002: bit 13 (the Proper Time (Gill) kernel) is an n-body System-mode term; \
+                 in the Rung lab the same comparison model is RUNG 4 (GR PPN) with beta = 0.5, \
+                 gamma = -1 (PHY-021 route 1)",
+            ));
+        }
+        if m & bits::PROPER_TIME != 0 && m & bits::GR_SECTOR != 0 {
+            return Err(ViewerError::arg(format!(
+                "FA-E0002: bit 13 (the Proper Time (Gill) comparison model) replaces the GR 1PN \
+                 sector; clear bits 8 (GR 1PN), 9 (Lense-Thirring) and 11 (EIH) (mask {m:#x}; \
+                 ADR-0016, PHY-021)"
+            )));
         }
         if self.is_lab() && m & (bits::PLANETS | bits::ASTEROIDS | bits::EIH) != 0 {
             return Err(ViewerError::arg(format!(
@@ -567,6 +609,27 @@ impl ViewerConfig {
             .map_err(|e| ViewerError::arg(e.to_string()))
     }
 
+    /// The scenario description's comparison-model clause (ADR-0016), or nothing.
+    const fn comparison_suffix(&self) -> &'static str {
+        match (
+            self.mask & bits::CONFORMAL != 0,
+            self.mask & bits::PROPER_TIME != 0,
+        ) {
+            (true, true) => {
+                "; with the conformal-gravity and Proper Time (Gill) comparison models \
+                 (ADR-0016), outside the GR ladder"
+            }
+            (true, false) => {
+                "; with the conformal-gravity comparison model (ADR-0016), outside the GR ladder"
+            }
+            (false, true) => {
+                "; with the Proper Time (Gill) comparison model (ADR-0016, PHY-021), outside \
+                 the GR ladder"
+            }
+            (false, false) => "",
+        }
+    }
+
     /// The scenario TOML of [`ViewerConfig::to_scenario`].
     ///
     /// # Errors
@@ -595,11 +658,7 @@ impl ViewerConfig {
         let _ = writeln!(
             s,
             "description = \"FerroAstro orbit viewer, System mode, toggle mask {m:#x} (docs/viewer/DESIGN.md){}\"",
-            if on(bits::CONFORMAL) {
-                "; with the conformal-gravity comparison model (ADR-0016), outside the GR ladder"
-            } else {
-                ""
-            }
+            self.comparison_suffix()
         );
         let _ = writeln!(s, "mode = \"n-body\"");
         let _ = writeln!(s, "bodies = [{}]", quoted.join(", "));
@@ -636,6 +695,10 @@ impl ViewerConfig {
                 cg.kappa_per_cm2,
                 cg.centre_label()
             );
+        }
+        if on(bits::PROPER_TIME) {
+            // The Proper Time (Gill) comparison model (ADR-0016, PHY-021): never in the GR ladder.
+            s.push_str("proper_time_kernel = true\n");
         }
         let relativistic = (!wh && on(bits::GR_1PN)) || on(bits::EIH) || on(bits::LENSE_THIRRING);
         if relativistic && !self.ppn_is_gr() {
@@ -674,9 +737,11 @@ mod tests {
     fn defaults_and_ranges() {
         let mut c = ViewerConfig::default();
         assert_eq!(c.mask(), bits::DEFAULT);
-        assert!(c.set_mask(1 << 13).is_err());
+        assert!(c.set_mask(1 << 14).is_err());
         assert!(c.set_mask(bits::CONFORMAL).is_ok());
+        assert!(c.set_mask(bits::PROPER_TIME).is_ok());
         assert_eq!(bits::DEFAULT & bits::CONFORMAL, 0);
+        assert_eq!(bits::DEFAULT & bits::PROPER_TIME, 0);
         c.set_mask(bits::DEFAULT).unwrap();
         assert!(c.set(Param::WhStepDays, 0.0).is_err());
         assert!(c.set(Param::AsteroidCount, 2.5).is_err()); // lint: allow-literal(a non-integer probe of an integer parameter)
@@ -748,6 +813,57 @@ mod tests {
         c.set_mask(bits::SUN_J2 | bits::LENSE_THIRRING | bits::CONFORMAL)
             .unwrap();
         assert!(c.validate().is_ok(), "bit 12 is allowed in the Rung lab");
+    }
+
+    /// Bit 13 maps to `forces.proper_time_kernel` (both engines), is refused beside the GR sector
+    /// (bits 8, 9, 11) and in the Rung lab, combines with conformal gravity, and is not
+    /// exaggerated physics by itself (it has no parameter).
+    ///
+    /// Verifies: API-004, PHY-021
+    #[test]
+    fn proper_time_bit() {
+        let mut c = ViewerConfig::default();
+        assert!(!c.proper_time());
+        assert!(
+            !c.to_scenario(EngineKind::Ias15)
+                .unwrap()
+                .forces
+                .proper_time_kernel
+        );
+        assert!(c.comparison_models().is_none());
+        let pt = (bits::DEFAULT & !bits::GR_SECTOR) | bits::PROPER_TIME;
+        c.set_mask(pt).unwrap();
+        c.validate().unwrap();
+        assert!(c.is_nominal());
+        for engine in [EngineKind::Ias15, EngineKind::WhFast] {
+            let s = c.to_scenario(engine).unwrap();
+            assert!(s.forces.proper_time_kernel && !s.forces.gr_1pn_central);
+            assert!(!s.forces.gr_potential && !s.forces.lense_thirring);
+        }
+        assert!(
+            c.scenario_toml(EngineKind::Ias15)
+                .unwrap()
+                .contains("Proper Time (Gill) comparison model")
+        );
+        assert!(c.comparison_models().unwrap().contains("Proper Time"));
+        for other in [bits::GR_1PN, bits::LENSE_THIRRING, bits::EIH] {
+            c.set_mask(pt | other).unwrap();
+            let e = c.validate().unwrap_err();
+            assert!(e.message.contains("bit 13"), "{}", e.message);
+        }
+        c.set_mask(pt | bits::CONFORMAL).unwrap();
+        c.validate().unwrap();
+        assert!(
+            c.to_scenario(EngineKind::Ias15)
+                .unwrap()
+                .forces
+                .conformal
+                .is_some()
+        );
+        assert!(c.comparison_models().unwrap().contains(" and "));
+        c.set(Param::Mode, 1.0).unwrap();
+        c.set_mask(bits::PROPER_TIME).unwrap();
+        assert!(c.validate().is_err(), "bit 13 is System mode only");
     }
 
     /// Verifies: API-004

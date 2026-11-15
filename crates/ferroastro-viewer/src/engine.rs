@@ -236,25 +236,7 @@ impl SystemRun {
             ),
             EngineKind::Ias15 => format!("ias15 eps={:e}", cfg.get(Param::Ias15Epsilon)),
         };
-        let m = cfg.mask();
-        let gauge = if m & bits::EIH != 0 || (m & bits::GR_1PN != 0 && engine == EngineKind::Ias15)
-        {
-            "PPN isotropic/harmonic"
-        } else if m & bits::GR_1PN != 0 {
-            "GR effective potential (Nobili-Roxburgh; reproduces the 1PN perihelion advance, not the 1PN mean motion)"
-        } else if m & bits::LENSE_THIRRING != 0 {
-            "PPN isotropic/harmonic (Lense-Thirring term only)"
-        } else {
-            "Newtonian"
-        };
-        let gauge = if m & bits::CONFORMAL != 0 {
-            format!(
-                "{gauge}; + comparison model: conformal gravity (static weak-field potential, \
-                 ADR-0016; not part of the GR ladder)"
-            )
-        } else {
-            gauge.to_owned()
-        };
+        let gauge = gauge_label(cfg.mask(), engine);
         let info = RunInfo {
             mode: "system",
             engine: match engine {
@@ -290,7 +272,7 @@ impl SystemRun {
             offset_s: 0.0,
             series: PassageSeries::default(),
             info,
-            mask: m,
+            mask: cfg.mask(),
         };
         // The first segment: one step, which assembles the ICs and the force model and records
         // the initial sample; its records are the run's first.
@@ -875,5 +857,33 @@ impl Viewer {
     #[must_use]
     pub fn error(&self) -> &str {
         &self.error
+    }
+}
+
+/// The run's gauge label for the metadata (PHY-015): the relativistic gauge of the toggles, the
+/// Proper Time comparison model's own gauge when bit 13 replaces the GR sector, and the
+/// conformal-gravity comparison model appended when bit 12 is on (ADR-0016).
+fn gauge_label(m: u32, engine: EngineKind) -> String {
+    let gauge = if m & bits::EIH != 0 || (m & bits::GR_1PN != 0 && engine == EngineKind::Ias15) {
+        "PPN isotropic/harmonic"
+    } else if m & bits::GR_1PN != 0 {
+        "GR effective potential (Nobili-Roxburgh; reproduces the 1PN perihelion advance, not the 1PN mean motion)"
+    } else if m & bits::LENSE_THIRRING != 0 {
+        "PPN isotropic/harmonic (Lense-Thirring term only)"
+    } else if m & bits::PROPER_TIME != 0 {
+        "comparison model: Proper Time (Gill) kernel (Gill's flat-space force law, the orbits \
+             of (1 - GM/(r c^2))^2 eta, PPN beta = 1/2, gamma = -1; replaces the GR 1PN sector; \
+             ADR-0016, PHY-021; not part of the GR ladder)"
+    } else {
+        "Newtonian"
+    };
+
+    if m & bits::CONFORMAL != 0 {
+        format!(
+            "{gauge}; + comparison model: conformal gravity (static weak-field potential, \
+                 ADR-0016; not part of the GR ladder)"
+        )
+    } else {
+        gauge.to_owned()
     }
 }

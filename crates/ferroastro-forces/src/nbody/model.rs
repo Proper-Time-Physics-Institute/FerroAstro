@@ -24,7 +24,9 @@ pub struct NBodyModel<F: Frame, R: Real = f64> {
     layout: Layout<R>,
     terms: Vec<Box<dyn ForceTerm<F, R>>>,
     gauge: Gauge,
-    /// True if a term is a comparison model (ADR-0016, [`Gauge::is_comparison_model`]).
+    /// True if a term declares the conformal-gravity comparison gauge
+    /// [`Gauge::StaticWeakFieldPotential`] (ADR-0016). The Proper Time comparison model
+    /// (PHY-021) is relativistic and shows in `gauge` itself.
     comparison: bool,
     compensated: bool,
     _frame: PhantomData<fn() -> F>,
@@ -83,7 +85,7 @@ impl<F: Frame, R: Real> NBodyModel<F, R> {
         for t in &mut terms {
             t.bind(&layout)?;
             let g = t.gauge();
-            comparison |= g.is_comparison_model();
+            comparison |= g == Gauge::StaticWeakFieldPotential;
             if g.is_relativistic() {
                 if gauge.is_relativistic() && gauge != g {
                     return Err(ForceError::GaugeMismatch {
@@ -128,11 +130,11 @@ impl<F: Frame, R: Real> NBodyModel<F, R> {
         &self.terms
     }
 
-    /// True if a term of the model is a beyond-GR comparison model (ADR-0016, PHY-020): its
-    /// rates carry the label "comparison model" (in [`NBodyModel::describe`]).
+    /// True if a term of the model is a beyond-GR comparison model (ADR-0016, PHY-020,
+    /// PHY-021): its rates carry the label "comparison model" (in [`NBodyModel::describe`]).
     #[must_use]
     pub const fn has_comparison_model(&self) -> bool {
-        self.comparison
+        self.comparison || self.gauge.is_comparison_model()
     }
 
     /// The model's gauge label for reports (PHY-015): the gauge's label, followed, when a
