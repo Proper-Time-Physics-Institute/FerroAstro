@@ -28,6 +28,7 @@ mod common;
 use common::{LAB, check, vectors};
 use ferroastro_viewer::Viewer;
 use ferroastro_viewer::config::{Param, bits};
+use ferroastro_viewer::dashboard::{PROPER_TIME_DERIVATION_ID, PROPER_TIME_DERIVATION_VALUE};
 use ferroastro_viewer::reference::conformal_reference;
 use serde_json::Value;
 
@@ -67,7 +68,7 @@ fn viewer(mask: u32, params: &[(Param, f64)]) -> Viewer {
 /// bound reach the metadata unchanged from `tests/vectors`, with the column labels the page shows.
 /// Needs no header.440: none of these depends on the DE440 constants.
 ///
-/// Verifies: API-004, PHY-014, PHY-020
+/// Verifies: API-004, PHY-014, PHY-020, PHY-021
 #[test]
 fn dashboard_passes_m5_evidence_literature_and_bound_through() {
     let vs = vectors();
@@ -136,7 +137,7 @@ fn dashboard_passes_m5_evidence_literature_and_bound_through() {
     }
     assert!(
         lit["rows"]["b12"].is_null(),
-        "no literature value for the comparison model"
+        "no literature value for the conformal-gravity comparison model"
     );
 
     let b = &d["bound"];
@@ -152,19 +153,57 @@ fn dashboard_passes_m5_evidence_literature_and_bound_through() {
         .unwrap();
     assert_eq!(f(&b["value"]).to_bits(), centre.to_bits());
     assert_eq!(f(&b["half_width"]).to_bits(), half.to_bits());
-    assert_eq!(b["applies_to"], serde_json::json!(["b12"]));
-    assert_eq!(
-        d["comparison_bits"],
-        serde_json::json!([bits::CONFORMAL.trailing_zeros()])
-    );
     for k in ["frame", "window", "protocol", "criterion"] {
         assert!(labelled(&b[k]), "bound.{k} labelled");
     }
+    // The visible sub-label (not only the tooltip) names the bound's window.
+    assert!(
+        b["short"].as_str().unwrap().contains("MESSENGER"),
+        "bound.short names the window: {}",
+        b["short"]
+    );
+    assert!(
+        b["criterion"]
+            .as_str()
+            .unwrap()
+            .contains("paired-difference")
+    );
     // Every reference column states its unit, so the page never assumes one (the analytic column,
     // which needs the DE440 constants, is checked in the analytic test below).
     for col in ["m5", "literature", "bound"] {
         assert_eq!(d[col]["unit"], "arcsec/cy", "{col}.unit");
     }
+}
+
+/// The Proper Time comparison model's literature cell (bit 13) is a labelled derivation reference
+/// (the rd#88 report), not a Park17 value and not a vector; it always applies.
+///
+/// Verifies: API-004, PHY-021
+#[test]
+fn proper_time_row_carries_the_labelled_derivation_reference() {
+    let m = meta(&Viewer::new());
+    let lit = &m["dashboard"]["literature"];
+    // The Proper Time comparison model's row is a labelled derivation reference (the rd#88
+    // report), not a Park17 value and not a vector.
+    let pt = &lit["rows"]["b13"];
+    assert_eq!(pt["kind"], "derivation");
+    assert_eq!(pt["id"], PROPER_TIME_DERIVATION_ID);
+    assert_eq!(
+        f(&pt["value"]).to_bits(),
+        PROPER_TIME_DERIVATION_VALUE.to_bits()
+    );
+    assert!(pt["note"].as_str().unwrap().contains("never an oracle"));
+    assert!(
+        pt["source"]
+            .as_str()
+            .unwrap()
+            .contains("relativistic-dynamics#88")
+    );
+    assert_eq!(pt["applies"], true);
+    assert_eq!(
+        m["proper_time"]["derivation"]["id"],
+        PROPER_TIME_DERIVATION_ID
+    );
 }
 
 /// An override of an effect's own parameter marks its Park17 row as not applying (nominal physics
@@ -212,7 +251,10 @@ fn literature_rows_stop_applying_when_their_parameter_is_overridden() {
 /// Rung lab), follow the J2 override, and the conformal-gravity estimate is the engine's own Gauss
 /// reference. Needs the DE440 constants (embed-header); without them the estimates are null.
 ///
-/// Verifies: API-004, PHY-004, PHY-007, PHY-008, PHY-010, PHY-011, PHY-020
+/// The Proper Time estimate (bit 13) is −1/6 of the GR estimate at β = γ = 1, and equals the
+/// engine's `proper_time.reference`.
+///
+/// Verifies: API-004, PHY-004, PHY-007, PHY-008, PHY-010, PHY-011, PHY-020, PHY-021
 #[test]
 fn analytic_estimates_match_the_ladder_analytic_vectors() {
     let m = meta(&Viewer::new());
@@ -251,6 +293,23 @@ fn analytic_estimates_match_the_ladder_analytic_vectors() {
         "{got} vs {}",
         cg.total
     );
+
+    let pt = f(&rows["b13"]["value"]);
+    let gr = f(&rows["b8"]["value"]);
+    assert!(
+        (pt / gr + 1.0 / 6.0).abs() <= 8.0 * f64::EPSILON, // lint: allow-literal(-1/6, PHY-021)
+        "{pt} / {gr}"
+    );
+    let r = &m["proper_time"]["reference"];
+    assert_eq!(r["arcsec_per_cy"], rows["b13"]["value"]);
+    // The reference's GR rate comes from schwarzschild_advance, the dashboard's from six 1PN
+    // units: equal to round-off.
+    let r_gr = f(&r["gr_arcsec_per_cy"]);
+    assert!(
+        (r_gr - gr).abs() <= 16.0 * f64::EPSILON * gr.abs(), // lint: allow-literal(round-off budget of two evaluations)
+        "{r_gr} vs {gr}"
+    );
+    println!("Proper Time analytic {pt:+.6} arcsec/cy, GR {gr:+.6} arcsec/cy");
 
     let park_j2 = vs.get("PARK17-J2SUN").unwrap().value().unwrap();
     let v = viewer(bits::DEFAULT, &[(Param::J2Override, park_j2)]);

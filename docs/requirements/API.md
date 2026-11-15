@@ -102,7 +102,7 @@ statement: >-
   PHY-015 metadata (frame, epoch, span, fit model, constants, gauge, IC hash),
   compute per-effect contributions with the ADR-0014 P-remove protocol, and
   build for wasm32-unknown-unknown as a module with no imports and the
-  version-2 extern "C" ABI of the design.
+  version-3 extern "C" ABI of the design.
 acceptance: >-
   Native tests cover the ABI round trip and every status code, the Kepler-only
   baseline, the GR, PPN, J2, Lense-Thirring and SR-rung rates, a single-planet
@@ -115,7 +115,7 @@ source: >-
   docs/viewer/DESIGN.md (principal's request: see the orbits and toggle the
   perturbations while probing Mercury's perihelion).
 parent: null
-related: [API-002, PHY-015, PHY-020, CI-009, CI-010, DEP-006]
+related: [API-002, PHY-015, PHY-020, PHY-021, CI-009, CI-010, DEP-006]
 notes: >-
   Proposed with the viewer (NEEDS HUMAN REVIEW). The ABI shims need the
   unsafe-attribute lint exception of DESIGN §2.2 (AGENTS.md rule 5, STD-003).
@@ -132,4 +132,14 @@ notes: >-
   uniform centring is exactly zero only with velocity-independent forces; with
   EIH or Lense–Thirring on, the common drift enters at O(v·Δv/c²), which the
   page and glossary say. Viewer tests: tests/viewer_conformal.rs.
+  ABI v3 (ADR-0016 decision D6, PHY-021; 2026-11-15): toggle bit 13 is
+  PROPER_TIME, the Proper Time (Gill) comparison model
+  (forces.proper_time_kernel), labelled "comparison model" like bit 12. It
+  replaces the GR 1PN sector, so bits 8, 9 and 11 are refused beside it
+  (FA-E0002) and it is System mode only (the Rung lab's equivalent is RUNG 4
+  at beta = 0.5, gamma = -1). No parameter is added; the metadata gains the
+  "proper_time" object (engine reference, -1/6 of GR; the rd#88 derivation
+  value as a display reference; the PPN preset). The version changes because a
+  reserved bit becomes defined (D5's rule); the invalid-bit checks moved to
+  bit 14. Viewer tests: tests/viewer_proper_time.rs.
 ```

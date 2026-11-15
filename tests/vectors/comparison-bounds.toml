@@ -21,7 +21,7 @@ source = "Fienga et al. 2016: supplementary Mercury advance 0.0 +/- 3.1 mas/cy (
 citation = "A. Fienga, J. Laskar, H. Manche and M. Gastineau, 'Tests of GR with INPOP15a planetary ephemerides: estimations of possible supplementary advances of perihelia for Mercury and Saturn', Proc. 14th Marcel Grossmann Meeting, arXiv:1601.00947 (2016); proceedings volume and page numbers not checked (ADR-0016, OPEN-ITEMS OI-79 'Related')"
 retrieved = "2026-11-14"
 tolerance = { abs = 0.0031 }
-tolerance_rationale = "The quoted interval itself (INPOP15A-MERCURY-SUPPLEMENTARY-ADVANCE-INTERVAL): an advance inside +/- 3.1 mas/cy is not excluded by INPOP15a. The viewer marks a comparison-model row 'within' when |rate| <= 0.0031 arcsec/cy and 'exceeds' otherwise; this is a display marker, not a test."
+tolerance_rationale = "The quoted interval itself (INPOP15A-MERCURY-SUPPLEMENTARY-ADVANCE-INTERVAL): an advance inside +/- 3.1 mas/cy is not excluded by INPOP15a. The viewer applies its 3-sigma convention to the interval (FAV.boundVerdict; criterion text in the metadata, dashboard.bound.criterion): with d = |rate - value| and s = 3 sigma (sigma the paired-difference jack-knife of the live contribution, 0 for the engine's analytic estimate), a comparison-model row reads 'within' if d + s <= 0.0031 arcsec/cy, 'exceeds' if d - 0.0031 arcsec/cy > s, and 'unresolved' otherwise; this is a display marker, not a test."
 verified_by = "F4 author (viewer dashboard), 2026-11-14: copied from ADR-0016 (merged with PR #61), which cites arXiv:1601.00947; the arXiv abstract was not re-read for this file."
 notes = "The same paper quotes a stricter criterion of +/- 1.05 mas/cy (viewer glossary 'inpop15a-bound'); the dashboard uses the wider +/- 3.1 mas/cy of ADR-0016."
 

@@ -316,6 +316,10 @@
             }
           ]
         },
+        "proper_time_kernel": {
+          "description": "The Proper Time (Gill) kernel of the Sun, a beyond-GR **comparison model** (ADR-0016\ndecision D6, PHY-021; n-body mode; not a ladder switch): Gill's flat-space force law\n`a = −(∇V/m)(1 + V/(mc²))`, i.e. the extra `+(GM☉)² r̂/(c²r³)` with the reaction on the\nSun, whose advance is −1/6 of GR's. It replaces the GR 1PN sector, so it is refused beside\n`gr_1pn_central`, `gr_eih`, `gr_potential` and `lense_thirring`. Off by default, and then\nnot serialised, so existing scenario digests are unchanged.",
+          "type": "boolean"
+        },
         "sun_j2": {
           "description": "Solar J2 (DE440 `J2SUN`, `ASUN`; with the reaction on the Sun in N-body mode).",
           "type": "boolean",

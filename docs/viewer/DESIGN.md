@@ -97,7 +97,7 @@ the crate exports no allocator.
 | `fit` | the live rate fit and the per-table estimator, both via `ferroastro_diffrun::Estimator` / `ferroastro_precession::park2017` |
 | `lab` | Rung lab: test-particle model from `ferroastro_ladder::single_body` |
 | `meta` | PHY-015 metadata JSON (frame, epoch, span, fit model, constants version, IC hash, model string) |
-| `reference` | ABI v2: the conformal-gravity comparison model's analytic Gauss reference for the current parameters, composed from `ferroastro_analytic` and the DE440 constants (§4.5); no formula of its own |
+| `reference` | ABI v2: the conformal-gravity comparison model's analytic Gauss reference for the current parameters; ABI v3: the Proper Time comparison model's −1/6 GR reference; both composed from `ferroastro_analytic` and the DE440 constants (§4.5); no formula of its own |
 | `dashboard` | the comparison dashboard's reference columns (§6.4): engine analytic estimates for the current parameters, the M5 evidence (`tests/vectors/m5-evidence.toml`, computed references), the Park17 literature rows and the INPOP15a bound (`tests/vectors/comparison-bounds.toml`), each with frame, window and protocol labels |
 | `ffi` | the C ABI (only module allowed the unsafe attribute) |
 
@@ -139,7 +139,8 @@ same code.
 | 10 | Big asteroids | `forces.asteroids = N` (first N numbered header.440 asteroids, Minor tier, reaction on; default N = 16), states from the in-repo REF-003 file (§5) | IAS15 only |
 | 11 | 1PN among all bodies (EIH), advanced | `forces.gr_eih = true` with `ppn` (replaces bit 8; mutually exclusive) | IAS15 only (~1.3× slower) |
 | 12 | Conformal gravity (**comparison model**, ABI v2) | `forces.conformal = { gamma0, gamma_star, kappa, gamma0_centre }` from parameters 13–16 (`ConformalPotential`, plus `ConformalUniformGamma0` for a non-zero uniform γ0; `Gauge::StaticWeakFieldPotential`, ADR-0016, PHY-020). Rung lab: `ConformalCentral` with γ = γ\* (+ γ0 if Sun-centred) and κ; a uniform γ0 adds no test-particle term | WH, IAS15 |
-| 13–31 | reserved, must be 0 | `FAV_E_ARG` | |
+| 13 | Proper Time (Gill) kernel (**comparison model**, ABI v3) | `forces.proper_time_kernel = true` (`ProperTimeKernel`: Gill's flat-space force law, the Sun-sourced `+(GM☉)² r̂/(c²r³)` with reaction; `Gauge::ProperTimeKernel`, relativistic, so it **replaces** bits 8, 9 and 11, which are refused beside it, FA-E0002; ADR-0016 D6, PHY-021). Not in the Rung lab: there the same physics is RUNG 4 at β = 1/2, γ = −1 | WH, IAS15 |
+| 14–31 | reserved, must be 0 | `FAV_E_ARG` | |
 
 **Bit 12 is a comparison model, not a ladder rung** (ADR-0016, PHY-020). It is never in the default
 mask or in the "Full model" preset, every place that shows it says "comparison model", and its
@@ -152,9 +153,21 @@ The Sun-centred reading gives about −0.183 ″/cy at the fit γ0 (rd#88 notes;
 reference reproduces it), against the INPOP15a bound of 0.0 ± 3.1 mas/cy on a supplementary Mercury
 advance.
 
+**Bit 13 is a comparison model, not a ladder rung** (ADR-0016 decision D6, PHY-021). It is never in
+the default mask, every place that shows it says "comparison model", and its contribution is never part
+of the 575.31 ″/cy total. It has no parameter, so it never makes a run exaggerated. It stands for
+another theory's whole 1PN sector (Gill's `H₁`, by Bridge A geodesic motion in `(1 − GM/(rc²))² η`,
+PPN β = 1/2, γ = −1), so it excludes GR 1PN, Lense–Thirring and EIH; the page clears them when it is
+switched on, and switching one of them on clears bit 13. Its engine estimate is −1/6 of the GR
+estimate (−7.163 ″/cy for Mercury), its literature cell is the rd#88 report's derivation value
+(`kind = "derivation"`, never an oracle), and against the INPOP15a bound it reads "exceeds ×2300".
+The "PPN (½, −1)" preset (bits 0–8 with β = 1/2, γ = −1, IAS15) is the second, independent route to
+the same number; the "Proper Time model" preset is bits 0–7 and 13.
+
 **Kepler-only baseline** = mask `0`: Sun + Mercury, Newtonian. ϖ̇ must be 0 to integrator error
 (PHY-001). The UI has a one-click "Kepler only" preset (mask 0), a "Full model" preset
-(bits 0–9) and a "Full model + CG" preset (bits 0–9 and 12, the comparison model).
+(bits 0–9), a "Full model + CG" preset (bits 0–9 and 12, the comparison model), a "Proper Time model"
+preset (bits 0–7 and 13) and a "PPN (½, −1)" preset (bits 0–8 with β = 1/2, γ = −1).
 
 Removing a planet from `bodies` is the **P-remove** operation of ADR-0014. For Newtonian point
 masses it is identical to Park's "GM set to zero". `ferroastro-propagate` keeps every remaining
@@ -206,12 +219,21 @@ are offered only in Rung lab, never in System mode, and the UI says why. Rung la
 * SR-b is always shown with its gauge label and a note that the SR/GR split is not observable
   (ADR-0012).
 
-## 4. The C ABI (contract for both builders) — ABI version 2
+## 4. The C ABI (contract for both builders) — ABI version 3
 
-Version 2 (2026-11-14, ADR-0016 decision D5) differs from version 1 only by: toggle bit 12
-(`CONFORMAL`) is defined and bits 13–31 are reserved; parameters 13–16 exist (§4.3); the metadata
-has a `conformal` object (§4.5); `fav_abi_version()` returns 2. A page that speaks version 1 refuses
-the module, and the version-1 URL fragment (13 parameters) is read with ids 13–16 at their defaults.
+Version 3 (2026-11-15, ADR-0016 decision D6, PHY-021) differs from version 2 only by: toggle bit 13
+(`PROPER_TIME`) is defined and bits 14–31 are reserved; the metadata has a `proper_time` object, the
+dashboard has `b13` rows, the bound applies to `b12` and `b13`, and `comparison_bits` is `[12, 13]`
+(§4.5); `fav_abi_version()` returns 3. No parameter is added, so a version-2 URL fragment reads
+unchanged. **Why the version changes:** D5's rule for bit 12 was that a reserved bit becoming defined
+changes the ABI (`fav_set_toggles(1 << 13)` used to return `FAV_E_ARG` and now succeeds), unlike the
+additive exports and metadata keys added within version 2 (`fav_pair_*`, `dashboard`), which no
+version-2 call could observe. A page that speaks version 2 refuses the module.
+
+Version 2 (2026-11-14, ADR-0016 decision D5) differed from version 1 only by: toggle bit 12
+(`CONFORMAL`) defined and bits 13–31 reserved; parameters 13–16 (§4.3); the metadata's `conformal`
+object (§4.5); `fav_abi_version()` returning 2. The version-1 URL fragment (13 parameters) is read
+with ids 13–16 at their defaults.
 
 ### 4.1 Conventions
 
@@ -241,7 +263,7 @@ the module, and the version-1 URL fragment (13 parameters) is read with ids 13�
 
 | signature | purpose |
 |---|---|
-| `fav_abi_version() -> u32` | `2`. JS refuses any other value. |
+| `fav_abi_version() -> u32` | `3`. JS refuses any other value. |
 | `fav_reset() -> i32` | drop the engine; toggles and parameters return to the defaults of §4.3 (System mode, mask = bits 0–9, AUTO engine) |
 | `fav_set_toggles(mask: u32) -> i32` | set the toggle mask (§3.1); takes effect at the next `fav_configure` |
 | `fav_set_param(id: u32, value: f64) -> i32` | set a parameter (§4.3); range-checked now; takes effect at the next `fav_configure` |
@@ -260,6 +282,10 @@ the module, and the version-1 URL fragment (13 parameters) is read with ids 13�
 | `fav_meta_ptr() -> *const u8`, `fav_meta_len() -> u32` | UTF-8 JSON metadata of the current run and last fit (§4.5) |
 | `fav_scenario_ptr() -> *const u8`, `fav_scenario_len() -> u32` | the run's `ScenarioSpec` as TOML (System mode), for "reproduce with the CLI" |
 | `fav_error_ptr() -> *const u8`, `fav_error_len() -> u32` | last error message |
+| `fav_pair_clear() -> i32` | empty the paired-difference legs (additive in v2, §6.4) |
+| `fav_pair_push(leg: u32, t_years: f64, lon_arcsec: f64) -> i32` | append one passage row (`t`, `varpi_proj_arcsec` of the passages buffer) to leg 0 (with the effect) or 1 (without); scalars only, so JS still never writes into wasm memory |
+| `fav_pair_fit(mask_a: u32, mask_b: u32, flags: u32, epoch_jd: f64) -> i32` | paired-difference jack-knife of leg 0 − leg 1 (flags: bit 0 `FIT_PERIODIC`, bit 1 Rung lab); `FAV_E_FIT` for too few passages |
+| `fav_pair_ptr() -> *const f64`, `fav_pair_len() -> u32` | pair record (stride 6): `difference, paired_sigma, independent_sigma, blocks, n_a, n_b` (″/cy) |
 
 The engine never calls into JS; the module has **no imports** (checked in CI, §9).
 
@@ -347,8 +373,9 @@ Rung lab only the Mercury slot is filled; its frame is the ladder's J2000 mean e
 One object, keys fixed (UI builders may rely on them):
 
 ```json
-{ "abi": 2, "mode": "system" | "rung-lab", "engine": "whfast h=1 d" | "ias15 eps=1e-9" | ...,
-  "nominal": true, "toggles": 1023, "params": {"beta":1,"gamma":1, ...},
+{ "abi": 3, "mode": "system" | "rung-lab", "engine": "whfast h=1 d" | "ias15 eps=1e-9" | ...,
+  "nominal": true, "comparison_model": null | "<conformal gravity and/or the Proper Time (Gill) kernel ...: not the real solar system>",
+  "toggles": 1023, "params": {"beta":1,"gamma":1, ...},
   "model": "<propagate RunOutput.model string: every force term, its gauge and parameters>",
   "gauge": "PPN isotropic/harmonic" | "Newtonian" | ...,
   "frame": "Park17 mean Mercury orbit plane, ICRF pole RA 280.9876 deg Dec 61.4481 deg",
@@ -365,9 +392,14 @@ One object, keys fixed (UI builders may rely on them):
     "exaggerated": false, "fit_values": "<the defaults and OI-79>", "uniform_caveat": "<...>",
     "reference": { "linear_arcsec_per_cy": x, "quadratic_arcsec_per_cy": x,
       "total_arcsec_per_cy": x, "gamma0_arcsec_per_cy": x, "basis": "<...>" } | null },
+  "proper_time": { "label": "comparison model", "enabled": false, "replaces_bits": [8, 9, 11],
+    "ppn_preset": { "beta": 0.5, "gamma": -1.0 }, "bridge_a": "<...>",
+    "derivation": { "id", "value", "kind": "derivation", "quantity", "source", "note" },
+    "reference": { "arcsec_per_cy": x, "gr_arcsec_per_cy": x, "ratio_to_gr": -0.1666…,
+      "basis": "<...>" } | null },
   "dashboard": {
     "analytic": { "label", "short", "frame", "window", "protocol",
-      "unit": "arcsec/cy", "rows": { "b7" | "b8" | "b9" | "b11" | "b12" | "rung": { "value": x,
+      "unit": "arcsec/cy", "rows": { "b7" | "b8" | "b9" | "b11" | "b12" | "b13" | "rung": { "value": x,
       "basis": "<...>" } } } | null,
     "m5": { "label": "M5 evidence (computed, not observed)", "kind": "computed-reference", "short", "unit",
       "source", "run", "frame", "window", "protocol",
@@ -375,17 +407,32 @@ One object, keys fixed (UI builders may rely on them):
         "protocol", "note", "quantity" } } },
     "literature": { "label": "Park et al. 2017, Table 3", "short", "unit", "source", "frame", "window",
       "protocol", "rows": { "b0" … "b11" | "cross_js": { "id", "value", "note", "quantity",
-        "applies": bool } } },
+        "applies": bool }, "b13": { <proper_time.derivation>, "applies": true } } },
     "bound": { "id", "interval_id", "label", "short", "value": 0.0, "half_width": x, "unit",
-      "quantity", "frame", "window", "protocol", "applies_to": ["b12"], "criterion" },
-    "comparison_bits": [12] } }
+      "quantity", "frame", "window", "protocol", "applies_to": ["b12", "b13"], "criterion" },
+    "comparison_bits": [12, 13] } }
 ```
+
+`proper_time` (ABI v3) is always present too: `{ label: "comparison model", enabled, replaces_bits:
+[8, 9, 11], ppn_preset: { beta: 0.5, gamma: -1 }, bridge_a, derivation, reference: { arcsec_per_cy,
+gr_arcsec_per_cy, ratio_to_gr, basis } }`. `reference` is the engine's first-order
+`ferroastro_analytic::advance::proper_time_advance` for Mercury's SW92 J2000 mean a and e
+(−1/6 of GR's; `null` without `embed-header`); `derivation` is the rd#88 research report's
+−7.163432586 ″/cy, a display value labelled `kind = "derivation"`, never an oracle. The page takes
+the preset's β and γ from `ppn_preset`. `comparison_model` (below) names every comparison model that
+is on.
 
 `conformal` (ABI v2) is always present, so the page can show the engine's analytic reference before
 bit 12 is switched on. `reference` is Mercury's first-order Gauss secular rate for the current
 parameters (`ferroastro_analytic::advance::conformal_{linear,quadratic}_advance`, SW92 J2000 mean
 a and e, β = GM☉/c², n from GM☉ + GM☿), labelled "comparison model"; the page shows it and never
 evaluates a formula itself. It is `null` without `embed-header` (no DE440 constants).
+
+`nominal` says only that nothing is exaggerated (DE440 J2 and spin, IAS15 ε ≤ 1e-9, the
+conformal-gravity fit values). A run with a comparison model on is **not** a description of the
+real solar system even when it is nominal: `comparison_model` is then a non-null text saying so
+(null otherwise), and the page shows a "Comparison model on" badge beside the nominal one. The key
+names keep `nominal` (PHY-003 scans for it).
 
 `j2_nominal` (added with #22) lets the page scale its `J2_OVERRIDE` reference values without
 copying a header.440 value into JS.
@@ -522,7 +569,7 @@ For the current toggle set S (the "full" configuration) and every effect X ∈ S
   (N = `navigator.hardwareConcurrency − 1`, at least 1) while the live view keeps running.
 * Columns (the comparison dashboard, F4; every header names its frame, window and protocol, and
   every reference number comes from the metadata's `dashboard` object, §4.5):
-  effect | live ϖ̇(S) − ϖ̇(S\X) (″/cy) ± √(σ²+σ²) jack-knife | engine analytic estimate (where a
+  effect | live ϖ̇(S) − ϖ̇(S\X) (″/cy) ± paired-difference jack-knife σ (below) | engine analytic estimate (where a
   closed form exists) | M5 evidence (computed, not observed; ± its sigma) | literature (Park17
   Table 3; "not applied" when the run's parameter differs from Park17's, including the J2 row at
   the nominal DE440 J2) | difference (live −
@@ -538,6 +585,22 @@ For the current toggle set S (the "full" configuration) and every effect X ∈ S
   repeats it. The conformal-gravity row (bit 12) is labelled "comparison model"; with
   the uniform γ0 centring its bound cell repeats that the zero is exact only with
   velocity-independent forces (EIH and Lense–Thirring add an O(v·Δv/c²) drift).
+* σ of a contribution (and of the P-add column): a **paired-difference jack-knife**, computed in the
+  engine (`fav_pair_clear` / `fav_pair_push` / `fav_pair_fit` / `fav_pair_ptr`, §4; additive in
+  ABI v2). The two legs share initial conditions and the estimator, so most of their fit residuals
+  (the planets' periodic signatures, the sampling phase) are common; combining each leg's own
+  jack-knife as independent, √(σ_S² + σ_W²), counts that shared error twice. Each leg is fitted
+  with its own model (§6.3, as `fav_fit` fits it), the same block is deleted from both legs, and the
+  jack-knife runs on the replicate differences. Blocks are `G = clamp(min(n_S, n_W)/20, 2, 10)`
+  equal **time** slices of the legs' common span (the legs' passages need not fall on the same
+  indices); a passage outside the common span joins the nearest end block. The page posts each
+  finished leg's passage rows (`t`, `varpi_proj_arcsec`) to one extra worker and shows "σ…" until
+  the engine answers; it does no statistics itself. The record also carries the independent
+  combination, which the cell's tooltip shows; if pairing fails the cell falls back to it, marked
+  "σ unpaired (upper estimate)". With the uniform γ0 centring and velocity-independent forces both
+  legs follow the same heliocentric orbit, so the conformal-gravity row's paired σ is at round-off
+  and it reads "within" the bound instead of "unresolved". The 3σ rules (greying, bound markers)
+  are unchanged and use this σ.
 * The M5 total (575.309161 ″/cy, a 393-body EIH model) appears beside ϖ̇(S) only when S is the
   viewer's full model (planets, J2, LT, GR 1PN or EIH, System mode).
 * Narrow screens: the effect column is sticky while the table scrolls sideways inside its own
@@ -681,6 +744,7 @@ mean-orbit frame unless stated.
 | E12 | Same code path | a viewer leg vs `ferroastro_diffrun` / `ferroastro_propagate::run` on the identical `ScenarioSpec` (exported via `fav_scenario`) | CI-009 | passage longitudes bitwise equal; rate equal to ≤ 1e-12 relative |
 | E13 | Chunking invariance | running 100 yr as 1 call vs 400 calls of 0.25 yr | CI-010 (checkpoint/resume is bitwise) | passages bitwise identical |
 | E14 | Osculating ϖ identity | `dog_leg_angle(e_vec, h×e_vec)` equals `dog_leg_angle(r, v)` at each passage | §6.1 | ≤ 1e-9 rad |
+| E15 | Proper Time comparison model (bit 13) | Sun + Mercury, 100 yr: the bit-13 P-remove (WHFast) and the GR bit with β = 1/2, γ = −1 (IAS15) each equal the engine's −1/6 GR estimate (−7.163 ″/cy) and agree with each other | PHY-021 | 2e-3 relative to the estimate, 1e-3 between the routes (`tests/viewer_proper_time.rs`; measured 8e-6 and 2e-7) |
 
 ## 9. Build, CI and REUSE
 

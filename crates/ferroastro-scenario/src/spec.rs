@@ -419,11 +419,19 @@ pub struct Forces {
     /// unchanged.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub conformal: Option<Conformal>,
+    /// The Proper Time (Gill) kernel of the Sun, a beyond-GR **comparison model** (ADR-0016
+    /// decision D6, PHY-021; n-body mode; not a ladder switch): Gill's flat-space force law
+    /// `a = −(∇V/m)(1 + V/(mc²))`, i.e. the extra `+(GM☉)² r̂/(c²r³)` with the reaction on the
+    /// Sun, whose advance is −1/6 of GR's. It replaces the GR 1PN sector, so it is refused beside
+    /// `gr_1pn_central`, `gr_eih`, `gr_potential` and `lense_thirring`. Off by default, and then
+    /// not serialised, so existing scenario digests are unchanged.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub proper_time_kernel: bool,
 }
 
-/// The keys accepted under `[forces]`: the force switches of CI-002 plus the `conformal` table
-/// (the comparison model of ADR-0016, which is not a ladder switch).
-pub const SWITCHES: [&str; 13] = [
+/// The keys accepted under `[forces]`: the force switches of CI-002 plus the comparison models of
+/// ADR-0016 (the `conformal` table and `proper_time_kernel`), which are not ladder switches.
+pub const SWITCHES: [&str; 14] = [
     "newton",
     "sun_j2",
     "gr_1pn_central",
@@ -437,6 +445,7 @@ pub const SWITCHES: [&str; 13] = [
     "gr_potential",
     "eih_scope",
     "conformal",
+    "proper_time_kernel",
 ];
 
 impl Forces {
@@ -457,6 +466,7 @@ impl Forces {
             self.gr_potential,
             !self.eih_scope.is_all(),
             self.conformal.is_some(),
+            self.proper_time_kernel,
         ];
         SWITCHES
             .iter()
@@ -995,6 +1005,27 @@ impl ScenarioSpec {
                 &true,
                 "the GR effective potential replaces gr_eih / gr_1pn_central; do not combine them",
             );
+        }
+        if self.forces.proper_time_kernel {
+            let f = &self.forces;
+            if let Some((name, _)) = [
+                ("gr_1pn_central", f.gr_1pn_central),
+                ("gr_eih", f.gr_eih),
+                ("gr_potential", f.gr_potential),
+                ("lense_thirring", f.lense_thirring),
+            ]
+            .into_iter()
+            .find(|(_, on)| *on)
+            {
+                return err(
+                    "forces.proper_time_kernel",
+                    &true,
+                    &format!(
+                        "the Proper Time (Gill) comparison model replaces the GR 1PN sector \
+                         (ADR-0016, PHY-021); do not combine it with {name}"
+                    ),
+                );
+            }
         }
         if ig.force_kernel == Some(ForceKernel::Soa) {
             if self.mode != Mode::NBody {

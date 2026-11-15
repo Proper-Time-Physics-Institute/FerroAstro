@@ -7,7 +7,7 @@
 
 Evidence labels carried over from the journal: **[P]** read in the primary source, **[C]** computed from [P] constants, **[S]** secondary transcription, **UNVERIFIED** not yet confirmed. See [OPEN-ITEMS.md](OPEN-ITEMS.md) for everything that still has to be checked.
 
-Rungs in the Journal #1 table that have no dedicated requirement yet: N-SELF (0.0050, meaning UNVERIFIED), N-X cross terms (Σ = +0.0127), N-MOON (no primary value), J2-DE440 (0.02792, covered inside PHY-010) and GR-1PN-2B (finite-mass-ratio shift ≈ 7×10⁻⁶ ″/cy, covered by the μ note in PHY-001/PHY-004). N-AST (0.0012) has its own differential rung, PHY-019 (added 2026-10-14 after the red-team review, Journal #9). N-SELF, N-AST and N-X enter PHY-013 as part of the N-SUM total. PHY-020 (conformal gravity, added 2026-11-14) is not a rung: it is a default-off comparison model outside the ladder (ADR-0016). PHY-022 (three-clock diagnostic, added 2026-11-15) is not a rung either: it is an opt-in clock diagnostic that changes no dynamics.
+Rungs in the Journal #1 table that have no dedicated requirement yet: N-SELF (0.0050, meaning UNVERIFIED), N-X cross terms (Σ = +0.0127), N-MOON (no primary value), J2-DE440 (0.02792, covered inside PHY-010) and GR-1PN-2B (finite-mass-ratio shift ≈ 7×10⁻⁶ ″/cy, covered by the μ note in PHY-001/PHY-004). N-AST (0.0012) has its own differential rung, PHY-019 (added 2026-10-14 after the red-team review, Journal #9). N-SELF, N-AST and N-X enter PHY-013 as part of the N-SUM total. PHY-020 (conformal gravity, added 2026-11-14) and PHY-021 (the Proper Time (Gill) kernel, added 2026-11-15) are not rungs: they are default-off comparison models outside the ladder (ADR-0016). PHY-022 (three-clock diagnostic, added 2026-11-15) is not a rung either: it is an opt-in clock diagnostic that changes no dynamics.
 
 ---
 
@@ -822,6 +822,91 @@ notes: >-
   signs (about −3.2e-12 and +9.9e-12). Avoid the token
   "nominal" in identifiers (PHY-003 scan). Implementation is the F2 engine PR
   of #59; the viewer bit is API-004 / ABI v2 in a later PR.
+```
+
+### PHY-021 — Proper Time (Gill) comparison model (outside the ladder)
+
+```yaml
+id: PHY-021
+title: "Proper Time (Gill) comparison model: the PPN (1/2, −1) run and a direct integration of Gill's force law agree at −1/6 of GR, default off, never in the ladder"
+status: draft
+criticality: high
+verification: test
+statement: >-
+  FerroAstro SHALL provide the Proper Time framework's gravity kernel as a
+  comparison model (ADR-0016, decision D6): Gill's flat-space force law
+  a = −(∇V/m)(1 + V/(mc²)) for V = −GM☉m/r, i.e. Newton plus a
+  Sun-sourced, velocity-independent, repulsive +(GM☉)² r̂/(c²r³) with
+  reaction on the Sun (ProperTimeKernel; the test-particle form
+  ProperTimeCentral), declaring Gauge::ProperTimeKernel. The gauge is
+  relativistic, because the term replaces the GR 1PN sector: it SHALL be
+  refused beside GR 1PN, EIH, the GR effective potential and Lense–Thirring
+  (FA-E0502 in the model, FA-E1203 at scenario validation). The term SHALL be
+  off by default (forces.proper_time_kernel absent), SHALL carry the label
+  "comparison model" wherever its rates are reported, and SHALL never enter
+  the GR ladder, the 575.31 ″/cy total or any reference value.
+acceptance: >-
+  Two independent routes agree. (a) Route 1: the 1PN PPN field at
+  (β, γ) = (1/2, −1) (SchwarzschildPpn, HeliocentricSchwarzschild). (b)
+  Route 2: a direct integration of Gill's force law (ProperTimeCentral,
+  ProperTimeKernel). Each SHALL give a secular perihelion advance equal to
+  Δϖ = −πGM☉/(c²a(1−e²)) per orbit, which is −1/6 of the GR 1PN advance
+  (the PPN factor (2 + 2γ − β)/3 at (1/2, −1)), and the two SHALL agree with
+  each other, within a tolerance the test states and justifies from the
+  neglected second-order terms and the integrator floor, on an exaggerated
+  two-body configuration (synthetic GM/c², both a test body and a finite
+  mass ratio, Mercury-like and high eccentricity) and on the Mercury
+  configuration (DE440 initial conditions, ratio to the GR (1, 1) run).
+  (c) Default off: a scenario without forces.proper_time_kernel, and the
+  default viewer mask, contain no Proper Time term; existing scenario digests
+  are byte-identical and the default runs bit-for-bit unchanged. (d) The
+  kernel is refused beside the GR switches and assembles beside Newtonian
+  terms and the PHY-020 conformal-gravity terms, under IAS15 and WHFast.
+  (e) Every reported rate from a model containing the term carries the
+  "comparison model" label with the PHY-015 metadata. All of these tests are
+  PR-tier; none is #[ignore].
+source: >-
+  docs/adr/0016-comparison-models.md (decision D6); maintainer approval of
+  the PPN (1/2, −1) run and the Proper Time dashboard row (Bernard,
+  2026-11-15, plan items F4b/D6); relativistic-dynamics#88 research packages
+  research/2026-11-14/ (RD88-A "Bridge A", RD88-B proper-time Hamiltonian on
+  a static metric) and the synthesis report "Proper-time Hamiltonian beyond
+  the conformally flat sector, and the physical meaning of τ" (2026-11-14,
+  §§1, 3, 5; outside this repository). T. L. Gill, "Relativistic Newtonian
+  Theory" (manuscript, relativistic-dynamics papers/source/Dual Newtonian
+  Theory.tex: H₁, K and the force law). Will 2014, Living Rev. Relativ. 17,
+  4, Eq. 65 (PPN perihelion factor). Fienga et al. 2016, arXiv:1601.00947
+  (INPOP15a bound).
+parent: null
+related: [PHY-004, PHY-006, PHY-015, PHY-018, PHY-020, NUM-017, API-004, CI-002]
+notes: >-
+  Added 2026-11-15. This is a comparison model, not a rung: parent is null
+  because ORG-002 is the ladder. BRIDGE A: Gill's H₁ = √(c²π² + (mc² + V)²)
+  is exactly the energy of a constant-mass particle on a geodesic of the
+  conformally flat metric (1 + V/(mc²))² η = (1 − GM/(rc²))² η, whose Weyl
+  tensor vanishes and whose PPN parameters are β = 1/2, γ = −1; this is why
+  route 1 is a second, independent computation of the same physics and not a
+  fit. Route 2 integrates Gill's K-flow force law in coordinate time: Gill's
+  parameter obeys dt/dτ_K = E/(mc²), a constant on each orbit (RD88-B), so
+  the orbit and the advance per orbit are the same and only the period is
+  rescaled by 1 + O(GM/(ac²)) (about 1e-8 for Mercury). ORACLES: only the
+  closed form above (ferroastro_analytic::advance::proper_time_advance,
+  one negative 1PN unit πGM/(c²p)). The research value for Mercury,
+  −7.163432586 ″/cy (−0.1666666678 of GR 1PN; a = 0.38709893 au,
+  e = 0.20563069), is reported, never asserted; FerroAstro's DE440 two-body
+  run gives −7.1634 ″/cy with ratio −0.1666667 to its own GR run. The exact
+  H₁ advance per orbit, 2π(√(1 − GM/(c²p)) − 1), differs from the first-order
+  form at O(GM/(c²p)), 2.6e-8 relative for Mercury. The kernel's γ_P = −1
+  also means zero light deflection if light follows the null geodesics of
+  the same geometry (a modelling choice; Gill's paper gives no rule for
+  light); FerroAstro does not model light. BOUND: against INPOP15a's
+  0.0 ± 3.1 mas/cy on a supplementary Mercury advance, replacing GR's
+  +42.98 ″/cy by −7.16 ″/cy is a supplementary advance of about −50.1 ″/cy
+  relative to GR, and the kernel alone, read as an extra term, −7.16 ″/cy,
+  is about 2300× the bound: the model is excluded grossly. The scale-free
+  tests use the tolerance 100 x with x = GM/(c²p) ≈ 1e-6, against observed
+  deviations ≤ 5e-6. Viewer: toggle bit 13 (API-004 notes). Avoid the token
+  "nominal" in identifiers (PHY-003 scan).
 ```
 
 ### PHY-022 — Three-clock diagnostic: metric s, flat SR τ_SR, Gill τ_K (outside the ladder)

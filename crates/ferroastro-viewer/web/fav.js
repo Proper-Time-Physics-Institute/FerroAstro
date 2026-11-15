@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2026 Proper-Time Physics Institute
 // SPDX-License-Identifier: Apache-2.0
 //
-// fav.js: constants of the ferroastro-viewer C ABI v2 (docs/viewer/DESIGN.md section 4) and a small
+// fav.js: constants of the ferroastro-viewer C ABI v3 (docs/viewer/DESIGN.md section 4) and a small
 // wrapper around the wasm exports. It is shared by worker.js (classic worker, importScripts), the page
 // and smoke.mjs (node, loaded with vm). It does no physics: it calls the fav_* exports, copies buffers
 // out of linear memory and decodes UTF-8, plus one pure display rule (FAV.boundVerdict) kept here so
@@ -16,7 +16,7 @@
 
   const FAV = {};
 
-  FAV.ABI_VERSION = 2;
+  FAV.ABI_VERSION = 3;
 
   FAV.STATUS = Object.freeze({
     OK: 0,
@@ -38,8 +38,9 @@
     "-5": "FAV_E_FIT",
   });
 
-  // Toggle mask bits (section 3.1). Bit 12 (ABI v2) is the conformal-gravity comparison model,
-  // outside the GR ladder; bits 13-31 are reserved and must be 0.
+  // Toggle mask bits (section 3.1). Bit 12 (ABI v2) is the conformal-gravity comparison model and
+  // bit 13 (ABI v3) the Proper Time (Gill) comparison model, both outside the GR ladder; bit 13
+  // replaces the GR 1PN sector (bits 8, 9, 11). Bits 14-31 are reserved and must be 0.
   FAV.BIT = Object.freeze({
     VENUS: 0,
     EMB: 1,
@@ -54,11 +55,14 @@
     ASTEROIDS: 10,
     EIH: 11,
     CONFORMAL: 12,
+    PROPER_TIME: 13,
   });
-  FAV.N_BITS = 13;
+  FAV.N_BITS = 14;
   FAV.DEFAULT_MASK = 0x3ff; // bits 0-9
   FAV.PLANET_MASK = 0x7f; // bits 0-6
-  FAV.RESERVED_MASK = 0xffffe000;
+  FAV.RESERVED_MASK = 0xffffc000;
+  // The bits the Proper Time comparison model replaces (GR 1PN, Lense-Thirring, EIH).
+  FAV.GR_SECTOR_MASK = (1 << 8) | (1 << 9) | (1 << 11);
 
   // Parameter ids (section 4.3).
   FAV.PARAM = Object.freeze({
@@ -113,7 +117,7 @@
   FAV.ENGINE_RESOLVED = Object.freeze({ WHFAST: 1, IAS15: 2, IAS15_TEST_PARTICLE: 3 });
   FAV.ENGINE_NAME = Object.freeze({ 1: "WHFast", 2: "IAS15", 3: "IAS15 (test particle)" });
 
-  FAV.STRIDE = Object.freeze({ bodies: 25, elements: 6, passages: 6, fit: 10 });
+  FAV.STRIDE = Object.freeze({ bodies: 25, elements: 6, passages: 6, fit: 10, pair: 6 });
 
   // Slot order of the bodies buffer (section 4.4 A), after the leading t.
   FAV.BODY_NAMES = Object.freeze([
@@ -142,6 +146,11 @@
     N_PERIODIC: 8,
     B: 9,
   });
+  // The paired-difference record (fav_pair_fit): leg 0 minus leg 1 with the jack-knife on the
+  // difference, and the old independent combination for comparison (DESIGN section 6.4).
+  FAV.PAIR = Object.freeze({ DIFFERENCE: 0, PAIRED_SIGMA: 1, INDEPENDENT_SIGMA: 2, BLOCKS: 3, N_A: 4, N_B: 5 });
+  // fav_pair_fit flags.
+  FAV.PAIR_FLAG = Object.freeze({ FIT_PERIODIC: 1, RUNG_LAB: 2 });
 
   FAV.REQUIRED_EXPORTS = Object.freeze([
     "memory",
@@ -171,6 +180,11 @@
     "fav_scenario_len",
     "fav_error_ptr",
     "fav_error_len",
+    "fav_pair_clear",
+    "fav_pair_push",
+    "fav_pair_fit",
+    "fav_pair_ptr",
+    "fav_pair_len",
   ]);
 
   /** An ABI error: a negative status plus the engine's message (which starts with FA-Exxxx). */
@@ -316,6 +330,24 @@
 
     scenario() {
       return this.text("scenario");
+    }
+
+    /**
+     * The paired-difference jack-knife of leg a minus leg b (fav_pair_*; the statistics are in the
+     * engine). `a` and `b` are {t, lon, mask}: Float64Arrays of passage times (years since the
+     * common epoch) and projected longitudes (arcsec) as the passages buffer has them, and the
+     * leg's toggle mask. `flags` is FAV.PAIR_FLAG. Returns {status, pair, message}; FAV_E_FIT
+     * (too few passages) is returned, not thrown.
+     */
+    pair(a, b, flags, epochJd) {
+      this.check(this.x.fav_pair_clear(), "fav_pair_clear");
+      [a, b].forEach((leg, i) => {
+        for (let k = 0; k < leg.t.length; k++) this.check(this.x.fav_pair_push(i, leg.t[k], leg.lon[k]), "fav_pair_push");
+      });
+      const st = this.x.fav_pair_fit(a.mask >>> 0, b.mask >>> 0, flags >>> 0, epochJd) | 0;
+      if (st === FAV.STATUS.E_FIT) return { status: st, pair: null, message: this.errorMessage() };
+      this.check(st, "fav_pair_fit");
+      return { status: st, pair: this.f64("pair"), message: "" };
     }
   }
   FAV.Engine = Engine;

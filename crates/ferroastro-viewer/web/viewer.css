@@ -50,6 +50,7 @@
   --fx-lt: #7a3fb0;
   --fx-ast: #646e7a;
   --fx-cg: #5e7400;
+  --fx-pt: #00799e;
 
   --osc: #7d8fa2;
   --ecl: #5b6f84;
@@ -94,6 +95,7 @@
     --fx-lt: #c49bff;
     --fx-ast: #9aa6b3;
     --fx-cg: #c3dc5c;
+    --fx-pt: #5fd0f0;
     --osc: #5f7d9a;
     --ecl: #8fa6bb;
     --fitline: #8cc0ff;
@@ -135,6 +137,7 @@
   --fx-lt: #c49bff;
   --fx-ast: #9aa6b3;
   --fx-cg: #c3dc5c;
+  --fx-pt: #5fd0f0;
   --osc: #5f7d9a;
   --ecl: #8fa6bb;
   --fitline: #8cc0ff;
@@ -249,6 +252,7 @@ canvas:focus-visible { outline-offset: -3px; }
   border: 1px solid var(--border); border-radius: 999px; padding: 0.2rem 0.7rem; font-size: 0.875rem;
   background: var(--panel); white-space: nowrap;
 }
+.badge.cm { border: 1px dashed var(--fx-cg); font-weight: 600; white-space: normal; }
 .badge.warn { background: var(--warn-bg); color: var(--warn-fg); border-color: var(--warn-fg); font-weight: 600; white-space: normal; }
 
 .status { padding: 0 1rem; color: var(--muted); font-size: 0.9rem; min-height: 1.5em; }

@@ -313,8 +313,8 @@
     term: "PPN parameters", group: "effects",
     short: "The parametrized post-Newtonian formalism describes many theories of gravity with a few numbers; GR has β = γ = 1. The GR advance scales as (2 + 2γ − β)/3.",
     long: "PPN theory writes the 1PN metric with coefficients that differ between theories. The viewer exposes two: [[ppn-beta|β]] and [[ppn-gamma|γ]]. They are used by [[gr-1pn]] (IAS15), [[eih]], the Rung-lab GR rung and, through γ, [[lense-thirring]]. [[whfast|WHFast]] can only do β = γ = 1. Solar-system experiments find both equal to 1 to within about 10⁻⁴ or better.",
-    mercury: "Mercury's perihelion is one of the classic measurements of 2γ − β: change β or γ and watch the GR contribution scale.",
-    see: ["ppn-beta", "ppn-gamma", "gr"],
+    mercury: "Mercury's perihelion is one of the classic measurements of 2γ − β: change β or γ and watch the GR contribution scale. At [[ppn-beta-gamma-half-minus-one|(1/2, −1)]] it becomes the Proper Time comparison model's −1/6.",
+    see: ["ppn-beta", "ppn-gamma", "gr", "ppn-beta-gamma-half-minus-one"],
   };
   E["ppn-beta"] = {
     term: "PPN β", sym: "β", group: "effects",
@@ -439,9 +439,39 @@
   E["comparison-model"] = {
     term: "Comparison model", group: "comparison",
     short: "A beyond-GR term the viewer can switch on to compare with GR. It is off by default and never part of the GR ladder, the 575.31 ″/cy total or any reference value.",
-    long: "FerroAstro's ladder reproduces the observed advance from Newtonian planets, solar J2 and GR only. A comparison model (ADR-0016) is a different theory's term, added on request so its prediction can be set against GR and against ephemeris bounds such as the [[inpop15a-bound]]. Wherever one appears (toggle, preset, table row, gauge, scenario, metadata) it says \"comparison model\". Its table reference is the engine's own [[cg-gauss-reference|Gauss estimate]], not a literature or ladder value. The first one is [[conformal-gravity]] (toggle bit 12, viewer ABI v2).",
+    long: "FerroAstro's ladder reproduces the observed advance from Newtonian planets, solar J2 and GR only. A comparison model (ADR-0016) is a different theory's term, added on request so its prediction can be set against GR and against ephemeris bounds such as the [[inpop15a-bound]]. Wherever one appears (toggle, preset, table row, gauge, scenario, metadata) it says \"comparison model\". Its table reference is the engine's own analytic estimate (the [[cg-gauss-reference|Gauss estimate]] for conformal gravity, −1/6 of GR for the Proper Time kernel), not a ladder value. The first one is [[conformal-gravity]] (toggle bit 12, viewer ABI v2); the second is the [[proper-time-gill]] kernel (toggle bit 13, viewer ABI v3), which replaces the GR 1PN sector instead of adding to it.",
     mercury: "With the default uniform [[gamma0-centring]] it adds about nothing; Sun-centred, its γ0 term is about −0.18 ″/cy, some 60 times the INPOP15a bound.",
-    see: ["conformal-gravity", "cg-gauss-reference", "inpop15a-bound", "cg-fit-values"],
+    see: ["conformal-gravity", "proper-time-gill", "cg-gauss-reference", "inpop15a-bound", "cg-fit-values"],
+  };
+  E["proper-time-gill"] = {
+    term: "Proper Time (Gill) kernel (comparison model)", sym: "PT", group: "comparison",
+    short: "Gill's flat-space force law a = −(∇V/m)(1 + V/mc²): Newton plus a repulsive (GM)²/(c²r³). Its perihelion advance is −1/6 of GR's. Toggle bit 13, off by default; a comparison model that replaces GR 1PN, Lense–Thirring and EIH.",
+    typical: "Mercury: −7.163 ″/cy (engine analytic estimate; GR +42.98 ″/cy)",
+    long: "The Proper Time framework (T. L. Gill, \"Relativistic Newtonian Theory\") puts the potential into the mass: H₁ = √(c²p² + (mc² + V)²), with proper-time generator K = p²/2m + mc² + V + V²/(2mc²). For V = −GMm/r the extra V²/(2mc²) is a potential +(GM)²/(2c²r²) per unit mass. Per orbit that gives −πGM/(c²a(1−e²)), which is minus one sixth of GR's 6πGM/(c²a(1−e²)). By [[bridge-a]] the same motion is a geodesic of a [[conformally-flat]] metric with [[ppn-beta-gamma-half-minus-one|PPN β = 1/2, γ = −1]], so the [[preset-pt-ppn]] preset is an independent second route to the same number. The engine adds the kernel as one velocity-independent, Sun-sourced term with reaction on the Sun (it runs under WHFast). Its gauge is relativistic: it stands for the whole 1PN sector of another theory, so the viewer refuses it beside GR 1PN, EIH and Lense–Thirring.",
+    mercury: "Replacing GR's +42.98 ″/cy by −7.163 ″/cy cannot match the observed 575.31 ″/cy. As an extra term, −7.163 ″/cy is about 2300× the [[inpop15a-bound]] half-width, so the bound marks it excluded grossly. Its table reference is the engine's −1/6 GR estimate; the literature column shows the rd#88 research report's −7.163432586 ″/cy, labelled derivation (not Park17, never an oracle).",
+    see: ["bridge-a", "conformally-flat", "ppn-beta-gamma-half-minus-one", "preset-full-pt", "preset-pt-ppn", "comparison-model", "inpop15a-bound"],
+  };
+  E["bridge-a"] = {
+    term: "Bridge A", group: "comparison",
+    short: "Gill's interaction Hamiltonian H₁ is exactly a constant-mass particle on a geodesic of the conformally flat metric (1 + V/mc²)² η. For V = −GMm/r that metric has PPN β = 1/2, γ = −1.",
+    long: "The relativistic-dynamics#88 research package RD88-A shows, with no approximation, that H₁ = √(c²p² + (mc² + V)²) is the mass-shell energy of the metric Ω²η with Ω = 1 + V/(mc²). Read the other way, it is a particle in flat spacetime whose mass is the field m + V/c², the form conformal gravity's matter sector uses. The metric is [[conformally-flat]], so its Weyl tensor vanishes: it lies entirely in the part of geometry that the [[weyl-action]] does not see. Gill's parameter τ obeys dt/dτ = E/(mc²), a constant on each orbit, so integrating his force law in coordinate time gives the same orbits.",
+    mercury: "It is why the viewer can check the [[proper-time-gill]] kernel against the GR 1PN term at [[ppn-beta-gamma-half-minus-one|(β, γ) = (1/2, −1)]]: two different equations of motion, one physics, the same −1/6 of GR.",
+    see: ["proper-time-gill", "conformally-flat", "ppn-beta-gamma-half-minus-one"],
+  };
+  E["ppn-beta-gamma-half-minus-one"] = {
+    term: "PPN (β, γ) = (1/2, −1)", group: "comparison",
+    short: "The PPN parameters of the conformally flat metric (1 − GM/(rc²))² η of Gill's H₁. The advance factor (2 + 2γ − β)/3 is then −1/6, and light is not deflected if it follows that metric's null geodesics.",
+    typical: "Mercury: −1/6 × 42.98 ≈ −7.163 ″/cy",
+    long: "Expanding (1 − U)² with U = GM/(rc²) gives g₀₀ = 1 − 2U + U², so β = 1/2 (GR: g₀₀ = 1 − 2U + 2U²), and g_ij = −(1 − 2U + …)δ_ij, so γ = −1 (GR: +1). With these values the GR 1PN term ([[gr-1pn]] with the [[ppn]] fields) is the 1PN expansion of [[bridge-a|Gill's H₁]]: velocity-dependent and in coordinate time, while the [[proper-time-gill]] kernel is velocity-independent. Light deflection (1 + γ)/2 = 0 holds only if light follows the same metric, which Gill's paper does not specify. Solar-system tests put γ within about 10⁻⁵ of 1, so γ = −1 is excluded independently of the perihelion.",
+    mercury: "The [[preset-pt-ppn]] preset sets these values on the GR bit (IAS15). FerroAstro's tests check that this run and the kernel agree and that both are −1/6 of the GR run.",
+    see: ["ppn", "ppn-beta", "ppn-gamma", "bridge-a", "proper-time-gill", "preset-pt-ppn"],
+  };
+  E["conformally-flat"] = {
+    term: "Conformally flat metric", group: "comparison",
+    short: "A metric that is flat spacetime multiplied by a positive function, g = Ω²η. Its Weyl tensor is zero, and its null geodesics are the straight light rays of flat spacetime.",
+    long: "Rescaling a metric by Ω² preserves angles and light cones but changes lengths and clock rates. Every Ω²η has zero Weyl curvature, so it is invisible to the [[weyl-action]] of conformal gravity; in that sense the whole of Gill's H₁-gravity is conformal gauge ([[bridge-a]]). The [[mannheim-kazanas-metric]] is not conformally flat: its Weyl tensor is proportional to its β = GM/c² term, which carries GR's 43 ″/cy and the light bending.",
+    mercury: "With Ω = 1 − GM/(rc²) it is the geometry of the [[proper-time-gill]] kernel, whose advance is −1/6 of GR's: the β term needs Weyl curvature to give the observed +42.98 ″/cy.",
+    see: ["bridge-a", "proper-time-gill", "weyl-action", "mannheim-kazanas-metric"],
   };
   E["conformal-gravity"] = {
     term: "Conformal gravity (comparison model)", sym: "CG", group: "comparison",
@@ -756,9 +786,17 @@
     term: "Jack-knife σ", group: "fit",
     short: "The uncertainty shown after ±: the passages are split into consecutive blocks, the fit is redone leaving out one block at a time, and σ comes from the spread.",
     typical: "between 2 and 10 blocks (number of passages ÷ 20)",
-    long: "The delete-one-block jack-knife estimates the standard error without assuming that the residuals are independent. Residuals from orbital fits are strongly correlated in time, so the [[formal-sigma]] understates the true error; the jack-knife is the honest one and is what the readout and the table use. In the table, a difference of two legs gets σ = √(σ₁² + σ₂²).",
+    long: "The delete-one-block jack-knife estimates the standard error without assuming that the residuals are independent. Residuals from orbital fits are strongly correlated in time, so the [[formal-sigma]] understates the true error; the jack-knife is the honest one and is what the readout and the table use. In the table, a contribution's σ is a [[paired-jackknife]] on the difference of its two legs, not √(σ₁² + σ₂²).",
     mercury: "The ± shrinks as the run gets longer and the periodic terms average out.",
-    see: ["formal-sigma", "three-sigma", "least-squares"],
+    see: ["formal-sigma", "three-sigma", "least-squares", "paired-jackknife"],
+  };
+  E["paired-jackknife"] = {
+    term: "Paired-difference jack-knife", group: "table",
+    short: "How the table gets a contribution's σ: the engine deletes the same time block from both legs, refits each, and takes the jack-knife spread of the differences, so the residuals the legs share cancel.",
+    typical: "between 2 and 10 blocks (the smaller leg's passages ÷ 20), equal slices of the common span",
+    long: "The two legs of a [[p-remove]] row start from the same initial conditions and use the same [[estimator]], so most of their fit residuals (the planets' periodic signatures, the sampling phase) are the same in both. Combining the legs' own [[jackknife]] σ as if independent, √(σ₁² + σ₂²), counts that shared error twice and overstates the uncertainty of the difference. The engine instead fits each leg with its own model, deletes one time block from both legs at a time, and computes the jack-knife on the replicate differences (fav_pair_fit, DESIGN §6.4); the page does no statistics. The cell's tooltip also shows what the independent combination would have been. If the engine cannot pair two legs the cell says \"σ unpaired (upper estimate)\" and falls back to the independent combination.",
+    mercury: "With the default uniform [[gamma0-centring]] the conformal-gravity row's two legs follow the same heliocentric orbit, so its paired σ is at round-off and the row reads within the bound instead of unresolved.",
+    see: ["jackknife", "live-value", "three-sigma", "leg"],
   };
   E["formal-sigma"] = {
     term: "Formal σ", group: "fit",
@@ -842,10 +880,10 @@
   };
   E["live-value"] = {
     term: "Live value ± jack-knife σ", group: "table",
-    short: "This run's contribution, ϖ̇(S) − ϖ̇(S∖X), with the two legs' jack-knife σ combined in quadrature. Frame, span and epoch are in the column header.",
-    long: "Computed in your browser from two legs of the [[contribution-table]] ([[p-remove]]), each fitted by the same [[estimator]] on the [[park17-plane]] (the initial orbit plane in the [[rung-lab]]), over the table's [[table-span|span]] forward from the run epoch. The σ is the [[jackknife]] estimate of each leg, combined as if independent; the legs share initial conditions, so it is an upper estimate.",
-    mercury: "Over 200 years σ is about 0.01–0.02 ″/cy: enough for the planets and GR, not for Lense–Thirring.",
-    see: ["p-remove", "jackknife", "table-span", "three-sigma"],
+    short: "This run's contribution, ϖ̇(S) − ϖ̇(S∖X), with the engine's jack-knife σ of the difference of the two legs. Frame, span and epoch are in the column header.",
+    long: "Computed by the engine in your browser from two legs of the [[contribution-table]] ([[p-remove]]), each fitted by the same [[estimator]] on the [[park17-plane]] (the initial orbit plane in the [[rung-lab]]), over the table's [[table-span|span]] forward from the run epoch. The σ is the [[paired-jackknife]]: the same time block is deleted from both legs, so the error they share cancels. It is smaller than the legs' σ combined as if independent (the tooltip shows both). While the engine pairs the legs the cell shows σ….",
+    mercury: "Rows the legs' own σ would have greyed, such as the uniform conformal-gravity row, resolve once the shared error cancels.",
+    see: ["p-remove", "jackknife", "paired-jackknife", "table-span", "three-sigma"],
   };
   E["engine-analytic"] = {
     term: "Engine analytic estimate", group: "table",
@@ -892,7 +930,7 @@
   E["three-sigma"] = {
     term: "Below resolution (3σ)", group: "table",
     short: "Rows whose value is within three standard deviations of zero are greyed: the run is too short to tell that effect from zero.",
-    long: "With σ the combined [[jackknife]] uncertainty of the two legs, a result with |value| < 3σ cannot be told apart from zero at the 3σ level (for a Gaussian error, a true zero lands outside ±3σ only about 0.3 % of the time). Longer spans shrink σ.",
+    long: "With σ the [[paired-jackknife]] uncertainty of the difference of the two legs, a result with |value| < 3σ cannot be told apart from zero at the 3σ level (for a Gaussian error, a true zero lands outside ±3σ only about 0.3 % of the time). Longer spans shrink σ.",
     mercury: "Lense–Thirring (−0.002 ″/cy) and the asteroids (0.001 ″/cy) are greyed on short spans.",
     see: ["jackknife", "table-span"],
   };
@@ -922,7 +960,7 @@
   E["leg"] = {
     term: "Leg", group: "table",
     short: "One independent integration in the table (S, Kepler only, or S without one effect). The column shows each leg's short IC hash and engine.",
-    long: "Legs run in parallel in their own workers with the same engine, span, estimator and initial conditions, differing only by the switched-off effect. A progress bar shows each running leg; an error is shown in place with the message on hover.",
+    long: "Legs run in parallel in their own workers with the same engine, span, estimator and initial conditions, differing only by the switched-off effect. A progress bar shows each running leg; an error is shown in place with the message on hover. Each finished leg hands its passages to one more worker, where the engine forms the [[paired-jackknife]] σ of each row.",
     mercury: "A table for the full model runs 12 legs.",
     see: ["ic-hash", "contribution-table"],
   };
@@ -1036,10 +1074,10 @@
   };
   E["nominal-run"] = {
     term: "Nominal run", group: "data",
-    short: "A run with the real DE440 J₂ and solar spin, IAS15 ε ≤ 10⁻⁹ and, with conformal gravity on, its fit coefficients. Anything else is non-nominal and labelled.",
-    long: "Only nominal runs describe the real solar system at full accuracy. The metadata field \"nominal\" records it; the header badge and readout show \"Exaggerated physics\" or \"non-nominal\" otherwise ([[physical-exaggeration]]).",
-    mercury: "Literature comparisons need a nominal run.",
-    see: ["physical-exaggeration", "metadata"],
+    short: "A run with nothing exaggerated: the real DE440 J₂ and solar spin, IAS15 ε ≤ 10⁻⁹ and, if conformal gravity is on, its fit coefficients. Nominal is not the same as the real solar system: a comparison model never is.",
+    long: "\"Nominal\" means only that no knob exaggerates the physics. A nominal run without a [[comparison-model]] is the viewer's model of the real solar system at full accuracy. A run with the conformal-gravity comparison model on is NOT a description of the real solar system, even at its fit values (which are themselves unverified, OI-79): it is GR plus a different theory's term, for comparison. The metadata field \"nominal\" records the first; \"comparison_model\" (a text, null when off) records the second, and the header shows a \"Comparison model on\" badge. The header badge and readout show \"Exaggerated physics\" or \"non-nominal\" for an exaggerated run ([[physical-exaggeration]]).",
+    mercury: "Literature comparisons need a nominal run without a comparison model.",
+    see: ["physical-exaggeration", "comparison-model", "metadata"],
   };
   E["error-codes"] = {
     term: "Error codes (FA-E…)", group: "data",
@@ -1067,9 +1105,9 @@
   E["presets"] = {
     term: "Presets", group: "controls",
     short: "One-click toggle sets: Kepler only (no perturbations), Planets only, GR only, Full model (planets, J2, GR, Lense–Thirring) and Full model + CG (adds the conformal-gravity comparison model).",
-    long: "[[preset-kepler]] checks the [[integrator-floor]]; [[preset-planets]] gives the Newtonian ≈ 532 ″/cy; [[preset-gr]] gives ≈ 42.98 ″/cy; [[preset-full]] gives ≈ 575.31 ″/cy; [[preset-full-cg]] adds the [[comparison-model]] on top. In the Rung lab the presets choose a rung instead (Planets only is unavailable).",
+    long: "[[preset-kepler]] checks the [[integrator-floor]]; [[preset-planets]] gives the Newtonian ≈ 532 ″/cy; [[preset-gr]] gives ≈ 42.98 ″/cy; [[preset-full]] gives ≈ 575.31 ″/cy; [[preset-full-cg]] adds the [[comparison-model]] on top; [[preset-full-pt]] and [[preset-pt-ppn]] show the [[proper-time-gill]] comparison model by its two routes. In the Rung lab the presets choose a rung instead (Planets only is unavailable).",
     mercury: "Compare the presets to see the classic split: Newtonian planets versus relativity.",
-    see: ["preset-kepler", "preset-planets", "preset-gr", "preset-full", "preset-full-cg"],
+    see: ["preset-kepler", "preset-planets", "preset-gr", "preset-full", "preset-full-cg", "preset-full-pt", "preset-pt-ppn"],
   };
   E["preset-kepler"] = {
     term: "Kepler only", group: "controls",
@@ -1111,10 +1149,26 @@
     mercury: "Its CG row is never part of the 575.31 ″/cy budget.",
     see: ["preset-full", "conformal-gravity", "comparison-model"],
   };
+  E["preset-full-pt"] = {
+    term: "Proper Time model", group: "controls",
+    short: "Planets and solar J2 with the Proper Time (Gill) kernel (bit 13) in place of GR 1PN and Lense–Thirring: the PHY-021 route 2, a comparison model.",
+    typical: "Proper Time row ≈ −7.163 ″/cy; total far from the observed 575.31 ″/cy",
+    long: "Bits 0–7 and 13. The kernel replaces the whole GR 1PN sector, so GR 1PN, Lense–Thirring and EIH are switched off; it runs under WHFast. In the Rung lab (which has no bit 13) it selects the GR PPN rung with J2 and the [[ppn-beta-gamma-half-minus-one|(1/2, −1)]] preset, the same physics by [[bridge-a]].",
+    mercury: "Compare its row with the [[preset-pt-ppn]] preset's GR row: two routes, the same −1/6 of GR.",
+    see: ["proper-time-gill", "preset-pt-ppn", "comparison-model"],
+  };
+  E["preset-pt-ppn"] = {
+    term: "PPN (½, −1) preset", group: "controls",
+    short: "Planets, solar J2 and the GR 1PN bit with β = 1/2, γ = −1 (IAS15): the PHY-021 route 1 to the Proper Time comparison model's advance.",
+    typical: "GR row ≈ −7.163 ″/cy (−1/6 of +42.98)",
+    long: "Bits 0–8 with the PPN fields set to the values of the [[conformally-flat]] metric of [[bridge-a|Gill's H₁]]. WHFast can only do β = γ = 1, so AUTO resolves to IAS15. Leaving it with another GR preset restores β = γ = 1. In the Rung lab it selects the GR PPN rung with the same values.",
+    mercury: "It is the GR row that changes: the table labels it GR 1PN, and its Park17 reference stops applying (non-GR PPN values).",
+    see: ["ppn-beta-gamma-half-minus-one", "proper-time-gill", "preset-full-pt", "ppn"],
+  };
   E["effects-toggles"] = {
     term: "Effects (toggles)", group: "controls",
     short: "Switch each perturbation on or off. The figure on the right is its expected contribution to ϖ̇; \"IAS15 only\" means WHFast cannot model it.",
-    long: "Any change restarts the live run (after asking if more than 10 s of integration would be lost). The expected values are approximate literature numbers on the Park17 plane; the table computes the actual contributions. Below a dashed line, [[conformal-gravity]] is a [[comparison-model]], not part of the GR ladder: its figure is the engine's [[cg-gauss-reference|Gauss reference]] for the current settings. In the Rung lab only Solar J2, Lense–Thirring and conformal gravity are available.",
+    long: "Any change restarts the live run (after asking if more than 10 s of integration would be lost). The expected values are approximate literature numbers on the Park17 plane; the table computes the actual contributions. Below a dashed line, [[conformal-gravity]] is a [[comparison-model]], not part of the GR ladder: its figure is the engine's [[cg-gauss-reference|Gauss reference]] for the current settings. The [[proper-time-gill]] kernel shows the engine's −1/6 GR estimate and switches GR 1PN, Lense–Thirring and EIH off (and they switch it off). In the Rung lab only Solar J2, Lense–Thirring and conformal gravity are available.",
     mercury: "Together the switched-on effects make up the advance shown in the readout.",
     see: ["planetary-perturbations", "gr-1pn", "solar-j2", "lense-thirring", "asteroids", "eih", "conformal-gravity"],
   };

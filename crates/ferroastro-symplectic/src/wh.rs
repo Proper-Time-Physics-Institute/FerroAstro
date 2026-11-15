@@ -26,7 +26,8 @@
 //! The kick must not depend on velocities: Newtonian point masses, solar J2, the GR effective
 //! potential (`ferroastro_forces::GrPotential`) and the conformal-gravity comparison terms
 //! (`ferroastro_forces::ConformalPotential`, `ferroastro_forces::ConformalUniformGamma0`;
-//! ADR-0016) only. **Full EIH (and any 1PN velocity-dependent
+//! ADR-0016) and the Proper Time (Gill) comparison kernel (`ferroastro_forces::ProperTimeKernel`;
+//! PHY-021) only. **Full EIH (and any 1PN velocity-dependent
 //! term, and Lense–Thirring) is not supported under the Wisdom–Holman map** (NUM-004): the map is
 //! then neither symplectic nor of the stated order. [`check_model`] refuses such models.
 //!
@@ -49,13 +50,15 @@ use ferroastro_system::Tier;
 /// conformal-gravity comparison terms (ADR-0016, PHY-020) qualify: `conformal-potential-sun` is a
 /// Sun-centred pair potential like `gr-potential-sun`, and `conformal-gamma0-uniform` gives every
 /// body the same acceleration, so its Jacobi relative kicks cancel and only the centre of mass
-/// is kicked.
-pub const SUPPORTED_TERMS: [&str; 5] = [
+/// is kicked. The Proper Time (Gill) comparison kernel (PHY-021) `proper-time-kernel-sun` is a
+/// Sun-centred pair potential like `gr-potential-sun`.
+pub const SUPPORTED_TERMS: [&str; 6] = [
     "newtonian-mutual",
     "solar-j2-with-reaction",
     "gr-potential-sun",
     "conformal-potential-sun",
     "conformal-gamma0-uniform",
+    "proper-time-kernel-sun",
 ];
 
 /// Which symplectic corrector maps real to kernel coordinates.
@@ -849,7 +852,8 @@ pub fn check_model<F: Frame, R: Real>(model: &NBodyModel<F, R>) -> Result<(), In
                 value: 0.0,
                 valid: "Wisdom-Holman supports velocity-independent terms only (newtonian-mutual, \
                         solar-j2-with-reaction, gr-potential-sun, conformal-potential-sun, \
-                        conformal-gamma0-uniform); full EIH is not supported in WH (NUM-004)",
+                        conformal-gamma0-uniform, proper-time-kernel-sun); full EIH is not \
+                        supported in WH (NUM-004)",
             });
         }
     }

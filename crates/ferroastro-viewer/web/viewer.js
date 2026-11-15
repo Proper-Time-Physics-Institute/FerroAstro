@@ -21,6 +21,8 @@
   const FIT_INTERVAL_MS = 500;
   const MARKERS = 48;
   // Input ranges of the conformal-gravity coefficients (DESIGN §4.3); the engine re-checks them.
+  // |γ| ≤ 1e-25 cm^-1: γc²/2 is about 1e-5 of the Sun's pull at Mercury and about 7e-2 at Neptune.
+  // |κ| ≤ 1e-40 cm^-2: κc²r is about 6 % of the Sun's pull at Neptune.
   const CG_MAX_GAMMA = 1e-25; // cm^-1
   const CG_MAX_KAPPA = 1e-40; // cm^-2
 
@@ -59,7 +61,16 @@
     { bit: B.ASTEROIDS, term: "asteroids", label: "Big asteroids", short: "Asteroids", css: "--fx-ast", exp: "≈0.001 ″/cy", note: "IAS15 only" },
     { bit: B.EIH, term: "eih", label: "EIH 1PN, all bodies (adv.)", short: "EIH", css: "--fx-gr", exp: "≈42.98 ″/cy", note: "IAS15 only; replaces GR 1PN" },
     { bit: B.CONFORMAL, term: "conformal-gravity", label: "Conformal gravity (comparison model)", short: "CG", css: "--fx-cg", exp: "comparison model", note: "outside the GR ladder", comparison: true },
+    { bit: B.PROPER_TIME, term: "proper-time-gill", label: "Proper Time (Gill) kernel (comparison model)", short: "PT", css: "--fx-pt", exp: "comparison model", note: "replaces GR 1PN, LT and EIH", comparison: true },
   ];
+  // The comparison-model bits (ADR-0016): never in the GR ladder, labelled wherever they appear.
+  const COMPARISON_BITS = TOGGLES.filter((t) => t.comparison).map((t) => t.bit);
+  function isComparisonKey(key) {
+    return COMPARISON_BITS.some((b) => key === "b" + b);
+  }
+  function comparisonOn(mask) {
+    return COMPARISON_BITS.some((b) => (mask & (1 << b)) !== 0);
+  }
 
   // Reference columns of the contribution table (the comparison dashboard, API-004 / F4): every
   // number comes from the engine's metadata object "dashboard" (engine analytic estimates, M5
@@ -99,6 +110,7 @@
     badgeEngine: $("badge-engine"),
     badgeNominal: $("badge-nominal"),
     badgeNominalText: $("badge-nominal-text"),
+    badgeCm: $("badge-cm"),
     badgeModeTip: $("badge-mode-tip"),
     chartPlane: $("chart-plane"),
     orbit: $("orbit"),
@@ -356,6 +368,10 @@
     return "rgba(" + r + "," + g + "," + b + "," + a + ")";
   }
 
+  // Displayed numbers use the true minus sign (U+2212), also in exponents; the CSV keeps ASCII.
+  function minus(t) {
+    return String(t).replace(/-/g, "−");
+  }
   function decimalsFor(sigma) {
     if (!Number.isFinite(sigma) || sigma <= 0) return 3;
     return Math.min(6, Math.max(1, Math.ceil(-Math.log10(sigma)) + 1));
@@ -365,17 +381,17 @@
     if (Number.isFinite(s) && s > 0 && s < 1e-5) {
       // Below the fixed-point range: keep the sigma visible instead of printing 0.000000.
       const vt = Math.abs(v) < 1e-4 && v !== 0 ? v.toExponential(2) : v.toFixed(6);
-      return vt + " ± " + s.toExponential(1);
+      return minus(vt + " ± " + s.toExponential(1));
     }
     const d = decimalsFor(s);
-    return v.toFixed(d) + (Number.isFinite(s) ? " ± " + s.toFixed(d) : "");
+    return minus(v.toFixed(d) + (Number.isFinite(s) ? " ± " + s.toFixed(d) : ""));
   }
   function refDigits(v, d) {
     const small = v !== 0 && Number.isFinite(v) ? Math.ceil(-Math.log10(Math.abs(v))) + 1 : 0;
     return Math.min(6, Math.max(2, Math.min(5, d), small));
   }
   function fmtNum(v, d) {
-    return Number.isFinite(v) ? v.toFixed(d) : "–";
+    return Number.isFinite(v) ? minus(v.toFixed(d)) : "–";
   }
   // The nominal DE440 solar J2 as the engine reports it in its metadata (j2_nominal); NaN until a
   // metadata object has arrived. The page never carries a header.440 value itself (#22).
@@ -438,7 +454,7 @@
   function tickLabel(v, ticks) {
     const step = ticks.length > 1 ? Math.abs(ticks[1] - ticks[0]) : 1;
     const d = Math.max(0, Math.min(6, -Math.floor(Math.log10(step) + 1e-9)));
-    return v.toFixed(d);
+    return minus(v.toFixed(d));
   }
 
   function interp(ts, vs, t) {
@@ -462,8 +478,10 @@
   // ------------------------------------------------------------------------------------------------
   const toggleInputs = {};
   function buildToggles() {
+    let sepDone = false;
     for (const t of TOGGLES) {
-      if (t.comparison) {
+      if (t.comparison && !sepDone) {
+        sepDone = true;
         // Comparison models sit apart from the GR ladder's effects (ADR-0016).
         const sep = document.createElement("li");
         sep.className = "toggles-sep";
@@ -500,6 +518,9 @@
     // EIH (bit 11) replaces the Sun-only 1PN (bit 8): mutually exclusive.
     if (on && bit === B.EIH) m &= ~(1 << B.GR_1PN);
     if (on && bit === B.GR_1PN) m &= ~(1 << B.EIH);
+    // The Proper Time comparison model (bit 13) replaces the GR 1PN sector (bits 8, 9, 11).
+    if (on && bit === B.PROPER_TIME) m &= ~FAV.GR_SECTOR_MASK;
+    if (on && (FAV.GR_SECTOR_MASK & (1 << bit)) !== 0) m &= ~(1 << B.PROPER_TIME);
     m >>>= 0;
     if (mode() === 1) state.labMask = m;
     else state.sysMask = m;
@@ -649,6 +670,10 @@
       } else if (name === "full" || name === "full-cg") {
         state.labMask = (1 << B.SUN_J2) | (1 << B.LENSE_THIRRING) | (name === "full-cg" ? 1 << B.CONFORMAL : 0);
         el.rung.value = "4";
+      } else if (name === "full-pt" || name === "pt-ppn") {
+        // The Rung lab has no bit 13: its Proper Time route is the GR PPN rung at (1/2, -1).
+        state.labMask = name === "full-pt" ? 1 << B.SUN_J2 : 0;
+        el.rung.value = "4";
       }
     } else {
       state.sysMask = {
@@ -658,7 +683,23 @@
         full: FAV.DEFAULT_MASK,
         // The comparison model on top of the full GR model (ADR-0016); never the default.
         "full-cg": (FAV.DEFAULT_MASK | (1 << B.CONFORMAL)) >>> 0,
+        // The Proper Time comparison model in place of the GR sector (PHY-021 route 2).
+        "full-pt": ((FAV.DEFAULT_MASK & ~FAV.GR_SECTOR_MASK) | (1 << B.PROPER_TIME)) >>> 0,
+        // PHY-021 route 1: the GR bit with the PPN (1/2, -1) preset, planets and J2.
+        "pt-ppn": (FAV.PLANET_MASK | (1 << B.SUN_J2) | (1 << B.GR_1PN)) >>> 0,
       }[name];
+    }
+    // The PPN preset of the Proper Time route 1 comes from the engine's metadata (proper_time.ppn_preset);
+    // the GR presets restore beta = gamma = 1 when leaving it.
+    const pre = state.meta && state.meta.proper_time && state.meta.proper_time.ppn_preset;
+    const ptBeta = pre ? pre.beta : 0.5;
+    const ptGamma = pre ? pre.gamma : -1;
+    if (name === "pt-ppn" || (lab && name === "full-pt")) {
+      el.beta.value = ptBeta;
+      el.gamma.value = ptGamma;
+    } else if (Number(el.beta.value) === ptBeta && Number(el.gamma.value) === ptGamma) {
+      el.beta.value = 1;
+      el.gamma.value = 1;
     }
     syncToggleUI();
     requestReconfigure();
@@ -709,6 +750,8 @@
     const nn = nonNominalText(state.applied);
     el.badgeNominal.hidden = !nn;
     el.badgeNominalText.textContent = nn ? "Exaggerated physics: " + nn : "";
+    // A comparison model is never the real solar system, even when the run is nominal (fit values).
+    if (el.badgeCm) el.badgeCm.hidden = !comparisonOn(state.applied.mask);
     setStatus("Configuring…");
     writeHash(state.applied);
     state.live.postMessage({ op: "configure", mask: state.applied.mask, params: state.applied.params });
@@ -819,6 +862,7 @@
     if (state.applied.params[P.ENGINE] === 0 && state.applied.params[P.MODE] === 0) {
       el.engineResolved.append("resolved: ", termButton(state.engine === FAV.ENGINE_RESOLVED.WHFAST ? "whfast" : "ias15", FAV.ENGINE_NAME[state.engine] || "?"));
     }
+    if (el.badgeCm && typeof meta.comparison_model === "string") el.badgeCm.hidden = false;
     if (meta.nominal === false && el.badgeNominal.hidden) {
       el.badgeNominal.hidden = false;
       el.badgeNominalText.textContent = "Non-nominal run";
@@ -831,6 +875,16 @@
     el.metaLine.title = meta.model ? "Model: " + meta.model + (meta.ic_source ? "\nIC source: " + meta.ic_source : "") : "";
     el.copyScenario.disabled = !state.scenario;
     showCgReference(meta);
+    showPtReference(meta);
+  }
+
+  // The engine's analytic reference for the Proper Time comparison model (metadata "proper_time",
+  // ABI v3): -1/6 of GR's first-order advance, shown in the toggle row. Display only.
+  function showPtReference(meta) {
+    const p = meta && meta.proper_time;
+    const r = p && p.reference && Number.isFinite(p.reference.arcsec_per_cy) ? p.reference : null;
+    const exp = document.getElementById("tg-" + B.PROPER_TIME + "-exp");
+    if (exp && exp.firstChild) exp.firstChild.textContent = r ? fmtRate(r.arcsec_per_cy) + " ″/cy (−1/6 GR)" : "comparison model";
   }
 
   // The engine's analytic reference for the conformal-gravity settings (metadata "conformal",
@@ -843,10 +897,10 @@
     if (!Number.isFinite(v)) return "–";
     if (v === 0) return "0";
     const a = Math.abs(v);
-    return a >= 0.01 ? v.toFixed(a >= 10 ? 2 : 4) : v.toExponential(2);
+    return minus(a >= 0.01 ? v.toFixed(a >= 10 ? 2 : 4) : v.toExponential(2));
   }
   function fmtSci(v) {
-    return v === 0 ? "0" : v.toExponential(2);
+    return v === 0 ? "0" : minus(v.toExponential(2));
   }
   function showCgReference(meta) {
     const r = cgReference(meta);
@@ -869,7 +923,7 @@
     );
     // The bound's numbers come from the engine (metadata "dashboard.bound", tests/vectors).
     const b = boundFor(meta, "b" + B.CONFORMAL);
-    if (b) el.cgRef.append(termButton("inpop15a-bound", "INPOP15a"), " allows " + b.value + " ± " + b.half_width + " " + (unitText(b) || "″/cy") + ".");
+    if (b) el.cgRef.append(termButton("inpop15a-bound", "INPOP15a"), " allows " + minus(b.value) + " ± " + minus(b.half_width) + " " + (unitText(b) || "″/cy") + ".");
     if (uniform) {
       const note = document.createElement("span");
       note.className = "cg-caveat";
@@ -1024,7 +1078,9 @@
       { text: fmtNum(f[F.T_FIRST], 1) + "–" + fmtNum(f[F.T_LAST], 1) + " yr (" + Math.floor(y0 + f[F.T_FIRST]) + "–" + Math.floor(y0 + f[F.T_LAST]) + ")", term: "fit-window" },
       labFit ? { text: "initial orbit plane", term: "rung-lab" } : { text: "Park17 plane", term: "park17-plane" },
       state.applied && nonNominalText(state.applied) ? { text: "non-nominal", term: "physical-exaggeration" } : "",
-      state.applied && (state.applied.mask & (1 << B.CONFORMAL)) !== 0 ? { text: "incl. comparison model (CG)", term: "comparison-model" } : "",
+      state.applied && comparisonOn(state.applied.mask)
+        ? { text: "incl. comparison model (" + COMPARISON_BITS.filter((b) => (state.applied.mask & (1 << b)) !== 0).map((b) => effectShort("b" + b)).join(", ") + ")", term: "comparison-model" }
+        : "",
     ]);
     el.rate.title =
       "Fit model: " + (fm || "–") +
@@ -1061,7 +1117,7 @@
       const lead = document.createTextNode("Since " + Math.floor(y0 + pass.t[0]) + " the perihelion has turned ");
       const num = document.createElement("span");
       num.className = "num";
-      num.textContent = (Math.abs(d) >= 100 ? d.toFixed(0) : d.toFixed(2)) + "″" + (Math.abs(deg) >= 0.01 ? " (" + deg.toFixed(3) + "°)" : "");
+      num.textContent = minus((Math.abs(d) >= 100 ? d.toFixed(0) : d.toFixed(2)) + "″" + (Math.abs(deg) >= 0.01 ? " (" + deg.toFixed(3) + "°)" : ""));
       const tail = document.createTextNode(
         " in " + yrs.toFixed(yrs < 10 ? 2 : 1) + " years, over " + n + " passages" + (k !== 1 ? "; drawn ×" + fmtK(k) + " on the plate." : "."),
       );
@@ -1386,7 +1442,7 @@
           const lr = rArc + 10 * dpr;
           const lx = ox + Math.cos(am) * lr;
           const ly = oy - Math.sin(am) * lr;
-          const label = "Δϖ " + (Math.abs(d) >= 100 ? d.toFixed(0) : d.toFixed(1)) + "″" + (k !== 1 ? " (drawn ×" + fmtK(k) + ")" : "");
+          const label = "Δϖ " + minus(Math.abs(d) >= 100 ? d.toFixed(0) : d.toFixed(1)) + "″" + (k !== 1 ? " (drawn ×" + fmtK(k) + ")" : "");
           ctx.font = font(12.5, "600", fonts.serif);
           ctx.textAlign = Math.cos(am) >= 0 ? "left" : "right";
           ctx.lineWidth = 3 * dpr;
@@ -1665,7 +1721,7 @@
       ctx.lineTo(x, T + ph);
       ctx.stroke();
       ctx.fillText(tickLabel(v, xt), x, T + ph + 14 * dpr);
-      ctx.fillText((y0 + v).toFixed(calDec), x, T - 6 * dpr);
+      ctx.fillText(minus((y0 + v).toFixed(calDec)), x, T - 6 * dpr);
     }
     ctx.textAlign = "left";
     ctx.fillText((el.detrend.checked ? "ϖ − ϖ₀ − ϖ̇t (″)" : "ϖ − ϖ₀ (″)"), 4 * dpr, 12 * dpr);
@@ -1782,7 +1838,7 @@
         ctx.stroke();
       }
       if (Number.isFinite(rate)) {
-        const lbl = "fit ϖ̇ = " + rate.toFixed(2) + " ″/cy" + (el.detrend.checked ? " (subtracted)" : "");
+        const lbl = "fit ϖ̇ = " + minus(rate.toFixed(2)) + " ″/cy" + (el.detrend.checked ? " (subtracted)" : "");
         ctx.font = font(12, "600");
         ctx.textAlign = "left";
         const lx = L + 6 * dpr;
@@ -1837,7 +1893,7 @@
   // ------------------------------------------------------------------------------------------------
   // Contribution table (ADR-0014 P-remove, computed from parallel leg workers)
   // ------------------------------------------------------------------------------------------------
-  const table = { legs: [], rows: [], workers: [], queue: [], running: false, cfg: null, span: 0, meta: null, done: 0 };
+  const table = { legs: [], rows: [], workers: [], queue: [], running: false, cfg: null, span: 0, meta: null, done: 0, pairs: new Map(), pairWorker: null, pairReady: false, pairQueue: [] };
 
   function effectLabel(key, cfg) {
     if (key.startsWith("b")) {
@@ -1890,6 +1946,7 @@
   function stopTable() {
     for (const w of table.workers) w.terminate();
     table.workers = [];
+    stopPairWorker();
     table.queue = [];
     table.running = false;
     el.tRun.disabled = false;
@@ -1918,6 +1975,7 @@
     table.rows = plan.rows;
     table.meta = null;
     table.done = 0;
+    table.pairs = new Map();
     table.running = true;
     table.queue = table.legs.slice();
     el.tRun.disabled = true;
@@ -1928,6 +1986,121 @@
     const n = Math.max(1, Math.min(table.legs.length, (navigator.hardwareConcurrency || 2) - 1, 8));
     setStatus("Computing " + table.legs.length + " legs of " + span + " yr in " + n + " worker" + (n > 1 ? "s" : "") + "…");
     for (let i = 0; i < n; i++) spawnLegWorker();
+    spawnPairWorker();
+  }
+
+  // ---- paired-difference σ (DESIGN §6.4) -----------------------------------------------------------
+  // A contribution's σ is the engine's jack-knife on the DIFFERENCE of its two legs (same initial
+  // conditions, same estimator, the same time block deleted from both: fav_pair_fit), not the two
+  // legs' σ combined as if independent. One extra worker computes it from the legs' passages; the
+  // page does no statistics of its own.
+  function pairKey(a, b) {
+    return a + "\u0000" + b;
+  }
+  function stopPairWorker() {
+    if (table.pairWorker) table.pairWorker.terminate();
+    table.pairWorker = null;
+    table.pairReady = false;
+    table.pairQueue = [];
+  }
+  function spawnPairWorker() {
+    let w;
+    try {
+      w = new Worker("worker.js");
+    } catch (err) {
+      showError("Cannot start the pairing worker: " + err.message);
+      return;
+    }
+    table.pairWorker = w;
+    table.pairReady = false;
+    w.onmessage = (ev) => {
+      const m = ev.data;
+      if (m.op === "ready") {
+        table.pairReady = true;
+        // A trap while pairing: report it on that pair and go on with the rest.
+        if (m.recovered && table.pairQueue.length) failPair(table.pairQueue.shift().id, m.reason || "wasm trap");
+        sendPair();
+      } else if (m.op === "pair") {
+        const p = table.pairs.get(m.id);
+        if (p) {
+          p.state = m.pair ? "done" : "error";
+          p.rec = m.pair;
+          p.message = m.message || "";
+        }
+        table.pairQueue.shift();
+        sendPair();
+        renderTable();
+      } else if (m.op === "error") {
+        failPair(m.id, m.message);
+        table.pairQueue.shift();
+        sendPair();
+      }
+    };
+    w.onerror = (e) => {
+      e.preventDefault();
+      const queued = table.pairQueue.slice();
+      stopPairWorker();
+      for (const q of queued) failPair(q.id, "pairing worker crashed: " + (e.message || "unknown error"));
+      renderTable();
+    };
+    w.postMessage({ op: "init", module: state.module });
+  }
+  function failPair(id, message) {
+    const p = table.pairs.get(id);
+    if (p) {
+      p.state = "error";
+      p.message = message || "";
+    }
+    renderTable();
+  }
+  // One request in flight at a time, in table order.
+  function sendPair() {
+    if (!table.pairWorker || !table.pairReady || !table.pairQueue.length || table.pairQueue[0].sent) return;
+    const q = table.pairQueue[0];
+    q.sent = true;
+    table.pairWorker.postMessage(q.msg);
+  }
+  // Queue every pair whose two legs are done and fitted (rows: S − S∖X; P-add: +X − Kepler only).
+  function requestPairs() {
+    if (!table.plan) return;
+    const lab = table.cfg.params[P.MODE] === 1;
+    const flags = (table.cfg.params[P.FIT_PERIODIC] === 0 ? 0 : FAV.PAIR_FLAG.FIT_PERIODIC) | (lab ? FAV.PAIR_FLAG.RUNG_LAB : 0);
+    const want = [];
+    for (const r of table.rows) {
+      want.push([table.plan.S, r.without]);
+      if (r.add) want.push([r.add, table.plan.K]);
+    }
+    for (const [ka, kb] of want) {
+      const id = pairKey(ka, kb);
+      if (table.pairs.has(id)) continue;
+      const a = table.plan.legs.get(ka);
+      const b = table.plan.legs.get(kb);
+      if (!a || !b || !a.done || !b.done || !a.fit || !b.fit || !a.pt || !b.pt) continue;
+      if (a.epochJd !== b.epochJd) {
+        table.pairs.set(id, { state: "error", message: "the legs have different epochs" });
+        continue;
+      }
+      if (!table.pairWorker) {
+        table.pairs.set(id, { state: "error", message: "no pairing worker" });
+        continue;
+      }
+      table.pairs.set(id, { state: "pending" });
+      table.pairQueue.push({
+        id,
+        msg: { op: "pair", id, flags, epochJd: a.epochJd, a: { t: a.pt, lon: a.plon, mask: a.mask }, b: { t: b.pt, lon: b.plon, mask: b.mask } },
+      });
+    }
+    sendPair();
+  }
+  // The paired σ of leg a − leg b: {s, kind}; kind "paired", "pending", or "independent" (the
+  // engine could not pair the legs: the old √(σa² + σb²), an upper estimate, marked as such).
+  function pairSigma(ka, kb, A, B) {
+    const p = table.pairs.get(pairKey(ka, kb));
+    if (p && p.state === "done" && p.rec && p.rec.length >= FAV.STRIDE.pair) {
+      return { s: p.rec[FAV.PAIR.PAIRED_SIGMA], kind: "paired", indep: p.rec[FAV.PAIR.INDEPENDENT_SIGMA], blocks: p.rec[FAV.PAIR.BLOCKS] };
+    }
+    if (p && p.state === "error") return { s: Math.hypot(A.s, B.s), kind: "independent", message: p.message };
+    return { s: NaN, kind: "pending" };
   }
 
   function spawnLegWorker() {
@@ -1975,9 +2148,13 @@
         leg.fit = m.fit;
         leg.meta = m.meta || leg.meta;
         leg.engine = m.engine;
+        leg.epochJd = m.epochJd;
+        leg.pt = m.pt || null;
+        leg.plon = m.plon || null;
         if (m.status === FAV.STATUS.E_FIT) leg.error = m.message || "too few passages";
         if (leg.key === table.plan.S) table.meta = leg.meta;
         table.done++;
+        requestPairs();
         renderTable();
         next();
       } else if (m.op === "error") {
@@ -2052,7 +2229,7 @@
   const FULL_MODEL_BITS = (1 << B.VENUS) | (1 << B.EMB) | (1 << B.MARS) | (1 << B.JUPITER) | (1 << B.SATURN) | (1 << B.URANUS) | (1 << B.NEPTUNE) | (1 << B.SUN_J2) | (1 << B.LENSE_THIRRING);
   function isFullModel(cfg) {
     return cfg.params[P.MODE] !== 1 && (cfg.mask & FULL_MODEL_BITS) === FULL_MODEL_BITS && (cfg.mask & ((1 << B.GR_1PN) | (1 << B.EIH))) !== 0 &&
-      (cfg.mask & (1 << B.CONFORMAL)) === 0;
+      !comparisonOn(cfg.mask);
   }
 
   function computeRows() {
@@ -2065,17 +2242,26 @@
       const W = legRate(r.without);
       let v = NaN;
       let s = NaN;
+      let sp = null;
       if (S && W) {
-        v = S.v - W.v;
-        s = Math.hypot(S.s, W.s);
+        // The value waits for its paired σ (computed in the engine within a second or so), so no
+        // verdict is ever shown against a missing σ.
+        sp = pairSigma(table.plan.S, r.without, S, W);
+        if (sp.kind !== "pending") {
+          v = S.v - W.v;
+          s = sp.s;
+        }
       }
       let addV = NaN;
       let addS = NaN;
       if (r.add) {
         const A = legRate(r.add);
         if (A && kAdd) {
-          addV = A.v - kAdd.v;
-          addS = Math.hypot(A.s, kAdd.s);
+          const ap = pairSigma(r.add, table.plan.K, A, kAdd);
+          if (ap.kind !== "pending") {
+            addV = A.v - kAdd.v;
+            addS = ap.s;
+          }
         }
       }
       const an = dashRow(meta, "analytic", r.key);
@@ -2093,7 +2279,7 @@
         diffVs = "analytic";
       }
       const bound = boundFor(meta, r.key);
-      out.push({ r, label: effectLabel(r.key, table.cfg), v, s, an, m5, lit, diff, diffVs, bound, addV, addS });
+      out.push({ r, label: effectLabel(r.key, table.cfg), v, s, sp, an, m5, lit, diff, diffVs, bound, addV, addS });
     }
     return { S, K, out, meta };
   }
@@ -2113,8 +2299,8 @@
     const u = " " + (unitText(b) || "″/cy");
     const w = b.half_width;
     const sig = Number.isFinite(s) && s > 0;
-    const m = sig ? " ± 3σ (3σ = " + (3 * s).toExponential(1) + u + ")" : "";
-    const offTxt = "|rate − " + b.value + "| = " + r.off.toExponential(2) + u;
+    const m = sig ? " ± 3σ (3σ = " + minus((3 * s).toExponential(1)) + u + ")" : "";
+    const offTxt = "|rate − " + minus(b.value) + "| = " + minus(r.off.toExponential(2)) + u;
     if (r.verdict === "within") return { cls: "pass", mark: "✓", text: "within", title: offTxt + m + " lies inside ± " + w + u };
     if (r.verdict === "unresolved") {
       return { cls: "unres", mark: "?", text: "unresolved", title: offTxt + m + " straddles the edge ± " + w + u + ": this span cannot decide; a longer span shrinks σ" };
@@ -2137,14 +2323,14 @@
   function fmtRef(v, sig) {
     if (!Number.isFinite(v)) return "–";
     if (v === 0) return "0";
-    if (Math.abs(v) < 1e-4) return v.toExponential(2);
-    return String(Number(v.toPrecision(sig)));
+    if (Math.abs(v) < 1e-4) return minus(v.toExponential(2));
+    return minus(String(Number(v.toPrecision(sig))));
   }
   function m5Cell(m5) {
     if (!m5) return '<td class="num col-m5 muted">–</td>';
     const t = m5.id + ": " + m5.protocol + (m5.note ? "; " + m5.note : "") + ". Computed, not observed.";
     return '<td class="num col-m5" title="' + escapeHtml(t) + '">' + escapeHtml(fmtRef(m5.value, 9)) +
-      (Number.isFinite(m5.sigma) ? '<span class="pm"> ± ' + escapeHtml(m5.sigma < 1e-5 ? m5.sigma.toExponential(1) : m5.sigma.toFixed(Math.min(6, decimalsFor(m5.sigma)))) + "</span>" : "") +
+      (Number.isFinite(m5.sigma) ? '<span class="pm"> ± ' + escapeHtml(minus(m5.sigma < 1e-5 ? m5.sigma.toExponential(1) : m5.sigma.toFixed(Math.min(6, decimalsFor(m5.sigma))))) + "</span>" : "") +
       '<span class="ref-src">' + escapeHtml(m5.id) + "</span></td>";
   }
 
@@ -2176,6 +2362,21 @@
     set("col-bound-sub", ...col(d && d.bound));
   }
 
+  // The live contribution with the provenance of its σ (the engine's paired-difference jack-knife).
+  function liveCell(row) {
+    const sp = row.sp;
+    if (sp && sp.kind === "pending") return '<td class="num val col-live muted" title="σ: pairing the two legs in the engine">σ…</td>';
+    let t = "";
+    if (sp && sp.kind === "paired") {
+      t = "σ: jack-knife on the difference of the two legs (" + sp.blocks + " blocks, the same block deleted from both); " +
+        "the legs' σ combined as if independent would be " + minus(Number(sp.indep).toExponential(1)) + " ″/cy";
+    } else if (sp && sp.kind === "independent") {
+      t = "σ: the engine could not pair the legs (" + (sp.message || "unknown") + "), so this is the legs' σ combined as if independent, an upper estimate";
+    }
+    return '<td class="num val col-live"' + (t ? ' title="' + escapeHtml(t) + '"' : "") + ">" + fmtPm(row.v, row.s) +
+      (sp && sp.kind === "independent" ? '<span class="ref-src">σ unpaired (upper estimate)</span>' : "") + "</td>";
+  }
+
   function renderTable() {
     if (!table.plan) return;
     const { S, K, out, meta } = computeRows();
@@ -2186,17 +2387,18 @@
     for (const row of out) {
       const unresolved = Number.isFinite(row.v) && Number.isFinite(row.s) && Math.abs(row.v) < 3 * row.s;
       const d = decimalsFor(row.s);
-      const comparison = row.r.key === "b" + B.CONFORMAL;
+      const comparison = isComparisonKey(row.r.key);
+      const derivation = row.lit && row.lit.kind === "derivation";
       const anTxt = row.an ? fmtRef(row.an.value, 6) : "–";
       const litApplies = row.lit && row.lit.applies !== false;
-      const litTitle = row.lit ? row.lit.id + (row.lit.note ? "; " + row.lit.note : "") + (litApplies ? "" : ". Not applied: this run's parameter differs from Park17's (an override, or for J2 the nominal DE440 value), so the difference uses the analytic estimate.") : "";
+      const litTitle = row.lit ? row.lit.id + (row.lit.note ? "; " + row.lit.note : "") + (row.lit.source ? "; source: " + row.lit.source : "") + (litApplies ? "" : ". Not applied: this run's parameter differs from Park17's (an override, or for J2 the nominal DE440 value), so the difference uses the analytic estimate.") : "";
       let boundCell = '<td class="col-bound muted" title="The bound limits anomalous (non-GR) advances; it does not apply to a ladder term.">n/a</td>';
       if (row.bound) {
         const vLive = boundVerdict(row.v, row.s, row.bound);
         const vAn = row.an ? boundVerdict(row.an.value, NaN, row.bound) : null;
-        boundCell = '<td class="col-bound">' + "<span class=\"num\">" + escapeHtml((row.bound.value === 0 ? "0" : String(row.bound.value)) + " ± " + row.bound.half_width + (unitText(row.bound) ? " " + unitText(row.bound) : "")) + "</span>" +
+        boundCell = '<td class="col-bound">' + "<span class=\"num\">" + escapeHtml(minus((row.bound.value === 0 ? "0" : String(row.bound.value)) + " ± " + row.bound.half_width) + (unitText(row.bound) ? " " + unitText(row.bound) : "")) + "</span>" +
           verdictHtml("analytic", vAn) + verdictHtml("live", vLive) +
-          (comparison && meta && meta.conformal && meta.conformal.gamma0_centre === "uniform"
+          (row.r.key === "b" + B.CONFORMAL && meta && meta.conformal && meta.conformal.gamma0_centre === "uniform"
             ? '<span class="ref-src cg-caveat">Uniform ' + termHtml("gamma0-centring", "γ0") + ": exactly 0 only with velocity-independent forces; EIH and Lense–Thirring add a tiny O(v·Δv/c²) drift.</span>"
             : "") +
           "</td>";
@@ -2205,11 +2407,11 @@
         '<tr class="' + (unresolved ? "unresolved" : "") + (comparison ? " comparison" : "") + '"' + (unresolved ? ' title="Below resolution for this span: |value| < 3σ"' : "") + ">" +
         '<th scope="row" class="effect"><span class="lbl"><span class="swatch" aria-hidden="true" style="background:var(' + effectCss(row.r.key) + ')"></span>' +
         escapeHtml(row.label) + "</span> " + tipHtml(effectTerm(row.r.key)) + '<span class="ref-src">' + termHtml("p-remove", "P-remove") + (comparison ? " · " + termHtml("comparison-model", "comparison model") : "") + "</span></th>" +
-        '<td class="num val col-live">' + fmtPm(row.v, row.s) + "</td>" +
-        '<td class="num col-an"' + (row.an ? ' title="' + escapeHtml(row.an.basis) + '"' : "") + ">" + escapeHtml(anTxt) + (row.an && comparison ? '<span class="ref-src">Gauss, comparison model</span>' : "") + "</td>" +
+        liveCell(row) +
+        '<td class="num col-an"' + (row.an ? ' title="' + escapeHtml(row.an.basis) + '"' : "") + ">" + escapeHtml(anTxt) + (row.an && comparison ? '<span class="ref-src">' + (row.r.key === "b" + B.PROPER_TIME ? "−1/6 GR" : "Gauss") + ", comparison model</span>" : "") + "</td>" +
         m5Cell(row.m5) +
-        '<td class="num col-lit' + (row.lit && !litApplies ? " muted" : "") + '"' + (row.lit ? ' title="' + escapeHtml(litTitle) + '"' : "") + ">" + (row.lit ? escapeHtml(fmtRef(row.lit.value, 7)) + '<span class="ref-src">' + escapeHtml(row.lit.id) + (litApplies ? "" : " · not applied") + "</span>" : "–") + "</td>" +
-        '<td class="num col-diff">' + (Number.isFinite(row.diff) ? (row.diff >= 0 ? "+" : "") + row.diff.toFixed(Math.max(2, d)) + '<span class="ref-src">vs ' + row.diffVs + "</span>" : "–") + "</td>" +
+        '<td class="num col-lit' + (row.lit && !litApplies ? " muted" : "") + '"' + (row.lit ? ' title="' + escapeHtml(litTitle) + '"' : "") + ">" + (row.lit ? escapeHtml(fmtRef(row.lit.value, 7)) + '<span class="ref-src">' + (derivation ? termHtml("proper-time-gill", "derivation") + " · " : "") + escapeHtml(row.lit.id) + (litApplies ? "" : " · not applied") + "</span>" : "–") + "</td>" +
+        '<td class="num col-diff">' + (Number.isFinite(row.diff) ? (row.diff >= 0 ? "+" : "") + minus(Math.abs(row.diff) < 10 ** -Math.max(2, d) && row.diff !== 0 ? row.diff.toExponential(1) : row.diff.toFixed(Math.max(2, d))) + '<span class="ref-src">vs ' + (derivation && row.diffVs === "literature" ? "derivation" : row.diffVs) + "</span>" : "–") + "</td>" +
         boundCell +
         (padd ? '<td class="num padd-col">' + (row.r.add ? fmtPm(row.addV, row.addS) + legCellInline(row.r.add) : "–") + "</td>" : '<td class="padd-col" hidden></td>') +
         '<td class="leg">' + legCell(row.r.without) + "</td></tr>";
@@ -2222,7 +2424,7 @@
       if (Number.isFinite(row.v)) sum += row.v;
       else ok = false;
     }
-    const sumTxt = ok ? sum.toFixed(4) : "–";
+    const sumTxt = ok ? minus(sum.toFixed(4)) : "–";
     const sTxt = S ? fmtPm(S.v, S.s) : "–";
     const kTxt = K ? fmtPm(K.v, K.s) : "–";
     const cross = ok && S && K ? S.v - sum - K.v : NaN;
@@ -2240,7 +2442,7 @@
       '<tr><th scope="row">ϖ̇(S), all selected effects ' + tipHtml("varpi-s") + '</th><td class="num col-live">' + sTxt + "</td>" + blank("col-an") + m5S + blank("col-lit") + blank("col-diff") + blank("col-bound") + pc + '<td class="leg">' + legCell(table.plan.S) + "</td></tr>" +
       '<tr><th scope="row">ϖ̇(Kepler only), integrator/estimator floor ' + tipHtml("integrator-floor") + '</th><td class="num col-live">' + kTxt + '</td><td class="num col-an" title="two-body Newtonian orbit (PHY-001)">0</td>' + blank("col-m5") + blank("col-lit") + blank("col-diff") + blank("col-bound") + pc + '<td class="leg">' + legCell(table.plan.K) + "</td></tr>" +
       '<tr class="cross"><th scope="row">ϖ̇(S) − Σ − ϖ̇(Kepler): interaction (cross) terms; not an error ' + tipHtml("cross-terms") + '</th><td class="num col-live">' +
-      (Number.isFinite(cross) ? cross.toFixed(4) : "–") + "</td>" + blank("col-an") + blank("col-m5") +
+      (Number.isFinite(cross) ? minus(cross.toFixed(4)) : "–") + "</td>" + blank("col-an") + blank("col-m5") +
       (xRow ? '<td class="num col-lit" title="' + escapeHtml(xRow.id + ": " + (xRow.note || "") + "; for scale") + '">' + escapeHtml(fmtRef(xRow.value, 7)) + '<span class="ref-src">Park17 J+S cross</span></td>' : blank("col-lit")) +
       blank("col-diff") + blank("col-bound") + pc + "<td></td></tr>";
 
@@ -2335,7 +2537,7 @@
       const a = Math.abs(row.v);
       v.textContent = (row.v < 0 ? "−" : "+") + (a >= 1 ? a.toFixed(1) : a.toPrecision(2));
       li.append(sw, name, v);
-      if (row.r.key === "b" + B.CONFORMAL) li.append(termButton("comparison-model", "comparison model"));
+      if (isComparisonKey(row.r.key)) li.append(termButton("comparison-model", "comparison model"));
       el.budgetKey.appendChild(li);
     }
   }
@@ -2367,7 +2569,8 @@
     }
     if (d && d.bound && d.bound.criterion) lines.push("# bound_live, bound_analytic: " + d.bound.criterion);
     lines.push("# m5 values are computed references (FerroAstro's own nightly results), not observations");
-    lines.push("effect,protocol,rate_arcsec_per_cy,sigma_jackknife,analytic,analytic_basis,m5_evidence,m5_sigma,m5_id,literature,literature_id,literature_applies,difference,difference_vs,bound_centre,bound_half_width,bound_live,bound_analytic,padd_info_only,padd_sigma,leg_ic_hash");
+    lines.push("# sigma_jackknife of a contribution (and padd_sigma) is the engine's jack-knife on the difference of its two legs (sigma_kind paired); sigma_kind independent marks the legs' sigma combined as if independent, an upper estimate");
+    lines.push("effect,protocol,rate_arcsec_per_cy,sigma_jackknife,analytic,analytic_basis,m5_evidence,m5_sigma,m5_id,literature,literature_id,literature_applies,difference,difference_vs,bound_centre,bound_half_width,bound_live,bound_analytic,padd_info_only,padd_sigma,leg_ic_hash,sigma_kind");
     const blank = (n) => new Array(n).fill("");
     for (const row of out) {
       const leg = table.plan.legs.get(row.r.without);
@@ -2383,17 +2586,18 @@
           Number.isFinite(row.diff) ? row.diff : "", row.diffVs,
           row.bound ? row.bound.value : "", row.bound ? row.bound.half_width : "", vl ? vl.verdict : "", va ? va.verdict : "",
           Number.isFinite(row.addV) ? row.addV : "", Number.isFinite(row.addS) ? row.addS : "", q(leg && leg.meta ? leg.meta.ic_hash || "" : ""),
+          row.sp ? row.sp.kind : "",
         ].join(","),
       );
     }
     let sum = 0;
     for (const row of out) sum += row.v;
-    lines.push(["sum", "", sum, ...blank(18)].join(","));
+    lines.push(["sum", "", sum, ...blank(19)].join(","));
     const m5Total = dashRow(meta, "m5", "total");
     const m5S = m5Total && isFullModel(table.cfg) ? [m5Total.value, m5Total.sigma, q(m5Total.id)] : ["", "", ""];
-    if (S) lines.push(["rate(S)", "", S.v, S.s, "", "", ...m5S, ...blank(11), q(S.leg.meta ? S.leg.meta.ic_hash || "" : "")].join(","));
-    if (K) lines.push(["rate(Kepler only)", "", K.v, K.s, 0, q("two-body Newtonian (PHY-001)"), ...blank(14), q(K.leg.meta ? K.leg.meta.ic_hash || "" : "")].join(","));
-    if (S && K) lines.push([q("interaction (cross) terms; not an error"), "", S.v - sum - K.v, ...blank(18)].join(","));
+    if (S) lines.push(["rate(S)", "", S.v, S.s, "", "", ...m5S, ...blank(11), q(S.leg.meta ? S.leg.meta.ic_hash || "" : ""), ""].join(","));
+    if (K) lines.push(["rate(Kepler only)", "", K.v, K.s, 0, q("two-body Newtonian (PHY-001)"), ...blank(14), q(K.leg.meta ? K.leg.meta.ic_hash || "" : ""), ""].join(","));
+    if (S && K) lines.push([q("interaction (cross) terms; not an error"), "", S.v - sum - K.v, ...blank(19)].join(","));
     download("ferroastro-contributions.csv", lines.join("\n") + "\n", "text/csv");
   }
 

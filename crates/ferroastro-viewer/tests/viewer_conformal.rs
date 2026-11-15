@@ -53,14 +53,15 @@ fn id(p: Param) -> u32 {
     p as u32
 }
 
-/// ABI v2: version 2, bit 12 accepted and bit 13 refused, parameters 13–16 with their defaults
+/// ABI v2 (kept in v3): bit 12 accepted and the first reserved bit (14 since v3) refused,
+/// parameters 13–16 with their defaults
 /// (the OI-79 fit values, uniform centring) and ranges, the default mask without bit 12, and the
 /// metadata's `conformal` object labelled "comparison model".
 ///
 /// Verifies: API-004, PHY-020
 #[test]
 fn abi_v2_defines_bit_12_and_parameters_13_to_16() {
-    assert_eq!(ABI_VERSION, 2);
+    assert_eq!(ABI_VERSION, 3, "v3 = v2 plus bit 13 (PHY-021)");
     let mut v = Viewer::new();
     assert_eq!(
         v.config().mask() & bits::CONFORMAL,
@@ -68,7 +69,7 @@ fn abi_v2_defines_bit_12_and_parameters_13_to_16() {
         "default mask unchanged"
     );
     assert_eq!(v.set_toggles(bits::DEFAULT | bits::CONFORMAL), FAV_OK);
-    assert_eq!(v.set_toggles(1 << 13), FAV_E_ARG);
+    assert_eq!(v.set_toggles(1 << 14), FAV_E_ARG);
     assert!(v.error().starts_with("FA-E0002"), "{}", v.error());
     assert_eq!(
         v.get_param(id(Param::CgGamma0)).to_bits(),
@@ -92,7 +93,7 @@ fn abi_v2_defines_bit_12_and_parameters_13_to_16() {
     assert_eq!(v.set_param(id(Param::CgKappa), f64::INFINITY), FAV_E_ARG);
     assert_eq!(v.set_param(17, 0.0), FAV_E_ARG);
     let meta: serde_json::Value = serde_json::from_str(&v.meta_json()).unwrap();
-    assert_eq!(meta["abi"], 2);
+    assert_eq!(meta["abi"], 3);
     let cg = &meta["conformal"];
     assert_eq!(cg["label"], "comparison model");
     assert_eq!(cg["enabled"], true);
@@ -109,10 +110,25 @@ fn abi_v2_defines_bit_12_and_parameters_13_to_16() {
         meta["nominal"], false,
         "a non-fit coefficient is exaggerated physics"
     );
+    assert!(
+        meta["comparison_model"]
+            .as_str()
+            .is_some_and(|t| t.contains("not a description of the real solar system")),
+        "{}",
+        meta["comparison_model"]
+    );
+    // At the fit values the run is nominal, and still not the real solar system.
+    for p in [Param::CgGamma0, Param::CgGammaStar, Param::CgKappa] {
+        assert_eq!(v.set_param(id(p), ViewerConfig::default().get(p)), FAV_OK);
+    }
+    let meta: serde_json::Value = serde_json::from_str(&v.meta_json()).unwrap();
+    assert_eq!(meta["nominal"], true);
+    assert!(meta["comparison_model"].is_string());
     assert_eq!(v.reset(), FAV_OK);
     let meta: serde_json::Value = serde_json::from_str(&v.meta_json()).unwrap();
     assert_eq!(meta["conformal"]["enabled"], false);
     assert_eq!(meta["conformal"]["exaggerated"], false);
+    assert!(meta["comparison_model"].is_null());
 }
 
 /// Sun-centred exaggerated γ0 in System mode (`WHFast`, Sun + Mercury, 100 yr): the P-remove

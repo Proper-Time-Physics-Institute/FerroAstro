@@ -33,6 +33,10 @@
 //! default off: [`ConformalPotential`] (Sun-sourced linear and quadratic potentials with reaction),
 //! [`ConformalUniformGamma0`] (γ0 as a uniform field) and the test-particle [`ConformalCentral`],
 //! all declaring [`Gauge::StaticWeakFieldPotential`], which combines with every relativistic gauge.
+//! The second comparison model (ADR-0016 decision D6, PHY-021) is the Proper Time (Gill) kernel:
+//! [`ProperTimeKernel`] (Sun-sourced, with reaction) and the test-particle [`ProperTimeCentral`],
+//! Gill's flat-space force law `a = −(∇V/m)(1 + V/(mc²))` for `V = −GMm/r`, declaring
+//! [`Gauge::ProperTimeKernel`], which replaces the GR 1PN sector and so is refused beside it.
 //!
 //! Internal units: positions in km, velocities in km/s, time in TDB seconds, GM in km³/s². The
 //! typed constructors and [`NewtonianPointMasses::pack`] / [`NewtonianPointMasses::unpack`]
@@ -48,6 +52,7 @@ mod mixed;
 mod nbody;
 mod newtonian;
 mod oblateness;
+mod proper_time;
 mod relativity;
 pub mod soa;
 
@@ -60,11 +65,12 @@ pub use nbody::{
     Accelerations, ConformalPotential, ConformalUniformGamma0, ForceTerm, GeocentricMoon,
     GrPotential, Layout, LtReaction, MOON_TAYLOR_Q_MAX, MOON_TAYLOR_TERMS_DEFAULT,
     MOON_TAYLOR_TERMS_MIN, MinorFromMajors, MinorReaction, MoonPair, MoonVariables, NBody,
-    NBodyModel, NBodyPropagator, NewtonianMutual, RingMasses, SolarJ2WithReaction,
-    SolarLenseThirring, TermParameter, View,
+    NBodyModel, NBodyPropagator, NewtonianMutual, ProperTimeKernel, RingMasses,
+    SolarJ2WithReaction, SolarLenseThirring, TermParameter, View,
 };
 pub use newtonian::NewtonianPointMasses;
 pub use oblateness::SolarJ2;
+pub use proper_time::ProperTimeCentral;
 pub use relativity::{LenseThirring, PnCoefficients, PnLagrangian, SchwarzschildPpn, SrKepler};
 pub use soa::{NewtonianMutualSoa, SoaBackend};
 
@@ -102,6 +108,17 @@ pub enum Gauge {
     /// with any relativistic gauge (GR 1PN, EIH, the GR effective potential) without `FA-E0502`.
     /// A model containing such a term reports it in its gauge label (PHY-015, PHY-020 (f)).
     StaticWeakFieldPotential,
+    /// The Proper Time (Gill) **comparison model** of ADR-0016 (decision D6, PHY-021): Gill's
+    /// flat-space force law `a = −(∇V/m)(1 + V/(mc²))` for `V = −GMm/r`, i.e. Newton plus the
+    /// velocity-independent `+(GM)² r̂/(c² r³)` ([`ProperTimeKernel`], [`ProperTimeCentral`]).
+    /// Like [`Gauge::GrEffectivePotential`] it has no metric written in a PN gauge but stands in
+    /// for a theory's whole 1PN perihelion sector (Gill's `H₁` is geodesic motion in
+    /// `(1 − GM/(rc²))² η`, PPN β = 1/2, γ = −1: −1/6 of GR), so it **is** relativistic:
+    /// combining it with a GR 1PN term (or EIH, the GR effective potential, Lense–Thirring)
+    /// would add the 1PN sectors of two different theories, and `FA-E0502` refuses that. It
+    /// combines with Newtonian terms and with the conformal-gravity
+    /// [`Gauge::StaticWeakFieldPotential`] terms.
+    ProperTimeKernel,
 }
 
 impl Gauge {
@@ -122,6 +139,7 @@ impl Gauge {
                 "GR effective potential -3(GM)^2/(c^2 r^2) (Nobili & Roxburgh 1986; no PN gauge)"
             }
             Gauge::StaticWeakFieldPotential => COMPARISON_MODEL_LABEL,
+            Gauge::ProperTimeKernel => PROPER_TIME_MODEL_LABEL,
         }
     }
 
@@ -135,10 +153,13 @@ impl Gauge {
     }
 
     /// True for the gauge of a beyond-GR comparison model (ADR-0016), whose rates are reported
-    /// with the label "comparison model" and never enter the GR ladder (PHY-020).
+    /// with the label "comparison model" and never enter the GR ladder (PHY-020, PHY-021).
     #[must_use]
     pub const fn is_comparison_model(self) -> bool {
-        matches!(self, Gauge::StaticWeakFieldPotential)
+        matches!(
+            self,
+            Gauge::StaticWeakFieldPotential | Gauge::ProperTimeKernel
+        )
     }
 }
 
@@ -147,6 +168,13 @@ impl Gauge {
 pub const COMPARISON_MODEL_LABEL: &str = "comparison model (ADR-0016): conformal-gravity static \
      weak-field potential (Mannheim-Kazanas; Newtonian order, no PN gauge; not part of the GR \
      ladder)";
+
+/// The report label of [`Gauge::ProperTimeKernel`]: it names the comparison model (ADR-0016,
+/// PHY-021) so that every report whose model contains the Proper Time kernel carries it.
+pub const PROPER_TIME_MODEL_LABEL: &str = "comparison model (ADR-0016): Proper Time (Gill) \
+     kernel a = -(GM/r^2)(1 - GM/(r c^2)) r_hat (Gill's flat-space force law; its orbits are those \
+     of (1 - GM/(r c^2))^2 eta, PPN beta = 1/2, gamma = -1; no PN gauge; replaces the GR 1PN \
+     sector; not part of the GR ladder)";
 
 /// A force model: a second-order system (in backend `R`, default `f64`) that declares its gauge
 /// and a stable name.

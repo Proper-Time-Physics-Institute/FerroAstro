@@ -1,6 +1,6 @@
 // SPDX-FileCopyrightText: 2026 Proper-Time Physics Institute
 // SPDX-License-Identifier: Apache-2.0
-//! The C ABI, version 2 (DESIGN §4): `extern "C"` shims over one [`Viewer`] per instance (per
+//! The C ABI, version 3 (DESIGN §4): `extern "C"` shims over one [`Viewer`] per instance (per
 //! wasm module instance, i.e. per Web Worker; per thread on native).
 //!
 //! DESIGN §2.2 (NEEDS HUMAN REVIEW): this is the only module that allows the `unsafe_code`
@@ -37,7 +37,7 @@ fn len_u32(n: usize) -> u32 {
     u32::try_from(n).unwrap_or(u32::MAX)
 }
 
-/// ABI version (2). JS refuses any other value.
+/// ABI version (3). JS refuses any other value.
 #[unsafe(no_mangle)]
 pub extern "C" fn fav_abi_version() -> u32 {
     crate::ABI_VERSION
@@ -179,6 +179,40 @@ pub extern "C" fn fav_scenario_ptr() -> *const u8 {
 #[unsafe(no_mangle)]
 pub extern "C" fn fav_scenario_len() -> u32 {
     with(0, |v| len_u32(v.scenario_bytes().len()))
+}
+
+/// Empty the paired-difference legs (DESIGN §6.4).
+#[unsafe(no_mangle)]
+pub extern "C" fn fav_pair_clear() -> i32 {
+    with(crate::FAV_E_STATE, Viewer::pair_clear)
+}
+
+/// Append one passage (t years since the epoch, longitude in arcsec) to paired leg 0 or 1.
+#[unsafe(no_mangle)]
+pub extern "C" fn fav_pair_push(leg: u32, t_years: f64, lon_arcsec: f64) -> i32 {
+    with(crate::FAV_E_STATE, |v| {
+        v.pair_push(leg, t_years, lon_arcsec)
+    })
+}
+
+/// Paired-difference jack-knife of leg 0 minus leg 1 (flags: bit 0 `FIT_PERIODIC`, bit 1 lab).
+#[unsafe(no_mangle)]
+pub extern "C" fn fav_pair_fit(mask_a: u32, mask_b: u32, flags: u32, epoch_jd: f64) -> i32 {
+    with(crate::FAV_E_STATE, |v| {
+        v.pair_fit(mask_a, mask_b, flags, epoch_jd)
+    })
+}
+
+/// Paired-difference record (stride 6).
+#[unsafe(no_mangle)]
+pub extern "C" fn fav_pair_ptr() -> *const f64 {
+    with(std::ptr::null(), |v| v.pair_record().as_ptr())
+}
+
+/// Length of the paired-difference record, in f64 (0 or 6).
+#[unsafe(no_mangle)]
+pub extern "C" fn fav_pair_len() -> u32 {
+    with(0, |v| len_u32(v.pair_record().len()))
 }
 
 /// Last error message, UTF-8 (starts with the `FA-Exxxx` code when there is one).

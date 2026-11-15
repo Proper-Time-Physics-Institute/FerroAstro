@@ -30,8 +30,8 @@ use ferroastro_ephem::NaifId;
 use ferroastro_forces::{
     ConformalPotential, ConformalUniformGamma0, ForceTerm, GeocentricMoon, GrPotential, LtReaction,
     MOON_TAYLOR_TERMS_DEFAULT, MinorFromMajors, MinorReaction, MixedForces, MoonVariables, NBody,
-    NBodyModel, NewtonianMutual, NewtonianMutualSoa, Pole, RingMasses, SoaBackend,
-    SolarJ2WithReaction, SolarLenseThirring,
+    NBodyModel, NewtonianMutual, NewtonianMutualSoa, Pole, ProperTimeKernel, RingMasses,
+    SoaBackend, SolarJ2WithReaction, SolarLenseThirring,
 };
 use ferroastro_integrators::Ias15;
 use ferroastro_integrators::Irk16;
@@ -66,6 +66,8 @@ fn soa_kernel(spec: &ScenarioSpec) -> bool {
 /// The relativistic term of an N-body scenario (WP19): `gr_eih` gives the EIH term (Park et al.
 /// 2021 Eq. 27, Newtonian right-hand-side accelerations), `gr_1pn_central` the heliocentric
 /// Sun-only 1PN rung; PPN β, γ from `forces.ppn`, else the DE440 values; c from DE440.
+/// `proper_time_kernel` gives the Proper Time (Gill) comparison model's [`ProperTimeKernel`]
+/// (ADR-0016, PHY-021), which the scenario validation keeps apart from the GR terms.
 fn relativity<R: Real>(
     spec: &ScenarioSpec,
     de: &De440,
@@ -124,6 +126,15 @@ fn relativity<R: Real>(
             ));
         }
         terms.push(Box::new(GrPotential::new(c)?));
+    }
+    if f.proper_time_kernel {
+        if !has_sun {
+            return Err(value_err(
+                "forces.proper_time_kernel",
+                "the Proper Time (Gill) kernel is Sun-sourced and needs the Sun among the bodies",
+            ));
+        }
+        terms.push(Box::new(ProperTimeKernel::new(c)?));
     }
     Ok(terms)
 }
