@@ -494,6 +494,16 @@ pub struct Viewer {
     error: String,
     meta_text: String,
     scenario_text: String,
+    pair: Pair,
+}
+
+/// The paired-difference input and record (DESIGN §6.4): two legs' passages pushed one by one
+/// (the ABI takes scalars only), then [`crate::fit::paired`].
+#[derive(Debug, Default, Clone)]
+struct Pair {
+    t_s: [Vec<f64>; 2],
+    lon: [Vec<f64>; 2],
+    record: Vec<f64>,
 }
 
 impl Viewer {
@@ -765,6 +775,100 @@ impl Viewer {
             self.scenario_text = s;
         }
         self.scenario_text.as_bytes()
+    }
+
+    /// Empty the paired-difference legs and record. Returns [`FAV_OK`].
+    pub fn pair_clear(&mut self) -> i32 {
+        self.pair = Pair::default();
+        FAV_OK
+    }
+
+    /// Append one passage of a leg's passages buffer to paired leg `leg` (0: the leg with the
+    /// effect, 1: the leg without): `t_years` since the leg's epoch and the unwrapped projected
+    /// longitude in arcsec, as the buffer row has them.
+    pub fn pair_push(&mut self, leg: u32, t_years: f64, lon_arcsec: f64) -> i32 {
+        let r = match (
+            usize::try_from(leg).ok(),
+            t_years.is_finite() && lon_arcsec.is_finite(),
+        ) {
+            (Some(i @ (0 | 1)), true) => {
+                if let (Some(t), Some(l)) = (self.pair.t_s.get_mut(i), self.pair.lon.get_mut(i)) {
+                    t.push(t_years);
+                    l.push(lon_arcsec);
+                }
+                self.pair.record.clear();
+                Ok(FAV_OK)
+            }
+            (Some(0 | 1), false) => Err(ViewerError::arg(format!(
+                "FA-E0002: fav_pair_push({leg}, {t_years}, {lon_arcsec}): pass finite values"
+            ))),
+            _ => Err(ViewerError::arg(format!(
+                "FA-E0002: fav_pair_push leg {leg}; valid 0 (with the effect) or 1 (without)"
+            ))),
+        };
+        self.status(r)
+    }
+
+    /// The paired-difference jack-knife of leg 0 minus leg 1 (DESIGN §6.4): `mask_a`
+    /// and `mask_b` are the legs' toggle masks, `flags` bit 0 is `FIT_PERIODIC` and bit 1 the Rung
+    /// lab (no periodic terms), `epoch_jd` the legs' common epoch (TDB JD). The record is
+    /// [`Viewer::pair_record`].
+    pub fn pair_fit(&mut self, mask_a: u32, mask_b: u32, flags: u32, epoch_jd: f64) -> i32 {
+        let r = self.pair_fit_inner(mask_a, mask_b, flags, epoch_jd);
+        self.status(r)
+    }
+
+    fn pair_fit_inner(
+        &mut self,
+        mask_a: u32,
+        mask_b: u32,
+        flags: u32,
+        epoch_jd: f64,
+    ) -> Result<i32, ViewerError> {
+        self.pair.record.clear();
+        if !epoch_jd.is_finite() || flags > 3 {
+            return Err(ViewerError::arg(format!(
+                "FA-E0002: fav_pair_fit flags {flags} (valid 0-3), epoch {epoch_jd} (finite)"
+            )));
+        }
+        let offset_s = (epoch_jd - J2000_JD) * SECONDS_PER_DAY;
+        let rad = 1.0 / arcsec(1.0);
+        let seconds: Vec<Vec<f64>> = self
+            .pair
+            .t_s
+            .iter()
+            .map(|ts| {
+                ts.iter()
+                    .map(|t| t.mul_add(SECONDS_PER_YEAR, offset_s))
+                    .collect()
+            })
+            .collect();
+        let radians: Vec<Vec<f64>> = self
+            .pair
+            .lon
+            .iter()
+            .map(|ls| ls.iter().map(|l| l * rad).collect())
+            .collect();
+        let choice = |mask| ModelChoice {
+            mask,
+            periodic: flags & 1 != 0,
+            single_body: flags & 2 != 0,
+        };
+        let leg = |i: usize, mask| crate::fit::Leg {
+            t_s: seconds.get(i).map_or(&[], Vec::as_slice),
+            lon: radians.get(i).map_or(&[], Vec::as_slice),
+            choice: choice(mask),
+        };
+        let rec = crate::fit::paired(leg(0, mask_a), leg(1, mask_b))?;
+        self.pair.record = rec.to_vec();
+        Ok(FAV_OK)
+    }
+
+    /// The last paired-difference record, empty before a successful [`Viewer::pair_fit`]:
+    /// `difference, paired_sigma, independent_sigma, blocks, n_a, n_b` (″/cy).
+    #[must_use]
+    pub fn pair_record(&self) -> &[f64] {
+        &self.pair.record
     }
 
     /// The last error message.

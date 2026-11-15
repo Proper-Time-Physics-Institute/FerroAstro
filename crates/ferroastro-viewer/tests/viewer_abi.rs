@@ -180,6 +180,7 @@ fn metadata_has_the_design_keys() {
         "mode",
         "engine",
         "nominal",
+        "comparison_model",
         "toggles",
         "params",
         "model",

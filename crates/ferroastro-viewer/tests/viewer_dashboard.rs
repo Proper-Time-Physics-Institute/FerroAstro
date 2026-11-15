@@ -160,6 +160,18 @@ fn dashboard_passes_m5_evidence_literature_and_bound_through() {
     for k in ["frame", "window", "protocol", "criterion"] {
         assert!(labelled(&b[k]), "bound.{k} labelled");
     }
+    // The visible sub-label (not only the tooltip) names the bound's window.
+    assert!(
+        b["short"].as_str().unwrap().contains("MESSENGER"),
+        "bound.short names the window: {}",
+        b["short"]
+    );
+    assert!(
+        b["criterion"]
+            .as_str()
+            .unwrap()
+            .contains("paired-difference")
+    );
     // Every reference column states its unit, so the page never assumes one (the analytic column,
     // which needs the DE440 constants, is checked in the analytic test below).
     for col in ["m5", "literature", "bound"] {

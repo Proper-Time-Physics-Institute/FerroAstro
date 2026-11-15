@@ -58,6 +58,13 @@
 //! | elements | [`ELEMENTS_STRIDE`] | `t, varpi_deg, e, a_au, i_deg, varpi_ecl_deg` |
 //! | passages | [`PASSAGES_STRIDE`] | `t, varpi_proj_arcsec, x_au, y_au, z_au, direction_error_arcsec` |
 //! | fit | [`FIT_STRIDE`] | `rate, formal_sigma, jackknife_sigma, Q, rms, n, t_first, t_last, n_periodic, B` |
+//! | pair | [`PAIR_STRIDE`] | `difference, paired_sigma, independent_sigma, blocks, n_a, n_b` |
+//!
+//! The pair exports (additive within version 2) compute a contribution's σ in the engine: the
+//! page pushes two legs' passage rows with `fav_pair_push(leg, t, varpi_proj_arcsec)` (scalars
+//! only), calls `fav_pair_fit(mask_a, mask_b, flags, epoch_jd)` and reads `fav_pair_ptr/len`:
+//! a delete-one-block jack-knife on the **difference** of the two legs (same initial conditions,
+//! same estimator, the same time block deleted from both), DESIGN §6.4.
 //!
 //! ```
 //! use ferroastro_viewer::{Viewer, FAV_E_UNSUPPORTED, FAV_OK, config::Param, ic};
@@ -118,6 +125,8 @@ pub const ELEMENTS_STRIDE: usize = 6;
 pub const PASSAGES_STRIDE: usize = 6;
 /// f64 in the fit buffer.
 pub const FIT_STRIDE: usize = 10;
+/// f64 in the paired-difference record.
+pub const PAIR_STRIDE: usize = fit::PAIR_STRIDE;
 
 /// Resolved engine: `WHFast` (System mode).
 pub const ENGINE_WHFAST: u32 = 1;

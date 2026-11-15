@@ -163,11 +163,12 @@ pub const CG_FIT_GAMMA_STAR_PER_CM: f64 = 5.42e-41;
 /// Conformal-gravity κ (cm⁻²) of the published fit, the default of parameter 15. **UNVERIFIED
 /// (OI-79)**.
 pub const CG_FIT_KAPPA_PER_CM2: f64 = 9.54e-54;
-/// Largest |γ0|, |γ\*| accepted (cm⁻¹): about 3×10⁴ times the fit γ0, a constant acceleration
-/// near 10⁻⁵ of the Sun's pull at Neptune's distance (still a bound orbit).
+/// Largest |γ0|, |γ\*| accepted (cm⁻¹): about 3×10⁴ times the fit γ0. Its constant acceleration
+/// γc²/2 ≈ 4.5×10⁻⁷ m/s² is about 10⁻⁵ of the Sun's pull at Mercury and about 7×10⁻² of it at
+/// Neptune's distance (every orbit stays bound).
 pub const CG_MAX_GAMMA_PER_CM: f64 = 1e-25;
-/// Largest |κ| accepted (cm⁻²): the Hooke term then stays below a few per cent of the Sun's pull at
-/// Neptune's distance.
+/// Largest |κ| accepted (cm⁻²): the Hooke term κc²r is then about 6 % of the Sun's pull at
+/// Neptune's distance (about 10⁻⁷ of it at Mercury).
 pub const CG_MAX_KAPPA_PER_CM2: f64 = 1e-40;
 
 /// The defaults of DESIGN §4.3, in id order.
