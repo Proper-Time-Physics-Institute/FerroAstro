@@ -1083,6 +1083,123 @@ impl<F: Frame, R: Real> ForceTerm<F, R> for ConformalUniformGamma0<F, R> {
     }
 }
 
+/// The Proper Time (Gill) kernel of the Sun, the second beyond-GR **comparison model** of
+/// ADR-0016 (decision D6, PHY-021; default off, never part of the GR ladder). Gill's flat-space
+/// force law `a = −(∇V/m)(1 + V/(mc²))` for `V = −GM☉m/r` is Newton plus a velocity-independent,
+/// repulsive `1/r³` correction; this term adds the correction, per unit mass, for every Major
+/// body other than the Sun, with the reaction on the Sun (a pair potential, as for
+/// [`GrPotential`]):
+///
+/// ```text
+/// Φ = +(GM☉)²/(2c²r²),     aᵢ = +(GM☉)² rᵢ/(c² rᵢ⁴),     a☉ = −Σ (GMᵢ/GM☉) aᵢ.
+/// ```
+///
+/// `Φ` is Gill's `V²/(2mc²)` per unit mass (`K = π²/2m + mc² + V + V²/(2mc²)`). For a
+/// perturbing potential `+q/r²` the orbit equation gives `−2πq/L²` per orbit, so with
+/// `q = (GM☉)²/(2c²)` and `L² = GM☉ a(1−e²)` the advance is `−πGM☉/(c²a(1−e²))`, **−1/6 of the
+/// GR 1PN advance** (`ferroastro_analytic::advance::proper_time_advance`). With the reaction the
+/// relative acceleration is larger by `1 + m/M☉`, which the two-body `L²` divides out, so the
+/// oracle uses the Sun's GM only (as for [`ConformalPotential`]).
+///
+/// Time parameter. Gill's law is a flow in his parameter `τ_K`, with `dt/dτ_K = E/(mc²)`
+/// constant on each orbit (relativistic-dynamics#88 report, §1.2): the orbit and the advance per
+/// orbit are those of this term integrated in coordinate time, and only the period is rescaled,
+/// by a constant `1 + O(GM/(ac²))` (about 1e-8 for Mercury), far below any resolvable rate.
+///
+/// Gauge: [`Gauge::ProperTimeKernel`], relativistic like [`Gauge::GrEffectivePotential`]: it is a
+/// theory's whole 1PN perihelion sector, so it is refused beside GR 1PN, EIH, the GR effective
+/// potential and Lense–Thirring (`FA-E0502`). Velocity independent, so the Wisdom–Holman kick
+/// integrates it (NUM-004). Major bodies only (like [`GrPotential`]).
+#[derive(Debug, Clone, Copy)]
+pub struct ProperTimeKernel<R: Real = f64> {
+    c: R,
+    sun: usize,
+    sun_gm: R,
+    /// `(GM☉)²/c²` (km⁴/s²), set by `bind`.
+    k: R,
+}
+
+impl<R: Real> ProperTimeKernel<R> {
+    /// The kernel for speed of light `c`.
+    ///
+    /// # Errors
+    /// `FA-E0500` if `c` is not finite and positive.
+    pub fn new(c: Velocity<R>) -> Result<Self, ForceError> {
+        Ok(Self {
+            c: crate::conformal::speed_of_light(c)?,
+            sun: 0,
+            sun_gm: R::ZERO,
+            k: R::ZERO,
+        })
+    }
+}
+
+impl<F: Frame, R: Real> ForceTerm<F, R> for ProperTimeKernel<R> {
+    fn name(&self) -> &'static str {
+        "proper-time-kernel-sun"
+    }
+    fn gauge(&self) -> Gauge {
+        Gauge::ProperTimeKernel
+    }
+    fn parameters(&self) -> Vec<TermParameter> {
+        vec![TermParameter {
+            name: "c",
+            value: self.c.to_f64(),
+            unit: "km/s",
+        }]
+    }
+    fn tiers(&self) -> &'static [Tier] {
+        &[Tier::Major]
+    }
+    fn bind(&mut self, layout: &Layout<R>) -> Result<(), ForceError> {
+        let (sun, gm) = major_sun(
+            layout,
+            "the Proper Time kernel needs the Sun (NAIF 10) as a Major body",
+        )?;
+        self.sun = sun;
+        self.sun_gm = gm;
+        self.k = gm * gm / (self.c * self.c);
+        Ok(())
+    }
+    fn accumulate(
+        &self,
+        t: R,
+        view: &View<'_, R>,
+        acc: &mut Accelerations<'_, R>,
+    ) -> Result<(), ForceError> {
+        let layout = view.layout();
+        let ps = view.position(self.sun)?;
+        for &i in layout.indices(Tier::Major) {
+            if i == self.sun {
+                continue;
+            }
+            let r = sub(view.position(i)?, ps);
+            let r2 = r2_of(r);
+            if r2 == R::ZERO {
+                return Err(singular(self.sun, i, t));
+            }
+            let s = self.k / (r2 * r2);
+            let a = r.map(|x| s * x);
+            let ratio = layout.gm(i) / self.sun_gm;
+            acc.add(i, a);
+            acc.add(self.sun, a.map(|x| -(ratio * x)));
+        }
+        Ok(())
+    }
+    fn potential_over_g(&self, view: &View<'_, R>) -> Option<R> {
+        let layout = view.layout();
+        let ps = view.position(self.sun).ok()?;
+        let q = R::HALF * self.k;
+        let mut u = R::ZERO;
+        for &i in layout.indices(Tier::Major) {
+            if i != self.sun {
+                u += layout.gm(i) * q / r2_of(sub(view.position(i).ok()?, ps));
+            }
+        }
+        Some(u)
+    }
+}
+
 /// Whether the Sun receives the reaction of the Lense–Thirring accelerations.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum LtReaction {

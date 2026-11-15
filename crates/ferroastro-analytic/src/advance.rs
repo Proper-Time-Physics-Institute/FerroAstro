@@ -2,8 +2,9 @@
 // SPDX-License-Identifier: Apache-2.0
 //! Analytic perihelion advances: rung GR-SCHW (PHY-004) and the single-body oracles of
 //! NUM-015 (SR exact, PPN scaling, 1PN unit, J2 planar and inclined, Lense–Thirring), plus the
-//! Gauss secular rates of the conformal-gravity **comparison model** (ADR-0016, PHY-020), which is
-//! not a ladder rung.
+//! Gauss secular rates of the conformal-gravity **comparison model** (ADR-0016, PHY-020) and the
+//! first-order advance of the Proper Time (Gill) comparison model (PHY-021), which are not ladder
+//! rungs.
 //!
 //! `Δϖ = 6πGM / (c² a (1 − e²))` per orbit (Will 2014, Living Rev. Relativ. 17, 4, Eq. 65 with
 //! β = γ = 1, test-particle limit). The orbital period that converts it to a rate is the
@@ -340,6 +341,31 @@ pub fn conformal_quadratic_advance<R: Real>(
     )
 }
 
+/// The Proper Time (Gill) comparison model's first-order advance per orbit (ADR-0016 decision
+/// D6, PHY-021; **comparison model**, outside the GR ladder): `Δϖ = −πGM/(c²a(1−e²))`, minus one
+/// 1PN unit ([`pn_unit`]) and **−1/6 of the Schwarzschild advance**.
+///
+/// Two routes give it. Gill's flat-space force law `a = −(∇V/m)(1 + V/(mc²))` adds the potential
+/// `+(GM)²/(2c²r²)` per unit mass, whose orbit equation gives `−2πq/L²` per orbit with
+/// `q = (GM)²/(2c²)`; and by Bridge A Gill's `H₁` is geodesic motion in `(1 − GM/(rc²))² η`,
+/// PPN β = 1/2, γ = −1, so [`ppn_scaling`] gives `(2 − 2 − 1/2)/3 = −1/6`. `gm` is the central
+/// body's `GM` alone (the reaction factor cancels as for [`conformal_linear_advance`]).
+///
+/// # Errors
+/// `FA-E0600` for non-positive `GM`, `c` or `a`, or `e` outside `[0, 1)`.
+pub fn proper_time_advance<R: Real>(
+    gm: GravParam<R>,
+    c: Velocity<R>,
+    a: Length<R>,
+    e: R,
+) -> Result<Angle<R>, AnalyticError> {
+    let aa = positive("a (km)", a.km())?;
+    let p = aa * eccentricity(e)?.mul_add(-e, R::ONE);
+    let p = Length::from_km(p).map_err(|_| dom("semi-latus rectum (km)", p))?;
+    let unit = pn_unit(gm, c, p)?;
+    angle("proper-time advance", -unit.radians())
+}
+
 /// `β = GM/c²` (km) of the conformal-gravity Gauss rates.
 fn conformal_beta<R: Real>(gm: GravParam<R>, c: Velocity<R>) -> Result<R, AnalyticError> {
     let m = positive("GM (km^3/s^2)", gm.km3_per_s2())?;
@@ -424,5 +450,32 @@ mod single_body_tests {
         assert!((ecc / lin - 0.8).abs() <= 8.0 * f64::EPSILON); // lint: allow-literal(sqrt(1 - 0.36))
         assert!(conformal_linear_advance(f64::NAN, mu, c, a, 0.0).is_err());
         assert!(conformal_quadratic_advance(g, mu, c, a, 1.0).is_err());
+    }
+
+    /// The Proper Time (Gill) first-order advance (comparison model, PHY-021) is exactly −1/6 of
+    /// the Schwarzschild advance, i.e. the PPN scaling at (β, γ) = (1/2, −1), and one negative
+    /// 1PN unit.
+    ///
+    /// Verifies: PHY-021
+    #[test]
+    fn proper_time_advance_is_minus_one_sixth_of_gr() {
+        let (mu, a, e) = (gm(1.0), len(1.0), 0.3_f64); // lint: allow-literal(dimensionless test geometry)
+        let c = Velocity::from_km_per_s(1.0e3).unwrap(); // lint: allow-literal(dimensionless test speed of light)
+        let pt = proper_time_advance(mu, c, a, e).unwrap().radians();
+        let gr = schwarzschild_advance(mu, c, a, e, mu)
+            .unwrap()
+            .per_orbit
+            .radians();
+        assert!(
+            (pt / gr + 1.0 / 6.0).abs() <= 8.0 * f64::EPSILON,
+            "{}",
+            pt / gr
+        ); // lint: allow-literal(-1/6)
+        assert!((ppn_scaling(0.5, -1.0) + 1.0 / 6.0).abs() <= f64::EPSILON); // lint: allow-literal(PPN (1/2, -1))
+        let p = len(a.km() * e.mul_add(-e, 1.0));
+        let unit = pn_unit(mu, c, p).unwrap().radians();
+        assert!((pt + unit).abs() <= 4.0 * f64::EPSILON * unit);
+        assert!(proper_time_advance(mu, c, a, 1.0).is_err());
+        assert!(proper_time_advance(mu, c, len(1.0), -0.1).is_err()); // lint: allow-literal(invalid eccentricity)
     }
 }

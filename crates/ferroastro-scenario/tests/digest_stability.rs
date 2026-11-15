@@ -33,9 +33,10 @@ fn toml_files(dir: &Path) -> Vec<PathBuf> {
 }
 
 /// Every committed scenario's digest equals the one recorded before the conformal table was
-/// added, and no committed scenario serialises a `conformal` key.
+/// added, and no committed scenario serialises a `conformal` or `proper_time_kernel` key (the
+/// comparison models of ADR-0016 are absent by default).
 ///
-/// Verifies: CI-002, PHY-020
+/// Verifies: CI-002, PHY-020, PHY-021
 #[test]
 fn committed_scenario_digests_are_unchanged() {
     let recorded: BTreeMap<String, String> = toml::from_str(
@@ -51,6 +52,11 @@ fn committed_scenario_digests_are_unchanged() {
             let spec = ScenarioSpec::parse(&std::fs::read_to_string(&f).unwrap()).unwrap();
             let json = serde_json::to_string(&spec).unwrap();
             assert!(!json.contains("conformal"), "{}: {json}", f.display());
+            assert!(
+                !json.contains("proper_time_kernel"),
+                "{}: {json}",
+                f.display()
+            );
             let key = format!("{dir}/{}", f.file_name().unwrap().to_string_lossy());
             println!("\"{key}\" = \"{}\"", spec.digest());
             seen.insert(key, spec.digest());

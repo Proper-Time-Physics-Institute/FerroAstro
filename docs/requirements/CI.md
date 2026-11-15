@@ -68,7 +68,7 @@ acceptance: >-
 source: >-
   docs/strategy/journal/03-reference-implementations-ci.md §4 and CI-002.
 parent: null
-related: [REF-011, CI-003, PHY-020]
+related: [REF-011, CI-003, PHY-020, PHY-021]
 notes: >-
   Force switches: newton, sun_j2, gr_1pn_central, gr_eih, ppn{beta,gamma},
   lense_thirring, asteroids:N. IC sources: de440-header | de440-bsp@JD |
@@ -90,6 +90,15 @@ notes: >-
   existed); once present every field is serialised, so the digest covers the
   effective values, defaults included. Schema regenerated. It is not a ladder
   switch, and no ci/scenarios file uses it.
+  PROPER TIME (ADR-0016 decision D6, PHY-021; 2026-11-15): the optional
+  boolean forces.proper_time_kernel switches on the default-off Proper Time
+  (Gill) comparison model (Gill's force law, the Sun-sourced
+  +(GM☉)² r̂/(c²r³) with reaction), n-body mode only (FA-E1201 otherwise).
+  It replaces the GR 1PN sector and is refused (FA-E1203) beside
+  gr_1pn_central, gr_eih, gr_potential and lense_thirring. Skipped when false,
+  so every existing digest is byte-identical (digest_stability.rs); schema
+  regenerated (ci/scenarios/scenario.schema.json, a Code-Owner file, changed
+  only by the generator). Not a ladder switch; no ci/scenarios file uses it.
   BUILD EVIDENCE (sync 2026-10-20; WP13, WP15, WP17, WP18 on
   m3-newtonian-nbody). Schema: ci/scenarios/scenario.schema.json is generated
   by ferroastro-scenario (schemars) and committed;

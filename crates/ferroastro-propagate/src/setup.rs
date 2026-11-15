@@ -226,6 +226,7 @@ pub fn supports(item: &str, mode: Mode) -> Result<(), String> {
                 | "integrator.irk16"
                 | "gr_potential"
                 | "conformal"
+                | "proper_time_kernel"
         ) && mode == Mode::NBody)
         || (central_term && mode == Mode::TestParticle)
         || (nbody_relativity && mode == Mode::NBody)
@@ -257,6 +258,11 @@ pub fn supports(item: &str, mode: Mode) -> Result<(), String> {
         "conformal" => {
             "the conformal-gravity comparison model is an n-body term (ADR-0016): its Sun \
              reaction and the uniform gamma0 centring need the Sun as a moving body"
+                .into()
+        }
+        "proper_time_kernel" => {
+            "the Proper Time (Gill) comparison model is an n-body term (ADR-0016, PHY-021); the \
+             Rung lab's test-particle form is ferroastro_forces::ProperTimeCentral"
                 .into()
         }
         other if other.starts_with("integrator.") => "not implemented".into(),
