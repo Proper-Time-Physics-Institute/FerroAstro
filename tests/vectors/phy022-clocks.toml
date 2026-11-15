@@ -1,0 +1,223 @@
+# SPDX-FileCopyrightText: 2026 Proper-Time Physics Institute
+# SPDX-License-Identifier: Apache-2.0
+# Three-clock diagnostic (PHY-022, draft): inputs and derived targets of the GPS and Galileo 5/6
+# clock checks. The targets are DERIVED values from the refereed relativistic-dynamics#88 notes,
+# not observations; Delva et al. 2018 and Ashby 2003 give the observational context only.
+# Schema: ADR-0004.
+schema_version = 1
+
+# ---- Inputs (the parameters the rd#88 package states, section 6.3 and 6.4) ----
+
+[[vector]]
+id = "PHY022-GM-EARTH"
+requirement = ["PHY-022"]
+quantity = "geocentric gravitational parameter GM_E used by the GPS and Galileo clock checks"
+value = 398600.4418
+unit = "km^3/s^2"
+kind = "defined"
+source = "Input stated by relativistic-dynamics research/2026-11-14/rd88-proper-time-hamiltonian-static-metric/derivation.md section 6.3: GM_E = 3.986004418e14 m^3/s^2 (the WGS 84 / IERS Conventions 2010 value), converted to km units decimal-exactly"
+citation = "relativistic-dynamics PR #89 (merged 2026-11-15), research/2026-11-14/rd88-proper-time-hamiltonian-static-metric/derivation.md section 6.3; IERS Conventions (2010), IERS Technical Note 36, Table 1.1"
+retrieved = "2026-11-15"
+tolerance = { abs = 0.0 }
+tolerance_rationale = "Input parameter, used exactly so that the run reproduces the package's own inputs; the targets below were computed with this value."
+verified_by = "Three-clock PR author, 2026-11-15: read in derivation.md section 6.3 and in the source report's script (tau_observables.md section 3.1, GMe = 3.986004418e14). The IERS Table 1.1 value is recalled, not re-read from the PDF in this PR."
+
+[[vector]]
+id = "PHY022-R-GROUND"
+requirement = ["PHY-022"]
+quantity = "radius of the equatorial ground clock (distance from the geocentre and from the rotation axis)"
+value = 6378.137
+unit = "km"
+kind = "defined"
+source = "Input stated by the rd#88 package section 6.3: ground radius 6.378137e6 m (the WGS 84 / GRS 80 equatorial radius)"
+citation = "relativistic-dynamics research/2026-11-14/rd88-proper-time-hamiltonian-static-metric/derivation.md section 6.3; NIMA TR8350.2 (WGS 84), Table 3.1"
+retrieved = "2026-11-15"
+tolerance = { abs = 0.0 }
+tolerance_rationale = "Input parameter, used exactly (monopole ground potential GM_E/R, no J2 and no geoid: the convention of the package and of the report's script)."
+verified_by = "Three-clock PR author, 2026-11-15: read in derivation.md section 6.3 and in the report's script (Re = 6378137.0). The WGS 84 table is recalled, not re-read in this PR."
+
+[[vector]]
+id = "PHY022-OMEGA-EARTH"
+requirement = ["PHY-022"]
+quantity = "Earth rotation rate of the rotating ground clock (rate of the Earth Rotation Angle)"
+value = 7.2921151467e-5
+unit = "rad/s"
+kind = "defined"
+source = "Input of the report's script (tau_observables.md section 3.1, s3_flows.py: vg = 7.2921151467e-5 * Re); with R = 6378.137 km it gives the package's ground speed 465.1 m/s (derivation.md section 6.3). 2 pi x 1.00273781191135448 / 86400 s is the ERA rate"
+citation = "IERS Conventions (2010), IERS Technical Note 36, eq. 5.15 (Earth Rotation Angle); relativistic-dynamics research/2026-11-14/rd88-proper-time-hamiltonian-static-metric/derivation.md section 6.3"
+retrieved = "2026-11-15"
+tolerance = { abs = 0.0 }
+tolerance_rationale = "Input parameter, used exactly. Set it to zero for the ground-at-rest rows."
+verified_by = "Three-clock PR author, 2026-11-15: 2 pi x 1.00273781191135448 / 86400 = 7.29211514671e-5 rad/s recomputed; 7.2921151467e-5 x 6378137 m = 465.10 m/s matches the package's 465.1 m/s."
+
+[[vector]]
+id = "PHY022-A-GPS"
+requirement = ["PHY-022"]
+quantity = "radius of the circular GPS orbit of the clock check"
+value = 26560.0
+unit = "km"
+kind = "defined"
+source = "Input stated by the rd#88 package section 6.3: satellite radius 2.6560e7 m, circular orbit"
+citation = "relativistic-dynamics research/2026-11-14/rd88-proper-time-hamiltonian-static-metric/derivation.md section 6.3"
+retrieved = "2026-11-15"
+tolerance = { abs = 0.0 }
+tolerance_rationale = "Input parameter, used exactly."
+verified_by = "Three-clock PR author, 2026-11-15: read in derivation.md section 6.3 and tau_observables.md section 3.1 (a = 26 560 km)."
+
+[[vector]]
+id = "PHY022-A-GALILEO56"
+requirement = ["PHY-022"]
+quantity = "semi-major axis of the Galileo 5/6 eccentric orbit of the clock check"
+value = 27977.0
+unit = "km"
+kind = "defined"
+source = "Input stated by the rd#88 package section 6.4: Galileo 5/6, a = 27977 km"
+citation = "relativistic-dynamics research/2026-11-14/rd88-proper-time-hamiltonian-static-metric/derivation.md section 6.4; orbit context: Delva et al. 2018, Phys. Rev. Lett. 121, 231101, arXiv:1812.03711"
+retrieved = "2026-11-15"
+tolerance = { abs = 0.0 }
+tolerance_rationale = "Input parameter, used exactly."
+verified_by = "Three-clock PR author, 2026-11-15: read in derivation.md section 6.4 and tau_observables.md section 3.1 (a = 27 977 km, e = 0.162)."
+
+[[vector]]
+id = "PHY022-E-GALILEO56"
+requirement = ["PHY-022"]
+quantity = "eccentricity of the Galileo 5/6 orbit of the clock check"
+value = 0.162
+unit = "1"
+kind = "defined"
+source = "Input stated by the rd#88 package section 6.4: Galileo 5/6, e = 0.162"
+citation = "relativistic-dynamics research/2026-11-14/rd88-proper-time-hamiltonian-static-metric/derivation.md section 6.4; orbit context: Delva et al. 2018, Phys. Rev. Lett. 121, 231101, arXiv:1812.03711"
+retrieved = "2026-11-15"
+tolerance = { abs = 0.0 }
+tolerance_rationale = "Input parameter, used exactly."
+verified_by = "Three-clock PR author, 2026-11-15: read in derivation.md section 6.4 and tau_observables.md section 3.1."
+
+# ---- Derived targets, acceptance (a): GPS satellite minus ground clock ----
+
+[[vector]]
+id = "PHY022-GPS-ROT-S"
+requirement = ["PHY-022"]
+quantity = "GPS satellite minus rotating equatorial ground clock, metric proper time s of g = Omega^2 eta (derived, not observed)"
+value = 38.54129
+unit = "us/day"
+kind = "analytic"
+source = "rd#88 package table 'gps-table' (section 6.3, rotating ground): 38.54129 us/day; source report REPORT_tau_and_hamiltonian.md section 2.4: +38.54. Supported-clock assumption H10. Observed context: +38.57 with J2 (Ashby 2003)"
+citation = "relativistic-dynamics research/2026-11-14/rd88-proper-time-hamiltonian-static-metric/derivation.md section 6.3 (witness gps-table, checks.py); Ashby, N. 2003, Living Rev. Relativ. 6, 1, doi:10.12942/lrr-2003-1 (observational context)"
+retrieved = "2026-11-15"
+tolerance = { abs = 1.0e-5 }
+tolerance_rationale = "Half a unit in the last printed digit (5e-6) plus margin. The expansion is not a limit: the diagnostic uses the exact Omega and sqrt(1 - v^2/c^2) rates of the package, and the first-order formula of the report differs by O(U^2) x 86400e6 = 3e-9 us/day. The integration floor (IAS15 circular orbit over one day, 8-point Gauss-Legendre per step, offsets carried as rate - 1) is below 1e-8 us/day."
+verified_by = "Three-clock PR author, 2026-11-15: recomputed 38.5412885 from the exact rates in Python with the inputs above; the package's checks.py prints 38.54129."
+
+[[vector]]
+id = "PHY022-GPS-ROT-TAUSR"
+requirement = ["PHY-022"]
+quantity = "GPS satellite minus rotating equatorial ground clock, flat SR proper time tau_SR (comparison reading; derived, not observed)"
+value = -7.109623
+unit = "us/day"
+kind = "analytic"
+source = "rd#88 package table 'gps-table' (section 6.3, rotating ground): -7.109623 us/day; source report section 2.4: -7.11. Supported-clock assumption H10"
+citation = "relativistic-dynamics research/2026-11-14/rd88-proper-time-hamiltonian-static-metric/derivation.md section 6.3 (witness gps-table)"
+retrieved = "2026-11-15"
+tolerance = { abs = 1.0e-5 }
+tolerance_rationale = "As PHY022-GPS-ROT-S: printed precision (5e-7) plus margin; expansion and integration floors below 1e-8 us/day."
+verified_by = "Three-clock PR author, 2026-11-15: recomputed -7.1096229 in Python from the exact rates."
+
+[[vector]]
+id = "PHY022-GPS-ROT-TAUK"
+requirement = ["PHY-022"]
+quantity = "GPS satellite minus rotating equatorial ground clock, Gill flow parameter tau_K (comparison reading; derived, not observed)"
+value = -52.76053
+unit = "us/day"
+kind = "analytic"
+source = "rd#88 package table 'gps-table' (section 6.3, rotating ground): -52.76053 us/day; source report section 2.4: -52.76. Supported-clock assumption H10"
+citation = "relativistic-dynamics research/2026-11-14/rd88-proper-time-hamiltonian-static-metric/derivation.md section 6.3 (witness gps-table)"
+retrieved = "2026-11-15"
+tolerance = { abs = 1.0e-5 }
+tolerance_rationale = "As PHY022-GPS-ROT-S: printed precision (5e-6) plus margin; expansion and integration floors below 1e-8 us/day."
+verified_by = "Three-clock PR author, 2026-11-15: recomputed -52.7605343 in Python from the exact rates."
+
+[[vector]]
+id = "PHY022-GPS-REST-S"
+requirement = ["PHY-022"]
+quantity = "GPS satellite minus ground clock at rest, metric proper time s (derived, not observed)"
+value = 38.43731
+unit = "us/day"
+kind = "analytic"
+source = "rd#88 package table 'gps-table' (section 6.3, ground at rest): 38.43731 us/day; source report section 2.4: +38.44"
+citation = "relativistic-dynamics research/2026-11-14/rd88-proper-time-hamiltonian-static-metric/derivation.md section 6.3 (witness gps-table)"
+retrieved = "2026-11-15"
+tolerance = { abs = 1.0e-5 }
+tolerance_rationale = "As PHY022-GPS-ROT-S. The 0.104 us/day difference from the rotating row is the ground-clock convention; it is 1e4 times this tolerance, so the pair of rows checks that the ground rotation is applied."
+verified_by = "Three-clock PR author, 2026-11-15: recomputed 38.4373115 in Python from the exact rates."
+
+[[vector]]
+id = "PHY022-GPS-REST-TAUSR"
+requirement = ["PHY-022"]
+quantity = "GPS satellite minus ground clock at rest, flat SR proper time tau_SR (comparison reading; derived, not observed)"
+value = -7.2136
+unit = "us/day"
+kind = "analytic"
+source = "rd#88 package table 'gps-table' (section 6.3, ground at rest): -7.2136 us/day; source report section 2.4: -7.21"
+citation = "relativistic-dynamics research/2026-11-14/rd88-proper-time-hamiltonian-static-metric/derivation.md section 6.3 (witness gps-table)"
+retrieved = "2026-11-15"
+tolerance = { abs = 6.0e-5 }
+tolerance_rationale = "The package prints only five digits here: half a unit (5e-5) plus margin; expansion and integration floors below 1e-8 us/day."
+verified_by = "Three-clock PR author, 2026-11-15: recomputed -7.2135998 in Python from the exact rates."
+
+[[vector]]
+id = "PHY022-GPS-REST-TAUK"
+requirement = ["PHY-022"]
+quantity = "GPS satellite minus ground clock at rest, Gill flow parameter tau_K (comparison reading; derived, not observed)"
+value = -52.86451
+unit = "us/day"
+kind = "analytic"
+source = "rd#88 package table 'gps-table' (section 6.3, ground at rest): -52.86451 us/day; source report section 2.4: -52.86"
+citation = "relativistic-dynamics research/2026-11-14/rd88-proper-time-hamiltonian-static-metric/derivation.md section 6.3 (witness gps-table)"
+retrieved = "2026-11-15"
+tolerance = { abs = 1.0e-5 }
+tolerance_rationale = "As PHY022-GPS-ROT-S."
+verified_by = "Three-clock PR author, 2026-11-15: recomputed -52.8645112 in Python from the exact rates."
+
+# ---- Derived targets, acceptance (b): Galileo 5/6 eccentricity-periodic amplitude ----
+
+[[vector]]
+id = "PHY022-GALILEO56-PERIODIC-S"
+requirement = ["PHY-022"]
+quantity = "Galileo 5/6 (a = 27977 km, e = 0.162) eccentricity-periodic clock amplitude, half peak-to-peak of the detrended offset over one orbit, metric proper time s (derived, not observed)"
+value = 380.6914
+unit = "ns"
+kind = "analytic"
+source = "rd#88 package table 'periodic-terms' (section 6.4): 380.6914 ns = 2 sqrt(GM a) e / c^2; source report section 2.4: 380.7. The standard GPS/GNSS eccentricity correction (Ashby 2003); Delva et al. 2018 used this term on Galileo 5/6 to measure the redshift"
+citation = "relativistic-dynamics research/2026-11-14/rd88-proper-time-hamiltonian-static-metric/derivation.md section 6.4 (witness periodic-terms); Ashby, N. 2003, Living Rev. Relativ. 6, 1, doi:10.12942/lrr-2003-1; Delva, P. et al. 2018, Phys. Rev. Lett. 121, 231101, arXiv:1812.03711 (observational context)"
+retrieved = "2026-11-15"
+tolerance = { abs = 1.0e-4 }
+tolerance_rationale = "Half a unit in the last printed digit (5e-5 ns) plus margin. Expansion: the exact rates differ from the first-order Kepler integral by O(U^2) terms whose periodic part is about e U^2 / n = 3e-8 ns. Integration: one IAS15 orbit (closure about 1e-15 relative), 8-point Gauss-Legendre per step, extrema on a uniform grid of 8000 points refined by a parabola (grid error below 1e-9 relative, i.e. < 1e-6 ns)."
+verified_by = "Three-clock PR author, 2026-11-15: 2 sqrt(GM a) e / c^2 = 380.69140 ns recomputed in Python with the inputs above."
+
+[[vector]]
+id = "PHY022-GALILEO56-PERIODIC-TAUSR"
+requirement = ["PHY-022"]
+quantity = "Galileo 5/6 eccentricity-periodic clock amplitude, flat SR proper time tau_SR (comparison reading; derived, not observed)"
+value = 190.3457
+unit = "ns"
+kind = "analytic"
+source = "rd#88 package table 'periodic-terms' (section 6.4): 190.3457 ns = sqrt(GM a) e / c^2 (the velocity half); source report section 2.4: 190.3"
+citation = "relativistic-dynamics research/2026-11-14/rd88-proper-time-hamiltonian-static-metric/derivation.md section 6.4 (witness periodic-terms)"
+retrieved = "2026-11-15"
+tolerance = { abs = 1.0e-4 }
+tolerance_rationale = "As PHY022-GALILEO56-PERIODIC-S."
+verified_by = "Three-clock PR author, 2026-11-15: sqrt(GM a) e / c^2 = 190.34570 ns recomputed in Python."
+
+[[vector]]
+id = "PHY022-GALILEO56-PERIODIC-TAUK"
+requirement = ["PHY-022"]
+quantity = "Galileo 5/6 eccentricity-periodic clock amplitude, Gill flow parameter tau_K (comparison reading; derived, not observed)"
+value = 0.0
+unit = "ns"
+kind = "analytic"
+source = "rd#88 package section 6.4: tau_K has no periodic term, d tau_K / dt = mc^2/E is constant on an orbit (eq. 2.2); the gravitational and velocity halves cancel. Source report section 2.4: 0"
+citation = "relativistic-dynamics research/2026-11-14/rd88-proper-time-hamiltonian-static-metric/derivation.md section 6.4 and eq. (2.2)"
+retrieved = "2026-11-15"
+tolerance = { abs = 1.0e-4 }
+tolerance_rationale = "As PHY022-GALILEO56-PERIODIC-S. On a Newtonian Kepler orbit the pointwise rate mc^2/H1 is constant to first order; its second-order periodic part is about 3e-8 ns."
+verified_by = "Three-clock PR author, 2026-11-15: first-order rate offset U - v^2/(2c^2) = GM/(2ac^2) is constant on a Kepler orbit (vis-viva), checked by hand."
