@@ -61,7 +61,16 @@
     { bit: B.ASTEROIDS, term: "asteroids", label: "Big asteroids", short: "Asteroids", css: "--fx-ast", exp: "≈0.001 ″/cy", note: "IAS15 only" },
     { bit: B.EIH, term: "eih", label: "EIH 1PN, all bodies (adv.)", short: "EIH", css: "--fx-gr", exp: "≈42.98 ″/cy", note: "IAS15 only; replaces GR 1PN" },
     { bit: B.CONFORMAL, term: "conformal-gravity", label: "Conformal gravity (comparison model)", short: "CG", css: "--fx-cg", exp: "comparison model", note: "outside the GR ladder", comparison: true },
+    { bit: B.PROPER_TIME, term: "proper-time-gill", label: "Proper Time (Gill) kernel (comparison model)", short: "PT", css: "--fx-pt", exp: "comparison model", note: "replaces GR 1PN, LT and EIH", comparison: true },
   ];
+  // The comparison-model bits (ADR-0016): never in the GR ladder, labelled wherever they appear.
+  const COMPARISON_BITS = TOGGLES.filter((t) => t.comparison).map((t) => t.bit);
+  function isComparisonKey(key) {
+    return COMPARISON_BITS.some((b) => key === "b" + b);
+  }
+  function comparisonOn(mask) {
+    return COMPARISON_BITS.some((b) => (mask & (1 << b)) !== 0);
+  }
 
   // Reference columns of the contribution table (the comparison dashboard, API-004 / F4): every
   // number comes from the engine's metadata object "dashboard" (engine analytic estimates, M5
@@ -469,8 +478,10 @@
   // ------------------------------------------------------------------------------------------------
   const toggleInputs = {};
   function buildToggles() {
+    let sepDone = false;
     for (const t of TOGGLES) {
-      if (t.comparison) {
+      if (t.comparison && !sepDone) {
+        sepDone = true;
         // Comparison models sit apart from the GR ladder's effects (ADR-0016).
         const sep = document.createElement("li");
         sep.className = "toggles-sep";
@@ -507,6 +518,9 @@
     // EIH (bit 11) replaces the Sun-only 1PN (bit 8): mutually exclusive.
     if (on && bit === B.EIH) m &= ~(1 << B.GR_1PN);
     if (on && bit === B.GR_1PN) m &= ~(1 << B.EIH);
+    // The Proper Time comparison model (bit 13) replaces the GR 1PN sector (bits 8, 9, 11).
+    if (on && bit === B.PROPER_TIME) m &= ~FAV.GR_SECTOR_MASK;
+    if (on && (FAV.GR_SECTOR_MASK & (1 << bit)) !== 0) m &= ~(1 << B.PROPER_TIME);
     m >>>= 0;
     if (mode() === 1) state.labMask = m;
     else state.sysMask = m;
@@ -656,6 +670,10 @@
       } else if (name === "full" || name === "full-cg") {
         state.labMask = (1 << B.SUN_J2) | (1 << B.LENSE_THIRRING) | (name === "full-cg" ? 1 << B.CONFORMAL : 0);
         el.rung.value = "4";
+      } else if (name === "full-pt" || name === "pt-ppn") {
+        // The Rung lab has no bit 13: its Proper Time route is the GR PPN rung at (1/2, -1).
+        state.labMask = name === "full-pt" ? 1 << B.SUN_J2 : 0;
+        el.rung.value = "4";
       }
     } else {
       state.sysMask = {
@@ -665,7 +683,23 @@
         full: FAV.DEFAULT_MASK,
         // The comparison model on top of the full GR model (ADR-0016); never the default.
         "full-cg": (FAV.DEFAULT_MASK | (1 << B.CONFORMAL)) >>> 0,
+        // The Proper Time comparison model in place of the GR sector (PHY-021 route 2).
+        "full-pt": ((FAV.DEFAULT_MASK & ~FAV.GR_SECTOR_MASK) | (1 << B.PROPER_TIME)) >>> 0,
+        // PHY-021 route 1: the GR bit with the PPN (1/2, -1) preset, planets and J2.
+        "pt-ppn": (FAV.PLANET_MASK | (1 << B.SUN_J2) | (1 << B.GR_1PN)) >>> 0,
       }[name];
+    }
+    // The PPN preset of the Proper Time route 1 comes from the engine's metadata (proper_time.ppn_preset);
+    // the GR presets restore beta = gamma = 1 when leaving it.
+    const pre = state.meta && state.meta.proper_time && state.meta.proper_time.ppn_preset;
+    const ptBeta = pre ? pre.beta : 0.5;
+    const ptGamma = pre ? pre.gamma : -1;
+    if (name === "pt-ppn" || (lab && name === "full-pt")) {
+      el.beta.value = ptBeta;
+      el.gamma.value = ptGamma;
+    } else if (Number(el.beta.value) === ptBeta && Number(el.gamma.value) === ptGamma) {
+      el.beta.value = 1;
+      el.gamma.value = 1;
     }
     syncToggleUI();
     requestReconfigure();
@@ -717,7 +751,7 @@
     el.badgeNominal.hidden = !nn;
     el.badgeNominalText.textContent = nn ? "Exaggerated physics: " + nn : "";
     // A comparison model is never the real solar system, even when the run is nominal (fit values).
-    if (el.badgeCm) el.badgeCm.hidden = (state.applied.mask & (1 << B.CONFORMAL)) === 0;
+    if (el.badgeCm) el.badgeCm.hidden = !comparisonOn(state.applied.mask);
     setStatus("Configuring…");
     writeHash(state.applied);
     state.live.postMessage({ op: "configure", mask: state.applied.mask, params: state.applied.params });
@@ -841,6 +875,16 @@
     el.metaLine.title = meta.model ? "Model: " + meta.model + (meta.ic_source ? "\nIC source: " + meta.ic_source : "") : "";
     el.copyScenario.disabled = !state.scenario;
     showCgReference(meta);
+    showPtReference(meta);
+  }
+
+  // The engine's analytic reference for the Proper Time comparison model (metadata "proper_time",
+  // ABI v3): -1/6 of GR's first-order advance, shown in the toggle row. Display only.
+  function showPtReference(meta) {
+    const p = meta && meta.proper_time;
+    const r = p && p.reference && Number.isFinite(p.reference.arcsec_per_cy) ? p.reference : null;
+    const exp = document.getElementById("tg-" + B.PROPER_TIME + "-exp");
+    if (exp && exp.firstChild) exp.firstChild.textContent = r ? fmtRate(r.arcsec_per_cy) + " ″/cy (−1/6 GR)" : "comparison model";
   }
 
   // The engine's analytic reference for the conformal-gravity settings (metadata "conformal",
@@ -1034,7 +1078,9 @@
       { text: fmtNum(f[F.T_FIRST], 1) + "–" + fmtNum(f[F.T_LAST], 1) + " yr (" + Math.floor(y0 + f[F.T_FIRST]) + "–" + Math.floor(y0 + f[F.T_LAST]) + ")", term: "fit-window" },
       labFit ? { text: "initial orbit plane", term: "rung-lab" } : { text: "Park17 plane", term: "park17-plane" },
       state.applied && nonNominalText(state.applied) ? { text: "non-nominal", term: "physical-exaggeration" } : "",
-      state.applied && (state.applied.mask & (1 << B.CONFORMAL)) !== 0 ? { text: "incl. comparison model (CG)", term: "comparison-model" } : "",
+      state.applied && comparisonOn(state.applied.mask)
+        ? { text: "incl. comparison model (" + COMPARISON_BITS.filter((b) => (state.applied.mask & (1 << b)) !== 0).map((b) => effectShort("b" + b)).join(", ") + ")", term: "comparison-model" }
+        : "",
     ]);
     el.rate.title =
       "Fit model: " + (fm || "–") +
@@ -2183,7 +2229,7 @@
   const FULL_MODEL_BITS = (1 << B.VENUS) | (1 << B.EMB) | (1 << B.MARS) | (1 << B.JUPITER) | (1 << B.SATURN) | (1 << B.URANUS) | (1 << B.NEPTUNE) | (1 << B.SUN_J2) | (1 << B.LENSE_THIRRING);
   function isFullModel(cfg) {
     return cfg.params[P.MODE] !== 1 && (cfg.mask & FULL_MODEL_BITS) === FULL_MODEL_BITS && (cfg.mask & ((1 << B.GR_1PN) | (1 << B.EIH))) !== 0 &&
-      (cfg.mask & (1 << B.CONFORMAL)) === 0;
+      !comparisonOn(cfg.mask);
   }
 
   function computeRows() {
@@ -2341,17 +2387,18 @@
     for (const row of out) {
       const unresolved = Number.isFinite(row.v) && Number.isFinite(row.s) && Math.abs(row.v) < 3 * row.s;
       const d = decimalsFor(row.s);
-      const comparison = row.r.key === "b" + B.CONFORMAL;
+      const comparison = isComparisonKey(row.r.key);
+      const derivation = row.lit && row.lit.kind === "derivation";
       const anTxt = row.an ? fmtRef(row.an.value, 6) : "–";
       const litApplies = row.lit && row.lit.applies !== false;
-      const litTitle = row.lit ? row.lit.id + (row.lit.note ? "; " + row.lit.note : "") + (litApplies ? "" : ". Not applied: this run's parameter differs from Park17's (an override, or for J2 the nominal DE440 value), so the difference uses the analytic estimate.") : "";
+      const litTitle = row.lit ? row.lit.id + (row.lit.note ? "; " + row.lit.note : "") + (row.lit.source ? "; source: " + row.lit.source : "") + (litApplies ? "" : ". Not applied: this run's parameter differs from Park17's (an override, or for J2 the nominal DE440 value), so the difference uses the analytic estimate.") : "";
       let boundCell = '<td class="col-bound muted" title="The bound limits anomalous (non-GR) advances; it does not apply to a ladder term.">n/a</td>';
       if (row.bound) {
         const vLive = boundVerdict(row.v, row.s, row.bound);
         const vAn = row.an ? boundVerdict(row.an.value, NaN, row.bound) : null;
         boundCell = '<td class="col-bound">' + "<span class=\"num\">" + escapeHtml(minus((row.bound.value === 0 ? "0" : String(row.bound.value)) + " ± " + row.bound.half_width) + (unitText(row.bound) ? " " + unitText(row.bound) : "")) + "</span>" +
           verdictHtml("analytic", vAn) + verdictHtml("live", vLive) +
-          (comparison && meta && meta.conformal && meta.conformal.gamma0_centre === "uniform"
+          (row.r.key === "b" + B.CONFORMAL && meta && meta.conformal && meta.conformal.gamma0_centre === "uniform"
             ? '<span class="ref-src cg-caveat">Uniform ' + termHtml("gamma0-centring", "γ0") + ": exactly 0 only with velocity-independent forces; EIH and Lense–Thirring add a tiny O(v·Δv/c²) drift.</span>"
             : "") +
           "</td>";
@@ -2361,10 +2408,10 @@
         '<th scope="row" class="effect"><span class="lbl"><span class="swatch" aria-hidden="true" style="background:var(' + effectCss(row.r.key) + ')"></span>' +
         escapeHtml(row.label) + "</span> " + tipHtml(effectTerm(row.r.key)) + '<span class="ref-src">' + termHtml("p-remove", "P-remove") + (comparison ? " · " + termHtml("comparison-model", "comparison model") : "") + "</span></th>" +
         liveCell(row) +
-        '<td class="num col-an"' + (row.an ? ' title="' + escapeHtml(row.an.basis) + '"' : "") + ">" + escapeHtml(anTxt) + (row.an && comparison ? '<span class="ref-src">Gauss, comparison model</span>' : "") + "</td>" +
+        '<td class="num col-an"' + (row.an ? ' title="' + escapeHtml(row.an.basis) + '"' : "") + ">" + escapeHtml(anTxt) + (row.an && comparison ? '<span class="ref-src">' + (row.r.key === "b" + B.PROPER_TIME ? "−1/6 GR" : "Gauss") + ", comparison model</span>" : "") + "</td>" +
         m5Cell(row.m5) +
-        '<td class="num col-lit' + (row.lit && !litApplies ? " muted" : "") + '"' + (row.lit ? ' title="' + escapeHtml(litTitle) + '"' : "") + ">" + (row.lit ? escapeHtml(fmtRef(row.lit.value, 7)) + '<span class="ref-src">' + escapeHtml(row.lit.id) + (litApplies ? "" : " · not applied") + "</span>" : "–") + "</td>" +
-        '<td class="num col-diff">' + (Number.isFinite(row.diff) ? (row.diff >= 0 ? "+" : "") + minus(Math.abs(row.diff) < 10 ** -Math.max(2, d) && row.diff !== 0 ? row.diff.toExponential(1) : row.diff.toFixed(Math.max(2, d))) + '<span class="ref-src">vs ' + row.diffVs + "</span>" : "–") + "</td>" +
+        '<td class="num col-lit' + (row.lit && !litApplies ? " muted" : "") + '"' + (row.lit ? ' title="' + escapeHtml(litTitle) + '"' : "") + ">" + (row.lit ? escapeHtml(fmtRef(row.lit.value, 7)) + '<span class="ref-src">' + (derivation ? termHtml("proper-time-gill", "derivation") + " · " : "") + escapeHtml(row.lit.id) + (litApplies ? "" : " · not applied") + "</span>" : "–") + "</td>" +
+        '<td class="num col-diff">' + (Number.isFinite(row.diff) ? (row.diff >= 0 ? "+" : "") + minus(Math.abs(row.diff) < 10 ** -Math.max(2, d) && row.diff !== 0 ? row.diff.toExponential(1) : row.diff.toFixed(Math.max(2, d))) + '<span class="ref-src">vs ' + (derivation && row.diffVs === "literature" ? "derivation" : row.diffVs) + "</span>" : "–") + "</td>" +
         boundCell +
         (padd ? '<td class="num padd-col">' + (row.r.add ? fmtPm(row.addV, row.addS) + legCellInline(row.r.add) : "–") + "</td>" : '<td class="padd-col" hidden></td>') +
         '<td class="leg">' + legCell(row.r.without) + "</td></tr>";
@@ -2490,7 +2537,7 @@
       const a = Math.abs(row.v);
       v.textContent = (row.v < 0 ? "−" : "+") + (a >= 1 ? a.toFixed(1) : a.toPrecision(2));
       li.append(sw, name, v);
-      if (row.r.key === "b" + B.CONFORMAL) li.append(termButton("comparison-model", "comparison model"));
+      if (isComparisonKey(row.r.key)) li.append(termButton("comparison-model", "comparison model"));
       el.budgetKey.appendChild(li);
     }
   }

@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2026 Proper-Time Physics Institute
 // SPDX-License-Identifier: Apache-2.0
 //
-// fav.js: constants of the ferroastro-viewer C ABI v2 (docs/viewer/DESIGN.md section 4) and a small
+// fav.js: constants of the ferroastro-viewer C ABI v3 (docs/viewer/DESIGN.md section 4) and a small
 // wrapper around the wasm exports. It is shared by worker.js (classic worker, importScripts), the page
 // and smoke.mjs (node, loaded with vm). It does no physics: it calls the fav_* exports, copies buffers
 // out of linear memory and decodes UTF-8, plus one pure display rule (FAV.boundVerdict) kept here so
@@ -16,7 +16,7 @@
 
   const FAV = {};
 
-  FAV.ABI_VERSION = 2;
+  FAV.ABI_VERSION = 3;
 
   FAV.STATUS = Object.freeze({
     OK: 0,
@@ -38,8 +38,9 @@
     "-5": "FAV_E_FIT",
   });
 
-  // Toggle mask bits (section 3.1). Bit 12 (ABI v2) is the conformal-gravity comparison model,
-  // outside the GR ladder; bits 13-31 are reserved and must be 0.
+  // Toggle mask bits (section 3.1). Bit 12 (ABI v2) is the conformal-gravity comparison model and
+  // bit 13 (ABI v3) the Proper Time (Gill) comparison model, both outside the GR ladder; bit 13
+  // replaces the GR 1PN sector (bits 8, 9, 11). Bits 14-31 are reserved and must be 0.
   FAV.BIT = Object.freeze({
     VENUS: 0,
     EMB: 1,
@@ -54,11 +55,14 @@
     ASTEROIDS: 10,
     EIH: 11,
     CONFORMAL: 12,
+    PROPER_TIME: 13,
   });
-  FAV.N_BITS = 13;
+  FAV.N_BITS = 14;
   FAV.DEFAULT_MASK = 0x3ff; // bits 0-9
   FAV.PLANET_MASK = 0x7f; // bits 0-6
-  FAV.RESERVED_MASK = 0xffffe000;
+  FAV.RESERVED_MASK = 0xffffc000;
+  // The bits the Proper Time comparison model replaces (GR 1PN, Lense-Thirring, EIH).
+  FAV.GR_SECTOR_MASK = (1 << 8) | (1 << 9) | (1 << 11);
 
   // Parameter ids (section 4.3).
   FAV.PARAM = Object.freeze({

@@ -66,7 +66,7 @@ test needs node 18 or later and no packages.
 | `viewer.css` | layout; light and dark colour tokens (the canvases read them too) |
 | `viewer.js` | main thread: controls, orbit canvas, ϖ(t) chart, contribution table, transport bar |
 | `worker.js` | Web Worker hosting one wasm instance: sizes `fav_run` chunks, copies buffers, runs table legs |
-| `fav.js` | ABI v2 constants and a thin wrapper (instantiate, call, copy buffers, decode UTF-8); shared by the workers and the smoke test |
+| `fav.js` | ABI v3 constants and a thin wrapper (instantiate, call, copy buffers, decode UTF-8); shared by the workers and the smoke test |
 | `glossary.js` | every explanation on the page, keyed by id: the tooltip text and the longer glossary entry of each term (display text only) |
 | `glossary-ui.js` | the accessible tooltips (hover, keyboard focus, tap) and the searchable glossary drawer, both fed from `glossary.js` |
 | `check-glossary.mjs` | node static check: every `data-term`/`data-tip` and every id `viewer.js` generates names a non-empty glossary entry |
@@ -101,6 +101,12 @@ most 8), in parallel with the live run.
   off by default and outside the 575.31 ″/cy GR ladder. The fieldset takes γ0, γ\* (cm⁻¹) and κ (cm⁻²) and the γ0
   centring (uniform, the default, or Sun-centred) and shows the engine's analytic Gauss reference. Uniform γ0 is
   exactly zero only with velocity-independent forces; EIH and Lense–Thirring add a tiny O(v·Δv/c²) drift.
+* **Proper Time (Gill) kernel (comparison model, ABI v3 bit 13)**: Gill's flat-space force law
+  a = −(∇V/m)(1 + V/mc²) (ADR-0016 D6, PHY-021), off by default and outside the GR ladder. It replaces GR 1PN,
+  Lense–Thirring and EIH (the page clears them, and they clear it), runs under WHFast, and its table row shows the
+  engine's −1/6 GR estimate (−7.163 ″/cy), the rd#88 report's value as a labelled derivation reference and the
+  INPOP15a verdict ("exceeds ×2300"). The "PPN (½, −1)" preset puts the GR bit at β = 1/2, γ = −1, the second
+  route to the same number (Bridge A); the "Proper Time model" preset is planets, J2 and bit 13.
 * **Negative contributions** (Lense–Thirring, a Sun-centred γ0) are drawn left of the zero mark in the rate
   budget and below the Kepler floor in the per-effect wedges, hatched.
 * **ϖ(t) chart**: dots are the perihelion-passage longitudes on the Park17 plane, which are what gets fitted. The

@@ -11,8 +11,9 @@
 // the fetched JPL header.440 for the System-mode initial conditions (DESIGN section 5, #22); a
 // module built without it fails the first check below with its FA-E0303 message.
 //
-// Checks: zero imports; every ABI export present; fav_abi_version() === 2 (ABI v2, ADR-0016 D5:
-// bit 12 is the conformal-gravity comparison model, bit 13 the first reserved bit); E_STATE / E_ARG /
+// Checks: zero imports; every ABI export present; fav_abi_version() === 3 (ABI v3, ADR-0016 D5/D6:
+// bit 12 is the conformal-gravity and bit 13 the Proper Time comparison model, bit 14 the first
+// reserved bit); E_STATE / E_ARG /
 // E_UNSUPPORTED / E_FIT with FA-E messages; Kepler only (mask 0, WHFast) runs in 0.25-yr chunks to
 // FAV_DONE with whole buffer records and a near-zero rate; GR only with IAS15 and the Rung-lab GR
 // rung give rates within a short-span bound of PHY004-GR-RATE (loaded by id from tests/vectors,
@@ -62,8 +63,8 @@ const imports = WebAssembly.Module.imports(module);
 check(imports.length === 0, "module has no imports", imports.length);
 const x = new WebAssembly.Instance(module, {}).exports;
 const missing = EXPORTS.filter((n) => typeof x[n] !== "function");
-check(missing.length === 0 && x.memory instanceof WebAssembly.Memory, "every ABI v2 export", missing.join(", ") || "all present");
-check(x.fav_abi_version() === 2, "fav_abi_version() === 2", x.fav_abi_version());
+check(missing.length === 0 && x.memory instanceof WebAssembly.Memory, "every ABI v3 export", missing.join(", ") || "all present");
+check(x.fav_abi_version() === 3, "fav_abi_version() === 3", x.fav_abi_version());
 
 // A pointer is valid until the next fav_* call other than its _len partner: fresh view, copy now.
 function f64s(name) {
@@ -113,7 +114,7 @@ x.fav_reset();
 
 // Error paths.
 check(x.fav_run(1) === E_STATE, "fav_run before fav_configure is E_STATE");
-check(x.fav_set_toggles(1 << 13) === E_ARG, "reserved toggle bit 13 is E_ARG");
+check(x.fav_set_toggles(1 << 14) === E_ARG, "reserved toggle bit 14 is E_ARG");
 check(/^FA-E\d{4}/.test(text("error")), "error message starts with FA-Exxxx", text("error").slice(0, 60));
 check(x.fav_set_toggles(1 << 12) === OK, "toggle bit 12 (conformal gravity, comparison model) is defined");
 x.fav_reset();
@@ -134,7 +135,7 @@ check(x.fav_fit(NaN, NaN) === OK, "fav_fit Kepler only", text("error"));
 let fit = f64s("fit");
 check(fit.length === STRIDE.fit && Math.abs(fit[0]) < KEPLER_BOUND, "Kepler-only rate near zero", `${fit[0]} arcsec/cy, ${fit[5]} passages`);
 const meta = JSON.parse(text("meta"));
-check(meta.abi === 2 && meta.toggles === 0 && meta.conformal && meta.conformal.label === "comparison model" && typeof meta.ic_hash === "string" && meta.fit !== null, "metadata JSON", meta.engine);
+check(meta.abi === 3 && meta.toggles === 0 && meta.conformal && meta.conformal.label === "comparison model" && meta.proper_time && meta.proper_time.label === "comparison model" && typeof meta.ic_hash === "string" && meta.fit !== null, "metadata JSON", meta.engine);
 
 // GR only, IAS15, 10 yr; the Rung-lab GR rung, 10 yr.
 const gr = vector("phy004-gr-analytic.toml", "PHY004-GR-RATE");
