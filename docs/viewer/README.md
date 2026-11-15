@@ -66,7 +66,7 @@ test needs node 18 or later and no packages.
 | `viewer.css` | layout; light and dark colour tokens (the canvases read them too) |
 | `viewer.js` | main thread: controls, orbit canvas, ϖ(t) chart, contribution table, transport bar |
 | `worker.js` | Web Worker hosting one wasm instance: sizes `fav_run` chunks, copies buffers, runs table legs |
-| `fav.js` | ABI v1 constants and a thin wrapper (instantiate, call, copy buffers, decode UTF-8); shared by the workers and the smoke test |
+| `fav.js` | ABI v2 constants and a thin wrapper (instantiate, call, copy buffers, decode UTF-8); shared by the workers and the smoke test |
 | `glossary.js` | every explanation on the page, keyed by id: the tooltip text and the longer glossary entry of each term (display text only) |
 | `glossary-ui.js` | the accessible tooltips (hover, keyboard focus, tap) and the searchable glossary drawer, both fed from `glossary.js` |
 | `check-glossary.mjs` | node static check: every `data-term`/`data-tip` and every id `viewer.js` generates names a non-empty glossary entry |
@@ -83,10 +83,11 @@ most 8), in parallel with the live run.
   an explanation. Hover or keyboard-focus a dotted term or a small *i* button for a short tooltip with the unit and
   a typical value; tap or press Enter on it to pin the tooltip open, then Tab to reach its glossary link; Esc closes it. Each tooltip links to its
   entry in the **Glossary** (header button, or "Open the glossary" above the explainer): a drawer with every term
-  grouped by topic (bodies and orbits, frames, effects, integrators, time and units, fit and statistics, the
+  grouped by topic (bodies and orbits, frames, effects, comparison models, integrators, time and units, fit and statistics, the
   contribution table, data, controls), a longer explanation, why it matters for Mercury's perihelion, and links
   to related terms. The filter box searches all of the text.
-* **Presets**: Kepler only (mask 0, the integrator floor, expect 0), Planets only, GR only, Full model (bits 0–9).
+* **Presets**: Kepler only (mask 0, the integrator floor, expect 0), Planets only, GR only, Full model (bits 0–9),
+  Full model + CG (bits 0–9 and 12, adding the conformal-gravity comparison model).
   Any toggle or parameter change restarts the live run. If more than 10 s of integration would be thrown away,
   the page asks first.
 * **Engine**: AUTO picks WHFast when the toggles allow it, otherwise IAS15. The resolved engine is shown next to
@@ -94,8 +95,14 @@ most 8), in parallel with the live run.
   the engine's FA-E1201 message.
 * **Display exaggeration** (×1 … ×10⁵) rotates only the drawn ellipse and perihelion markers. A badge drawn into
   the canvas says so, so it shows up in any screenshot. **Physical** exaggeration (J2 override, solar-spin scale,
-  and an ε looser than 1e-9) changes the physics. It is labelled "Exaggerated physics" and the run is marked
-  non-nominal.
+  an ε looser than 1e-9, and conformal-gravity coefficients other than the unverified fit values) changes the
+  physics. It is labelled "Exaggerated physics" and the run is marked non-nominal.
+* **Conformal gravity (comparison model, ABI v2 bit 12)**: Mannheim's γ0, γ\* and κ terms (ADR-0016, PHY-020),
+  off by default and outside the 575.31 ″/cy GR ladder. The fieldset takes γ0, γ\* (cm⁻¹) and κ (cm⁻²) and the γ0
+  centring (uniform, the default, or Sun-centred) and shows the engine's analytic Gauss reference. Uniform γ0 is
+  exactly zero only with velocity-independent forces; EIH and Lense–Thirring add a tiny O(v·Δv/c²) drift.
+* **Negative contributions** (Lense–Thirring, a Sun-centred γ0) are drawn left of the zero mark in the rate
+  budget and below the Kepler floor in the per-effect wedges, hatched.
 * **ϖ(t) chart**: dots are the perihelion-passage longitudes on the Park17 plane, which are what gets fitted. The
   grey line is the osculating ϖ, drawn but not fitted. The blue line is the fitted rate. "Subtract fitted rate"
   shows the residual wiggles. The readout's tooltip holds the fit model, formal and jack-knife σ, Q, the
@@ -105,7 +112,7 @@ most 8), in parallel with the live run.
   carries Σ, ϖ̇(S), ϖ̇(Kepler) and the interaction (cross-term) residual. "Export CSV" writes the rows, with the
   run metadata as `#` lines.
 * **Rung lab**: Mercury as a test particle about a fixed Sun, with the Newton / SR-a / SR-b / GR rungs (ADR-0012).
-  Only the J2 and Lense–Thirring toggles apply. The table adds a row for the relativistic central term (the leg
+  Only the J2, Lense–Thirring and conformal-gravity toggles apply (a uniform γ0 adds no test-particle term). The table adds a row for the relativistic central term (the leg
   with RUNG = Newton).
 * **Copy scenario TOML** copies the run's `ScenarioSpec` (from `fav_scenario`), so the same run can be reproduced
   with the CLI.
@@ -147,7 +154,7 @@ Where the ABI text left a choice open, the UI reads it as follows:
 
 * `fav_fit(NaN, NaN)` fits every passage since `fav_configure`, including passages already drained. The engine
   keeps its own passage list, and the drain buffers only feed the display.
-* Rung lab sends only bits 7 (J2) and 9 (Lense–Thirring). GR is chosen by `RUNG`, so bit 8 is not set there.
+* Rung lab sends only bits 7 (J2), 9 (Lense–Thirring) and 12 (conformal gravity). GR is chosen by `RUNG`, so bit 8 is not set there.
 * B's time origin is not specified, so the chart does not use B. It draws the fitted slope through the centroid of
   the fitted passages.
 * The table's IC-hash column shows each leg's `meta.ic_hash`. That hash covers the leg's own body set, so equality

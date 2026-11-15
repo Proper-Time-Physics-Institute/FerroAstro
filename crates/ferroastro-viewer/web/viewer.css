@@ -49,6 +49,7 @@
   --fx-gr: #b3246b;
   --fx-lt: #7a3fb0;
   --fx-ast: #646e7a;
+  --fx-cg: #5e7400;
 
   --osc: #7d8fa2;
   --ecl: #5b6f84;
@@ -92,6 +93,7 @@
     --fx-gr: #ff6fae;
     --fx-lt: #c49bff;
     --fx-ast: #9aa6b3;
+    --fx-cg: #c3dc5c;
     --osc: #5f7d9a;
     --ecl: #8fa6bb;
     --fitline: #8cc0ff;
@@ -132,6 +134,7 @@
   --fx-gr: #ff6fae;
   --fx-lt: #c49bff;
   --fx-ast: #9aa6b3;
+  --fx-cg: #c3dc5c;
   --osc: #5f7d9a;
   --ecl: #8fa6bb;
   --fitline: #8cc0ff;
@@ -385,8 +388,22 @@ legend { padding: 0 0.35rem; font-weight: 600; font-family: var(--serif); font-s
 /* The rate budget: P-remove contributions stacked to scale, one colour per effect. */
 .budget { margin: 0.75rem 0 0.5rem; }
 .budget-bar { display: flex; height: 1.25rem; border-radius: 3px; overflow: hidden; background: var(--panel-2); border: 1px solid var(--border); }
-.budget-bar span { display: block; min-width: 1px; }
-.budget-bar span + span { box-shadow: inset 1px 0 0 var(--panel); }
+.budget-bar .zone { display: flex; min-width: 2px; }
+.budget-bar .seg { display: block; min-width: 2px; background: var(--c); }
+.budget-bar .seg + .seg { box-shadow: inset 1px 0 0 var(--panel); }
+/* Negative contributions: left of the zero mark, hatched so the sign is not carried by colour alone. */
+.budget-bar .neg .seg { background: repeating-linear-gradient(135deg, var(--c) 0 3px, color-mix(in srgb, var(--c) 25%, var(--panel)) 3px 6px); }
+.budget-bar .zero { flex: 0 0 2px; background: var(--fg); }
+.budget-bar:not(.has-neg) .zero { display: none; }
+.budget-key li.neg .v { color: var(--fg); }
+.swatch.hatched { background: repeating-linear-gradient(135deg, var(--c) 0 2px, color-mix(in srgb, var(--c) 25%, var(--panel)) 2px 4px); }
+/* Comparison models (ADR-0016): set apart from the GR ladder's effects. */
+.toggles .toggles-sep { grid-column: 1 / -1; border-bottom: none; justify-content: flex-start; gap: 0.4rem; margin-top: 0.5rem; padding-top: 0.35rem; border-top: 1px dashed var(--border); font-size: 0.875rem; }
+.toggles li.comparison { grid-column: 1 / -1; }
+.cm-badge { display: inline-block; font-size: 0.75rem; font-weight: 600; padding: 0 0.4rem; border: 1px dashed var(--fx-cg); border-radius: 999px; color: var(--fg); vertical-align: 0.1em; }
+fieldset.cg { border-style: dashed; }
+fieldset.cg.off .lab, fieldset.cg.off .cg-ref { opacity: 0.6; }
+.cg-ref .cg-caveat { display: block; margin-top: 0.2rem; }
 .budget-key { display: flex; flex-wrap: wrap; gap: 0.15rem 1rem; list-style: none; margin: 0.4rem 0 0; padding: 0; font-size: 0.875rem; }
 .budget-key li { display: inline-flex; align-items: center; gap: 0.35rem; }
 .budget-key .v { color: var(--muted); font-variant-numeric: tabular-nums; }

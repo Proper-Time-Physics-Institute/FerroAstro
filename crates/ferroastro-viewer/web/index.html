@@ -153,6 +153,7 @@
         <button type="button" data-preset="planets" data-term="preset-planets">Planets only</button>
         <button type="button" data-preset="gr" data-term="preset-gr">GR only</button>
         <button type="button" data-preset="full" data-term="preset-full">Full model</button>
+        <button type="button" data-preset="full-cg" data-term="preset-full-cg">Full model + CG</button>
         <button type="button" class="tip" data-tip="presets"></button>
       </div>
 
@@ -219,6 +220,24 @@
         </select>
       </fieldset>
 
+      <fieldset id="cg-fs" class="grid2 cg off">
+        <legend><button type="button" class="term" data-tip="conformal-gravity">Conformal gravity</button> <span class="cm-badge" data-term="comparison-model">comparison model</span> <button type="button" class="tip" data-tip="comparison-model"></button></legend>
+        <p class="help span2">Switch it on with the last effect toggle (bit 12). Outside the 575.31 ″/cy GR ladder. Defaults are the published galactic-fit values, <button type="button" class="term" data-tip="cg-fit-values">unverified (OI-79)</button>; any other value marks the run as exaggerated physics.</p>
+        <span class="lab"><label for="p-cg-gamma0" data-term="gamma0">γ0 (cm⁻¹)</label><button type="button" class="tip" data-tip="gamma0"></button></span>
+        <input id="p-cg-gamma0" name="cg-gamma0" type="number" min="-1e-25" max="1e-25" step="any" value="3.06e-30" inputmode="decimal" autocomplete="off">
+        <span class="lab"><label for="p-cg-gamma-star" data-term="gamma-star">γ* (cm⁻¹ per M☉)</label><button type="button" class="tip" data-tip="gamma-star"></button></span>
+        <input id="p-cg-gamma-star" name="cg-gamma-star" type="number" min="-1e-25" max="1e-25" step="any" value="5.42e-41" inputmode="decimal" autocomplete="off">
+        <span class="lab"><label for="p-cg-kappa" data-term="kappa">κ (cm⁻²)</label><button type="button" class="tip" data-tip="kappa"></button></span>
+        <input id="p-cg-kappa" name="cg-kappa" type="number" min="-1e-40" max="1e-40" step="any" value="9.54e-54" inputmode="decimal" autocomplete="off">
+        <span class="lab"><label for="p-cg-centre" data-term="gamma0-centring">γ0 centring</label><button type="button" class="tip" data-tip="gamma0-centring"></button></span>
+        <select id="p-cg-centre" name="cg-centre">
+          <option value="0" selected>Uniform field (default): every body alike</option>
+          <option value="1">Sun-centred: added to the Sun’s γ</option>
+        </select>
+        <p id="cg-ref" class="help span2 cg-ref" aria-live="polite">Engine reference: available once the engine has loaded.</p>
+        <div class="span2"><button type="button" id="cg-reset" data-term="cg-fit-values">Reset to fit values</button></div>
+      </fieldset>
+
       <div class="with-tip top">
       <details class="advanced">
         <summary>Physical exaggeration (marks the run non-nominal)</summary>
@@ -257,9 +276,9 @@
       </div>
       <p class="help">Each <button type="button" class="term" data-tip="leg">leg</button> is an independent run in its own worker: the same engine, span, <button type="button" class="term" data-tip="estimator">estimator</button> and <button type="button" class="term" data-tip="initial-conditions">initial conditions</button>, differing only by the one effect removed. Rows within <button type="button" class="term" data-tip="three-sigma">3σ of zero</button> are greyed: below resolution for this span.</p>
       <div id="budget" class="budget" hidden>
-        <p class="budget-head"><button type="button" class="term" data-tip="budget">Rate budget</button> <span class="muted small">positive contributions to scale</span></p>
+        <p class="budget-head"><button type="button" class="term" data-tip="budget">Rate budget</button> <span class="muted small">every contribution to one scale; negative ones left of the zero mark, hatched</span></p>
         <div id="budget-bar" class="budget-bar" aria-hidden="true"></div>
-        <ul id="budget-key" class="budget-key" aria-label="Positive contributions, largest first"></ul>
+        <ul id="budget-key" class="budget-key" aria-label="Contributions: positive largest first, then negative"></ul>
       </div>
       <div class="with-tip top"><div id="t-meta" class="table-meta parts"></div><button type="button" class="tip" data-tip="metadata"></button></div>
       <div class="table-scroll" tabindex="0" role="region" aria-labelledby="table-h">

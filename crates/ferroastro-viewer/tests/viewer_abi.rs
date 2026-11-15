@@ -32,7 +32,8 @@ fn abi_version_status_codes_and_buffers() {
     assert_eq!(fav_run(1.0), FAV_E_STATE);
     has_error(fav_error_len());
     assert_eq!(fav_fit(f64::NAN, f64::NAN), FAV_E_STATE);
-    assert_eq!(fav_set_toggles(1 << 12), FAV_E_ARG);
+    // ABI v2: bit 12 (conformal gravity) is defined; bit 13 is the first reserved bit.
+    assert_eq!(fav_set_toggles(1 << 13), FAV_E_ARG);
     has_error(fav_error_len());
     assert_eq!(fav_set_param(99, 0.0), FAV_E_ARG);
     assert!(fav_get_param(99).is_nan());
@@ -193,6 +194,7 @@ fn metadata_has_the_design_keys() {
         "scenario_digest",
         "estimator",
         "fit",
+        "conformal",
     ] {
         assert!(meta.get(key).is_some(), "metadata lacks {key}: {meta}");
     }
@@ -244,6 +246,7 @@ fn ffi_contains_no_unsafe_code() {
         ("lab.rs", include_str!("../src/lab.rs")),
         ("meta.rs", include_str!("../src/meta.rs")),
         ("observe.rs", include_str!("../src/observe.rs")),
+        ("reference.rs", include_str!("../src/reference.rs")),
     ] {
         let code: String = src
             .lines()

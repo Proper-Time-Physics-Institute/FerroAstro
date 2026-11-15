@@ -247,6 +247,14 @@ impl SystemRun {
         } else {
             "Newtonian"
         };
+        let gauge = if m & bits::CONFORMAL != 0 {
+            format!(
+                "{gauge}; + comparison model: conformal gravity (static weak-field potential, \
+                 ADR-0016; not part of the GR ladder)"
+            )
+        } else {
+            gauge.to_owned()
+        };
         let info = RunInfo {
             mode: "system",
             engine: match engine {
@@ -254,7 +262,7 @@ impl SystemRun {
                 EngineKind::Ias15 => ENGINE_IAS15,
             },
             engine_label,
-            gauge: gauge.into(),
+            gauge,
             frame: "Park17 mean Mercury orbit plane, ICRF pole RA 280.9876 deg Dec 61.4481 deg"
                 .into(),
             display_frame: "ECLIPJ2000 (R_x(84381.448 arcsec) of ICRF), heliocentric, au".into(),
@@ -522,7 +530,7 @@ impl Viewer {
         let r = match Param::from_id(id) {
             Some(p) => self.config.set(p, value).map(|()| FAV_OK),
             None => Err(ViewerError::arg(format!(
-                "FA-E0002: unknown parameter id {id} (valid 0-12)"
+                "FA-E0002: unknown parameter id {id} (valid 0-16)"
             ))),
         };
         self.status(r)

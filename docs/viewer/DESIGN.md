@@ -97,6 +97,7 @@ the crate exports no allocator.
 | `fit` | the live rate fit and the per-table estimator, both via `ferroastro_diffrun::Estimator` / `ferroastro_precession::park2017` |
 | `lab` | Rung lab: test-particle model from `ferroastro_ladder::single_body` |
 | `meta` | PHY-015 metadata JSON (frame, epoch, span, fit model, constants version, IC hash, model string) |
+| `reference` | ABI v2: the conformal-gravity comparison model's analytic Gauss reference for the current parameters, composed from `ferroastro_analytic` and the DE440 constants (§4.5); no formula of its own |
 | `ffi` | the C ABI (only module allowed the unsafe attribute) |
 
 The state lives in `thread_local! { static ENGINE: RefCell<Option<Engine>> }`. wasm is
@@ -136,11 +137,23 @@ same code.
 | 9 | Lense–Thirring (Sun spin) | `forces.lense_thirring = true` (`SolarLenseThirring`, DE440 Eqs. 37–39, `G·S = GMS·MOISUN·ASUN²·OMGSUN`, γ from the PPN parameter) | IAS15 only |
 | 10 | Big asteroids | `forces.asteroids = N` (first N numbered header.440 asteroids, Minor tier, reaction on; default N = 16), states from the in-repo REF-003 file (§5) | IAS15 only |
 | 11 | 1PN among all bodies (EIH), advanced | `forces.gr_eih = true` with `ppn` (replaces bit 8; mutually exclusive) | IAS15 only (~1.3× slower) |
-| 12–31 | reserved, must be 0 | `FAV_E_ARG` | |
+| 12 | Conformal gravity (**comparison model**, ABI v2) | `forces.conformal = { gamma0, gamma_star, kappa, gamma0_centre }` from parameters 13–16 (`ConformalPotential`, plus `ConformalUniformGamma0` for a non-zero uniform γ0; `Gauge::StaticWeakFieldPotential`, ADR-0016, PHY-020). Rung lab: `ConformalCentral` with γ = γ\* (+ γ0 if Sun-centred) and κ; a uniform γ0 adds no test-particle term | WH, IAS15 |
+| 13–31 | reserved, must be 0 | `FAV_E_ARG` | |
+
+**Bit 12 is a comparison model, not a ladder rung** (ADR-0016, PHY-020). It is never in the default
+mask or in the "Full model" preset, every place that shows it says "comparison model", and its
+contribution is never part of the 575.31 ″/cy total. The published fit values of γ0, γ\* and κ are
+the parameter defaults but are **unverified** (OI-79); any other value marks the run as exaggerated
+physics (§4.3). With the default uniform centring, γ0 accelerates every body alike, so the
+heliocentric observable is unchanged **exactly only with velocity-independent forces**: with EIH
+(bit 11) or Lense–Thirring (bit 9) on, the common drift enters at O(v·Δv/c²), tiny but not zero.
+The Sun-centred reading gives about −0.183 ″/cy at the fit γ0 (rd#88 notes; the engine's Gauss
+reference reproduces it), against the INPOP15a bound of 0.0 ± 3.1 mas/cy on a supplementary Mercury
+advance.
 
 **Kepler-only baseline** = mask `0`: Sun + Mercury, Newtonian. ϖ̇ must be 0 to integrator error
-(PHY-001). The UI has a one-click "Kepler only" preset (mask 0) and a "Full model" preset
-(bits 0–9).
+(PHY-001). The UI has a one-click "Kepler only" preset (mask 0), a "Full model" preset
+(bits 0–9) and a "Full model + CG" preset (bits 0–9 and 12, the comparison model).
 
 Removing a planet from `bodies` is the **P-remove** operation of ADR-0014. For Newtonian point
 masses it is identical to Park's "GM set to zero". `ferroastro-propagate` keeps every remaining
@@ -192,7 +205,12 @@ are offered only in Rung lab, never in System mode, and the UI says why. Rung la
 * SR-b is always shown with its gauge label and a note that the SR/GR split is not observable
   (ADR-0012).
 
-## 4. The C ABI (contract for both builders) — ABI version 1
+## 4. The C ABI (contract for both builders) — ABI version 2
+
+Version 2 (2026-11-14, ADR-0016 decision D5) differs from version 1 only by: toggle bit 12
+(`CONFORMAL`) is defined and bits 13–31 are reserved; parameters 13–16 exist (§4.3); the metadata
+has a `conformal` object (§4.5); `fav_abi_version()` returns 2. A page that speaks version 1 refuses
+the module, and the version-1 URL fragment (13 parameters) is read with ids 13–16 at their defaults.
 
 ### 4.1 Conventions
 
@@ -222,7 +240,7 @@ are offered only in Rung lab, never in System mode, and the UI says why. Rung la
 
 | signature | purpose |
 |---|---|
-| `fav_abi_version() -> u32` | `1`. JS refuses any other value. |
+| `fav_abi_version() -> u32` | `2`. JS refuses any other value. |
 | `fav_reset() -> i32` | drop the engine; toggles and parameters return to the defaults of §4.3 (System mode, mask = bits 0–9, AUTO engine) |
 | `fav_set_toggles(mask: u32) -> i32` | set the toggle mask (§3.1); takes effect at the next `fav_configure` |
 | `fav_set_param(id: u32, value: f64) -> i32` | set a parameter (§4.3); range-checked now; takes effect at the next `fav_configure` |
@@ -261,9 +279,16 @@ The engine never calls into JS; the module has **no imports** (checked in CI, §
 | 10 | `J2_OVERRIDE` | NaN (= DE440 `J2SUN`) | NaN or 0 … 1e-3 | bit 7 (via `SolarOverrides.j2`) |
 | 11 | `SPIN_SCALE` | 1.0 | 0 … 1e6 (scales DE440 G·S via `SolarOverrides.spin_gm`) | bit 9 |
 | 12 | `FIT_PERIODIC` | 1 | 0 linear only; 1 add the Park17 Table 2 terms that the span resolves (§6.3) | fits |
+| 13 | `CG_GAMMA0` | 3.06e-30 (fit, **unverified**, OI-79) | signed, \|γ0\| ≤ 1e-25 cm⁻¹ | bit 12 |
+| 14 | `CG_GAMMA_STAR` | 5.42e-41 (fit, **unverified**, OI-79) | signed, \|γ\*\| ≤ 1e-25 cm⁻¹ per solar mass | bit 12 |
+| 15 | `CG_KAPPA` | 9.54e-54 (fit, **unverified**, OI-79) | signed, \|κ\| ≤ 1e-40 cm⁻² (κ > 0 repulsive, prograde) | bit 12 |
+| 16 | `CG_GAMMA0_CENTRE` | 0 | 0 uniform (every body alike), 1 Sun-centred (added to the Sun's γ) | bit 12 |
 
-Any value other than the default for ids 10/11, or ε > 1e-9, marks the run "non-nominal" in the
-metadata and in the UI ("exaggerated physics: J2 × k"). That is how a physical exaggeration is
+Any value other than the default for ids 10/11, or ε > 1e-9, or, with bit 12 on, any value other
+than the fit value for ids 13–15, marks the run "non-nominal" in the metadata and in the UI
+("exaggerated physics: J2 × k", "γ0 × k"). The fit values are display defaults only: they are
+unverified (OI-79) and never test oracles; the tests use exaggerated values against the Gauss
+rates. That is how a physical exaggeration is
 labelled. It is separate from the display exaggeration of §7.2.
 
 ### 4.4 Buffer layouts (all `f64`, row-major, little-endian)
@@ -321,7 +346,7 @@ Rung lab only the Mercury slot is filled; its frame is the ladder's J2000 mean e
 One object, keys fixed (UI builders may rely on them):
 
 ```json
-{ "abi": 1, "mode": "system" | "rung-lab", "engine": "whfast h=1 d" | "ias15 eps=1e-9" | ...,
+{ "abi": 2, "mode": "system" | "rung-lab", "engine": "whfast h=1 d" | "ias15 eps=1e-9" | ...,
   "nominal": true, "toggles": 1023, "params": {"beta":1,"gamma":1, ...},
   "model": "<propagate RunOutput.model string: every force term, its gauge and parameters>",
   "gauge": "PPN isotropic/harmonic" | "Newtonian" | ...,
@@ -333,8 +358,19 @@ One object, keys fixed (UI builders may rely on them):
   "scenario_digest": "<ScenarioSpec::digest>",
   "estimator": "<diffrun Estimator::id(SampledStates)>",
   "fit": { "model": "<FitModel::describe>", "span_years": [t0, t1], "passages": n } | null,
-  "j2_nominal": <DE440 J2SUN as the engine loaded it> | null }
+  "j2_nominal": <DE440 J2SUN as the engine loaded it> | null,
+  "conformal": { "label": "comparison model", "enabled": false, "gamma0_per_cm": 3.06e-30,
+    "gamma_star_per_cm": 5.42e-41, "kappa_per_cm2": 9.54e-54, "gamma0_centre": "uniform" | "sun",
+    "exaggerated": false, "fit_values": "<the defaults and OI-79>", "uniform_caveat": "<...>",
+    "reference": { "linear_arcsec_per_cy": x, "quadratic_arcsec_per_cy": x,
+      "total_arcsec_per_cy": x, "gamma0_arcsec_per_cy": x, "basis": "<...>" } | null } }
 ```
+
+`conformal` (ABI v2) is always present, so the page can show the engine's analytic reference before
+bit 12 is switched on. `reference` is Mercury's first-order Gauss secular rate for the current
+parameters (`ferroastro_analytic::advance::conformal_{linear,quadratic}_advance`, SW92 J2000 mean
+a and e, β = GM☉/c², n from GM☉ + GM☿), labelled "comparison model"; the page shows it and never
+evaluates a formula itself. It is `null` without `embed-header` (no DE440 constants).
 
 `j2_nominal` (added with #22) lets the page scale its `J2_OVERRIDE` reference values without
 copying a header.440 value into JS.
@@ -457,7 +493,11 @@ For the current toggle set S (the "full" configuration) and every effect X ∈ S
   `fav_run` sequences, so the page runs them in parallel in N leg workers
   (N = `navigator.hardwareConcurrency − 1`, at least 1) while the live view keeps running.
 * Columns: effect | ϖ̇(S) − ϖ̇(S\X) (″/cy) ± √(σ²+σ²) jack-knife | reference value (§8, with its
-  source and frame) | difference | leg IC hash (short) | engine.
+  source and frame) | difference | leg IC hash (short) | engine. The conformal-gravity row (bit 12)
+  is labelled "comparison model" and its reference is the engine's Gauss value (§4.5).
+* Contributions can be negative (Lense–Thirring, a Sun-centred γ0). The budget strip draws them to
+  the left of a zero mark and the chart's per-effect wedges below the Kepler floor, hatched, with a
+  dashed net-sum ray; nothing is dropped as "not drawn".
 * Footer rows: the sum of contributions, ϖ̇(S), ϖ̇(Kepler-only) (its integrator floor), and the
   residual ϖ̇(S) − Σ − ϖ̇(Kepler-only) labelled "interaction (cross) terms; not an error" (Park's
   Jupiter+Saturn cross row is 0.0411 ″/cy).

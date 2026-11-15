@@ -102,7 +102,7 @@ statement: >-
   PHY-015 metadata (frame, epoch, span, fit model, constants, gauge, IC hash),
   compute per-effect contributions with the ADR-0014 P-remove protocol, and
   build for wasm32-unknown-unknown as a module with no imports and the
-  version-1 extern "C" ABI of the design.
+  version-2 extern "C" ABI of the design.
 acceptance: >-
   Native tests cover the ABI round trip and every status code, the Kepler-only
   baseline, the GR, PPN, J2, Lense-Thirring and SR-rung rates, a single-planet
@@ -119,12 +119,17 @@ related: [API-002, PHY-015, PHY-020, CI-009, CI-010, DEP-006]
 notes: >-
   Proposed with the viewer (NEEDS HUMAN REVIEW). The ABI shims need the
   unsafe-attribute lint exception of DESIGN §2.2 (AGENTS.md rule 5, STD-003).
-  PLANNED ABI v2 (ADR-0016, decision D5 of 2026-11-14, #59): a later viewer PR
-  defines toggle bit 12 as CONFORMAL (the PHY-020 conformal-gravity comparison
-  model, labelled "comparison model"), adds parameters 13–15 for γ0, γ* and κ
-  plus the gamma0_centre choice ("uniform" by default), moves the invalid-bit
-  checks to bit 13 and bumps the extern "C" ABI to version 2. Until that PR
-  lands, bit 12 and parameters 13–15 stay reserved, the statement's version-1
-  ABI applies, and the default mask does not change (it will not include bit
-  12 after the change either).
+  ABI v2 (ADR-0016, decision D5 of 2026-11-14, #59; the F3 viewer PR): toggle
+  bit 12 is CONFORMAL (the PHY-020 conformal-gravity comparison model,
+  labelled "comparison model" in the toggle row, the preset, the gauge, the
+  model, the scenario and the metadata), parameters 13–15 carry γ0, γ* and κ
+  (cm⁻¹, cm⁻¹, cm⁻²; defaults the OI-79 fit values, unverified, never
+  oracles; any other value marks the run as exaggerated physics) and
+  parameter 16 the gamma0_centre choice (0 "uniform", the default; 1 "sun").
+  The invalid-bit checks moved to bit 13. The metadata's "conformal" object
+  carries the engine's analytic Gauss reference for the current settings, so
+  the page does no physics. The default mask does not include bit 12. The
+  uniform centring is exactly zero only with velocity-independent forces; with
+  EIH or Lense–Thirring on, the common drift enters at O(v·Δv/c²), which the
+  page and glossary say. Viewer tests: tests/viewer_conformal.rs.
 ```

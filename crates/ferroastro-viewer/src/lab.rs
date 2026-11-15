@@ -3,7 +3,8 @@
 //! Rung lab (DESIGN §3.3): Mercury as a test particle about a fixed Sun, the set-up of the M2
 //! single-body rungs (`ferroastro_ladder::SingleBody::mercury`: SW92 J2000 mean elements,
 //! J2000 mean ecliptic, μ = GM☉), with the rung's central term from `ferroastro-forces` and
-//! optional solar J2 and Lense–Thirring terms about the WGCCRE solar pole.
+//! optional solar J2 and Lense–Thirring terms about the WGCCRE solar pole, and the optional
+//! conformal-gravity comparison term (bit 12, ADR-0016).
 //!
 //! IAS15 is driven here, one call of [`Ias15::integrate_to`] per daily sample (so the step
 //! sequence depends only on the sample grid, not on how a span is cut into calls), instead of
@@ -20,14 +21,15 @@ use ferroastro_core::frames::EclipticJ2000;
 use ferroastro_core::time::{J2000_JD, SECONDS_PER_DAY};
 use ferroastro_core::units::SpinGm;
 use ferroastro_forces::{
-    CentralTerm, ForceModel as _, LenseThirring, PnLagrangian, Pole, SchwarzschildPpn, SolarJ2,
-    SrKepler, TestParticle,
+    CentralTerm, ConformalCentral, ForceModel as _, LenseThirring, PnLagrangian, Pole,
+    SchwarzschildPpn, SolarJ2, SrKepler, TestParticle,
 };
 use ferroastro_frames::icrf_to_ecliptic_j2000;
 use ferroastro_integrators::{Ias15, Ias15Config};
 use ferroastro_ladder::single_body::{SingleBody, de440_solar_spin};
 use ferroastro_ladder::{MERCURY_SINGLE_BODY, Scenario};
 use ferroastro_precession::park2017::ReferencePlane;
+use ferroastro_scenario::CM_PER_KM;
 
 /// Sample cadence of the lab (days).
 const SAMPLE_DAYS: f64 = 1.0;
@@ -37,7 +39,11 @@ fn err(e: impl std::fmt::Display) -> ViewerError {
 }
 
 /// The rung's test-particle model: the central term chosen by `RUNG` and, for bits 7 and 9, the
-/// solar J2 and Lense-Thirring terms about the WGCCRE 2015 pole (in J2000 ecliptic axes).
+/// solar J2 and Lense-Thirring terms about the WGCCRE 2015 pole (in J2000 ecliptic axes); for
+/// bit 12 the conformal-gravity comparison term with the Sun-sourced γ (γ\*, plus γ0 when
+/// Sun-centred) and κ. A uniform γ0 has no test-particle form: about a fixed Sun, which stands for
+/// the freely falling heliocentric frame, it accelerates Sun and particle alike, so it adds no
+/// term (as `ConformalCentral` documents).
 fn build_model(
     cfg: &ViewerConfig,
     de: &ferroastro_constants::De440,
@@ -86,7 +92,32 @@ fn build_model(
             ));
         }
     }
+    if let Some(cg) = cfg.conformal() {
+        terms.push(Box::new(
+            ConformalCentral::new(
+                cg.sun_gamma_per_cm() * CM_PER_KM,
+                cg.kappa_per_cm2 * CM_PER_KM * CM_PER_KM,
+                c,
+            )
+            .map_err(err)?,
+        ));
+    }
     TestParticle::new(mu, terms).map_err(err)
+}
+
+/// The scenario-text line of the conformal-gravity comparison term (bit 12), or nothing.
+fn conformal_note(cfg: &ViewerConfig) -> String {
+    cfg.conformal().map_or_else(String::new, |cg| {
+        format!(
+            "# Conformal gravity (comparison model, ADR-0016; not part of the GR ladder): gamma0 = \
+             {:?} cm^-1 ({}), gamma_star = {:?} cm^-1, kappa = {:?} cm^-2; a uniform gamma0 adds \
+             no test-particle term.\n",
+            cg.gamma0_per_cm,
+            cg.centre_label(),
+            cg.gamma_star_per_cm,
+            cg.kappa_per_cm2
+        )
+    })
 }
 
 /// A Rung-lab run.
@@ -174,9 +205,10 @@ impl LabRun {
             ),
             scenario_text: format!(
                 "# Rung lab (docs/viewer/DESIGN.md section 3.3): rung = {rung_label}, toggle mask \
-                 {m:#x}, beta = {beta:?}, gamma = {gamma:?}, span = {:?} yr.\n# Initial \
+                 {m:#x}, beta = {beta:?}, gamma = {gamma:?}, span = {:?} yr.\n{}# Initial \
                  conditions: ferroastro_ladder::MERCURY_SINGLE_BODY, below.\n{MERCURY_SINGLE_BODY}",
-                cfg.get(Param::SpanYears)
+                cfg.get(Param::SpanYears),
+                conformal_note(cfg)
             ),
         };
         let mut run = Self {
