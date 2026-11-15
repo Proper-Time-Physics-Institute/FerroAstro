@@ -18,6 +18,9 @@
 //!   hashed, so that differential runs can prove they share them (NUM-013).
 //! * [`run_with_energy`]: [`run`] plus the N-body model energy at the start and the end
 //!   (WP18 speed-table accuracy column).
+//! * [`run_with_clocks`]: [`run`] plus the opt-in three-clock diagnostic of PHY-022 (metric
+//!   proper time `s` and the comparison readings `τ_SR`, `τ_K` along every body's orbit;
+//!   [`clocks`]). The run output is [`run`]'s, bit for bit.
 //! * [`run_batch`]: independent scenarios on `threads` worker threads (rayon, behind the
 //!   optional `parallel` feature; sequential without it, and on wasm32). Results do not depend
 //!   on the thread count (TST-005).
@@ -47,6 +50,7 @@
 //! # Ok::<(), Box<dyn std::error::Error>>(())
 //! ```
 
+pub mod clocks;
 mod error;
 mod field;
 mod nbody;
@@ -56,6 +60,7 @@ pub mod passages;
 mod setup;
 mod stepper;
 
+pub use clocks::{ClockReport, ThreeClocks};
 pub use error::PropagateError;
 pub use nbody::{DEFAULT_ABM_STEP_DAYS, DEFAULT_DT0_DAYS, DEFAULT_FIXED_STEP_DAYS};
 pub use output::{PassageRecord, RunOutput, StateRecord};
@@ -331,6 +336,44 @@ pub fn run_with_energy(
         (Mode::NBody, Precision::Dd | Precision::Mixed) => nbody::<DoubleDouble>(spec, data),
         _ => Ok((run(spec, data)?, None)),
     }
+}
+
+/// [`run`], plus the opt-in three-clock diagnostic (PHY-022, [`clocks`]): the offsets
+/// `clock − t` of the metric proper time `s` and of the comparison readings `τ_SR` and `τ_K` for
+/// every body, at every sampled state and the final state. The output is [`run`]'s, bit for bit;
+/// the clocks are evaluated afterwards on the sampled states (the scenario, its digest and the
+/// dynamics are untouched), so their accuracy follows the output cadence
+/// ([`ClockReport::quadrature_error`]).
+///
+/// Potential: n-body runs use the Newtonian monopoles of every other body with a catalogue `GM`
+/// (header.440: majors and the asteroid masses), barycentric positions and velocities;
+/// test-particle runs use the central body's `GM`, central-body-relative states (the central
+/// body is fixed by the model, so its clocks have zero offset).
+///
+/// # Errors
+/// As [`run`]; `FA-E1300` for an ephemeris-field scenario (not implemented) and `FA-E1303` from
+/// the diagnostic itself (e.g. a run with fewer than one sample).
+pub fn run_with_clocks(
+    spec: &ScenarioSpec,
+    data: &DataSources<'_>,
+) -> Result<(RunOutput, ClockReport), PropagateError> {
+    if spec.mode == Mode::EphemerisField {
+        return Err(setup::setup(
+            &spec.name,
+            "the three-clock diagnostic is implemented for n-body and test-particle runs",
+            "run the scenario in n-body or test-particle mode",
+        ));
+    }
+    let out = run(spec, data)?;
+    let de = data.de440(&spec.name)?;
+    let catalogue = match data.header() {
+        Some((h, prov)) => ferroastro_system::Catalogue::from_header(h, prov)?,
+        None => ferroastro_system::Catalogue::de440_major(&de),
+    };
+    let model = clocks::ClockModel::new(de.speed_of_light())?;
+    let central = (spec.mode == Mode::TestParticle).then(|| spec.central_body.naif());
+    let report = clocks::report(&spec.name, &out, &catalogue, model, central)?;
+    Ok((out, report))
 }
 
 fn checkpoint_of(
