@@ -304,7 +304,7 @@ if (f.fit) {
   const d = f.fit[FAV.FIT.RATE] - kepRate;
   const sUni = legSigmaOf(uniRun);
   const legSigma = () => sUni;
-  check(sUni <= CG_UNIFORM_BOUND, "uniform: the paired sigma is at round-off (<= " + CG_UNIFORM_BOUND + " arcsec/cy)", sUni);
+  check(sUni <= CG_UNIFORM_BOUND, "uniform: the paired sigma is at integrator level (<= " + CG_UNIFORM_BOUND + " arcsec/cy)", sUni);
   check(Math.abs(d) <= CG_UNIFORM_BOUND, "uniform exaggerated gamma0 leaves the rate unchanged (|d| <= " + CG_UNIFORM_BOUND + " arcsec/cy)", d);
   const vd = FAV.boundVerdict(d, legSigma(f.fit), bound);
   check(vd && vd.verdict === "within", "uniform live contribution reads within the bound (paired sigma)",

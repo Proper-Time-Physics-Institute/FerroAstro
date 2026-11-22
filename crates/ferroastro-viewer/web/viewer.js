@@ -644,10 +644,10 @@
     const parts = [];
     if (Number.isFinite(p[P.J2_OVERRIDE])) {
       const j2n = nominalJ2();
-      parts.push("J2 = " + p[P.J2_OVERRIDE].toExponential(3) + (Number.isFinite(j2n) ? " (×" + fmtK(p[P.J2_OVERRIDE] / j2n) + " DE440)" : ""));
+      parts.push("J2 = " + minus(p[P.J2_OVERRIDE].toExponential(3)) + (Number.isFinite(j2n) ? " (×" + fmtK(p[P.J2_OVERRIDE] / j2n) + " DE440)" : ""));
     }
     if (p[P.SPIN_SCALE] !== 1) parts.push("solar spin ×" + fmtK(p[P.SPIN_SCALE]));
-    if (p[P.IAS15_EPSILON] > 1e-9) parts.push("IAS15 ε = " + p[P.IAS15_EPSILON] + " (fast, reduced accuracy)");
+    if (p[P.IAS15_EPSILON] > 1e-9) parts.push("IAS15 ε = " + minus(p[P.IAS15_EPSILON]) + " (fast, reduced accuracy)");
     if ((cfg.mask & (1 << B.CONFORMAL)) !== 0) {
       // Conformal gravity: any coefficient other than the published fit value (OI-79) is exaggerated.
       for (const [id, name] of [[P.CG_GAMMA0, "γ0"], [P.CG_GAMMA_STAR, "γ*"], [P.CG_KAPPA, "κ"]]) {
