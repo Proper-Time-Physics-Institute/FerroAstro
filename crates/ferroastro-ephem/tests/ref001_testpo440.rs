@@ -5,7 +5,8 @@
 //!
 //! PR-fast tier (CI-005): reads the cached de440.bsp and testpo.440 (pinned SHA-256; AU from the
 //! DE440 constants, read at run time from the cached header.440, #22);
-//! a missing cache fails loudly with the `fetch_jpl.py` command.
+//! a missing product skips with a notice locally and fails under `FA_REQUIRE_DATA=1` or `CI`
+//! (docs/standards/testing.md item 9).
 #![allow(
     clippy::unwrap_used,
     clippy::panic,
@@ -24,6 +25,13 @@ use std::collections::BTreeMap;
 /// Verifies: REF-001, DEP-011
 #[test]
 fn every_testpo440_body_point_is_within_the_testeph_threshold() {
+    if De440::load_cached_or_skip("every_testpo440_body_point_is_within_the_testeph_threshold")
+        .unwrap()
+        .is_none()
+    {
+        return;
+    }
+    let v = vectors();
     if ferroastro_testdata::skip_if_absent(
         "de440-bsp",
         "every_testpo440_body_point_is_within_the_testeph_threshold",
@@ -40,13 +48,6 @@ fn every_testpo440_body_point_is_within_the_testeph_threshold() {
     {
         return;
     }
-    if De440::load_cached_or_skip("every_testpo440_body_point_is_within_the_testeph_threshold")
-        .unwrap()
-        .is_none()
-    {
-        return;
-    }
-    let v = vectors();
     let bytes = cached_product("de440-bsp");
     let spk = Spk::parse(&bytes).unwrap();
     let text = String::from_utf8(cached_product("de440-testpo")).unwrap();

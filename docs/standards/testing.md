@@ -56,6 +56,9 @@
      pass by skipping.
    - **header present:** every test runs, with or without `FA_REQUIRE_DATA`. A file that does not
      match its pinned SHA-256 is always an error, never a skip.
-   Only the header is skipped this way; a test that also reads another product (`de440.bsp`,
-   `testpo.440`) still fails when that product is missing and the header is present. The orbit
-   viewer's System-mode and Rung-lab tests skip separately when built without `embed-header`.
+   The other PR-fast products (`de440.bsp`, `testpo.440`) are gated the same way, per product,
+   with `ferroastro_testdata::skip_if_absent` (maintainer decision 2026-11-22, replacing "only
+   the header is skipped"): a test that reads one skips with the same notice (naming that file)
+   when it is absent, and fails under `FA_REQUIRE_DATA=1` or `CI`. The header gate comes first,
+   so a mismatching `header.440` is still an error. The orbit viewer's System-mode and Rung-lab
+   tests skip separately when built without `embed-header`.

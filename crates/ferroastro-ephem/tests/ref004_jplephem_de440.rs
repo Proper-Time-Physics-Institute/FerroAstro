@@ -4,7 +4,8 @@
 //! double-double evaluation against f64.
 //!
 //! PR-fast tier (CI-005): reads the **cached** de440.bsp (pinned SHA-256, re-verified) and the
-//! committed golden table; a missing cache fails loudly with the `fetch_jpl.py` command.
+//! committed golden table; a missing product skips with a notice locally and fails under
+//! `FA_REQUIRE_DATA=1` or `CI` (docs/standards/testing.md item 9).
 #![allow(
     clippy::unwrap_used,
     clippy::panic,
@@ -27,14 +28,6 @@ const MIN_RANDOM_EPOCHS: usize = 50;
 /// Verifies: REF-004, DEP-011
 #[test]
 fn every_de440_segment_matches_jplephem_to_1_mm_and_1_um_per_s() {
-    if ferroastro_testdata::skip_if_absent(
-        "de440-bsp",
-        "every_de440_segment_matches_jplephem_to_1_mm_and_1_um_per_s",
-    )
-    .unwrap()
-    {
-        return;
-    }
     if De440::load_cached_or_skip("every_de440_segment_matches_jplephem_to_1_mm_and_1_um_per_s")
         .unwrap()
         .is_none()
@@ -43,6 +36,14 @@ fn every_de440_segment_matches_jplephem_to_1_mm_and_1_um_per_s() {
     }
     let v = vectors();
     let g = load("jplephem-de440.csv", &v, "REF004-JPLEPHEM-POS-MAX-DIFF");
+    if ferroastro_testdata::skip_if_absent(
+        "de440-bsp",
+        "every_de440_segment_matches_jplephem_to_1_mm_and_1_um_per_s",
+    )
+    .unwrap()
+    {
+        return;
+    }
     let bytes = cached_product("de440-bsp");
     assert!(
         g.meta("source").contains(&common::sha256(&bytes)),
@@ -124,14 +125,6 @@ fn roundoff_scale(seg: &Segment<'_>, record: usize, comp: usize) -> (f64, f64) {
 /// Verifies: DEP-007, DEP-011
 #[test]
 fn double_double_agrees_with_f64_to_binary64_roundoff() {
-    if ferroastro_testdata::skip_if_absent(
-        "de440-bsp",
-        "double_double_agrees_with_f64_to_binary64_roundoff",
-    )
-    .unwrap()
-    {
-        return;
-    }
     if De440::load_cached_or_skip("double_double_agrees_with_f64_to_binary64_roundoff")
         .unwrap()
         .is_none()
@@ -140,6 +133,14 @@ fn double_double_agrees_with_f64_to_binary64_roundoff() {
     }
     let v = vectors();
     let g = load("jplephem-de440.csv", &v, "REF004-JPLEPHEM-POS-MAX-DIFF");
+    if ferroastro_testdata::skip_if_absent(
+        "de440-bsp",
+        "double_double_agrees_with_f64_to_binary64_roundoff",
+    )
+    .unwrap()
+    {
+        return;
+    }
     let bytes = cached_product("de440-bsp");
     let spk = Spk::parse(&bytes).unwrap();
     let (mut rho, mut dd_vs_jpl) = (Max::default(), Max::default());
@@ -185,17 +186,17 @@ fn double_double_agrees_with_f64_to_binary64_roundoff() {
 /// Verifies: DEP-011, API-001
 #[test]
 fn typed_states_chain_segments_to_the_barycentre_and_the_sun() {
+    if De440::load_cached_or_skip("typed_states_chain_segments_to_the_barycentre_and_the_sun")
+        .unwrap()
+        .is_none()
+    {
+        return;
+    }
     if ferroastro_testdata::skip_if_absent(
         "de440-bsp",
         "typed_states_chain_segments_to_the_barycentre_and_the_sun",
     )
     .unwrap()
-    {
-        return;
-    }
-    if De440::load_cached_or_skip("typed_states_chain_segments_to_the_barycentre_and_the_sun")
-        .unwrap()
-        .is_none()
     {
         return;
     }
@@ -252,17 +253,17 @@ fn typed_states_chain_segments_to_the_barycentre_and_the_sun() {
 /// Verifies: DEP-011, REF-004
 #[test]
 fn state_is_independent_of_the_two_part_date_split() {
+    if De440::load_cached_or_skip("state_is_independent_of_the_two_part_date_split")
+        .unwrap()
+        .is_none()
+    {
+        return;
+    }
     if ferroastro_testdata::skip_if_absent(
         "de440-bsp",
         "state_is_independent_of_the_two_part_date_split",
     )
     .unwrap()
-    {
-        return;
-    }
-    if De440::load_cached_or_skip("state_is_independent_of_the_two_part_date_split")
-        .unwrap()
-        .is_none()
     {
         return;
     }

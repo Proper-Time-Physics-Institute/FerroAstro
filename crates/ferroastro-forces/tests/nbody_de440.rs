@@ -263,17 +263,17 @@ fn residuals(with_pluto: bool, spk: &Spk<'_>) -> (Vec<(NaifId, Row)>, Row, u64) 
 /// Verifies: NUM-019, NUM-009, NUM-008
 #[test]
 fn newtonian_j2_ten_years_from_header_ics_vs_de440_bsp() {
+    if De440::load_cached_or_skip("newtonian_j2_ten_years_from_header_ics_vs_de440_bsp")
+        .unwrap()
+        .is_none()
+    {
+        return;
+    }
     if ferroastro_testdata::skip_if_absent(
         "de440-bsp",
         "newtonian_j2_ten_years_from_header_ics_vs_de440_bsp",
     )
     .unwrap()
-    {
-        return;
-    }
-    if De440::load_cached_or_skip("newtonian_j2_ten_years_from_header_ics_vs_de440_bsp")
-        .unwrap()
-        .is_none()
     {
         return;
     }
