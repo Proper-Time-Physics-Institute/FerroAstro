@@ -7,7 +7,7 @@
 
 Evidence labels carried over from the journal: **[P]** read in the primary source, **[C]** computed from [P] constants, **[S]** secondary transcription, **UNVERIFIED** not yet confirmed. See [OPEN-ITEMS.md](OPEN-ITEMS.md) for everything that still has to be checked.
 
-Rungs in the Journal #1 table that have no dedicated requirement yet: N-SELF (0.0050, meaning UNVERIFIED), N-X cross terms (Σ = +0.0127), N-MOON (no primary value), J2-DE440 (0.02792, covered inside PHY-010) and GR-1PN-2B (finite-mass-ratio shift ≈ 7×10⁻⁶ ″/cy, covered by the μ note in PHY-001/PHY-004). N-AST (0.0012) has its own differential rung, PHY-019 (added 2026-10-14 after the red-team review, Journal #9). N-SELF, N-AST and N-X enter PHY-013 as part of the N-SUM total. PHY-020 (conformal gravity, added 2026-11-14) and PHY-021 (the Proper Time (Gill) kernel, added 2026-11-15) are not rungs: they are default-off comparison models outside the ladder (ADR-0016).
+Rungs in the Journal #1 table that have no dedicated requirement yet: N-SELF (0.0050, meaning UNVERIFIED), N-X cross terms (Σ = +0.0127), N-MOON (no primary value), J2-DE440 (0.02792, covered inside PHY-010) and GR-1PN-2B (finite-mass-ratio shift ≈ 7×10⁻⁶ ″/cy, covered by the μ note in PHY-001/PHY-004). N-AST (0.0012) has its own differential rung, PHY-019 (added 2026-10-14 after the red-team review, Journal #9). N-SELF, N-AST and N-X enter PHY-013 as part of the N-SUM total. PHY-020 (conformal gravity, added 2026-11-14) and PHY-021 (the Proper Time (Gill) kernel, added 2026-11-15) are not rungs: they are default-off comparison models outside the ladder (ADR-0016). PHY-022 (three-clock diagnostic, added 2026-11-15) is not a rung either: it is an opt-in clock diagnostic that changes no dynamics.
 
 ---
 
@@ -907,4 +907,84 @@ notes: >-
   tests use the tolerance 100 x with x = GM/(c²p) ≈ 1e-6, against observed
   deviations ≤ 5e-6. Viewer: toggle bit 13 (API-004 notes). Avoid the token
   "nominal" in identifiers (PHY-003 scan).
+```
+
+### PHY-022 — Three-clock diagnostic: metric s, flat SR τ_SR, Gill τ_K (outside the ladder)
+
+```yaml
+id: PHY-022
+title: "Three-clock diagnostic reproduces the derived GPS, Galileo 5/6 and circular-orbit clock values, opt-in, never in the ladder"
+status: draft
+criticality: medium
+verification: test
+statement: >-
+  FerroAstro SHALL provide, as an opt-in diagnostic of a propagation, the
+  accumulated offsets from coordinate time of three clocks along every
+  integrated orbit: the metric proper time s of g = Ω²η, with
+  ds/dt = Ω√(1 − v²/c²); the flat special-relativistic proper time τ_SR,
+  dτ_SR/dt = √(1 − v²/c²); and Gill's flow parameter τ_K,
+  dτ_K/dt = √(1 − v²/c²)/Ω = mc²/H₁; with Ω = 1 + V/(mc²) = 1 − U and
+  U = Σ GMⱼ/(rⱼc²) the Newtonian potential depth of the other bodies, so
+  that dτ_SR = Ω dτ_K and ds = Ω² dτ_K exactly. The diagnostic SHALL read
+  states only: dynamics, default outputs and scenario digests SHALL be
+  unchanged. τ_SR and τ_K are comparison readings (excluded as clock rules
+  by the redshift tests) and SHALL carry the "comparison model" label
+  wherever they are reported; no clock value SHALL enter the GR ladder or
+  any reference value.
+acceptance: >-
+  All values below are DERIVED from the refereed relativistic-dynamics#88
+  notes, not observations. (a) GPS: a two-body Earth + satellite
+  integration (circular orbit of radius 26 560 km, GM_E =
+  398600.4418 km³/s², Newtonian, no J2) over one day, minus an explicit
+  equatorial ground clock at R = 6378.137 km in the monopole potential
+  GM_E/R, gives, in µs/day for s / τ_SR / τ_K: +38.54129 / −7.109623 /
+  −52.76053 with the ground rotating at ω = 7.2921151467e-5 rad/s
+  (report: +38.54 / −7.11 / −52.76), and +38.43731 / −7.2136 / −52.86451
+  with the ground at rest (report: +38.44 / −7.21 / −52.86).
+  SUPPORTED-CLOCK ASSUMPTION: the ground clock obeys the free-particle rate
+  formula at its potential and speed (H10 of the rd#88 package); only the
+  ground rows depend on it. (b) Galileo 5/6 (a = 27 977 km, e = 0.162): the
+  eccentricity-periodic amplitude over one orbit (half peak-to-peak of the
+  offset minus its secular trend) is 380.6914 / 190.3457 / 0 ns (report:
+  380.7 / 190.3 / 0). (c) Circular orbit, x = GM/(rc²) = (GMω/c³)^(2/3):
+  rates (1 − x)^(3/2), (1 − x)^(1/2), (1 − x)^(−1/2), resolved from GR's
+  (1 − 3x)^(1/2) for s. (d) Static structure: at rest the redshift
+  parameter of Δν/ν = (1 + α)ΔU is α = 0, −1, −2, and in flat space the three
+  clocks agree. (e) The propagation output with the diagnostic is
+  bit-identical to the output without it. Tolerances are stated and
+  justified in tests/vectors/phy022-clocks.toml from the printed precision,
+  the integration floor and the order of the expansion. All tests are
+  PR-tier; none is #[ignore].
+source: >-
+  relativistic-dynamics PR #89 (merged 2026-11-15),
+  research/2026-11-14/rd88-proper-time-hamiltonian-static-metric/derivation.md
+  section 6 (C13–C16; witnesses three-times-h1, circular-rates, gps-table,
+  periodic-terms); relativistic-dynamics#88 synthesis report
+  REPORT_tau_and_hamiltonian.md sections 2.1 and 2.4 and its notes
+  tau_observables.md and tau_meaning_ptpi.md (outside this repository).
+  Observational context only: Delva et al. 2018, Phys. Rev. Lett. 121,
+  231101, arXiv:1812.03711 (Galileo 5/6 redshift, α = (0.19 ± 2.48)×10⁻⁵);
+  Ashby 2003, Living Rev. Relativ. 6, 1, doi:10.12942/lrr-2003-1 (GPS
+  relativistic corrections, +38.57 µs/day with J2).
+parent: null
+related: [PHY-018, PHY-020, NUM-010]
+notes: >-
+  Added 2026-11-15 on the maintainer's approval (Bernard, plan item 3a of
+  rd#88). A diagnostic, not a rung and not a force model: parent is null
+  because ORG-002 is the ladder. It follows ADR-0016's rules for comparison
+  models (default off, own requirement, "comparison model" label, analytic
+  non-fit oracles) without adding a force term. ORDER: the sources state the
+  metric clock to first order, ds = √g₀₀ dt/γ; the diagnostic uses the
+  exact rates of the Bridge A metric Ω²η, whose g₀₀ = 1 − 2U + U² agrees
+  with the static weak-field 1 − 2U to O(c⁻²); the two differ at O(U²),
+  (3/2)x² on a circular orbit (4×10⁻²⁰ at GPS). τ_K is evaluated pointwise
+  as mc²/H₁ of the state; on an H₁ trajectory that is (mc²/E) dt, constant
+  per orbit. On FerroAstro's trajectories (Newtonian, 1PN or EIH) the
+  diagnostic is a reading, not a consistency check of H₁ dynamics. The
+  scenario-level output (run_with_clocks) integrates on the run's sampled
+  states, so its accuracy follows the output cadence and is reported; the
+  PR-tier checks integrate on every IAS15 step with Gauss–Legendre
+  quadrature. No observed value is an oracle: the redshift measurements
+  constrain which clock physical clocks read (s, α = 0), they are not
+  reproduced here.
 ```
