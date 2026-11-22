@@ -4,7 +4,8 @@
 # NUM-012 cross-estimator spread: single-body rungs of the Mercury ladder
 
 NUM-012's acceptance asks the docs to report how far the precession estimators disagree on the Mercury
-ladder. This page reports it for the single-body rungs (M2).
+ladder. This page reports it for five single-body rungs (M2); the [Scope](#scope) section lists what is not
+covered.
 
 ## What is compared
 
@@ -29,36 +30,83 @@ would make that comparison depend on the choice of estimator. The test runs in t
 
 ## Recorded table
 
-Rates in ″/cy, 1000 orbits per rung. These are the values recorded in
-[`IMPLEMENTATION-NOTES.md`](../strategy/IMPLEMENTATION-NOTES.md) (WP6, section "NUM-012 cross-estimator
-spread", measured 2026-10-15). They were not re-measured for this page. The default IAS15 predictor changed on
-2026-11-08, so the trailing digits at current `main` may differ; the test prints the current table:
+Rates in ″/cy, 1000 orbits per rung, 44074 samples every 2 d for the Park2017 columns. Every row has the
+initial-condition hash `6596cdfc5a9ca58d`.
+
+Measured on 2026-11-22 with the code of `main` at `e86984d`, by running the test and copying its printed
+table:
 
 ```sh
 cargo test -p ferroastro-ladder --test num012_estimator_spread -- --nocapture
 ```
 
+The run was local (x86-64 Linux, rustc 1.95.0, `header.440` with SHA-256 `0f4636b6…6ac3359`). The same test
+passed in CI at the same commit (`ci` run 45030787159, rustc 1.99.0, the repository's pin), but the CI log
+does not print the table of a passing test, so the digits below are those of the local run.
+
 | Rung | Passages | LRL | Park2017 linear (jack-knife σ) | Park2017 quadratic | Analytic | Spread |
 |---|---|---|---|---|---|---|
-| SR-a | 7.163412437 | 7.163416199 | 7.163412433 (5.3e-9) | 7.163412464 | 7.163412591 | 3.8e-6 |
-| SR-b/harmonic | 50.143885684 | 50.143898126 | 50.143885682 (6.3e-9) | 50.143885671 | 50.143887978 | 1.2e-5 |
-| GR-SCHW | 42.980468784 | 42.980486530 | 42.980468786 (3.2e-9) | 42.980468768 | 42.980475410 | 1.8e-5 |
-| J2 (Park17 J2) | 0.028601483 | 0.028601467 | 0.028601479 (4.4e-9) | 0.028601468 | 0.028601476 | 1.6e-8 |
-| LT | −0.002018351 | −0.002018349 | −0.002018345 (4.2e-9) | −0.002018353 | −0.002018349 | 7.9e-9 |
+| SR-a | 7.163412435 | 7.163416197 | 7.163412432 (5.2e-9) | 7.163412424 | 7.163413185 | 3.77e-6 |
+| SR-b/harmonic | 50.143885680 | 50.143898151 | 50.143885680 (4.3e-9) | 50.143885697 | 50.143892140 | 1.25e-5 |
+| GR-SCHW | 42.980468783 | 42.980486451 | 42.980468779 (5.1e-9) | 42.980468759 | 42.980478977 | 1.77e-5 |
+| J2 (Park17 J2) | 0.028601478 | 0.028601464 | 0.028601469 (5.3e-9) | 0.028601500 | 0.028601479 | 3.60e-8 |
+| LT | −0.002018350 | −0.002018348 | −0.002018349 (5.4e-9) | −0.002018328 | −0.002018349 | 2.24e-8 |
 
-The largest spread is 1.8×10⁻⁵ ″/cy (GR-SCHW), about a fifth of the bound.
+The largest spread is 1.77×10⁻⁵ ″/cy (GR-SCHW), under a fifth of the bound.
+
+The "Analytic" column is not an estimator and does not enter the spread. It is the analytic per-orbit
+advance of the integrated dynamics (a test particle, μ = GM☉) divided by the Keplerian period of the initial
+orbit computed with μ = GM☉ + GM☿. This is the rate convention of PHY-004, which every rung report prints
+(`RATE_CONVENTION` in `crates/ferroastro-ladder/src/single_body.rs`; OI-77, closed 2026-10-21).
 
 ## Reading the table
 
-- Passages and the two Park2017 fits agree within about 3×10⁻⁸ ″/cy on every rung.
-- The LRL estimator is the outlier on the 1PN rungs (+1.8×10⁻⁵ ″/cy for GR-SCHW, 4×10⁻⁷ relative). The
-  Newtonian eccentricity vector carries 1PN periodic terms, and they do not average out when the samples are
-  taken at the integrator's own, non-uniform steps. A 1PN-corrected LRL vector is not implemented; its form
-  is an open item (OI-40).
-- The "Analytic" column is not an estimator. The 6.6×10⁻⁶ ″/cy between it and the passages rate for GR-SCHW
-  is the difference between the anomalistic and the Keplerian period, not an estimator error.
+- Passages and the two Park2017 fits agree within about 3×10⁻⁸ ″/cy on every rung (the widest gap is
+  3.1×10⁻⁸, between the linear and the quadratic fit for J2). Passages and the linear fit agree within
+  1×10⁻⁸.
+- The LRL estimator is the outlier on the 1PN rungs: +1.77×10⁻⁵ ″/cy against passages for GR-SCHW
+  (4.1×10⁻⁷ relative), +1.25×10⁻⁵ for SR-b/harmonic and +3.8×10⁻⁶ for SR-a. The Newtonian eccentricity
+  vector carries 1PN periodic terms, and they do not average out when the samples are taken at the
+  integrator's own, non-uniform steps. A 1PN-corrected LRL vector is not implemented; its form is an open
+  item (OI-40).
+- On the J2 and LT rungs the LRL estimator is not the outlier. There the spread is set by the Park2017
+  quadratic fit, which lies 3.1×10⁻⁸ (J2) and 2.1×10⁻⁸ ″/cy (LT) from the linear fit, four to six times the
+  linear fit's jack-knife σ.
+- The analytic rate for GR-SCHW is 1.02×10⁻⁵ ″/cy above the passages rate (2.4×10⁻⁷ relative). This is
+  not an estimator error. It has two parts:
+  - 6.6×10⁻⁶ ″/cy (1.5×10⁻⁷ relative): the passages rate divides by the anomalistic period of the integrated
+    orbit and the analytic rate by a Keplerian period. This attribution is the one recorded in
+    `IMPLEMENTATION-NOTES.md` (WP4 and WP6); it was not re-derived for this page.
+  - 3.57×10⁻⁶ ″/cy (8.30×10⁻⁸ relative, which is GM☿/(2 GM☉)): the Keplerian period of the analytic rate
+    uses μ = GM☉ + GM☿, while the integrated test particle has μ = GM☉. This part was checked for this
+    page: the Analytic column of every 1PN rung is 1 + 8.30×10⁻⁸ times the value recorded on 2026-10-15,
+    and commit `9fd3b40` (2026-10-15, review F5), which introduced the convention, records the same
+    +3.567×10⁻⁶ ″/cy for GR-SCHW.
+
+## Earlier table (2026-10-15), superseded
+
+[`IMPLEMENTATION-NOTES.md`](../strategy/IMPLEMENTATION-NOTES.md) (WP6, section "NUM-012 cross-estimator
+spread") holds the first measurement. It is kept there as a record and differs from the table above in two
+ways:
+
+- Its Analytic column was computed before commit `9fd3b40`, with the Keplerian period from GM☉ alone
+  (GR-SCHW 42.980475410, SR-a 7.163412591, SR-b/harmonic 50.143887978). Its text therefore gives 6.6×10⁻⁶
+  ″/cy for analytic minus passages on GR-SCHW, where the current code gives 1.02×10⁻⁵.
+- Its estimator columns differ from the current ones by up to 8×10⁻⁸ ″/cy (the LRL value for GR-SCHW), and
+  its J2 and LT spreads were 1.6×10⁻⁸ and 7.9×10⁻⁹ ″/cy, against 3.60×10⁻⁸ and 2.24×10⁻⁸ now. The cause was
+  not isolated. The integrator's default predictor changed between the two measurements (commit `f6f6e27`,
+  2026-11-08), and no other change to the estimators or to the single-body force terms was looked for
+  beyond the commit log.
+
+The conclusions are the same in both: the largest spread is the LRL offset on GR-SCHW, about 1.8×10⁻⁵ ″/cy,
+and every spread is below the 10⁻⁴ ″/cy bound.
 
 ## Scope
 
-The table covers the single-body rungs only. The N-body rungs (M3 onward) use the Park2017 estimator
-(NUM-011, authoritative under OI-68's provisional resolution) and are not covered here.
+The table covers five of the eight single-body rungs: SR-a, SR-b/harmonic, GR-SCHW, J2 and LT. The test does
+not run the other three (SR-b/areal, J2-DE440 and J2-INCL), so no spread is reported for them. The osculating
+Ω + ω ("dog-leg") longitude of the Park2017 estimator, which NUM-012's statement names, is not a column of
+the table; in the initial orbit plane the osculating ϖ is the LRL column.
+
+The N-body rungs (M3 onward) use the Park2017 estimator (NUM-011, authoritative under OI-68's provisional
+resolution) and are not covered here.
