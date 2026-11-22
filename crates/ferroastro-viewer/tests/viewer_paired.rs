@@ -9,9 +9,9 @@
 //! - The independent combination `√(σ_S² + σ_W²)` of each leg's own jack-knife, which the paired σ
 //!   must not exceed for legs that share initial conditions (their residuals are correlated).
 //! - For the uniform γ0 centring with velocity-independent (Newtonian) forces, both legs follow
-//!   the same heliocentric orbit to round-off (PHY-001, `viewer_conformal.rs`), so the paired σ is
-//!   below `ABS_UNIFORM = 1e-6 ″/cy`, the PHY-001 bound, while the independent combination is the
-//!   fit floor of a 100-yr run (about 1e-3 ″/cy, DESIGN E1).
+//!   the same heliocentric orbit to accumulated round-off (PHY-001, `viewer_conformal.rs`), so the
+//!   paired σ is below `ABS_UNIFORM = 1e-6 ″/cy`, the PHY-001 bound, while the independent
+//!   combination is the fit floor of a 100-yr run (about 1e-3 ″/cy, DESIGN E1).
 //!
 //! All tests are PR-tier; none is `#[ignore]`.
 
@@ -71,7 +71,8 @@ fn pair_calls_check_their_arguments() {
 }
 
 /// Conformal gravity (comparison model) on and off over Venus and Jupiter: uniform γ0 gives a
-/// paired σ at round-off, and Sun-centred γ0 a paired σ below the independent combination.
+/// paired σ at the numerical noise floor (about 2e-8 ″/cy), and Sun-centred γ0 a paired σ below
+/// the independent combination.
 ///
 /// Verifies: PHY-020, NUM-011
 #[test]
