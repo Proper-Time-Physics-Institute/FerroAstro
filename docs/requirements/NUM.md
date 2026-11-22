@@ -104,18 +104,55 @@ notes: >-
   (vector IRK16-KEPLER-FWD-BACK-REL, 100 orbits each way), passed in `ci` run
   45030787159 (push to main at e86984d, 2026-11-22; job `rust`,
   FA_REQUIRE_DATA=1); the same file checks the order conditions B(16) and
-  C(8), the observed order in double-double and the checkpoint. Agreement with
-  the NUM-001 integrator (IAS15):
+  C(8), the checkpoint and, post hoc, the observed order in double-double
+  (see KNOWN FAILURES below). Agreement with the NUM-001 integrator (IAS15):
   crates/ferroastro-propagate/tests/data_wh_irk16_de440.rs::data_wh_irk16_and_ias15_ten_years_vs_de440_bsp
   asserts vector IRK16-DE440-RESIDUAL-CONSISTENCY (Mercury's maximum residual
   against de440.bsp over 10 yr differs between IRK16 and IAS15 by at most 1e-3
   km) and passed in the scheduled `ci` run 43900563234 (job `data`, main at
-  28d0fe0, 2026-11-16) with a difference of 2.491e-6 km. The stronger 1000-yr
+  28d0fe0, 2026-11-16) with a difference of 2.491e-6 km. That run is ten
+  commits before e86984d; none of them changes ferroastro-integrators or this
+  test. The stronger 1000-yr
   checks (vectors IRK16-FWD-BACK-1000YR-DR and IRK16-VS-IAS15-1000YR-DR,
   crates/ferroastro-propagate/tests/nightly_wh_irk16.rs) are nightly tier:
   their last recorded run is the local one of 2026-10-21 (IMPLEMENTATION-NOTES
   WP29) and is not CI evidence. NUM-001 itself is not verified (M1; its ≥
   10⁹-step clause is M5).
+  KNOWN FAILURES that cite this requirement (disclosed 2026-11-22). Three
+  nightly-tier tests in the same file, irk16_checks.rs, cite NUM-003 and are
+  registered known failures in ci/nightly-known-failures.toml. Their bounds
+  were pre-registered and have not been moved. Last values, all measured
+  locally on 2026-11-12 (M5 review fixes); the nightly tier has not run in CI:
+  (1) nightly_irk16_i2_pre_registered_f64_order, vector IRK16-OBSERVED-ORDER:
+  observed order 0.685 against 16.25 ± 2.25; in f64 both errors are at
+  round-off, so the design cannot measure the order.
+  (2) nightly_irk16_i2b_pre_registered_dd_order, vector
+  IRK16-OBSERVED-ORDER-DD: 11.79 against 16.25 ± 2.25 in double-double; the
+  pair of 12 and 16 steps per orbit falls on a pre-asymptotic dip.
+  (3) nightly_irk16_compensation_gain_pre_registered, vector
+  IRK16-COMPENSATION-GAIN-MIN: gain 1.98 against a pre-registered ≥ 3 (the
+  plain update's error over the compensated one's, each against a
+  double-double twin).
+  These concern two clauses of the statement, "order 16" and
+  "round-off-aware", not the acceptance text (forward then backward; agreement
+  with NUM-001). What supports those two clauses is post hoc. Order: the only
+  asserting order check is I2c,
+  irk16_has_order_sixteen_on_a_kepler_orbit_in_double_double, a least-squares
+  slope over 24, 32, 40 and 48 steps per orbit (16.21 at WP29). It was chosen
+  after I2 and I2b failed and after a diagnostic sweep, so it is not a
+  pre-registered confirmation, and its interval [14, 18.5] also accepts order
+  14 (IMPLEMENTATION-NOTES WP29, plan addendum 2 and item 1; reviewed by the
+  maintainer on 2026-11-12 through the #18 questionnaire, which restored I2
+  and I2b as known failures). Compensation: the only passing check is
+  irk16_compensated_update_changes_and_reduces_the_error, a structural test
+  with no tolerance (the compensated and the plain run differ, and the
+  compensated one is closer to the double-double twin), written after the
+  1.98 result (IMPLEMENTATION-NOTES, M5 review fixes, SF4/X2). No maintainer
+  ruling on the X2 failure itself was found in IMPLEMENTATION-NOTES; its
+  entry stays in the known-failure list. I2c and the structural test passed
+  in `ci` run 45030787159.
+  Whether NUM-003 may be `verified` while these entries stand is the
+  maintainer's decision at the approval of the PR head.
 ```
 
 ### NUM-004 — Wisdom–Holman / WHFast fast rung
@@ -537,9 +574,15 @@ notes: >-
   most 1e-4 ″/cy) for rungs SR-a, SR-b/harmonic, GR-SCHW, J2 and LT. Both
   passed in `ci` run 45030787159 (push to main at e86984d, 2026-11-22; job
   `rust`, FA_REQUIRE_DATA=1). The spread table is in
-  docs/validation/num012-estimator-spread.md. OI-40 (the 1PN-corrected LRL
-  form, first sentence of these notes) and OI-68 stay open; they qualify this
-  requirement.
+  docs/validation/num012-estimator-spread.md (re-measured 2026-11-22 with the
+  code of main at e86984d; largest spread 1.77e-5 ″/cy, GR-SCHW). SCOPE OF
+  THE REPORT: the page and the test cover those five rungs. The other three
+  single-body rungs (SR-b/areal, J2-DE440, J2-INCL) and every N-body rung
+  are not reported, and the dog-leg definition is not a column of the table.
+  Whether five single-body rungs satisfy "for the Mercury ladder" is the
+  maintainer's decision at the approval of the PR head. OI-40 (the
+  1PN-corrected LRL form, first sentence of these notes) and OI-68 stay open;
+  they qualify this requirement.
 ```
 
 ### NUM-013 — Differential-run harness
@@ -970,7 +1013,9 @@ notes: >-
   solar J2 to the asteroids (Minor bodies) was not checked (WP12 deviation 3;
   OI-76). LT is implemented for the test-particle rungs only; N-body
   scenarios refuse lense_thirring with FA-E1201 until it is applied to every
-  non-Sun body (WP13), so the LT half of this statement is not yet met.
+  non-Sun body (WP13), so the LT half of this statement is not yet met
+  (SUPERSEDED: this sentence described the 2026-10-20 build; see BUILD
+  EVIDENCE 2026-11-11 below).
   Single-body J2/LT vs Park17 Table 3 in the real geometry: 0.0284524 and
   −0.0020148 ″/cy (WP4).
   BUILD EVIDENCE 2026-11-11 (wp22-eih-all-bodies): the "Minor-body part is
@@ -1005,6 +1050,31 @@ notes: >-
   nightly tier, recorded in tests/vectors/m5-evidence.toml from a local run at
   d1ccbae; they are not CI evidence. Open and qualifying, not blocking: OI-50,
   OI-76 and issue #42.
+  LIMITS OF THIS EVIDENCE (disclosed 2026-11-22). (1) The vector whose source
+  text names this acceptance, NUM019-NBODY-LT-CONTRIBUTION (the LT
+  contribution in the full N-body model under EIH, −0.0020 ± 0.0002), is
+  asserted only by nightly_num019.rs. That test has never run in CI; its one
+  recorded run is the local one above. The CI evidence for the contributions
+  is therefore the two-body N-body run (Sun + Mercury) in equatorial
+  geometry, and a data-tier single-body run that uses the test-particle force
+  terms, not the N-body ones. (2) A data-tier test that cites this
+  requirement contains a recorded failure:
+  crates/ferroastro-propagate/tests/data_wp22_all_bodies_de440.rs::data_eih_all_bodies_with_small_bodies_ten_years_vs_de440_bsp
+  (check E10; EIH for every body with solar J₂ and LT, against de440.bsp).
+  Its pre-registered assertion, vector EIH-ALLBODY-SUN-IMPROVEMENT-MIN (the
+  Sun's barycentric residual improves ≥ 2× with the small bodies), fails
+  with a factor 0.573 (1.399 → 2.440 km); the test asserts instead the guard
+  E10-KNOWN-FAILURE-SUN-BARY-FACTOR and the post-hoc E10b, and passed in that
+  form in run 43900563234, whose log prints "FAILS as recorded". E10 is about
+  the residual against de440.bsp, not about the acceptance text; the cause
+  the test records is the E10 template's missing Pluto and DE440's 27
+  unmodelled Kuiper-belt objects (IMPLEMENTATION-NOTES WP22 follow-up). (3)
+  Issue #42 (Mercury against de440.bsp with
+  LT and the asteroids) is open and untriaged. (4) Eq. 29's number and
+  typography were not re-read in the paper (WP12 deviation 5, above).
+  Whether the PR-tier evidence suffices for `verified` at criticality high,
+  or a nightly_num019 run at current main is wanted first, is the
+  maintainer's decision at the approval of the PR head.
 ```
 
 ### NUM-020 — Second independent check of the EIH transcription

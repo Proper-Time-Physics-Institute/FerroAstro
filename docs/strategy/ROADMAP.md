@@ -47,6 +47,14 @@ No milestone has exited yet.
   **What remains:** NUM-015 is `implemented`, not `verified`. Its acceptance is blocked by OI-37 (the
   citation for the inclined-orbit J₂ rates), which is still open. M2 exits when OI-37 is closed and NUM-015
   is verified.
+  **Disclosed limits among the thirteen** (each in the requirement's notes; the maintainer rules on them
+  when approving the status changes, and a requirement held at `implemented` joins what remains):
+  - NUM-003: three nightly tests that cite it are registered known failures in
+    `ci/nightly-known-failures.toml` (two pre-registered order checks and the pre-registered compensation
+    gain, 1.98 against ≥ 3). They are outside the acceptance text, which passed in CI.
+  - NUM-019: the J₂ and LT contributions are asserted in CI for a two-body N-body run and for a single
+    body. The full N-body vector under EIH is asserted only in the nightly tier, which has not run in CI.
+  - NUM-012: the cross-estimator spread is reported for five of the eight single-body rungs.
 
 ## Cross-cutting tracks
 
