@@ -54,7 +54,8 @@
      in every job that fetches the data and runs tests, and the guard
      `required_data_means_the_header_loads` fails if the header does not load, so CI can never
      pass by skipping.
-   - **header present:** every test runs, with or without `FA_REQUIRE_DATA`. A file that does not
+   - **header present:** every test that needs only the header runs, with or without
+     `FA_REQUIRE_DATA`. A file that does not
      match its pinned SHA-256 is always an error, never a skip.
    The other PR-fast products (`de440.bsp`, `testpo.440`) are gated the same way, per product,
    with `ferroastro_testdata::skip_if_absent` (maintainer decision 2026-11-22, replacing "only
