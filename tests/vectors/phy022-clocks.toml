@@ -44,11 +44,11 @@ value = 7.2921151467e-5
 unit = "rad/s"
 kind = "defined"
 source = "Input of the report's script (tau_observables.md section 3.1, s3_flows.py: vg = 7.2921151467e-5 * Re); with R = 6378.137 km it gives the package's ground speed 465.1 m/s (derivation.md section 6.3). 2 pi x 1.00273781191135448 / 86400 s is the ERA rate"
-citation = "IERS Conventions (2010), IERS Technical Note 36, eq. 5.14 (Earth Rotation Angle) and Table 1.1 (rate of advance of ERA, defining constant); relativistic-dynamics research/2026-11-14/rd88-proper-time-hamiltonian-static-metric/derivation.md section 6.3"
+citation = "IERS Conventions (2010), IERS Technical Note 36, eq. 5.14 in the electronic update of 10 August 2012 (Earth Rotation Angle) and Table 1.1 (rate of advance of ERA, defining constant); relativistic-dynamics research/2026-11-14/rd88-proper-time-hamiltonian-static-metric/derivation.md section 6.3"
 retrieved = "2026-11-15"
 tolerance = { abs = 0.0 }
 tolerance_rationale = "Input parameter, used exactly. Set it to zero for the ground-at-rest rows."
-verified_by = "Three-clock PR author, 2026-11-15: 2 pi x 1.00273781191135448 / 86400 = 7.29211514671e-5 rad/s recomputed; 7.2921151467e-5 x 6378137 m = 465.10 m/s matches the package's 465.1 m/s. Re-read 2026-11-22 (cleanup PR): IERS Conventions (2010) chapter 5 (10 August 2012 update, iers-conventions.obspm.fr/content/chapter5/icc5.pdf, sha256 9ec6fac43f7037ff43896539d759333fc7e6007176cd72043b38d71cfd3e69c0), eq. (5.14): ERA(Tu) = 2 pi (0.7790572732640 + 1.00273781191135448 Tu); the equation number was 5.15 in this file before and is corrected. The value used here is that rate per 86400 s rounded to 11 significant digits; the GRS80 nominal value in Table 1.2 is 7.292115e-5 rad/s."
+verified_by = "Three-clock PR author, 2026-11-15: 2 pi x 1.00273781191135448 / 86400 = 7.29211514671e-5 rad/s recomputed; 7.2921151467e-5 x 6378137 m = 465.10 m/s matches the package's 465.1 m/s. Re-read 2026-11-22 (cleanup PR): IERS Conventions (2010) chapter 5 (10 August 2012 update, iers-conventions.obspm.fr/content/chapter5/icc5.pdf, sha256 9ec6fac43f7037ff43896539d759333fc7e6007176cd72043b38d71cfd3e69c0), eq. (5.14): ERA(Tu) = 2 pi (0.7790572732640 + 1.00273781191135448 Tu); the equation number was 5.15 in this file before and is corrected (the printed TN36 numbering was not checked). Table 1.1 of chapter 1 (same file as PHY022-GM-EARTH) lists the same rate, 1.00273781191135448 rev/UT1 day, as a defining constant. The value used here is that rate per 86400 s rounded to 11 significant digits; the GRS80 nominal value in Table 1.2 is 7.292115e-5 rad/s."
 
 [[vector]]
 id = "PHY022-A-GPS"

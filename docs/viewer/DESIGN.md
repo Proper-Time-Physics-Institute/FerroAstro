@@ -598,7 +598,8 @@ For the current toggle set S (the "full" configuration) and every effect X ∈ S
   the engine answers; it does no statistics itself. The record also carries the independent
   combination, which the cell's tooltip shows; if pairing fails the cell falls back to it, marked
   "σ unpaired (upper estimate)". With the uniform γ0 centring and velocity-independent forces both
-  legs follow the same heliocentric orbit, so the conformal-gravity row's paired σ is at round-off
+  legs follow the same heliocentric orbit, so the conformal-gravity row's paired σ is at the numerical
+  noise floor (accumulated round-off, about 2×10⁻⁸ ″/cy; it does not change with engine, step or ε)
   and it reads "within" the bound instead of "unresolved". The 3σ rules (greying, bound markers)
   are unchanged and use this σ.
 * The M5 total (575.309161 ″/cy, a 393-body EIH model) appears beside ϖ̇(S) only when S is the
