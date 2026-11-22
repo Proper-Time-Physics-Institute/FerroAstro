@@ -269,6 +269,14 @@ fn newtonian_j2_ten_years_from_header_ics_vs_de440_bsp() {
     {
         return;
     }
+    if ferroastro_testdata::skip_if_absent(
+        "de440-bsp",
+        "newtonian_j2_ten_years_from_header_ics_vs_de440_bsp",
+    )
+    .unwrap()
+    {
+        return;
+    }
     let (bsp, _) = cached("de440-bsp");
     let spk = Spk::parse(&bsp).unwrap();
     let outer = [

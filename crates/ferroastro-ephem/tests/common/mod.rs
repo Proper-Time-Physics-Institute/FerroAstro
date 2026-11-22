@@ -116,8 +116,10 @@ pub(crate) fn load(file: &str, v: &VectorSet, pin_id: &str) -> Golden {
 }
 
 /// The bytes of a pinned JPL product from the local cache (offline; re-verified SHA-256). A
-/// missing product fails the test loudly with the `fetch_jpl.py` command (CI-005: the PR tier
-/// reads a cache that CI fills; it never skips).
+/// missing product fails the test loudly with the `fetch_jpl.py` command. Each test gates on its
+/// products first with `ferroastro_testdata::skip_if_absent`, which skips with a notice on a
+/// developer machine and fails in CI or under `FA_REQUIRE_DATA=1` (CI-005: the PR tier reads a
+/// cache that CI fills; CI never skips).
 pub(crate) fn cached_product(name: &str) -> Vec<u8> {
     let f = ferroastro_testdata::locate_product(name).unwrap_or_else(|e| panic!("{e}"));
     println!("{name}: {}", f.provenance());

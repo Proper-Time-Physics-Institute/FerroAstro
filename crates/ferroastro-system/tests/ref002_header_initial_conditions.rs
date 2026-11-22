@@ -175,6 +175,14 @@ fn ref002_header_initial_conditions_equal_de440_at_jdepoc() {
     }
     let v = vectors();
     let (h, hprov) = header();
+    if ferroastro_testdata::skip_if_absent(
+        "de440-bsp",
+        "ref002_header_initial_conditions_equal_de440_at_jdepoc",
+    )
+    .unwrap()
+    {
+        return;
+    }
     let (bsp, _) = cached("de440-bsp");
     let spk = Spk::parse(&bsp).unwrap();
     println!("interpretation under test: {HEADER_STATE_INTERPRETATION}");

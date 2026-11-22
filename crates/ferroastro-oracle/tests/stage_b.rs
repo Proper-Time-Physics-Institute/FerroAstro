@@ -86,6 +86,14 @@ fn stage_b_ferroastro_matches_the_orekit_golden_in_the_de440_field() {
         );
     }
 
+    if ferroastro_testdata::skip_if_absent(
+        "de440-bsp",
+        "stage_b_ferroastro_matches_the_orekit_golden_in_the_de440_field",
+    )
+    .unwrap()
+    {
+        return;
+    }
     let bsp = ferroastro_testdata::locate_product("de440-bsp").unwrap();
     println!("de440-bsp: {}", bsp.provenance());
     let bytes = std::fs::read(&bsp.path).unwrap();
