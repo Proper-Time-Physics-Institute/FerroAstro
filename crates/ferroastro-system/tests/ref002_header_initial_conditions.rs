@@ -167,6 +167,14 @@ fn run_check1<R: Real>(label: &str, h: &Header, hprov: &str, spk: &Spk<'_>) -> (
 /// Verifies: REF-002, NUM-009
 #[test]
 fn ref002_header_initial_conditions_equal_de440_at_jdepoc() {
+    if ferroastro_testdata::skip_if_absent(
+        "de440-bsp",
+        "ref002_header_initial_conditions_equal_de440_at_jdepoc",
+    )
+    .unwrap()
+    {
+        return;
+    }
     if De440::load_cached_or_skip("ref002_header_initial_conditions_equal_de440_at_jdepoc")
         .unwrap()
         .is_none()

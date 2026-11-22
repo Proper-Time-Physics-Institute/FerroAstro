@@ -27,6 +27,14 @@ const MIN_RANDOM_EPOCHS: usize = 50;
 /// Verifies: REF-004, DEP-011
 #[test]
 fn every_de440_segment_matches_jplephem_to_1_mm_and_1_um_per_s() {
+    if ferroastro_testdata::skip_if_absent(
+        "de440-bsp",
+        "every_de440_segment_matches_jplephem_to_1_mm_and_1_um_per_s",
+    )
+    .unwrap()
+    {
+        return;
+    }
     if De440::load_cached_or_skip("every_de440_segment_matches_jplephem_to_1_mm_and_1_um_per_s")
         .unwrap()
         .is_none()
@@ -116,6 +124,14 @@ fn roundoff_scale(seg: &Segment<'_>, record: usize, comp: usize) -> (f64, f64) {
 /// Verifies: DEP-007, DEP-011
 #[test]
 fn double_double_agrees_with_f64_to_binary64_roundoff() {
+    if ferroastro_testdata::skip_if_absent(
+        "de440-bsp",
+        "double_double_agrees_with_f64_to_binary64_roundoff",
+    )
+    .unwrap()
+    {
+        return;
+    }
     if De440::load_cached_or_skip("double_double_agrees_with_f64_to_binary64_roundoff")
         .unwrap()
         .is_none()
@@ -169,6 +185,14 @@ fn double_double_agrees_with_f64_to_binary64_roundoff() {
 /// Verifies: DEP-011, API-001
 #[test]
 fn typed_states_chain_segments_to_the_barycentre_and_the_sun() {
+    if ferroastro_testdata::skip_if_absent(
+        "de440-bsp",
+        "typed_states_chain_segments_to_the_barycentre_and_the_sun",
+    )
+    .unwrap()
+    {
+        return;
+    }
     if De440::load_cached_or_skip("typed_states_chain_segments_to_the_barycentre_and_the_sun")
         .unwrap()
         .is_none()
@@ -228,6 +252,14 @@ fn typed_states_chain_segments_to_the_barycentre_and_the_sun() {
 /// Verifies: DEP-011, REF-004
 #[test]
 fn state_is_independent_of_the_two_part_date_split() {
+    if ferroastro_testdata::skip_if_absent(
+        "de440-bsp",
+        "state_is_independent_of_the_two_part_date_split",
+    )
+    .unwrap()
+    {
+        return;
+    }
     if De440::load_cached_or_skip("state_is_independent_of_the_two_part_date_split")
         .unwrap()
         .is_none()

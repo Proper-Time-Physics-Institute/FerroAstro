@@ -33,6 +33,14 @@ fn root() -> PathBuf {
 /// Verifies: REF-006, CI-002, CI-005
 #[test]
 fn stage_b_ferroastro_matches_the_orekit_golden_in_the_de440_field() {
+    if ferroastro_testdata::skip_if_absent(
+        "de440-bsp",
+        "stage_b_ferroastro_matches_the_orekit_golden_in_the_de440_field",
+    )
+    .unwrap()
+    {
+        return;
+    }
     let dir = root().join("ci/golden/orekit").join(SCENARIO);
     let m = Manifest::verify_dir(&dir).unwrap();
     let csv = format!("{SCENARIO}.orekit.states.csv");

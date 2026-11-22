@@ -354,6 +354,17 @@ mod tests {
             assert_eq!(gm.to_bits(), want.to_bits(), "GM of NAIF {}", id.0);
         }
 
+        // The header half above ran. The acceleration half needs de440.bsp as well: with only
+        // header.440 cached it skips with a notice instead of panicking, as the header gate
+        // does (FA_REQUIRE_DATA or CI turns the skip into a failure).
+        if ferroastro_testdata::skip_if_absent(
+            "de440-bsp",
+            "field_bodies_and_gms_equal_the_scenario_and_header440 (acceleration half)",
+        )
+        .unwrap()
+        {
+            return;
+        }
         let bsp = ferroastro_testdata::locate_product("de440-bsp").unwrap();
         println!("de440-bsp: {}", bsp.provenance());
         let bytes = std::fs::read(&bsp.path).unwrap();
