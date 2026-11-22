@@ -138,7 +138,7 @@ notes: >-
 ```yaml
 id: PHY-004
 title: "Rung GR-SCHW analytic: 6πGM/(c²a(1−e²)) gives 42.9805 ″/cy"
-status: draft
+status: verified
 criticality: high
 verification: test
 statement: >-
@@ -185,6 +185,17 @@ notes: >-
   conversion uses n = √((GM☉ + GM☿)/a³), the two-body Keplerian μ, which
   matches the "Keplerian GM" Horizons prints. The WP14 harness is to be
   aligned. Every current tolerance exceeds the 3.6e-6 ″/cy difference.
+  VERIFIED 2026-11-22 (maintainer decision of 2026-11-22, taken after the
+  milestone audit of main at e86984d: M2's key requirements move to verified).
+  Evidence:
+  crates/ferroastro-analytic/tests/phy004_gr_analytic.rs::gr_schw_analytic_rate_from_de440_and_sw92
+  asserts vectors PHY004-GR-PER-ORBIT (5.01866e-7 rad, abs 5e-13),
+  PHY004-ORBITS-PER-CY (415.2009, abs 5e-5) and PHY004-GR-RATE (42.9805 ±
+  1e-4) from the run-time header.440 constants and the SW92 elements;
+  ::gr_schw_analytic_rate_in_double_double repeats the rate in double-double.
+  Both passed in `ci` run 45030787159 (push to main at e86984d, 2026-11-22;
+  job `rust`, FA_REQUIRE_DATA=1). The Park17 gap hypothesis above stays
+  UNVERIFIED; it is not part of the acceptance.
 ```
 
 ### PHY-005 — Rung GR-SCHW, numerical
@@ -192,7 +203,7 @@ notes: >-
 ```yaml
 id: PHY-005
 title: "Rung GR-SCHW numerical: 1PN test-particle integration reproduces 42.980 ″/cy"
-status: draft
+status: verified
 criticality: high
 verification: test
 statement: >-
@@ -209,6 +220,17 @@ parent: ORG-002
 related: [PHY-004, NUM-001, NUM-013, NUM-015, NUM-017]
 notes: >-
   Equations of motion in PPN isotropic/harmonic gauge (NUM-017, Journal #4 R3).
+  VERIFIED 2026-11-22 (maintainer decision of 2026-11-22, taken after the
+  milestone audit of main at e86984d: M2's key requirements move to verified).
+  Evidence:
+  crates/ferroastro-ladder/tests/phy005_gr_schw.rs::gr_schw_numerical_reproduces_42_980
+  asserts the PPN isotropic/harmonic gauge, vector PHY005-GR-NUM-RATE (42.98 ±
+  1e-3) and vector PHY005-GR-NUM-MINUS-ANALYTIC (numerical minus the PHY-004
+  analytic rate, 0 ± 1e-3), on a 1000-orbit run;
+  ::gr_schw_in_double_double_matches_f64 repeats the rate in double-double.
+  Both passed in `ci` run 45030787159 (push to main at e86984d, 2026-11-22;
+  job `rust`, FA_REQUIRE_DATA=1). OI-70 (open) concerns N-body GR
+  differentials under NUM-013, not this single-body acceptance.
 ```
 
 ### PHY-006 — Rung PPN: (2+2γ−β)/3 scaling
@@ -216,7 +238,7 @@ notes: >-
 ```yaml
 id: PHY-006
 title: "Rung PPN: GR-SCHW rate scales as (2+2γ−β)/3"
-status: draft
+status: verified
 criticality: high
 verification: test
 statement: >-
@@ -240,6 +262,15 @@ notes: >-
   (red-team review, Journal #9): the earlier form "42.98 × (2+2γ−β)/3 to 10⁻⁶
   relative" could not pass, because 42.98 differs from the computed 42.98048 by
   1.1×10⁻⁵ relative.
+  VERIFIED 2026-11-22 (maintainer decision of 2026-11-22, taken after the
+  milestone audit of main at e86984d: M2's key requirements move to verified).
+  Evidence:
+  crates/ferroastro-ladder/tests/phy006_ppn_scaling.rs::ppn_rate_scales_as_two_plus_two_gamma_minus_beta_over_three
+  asserts vector PHY006-RATIO-REL-DEV (the ratio rate(β, γ)/rate(1, 1) against
+  (2+2γ−β)/3, 1e-6) at five points on the edge of the 1e-3 range, each run
+  asserting the initial-condition hash of the β = γ = 1 run; no absolute rate
+  enters the ratio assertion. It passed in `ci` run 45030787159 (push to main
+  at e86984d, 2026-11-22; job `rust`, FA_REQUIRE_DATA=1).
 ```
 
 ### PHY-007 — Rung SR-a: special-relativistic Kepler gives GR/6
@@ -247,7 +278,7 @@ notes: >-
 ```yaml
 id: PHY-007
 title: "Rung SR-a: SR kinetic energy in a Newtonian potential gives GR/6 = 7.1634 ″/cy"
-status: draft
+status: verified
 criticality: high
 verification: test
 statement: >-
@@ -268,6 +299,16 @@ notes: >-
   covariant mechanics. The attribution of 1/6 to Sommerfeld and to a Goldstein
   Ch. 7 problem is UNVERIFIED. NUM-015 adds the exact-formula check
   2π[(1−μ²/c²h²)^(−1/2) − 1] at 10⁻⁶ relative.
+  VERIFIED 2026-11-22 (maintainer decision of 2026-11-22, taken after the
+  milestone audit of main at e86984d: M2's key requirements move to verified).
+  Evidence:
+  crates/ferroastro-ladder/tests/phy007_sr_a.rs::sr_a_gives_one_sixth_of_gr
+  asserts vector PHY007-SRA-NUM-RATE (7.1634 ± 1e-3), vector
+  PHY007-SRA-ANALYTIC-RATE (πGM/(c²p) with the PHY-004 inputs, 7.1634 ± 1e-3)
+  and the Hamiltonian string in the rung output. It passed in `ci` run
+  45030787159 (push to main at e86984d, 2026-11-22; job `rust`,
+  FA_REQUIRE_DATA=1). OI-07 (the Sommerfeld and Goldstein attribution) stays
+  open; it qualifies this requirement and is not an oracle.
 ```
 
 ### PHY-008 — Rung SR-b: gauge-labelled velocity-only 1PN terms
@@ -275,7 +316,7 @@ notes: >-
 ```yaml
 id: PHY-008
 title: "Rung SR-b: velocity-dependent 1PN terms only, labelled by gauge"
-status: draft
+status: verified
 criticality: high
 verification: test
 statement: >-
@@ -297,6 +338,17 @@ notes: >-
   GR-SCHW rate, never a test value; PHY-004 holds the asserted value). The
   areal-gauge run is a labelled exemption from NUM-017's
   no-Schwarzschild-coordinate rule.
+  VERIFIED 2026-11-22 (maintainer decision of 2026-11-22, taken after the
+  milestone audit of main at e86984d: M2's key requirements move to verified).
+  Evidence, in crates/ferroastro-ladder/tests/phy008_sr_b.rs:
+  ::sr_b_harmonic_and_areal_give_seven_and_five_sixths asserts vectors
+  PHY008-SRB-HARMONIC-RATE (50.144 ± 2e-3) and PHY008-SRB-AREAL-RATE (35.817 ±
+  2e-3) and that each report carries its gauge label;
+  ::sr_b_output_without_gauge_is_rejected_and_docs_say_not_observable asserts
+  that a report built without a gauge is refused (FA-E0602) and that the crate
+  documentation contains the not-an-observable statement. Both passed in `ci`
+  run 45030787159 (push to main at e86984d, 2026-11-22; job `rust`,
+  FA_REQUIRE_DATA=1).
 ```
 
 ### PHY-009 — Term-by-term 1PN coefficient check
@@ -304,7 +356,7 @@ notes: >-
 ```yaml
 id: PHY-009
 title: "Per unit coefficient, 1PN Lagrangian terms A, B, C, D give 8, 4, 2, 2 units"
-status: draft
+status: verified
 criticality: high
 verification: test
 statement: >-
@@ -326,6 +378,14 @@ notes: >-
   A → 1, which holds only at A = 1/8; a test that sets A = 1 must expect 8.
   The D term U(n·v)² is the areal-gauge form, so the D-term check is a labelled
   exemption from NUM-017's no-Schwarzschild-coordinate rule.
+  VERIFIED 2026-11-22 (maintainer decision of 2026-11-22, taken after the
+  milestone audit of main at e86984d: M2's key requirements move to verified).
+  Evidence:
+  crates/ferroastro-ladder/tests/phy009_coefficients.rs::each_coefficient_alone_gives_its_units
+  asserts vectors PHY009-UNITS-PER-A, -B, -C, -D (8, 4, 2, 2) and
+  PHY009-UNITS-A-EIGHTH (1), each to 1e-3 relative. It passed in `ci` run
+  45030787159 (push to main at e86984d, 2026-11-22; job `rust`,
+  FA_REQUIRE_DATA=1).
 ```
 
 ### PHY-010 — Rung J2: solar quadrupole
@@ -333,7 +393,7 @@ notes: >-
 ```yaml
 id: PHY-010
 title: "Rung J2: solar oblateness gives 0.02860 ″/cy at J2 = 2.25×10⁻⁷"
-status: draft
+status: verified
 criticality: high
 verification: test
 statement: >-
@@ -369,6 +429,19 @@ notes: >-
   own J2 term uses this pole, and whether DE440 applies solar J2 to the
   asteroids; FerroAstro's N-body SolarJ2WithReaction acts on Major bodies
   only (WP12 deviations 3 and 4; OI-76).
+  VERIFIED 2026-11-22 (maintainer decision of 2026-11-22, taken after the
+  milestone audit of main at e86984d: M2's key requirements move to verified).
+  Evidence, in crates/ferroastro-ladder/tests/phy010_j2.rs:
+  ::j2_analytic_values_with_phy004_inputs asserts vectors
+  PHY010-J2-PARK-ANALYTIC-RATE (0.0286, abs 5e-6) and
+  PHY010-J2-DE440-ANALYTIC-RATE (0.02792, abs 5e-6, J2SUN read from header.440
+  at run time); ::j2_numerical_matches_planar_oracle_in_equatorial_geometry
+  asserts vector PHY010-J2-NUM-MINUS-ANALYTIC (± 5e-4) for rungs J2 and
+  J2-DE440 and that the output metadata record the pole. Both passed in `ci`
+  run 45030787159 (push to main at e86984d, 2026-11-22; job `rust`,
+  FA_REQUIRE_DATA=1). Open items that qualify this requirement and block none
+  of its acceptance: OI-11, OI-37 (the inclined check belongs to NUM-015,
+  which stays unverified), OI-50 and OI-76.
 ```
 
 ### PHY-011 — Rung LT: solar Lense–Thirring
@@ -376,7 +449,7 @@ notes: >-
 ```yaml
 id: PHY-011
 title: "Rung LT: solar Lense–Thirring gives −0.0020 ″/cy"
-status: draft
+status: verified
 criticality: high
 verification: test
 statement: >-
@@ -418,6 +491,18 @@ notes: >-
   (equatorial) and −0.0020148 ″/cy (real geometry), within −0.0020 ± 0.0002.
   G·S = 1.2680765843106158e16 km⁵/s³ from header.440 tokens (S = 1.8999e41
   kg m² s⁻¹), recomputed independently by data_solar_spin_from_fresh_header_440.
+  VERIFIED 2026-11-22 (maintainer decision of 2026-11-22, taken after the
+  milestone audit of main at e86984d: M2's key requirements move to verified).
+  Evidence:
+  crates/ferroastro-ladder/tests/phy011_lt.rs::lense_thirring_gives_minus_0_0020
+  asserts vector PHY011-LT-ANALYTIC-RATE (−0.00202, abs 5e-6) and vector
+  PHY011-LT-NUM-RATE (−0.0020 ± 2e-4), with G·S built from the header.440
+  constants;
+  crates/ferroastro-forces/src/nbody/tests.rs::solar_lense_thirring_equals_the_r3b_form
+  checks the form of the acceleration. Both passed in `ci` run 45030787159
+  (push to main at e86984d, 2026-11-22; job `rust`, FA_REQUIRE_DATA=1). Issue
+  #42 (the along-track effect of LT against de440.bsp in N-body runs) is open;
+  it concerns ephemeris residuals (M5), not this rate.
 ```
 
 ### PHY-012 — Rungs N-VEN … N-NEP: single-planet contributions

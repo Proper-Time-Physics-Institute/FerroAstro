@@ -193,3 +193,18 @@ Applied 2026-10-21 from the maintainer sign-offs in [Journal #12](https://github
 | OI-38 | Not ticked here: P-remove confirmed by the maintainer; the item closes in #13 together with the `provisional`-field removal (ADR-0004). | Journal #12 |
 
 ADRs: ADR-0004's 2026-10-21 revision (`provisional` field) is no longer marked proposed; it was accepted when #28 merged.
+
+## Milestone-audit decisions 2026-11-22
+
+Applied 2026-11-22 from the maintainer's decisions on the milestone audit of `main` at `e86984d`. These are the first requirements to leave `draft`. The evidence for each status is in the requirement's `notes` (test, vectors and CI run). The status changes and the NUM-012 statement change need the maintainer's approval of the PR head (`ratchet`, TST-006). No acceptance text, value or tolerance was changed.
+
+| ID | Change | Evidence |
+|---|---|---|
+| PHY-004…011, NUM-003, NUM-012, NUM-016, NUM-017, NUM-019 | Status `draft` → `verified` (13 requirements, all on M2's key list). | Citing tests passed in `ci` run 45030787159 on `main` at `e86984d` (PR tier, `FA_REQUIRE_DATA=1`); for NUM-003 and NUM-019 also the scheduled data-tier run 43900563234 at `28d0fe0`; NUM-016 by inspection record. |
+| NUM-015 | Status `draft` → `implemented`, not `verified`: OI-37 (citation for the inclined-orbit J₂ rates) is open and blocks its inclined J₂ oracle. Acceptance text unchanged, although its "BLOCKED by OI-35" is out of date (OI-35 closed 2026-10-21). | NUM-015 notes |
+| NUM-012 | **Statement and title changed**: the per-orbit mean-ellipse estimator, never built, is dropped. The implemented estimators stay. The spread table is published in [`docs/validation/num012-estimator-spread.md`](../validation/num012-estimator-spread.md). | NUM-012 notes |
+| API-003 | Moved from M2's key list to M6's; the doctest threshold is to be set there (CI reports 0 of 864 public functions, report-only). Status stays `draft`. | ROADMAP "Key-list changes" |
+| ORG-002, STD-007, STD-011 | Moved from M0's key list to M6's. Statuses stay `draft`. | ROADMAP "Key-list changes" |
+| NUM-001 | The ≥ 10⁹-step Brouwer clause is an M5 item (deferred in #34 on 2026-11-08); the rest stays in M1. Acceptance text unchanged; status stays `draft`. | NUM-001 notes; #34 |
+
+M2 has not exited: it waits on OI-37 and NUM-015 ([ROADMAP](../strategy/ROADMAP.md), "Milestone status").

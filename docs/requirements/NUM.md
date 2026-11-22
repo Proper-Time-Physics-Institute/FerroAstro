@@ -35,6 +35,15 @@ related: [NUM-023, DEP-008, LIC-001, PHY-001, PHY-005]
 notes: >-
   Clean-room implementation from the paper only (DEP-008). Typical cost ~15
   force evaluations per step (derived here: ~7 × ~2 iterations).
+  MILESTONE SPLIT (maintainer decision of 2026-11-22, taken after the
+  milestone audit of main at e86984d; it follows the deferral of 2026-11-08 in
+  issue #34): in docs/strategy/ROADMAP.md the clause "in f64 the energy error
+  grows as t^(1/2) over ≥ 10⁹ steps" is an M5 item; the rest of this
+  requirement (the integrator, and the Kepler and Kozai tests) stays in M1.
+  The acceptance text is unchanged. Issue #34: under both IAS15 predictors the
+  f64-evaluated energy error sits at its evaluation floor, so the present
+  check cannot measure Brouwer growth and is to be redesigned at M5. Status
+  unchanged (draft); no Kozai test exists yet.
 ```
 
 ### NUM-002 — Fixed-step ABM PECE/PECEC integrator (ephemeris mode)
@@ -69,7 +78,7 @@ notes: >-
 ```yaml
 id: NUM-003
 title: "Gauss–Legendre IRK (s = 8, order 16) reference integrator"
-status: draft
+status: verified
 criticality: medium
 verification: test
 statement: >-
@@ -88,6 +97,25 @@ related: [NUM-001, NUM-023]
 notes: >-
   Derived here: Gauss collocation on the velocity-form ODE in (x, v) is
   symmetric but not canonically symplectic once p ≠ mv.
+  VERIFIED 2026-11-22 (maintainer decision of 2026-11-22, taken after the
+  milestone audit of main at e86984d: M2's key requirements move to verified).
+  Evidence. Forward then backward:
+  crates/ferroastro-integrators/tests/irk16_checks.rs::irk16_forward_then_backward_returns_to_the_initial_state
+  (vector IRK16-KEPLER-FWD-BACK-REL, 100 orbits each way), passed in `ci` run
+  45030787159 (push to main at e86984d, 2026-11-22; job `rust`,
+  FA_REQUIRE_DATA=1); the same file checks the order conditions B(16) and
+  C(8), the observed order in double-double and the checkpoint. Agreement with
+  the NUM-001 integrator (IAS15):
+  crates/ferroastro-propagate/tests/data_wh_irk16_de440.rs::data_wh_irk16_and_ias15_ten_years_vs_de440_bsp
+  asserts vector IRK16-DE440-RESIDUAL-CONSISTENCY (Mercury's maximum residual
+  against de440.bsp over 10 yr differs between IRK16 and IAS15 by at most 1e-3
+  km) and passed in the scheduled `ci` run 43900563234 (job `data`, main at
+  28d0fe0, 2026-11-16) with a difference of 2.491e-6 km. The stronger 1000-yr
+  checks (vectors IRK16-FWD-BACK-1000YR-DR and IRK16-VS-IAS15-1000YR-DR,
+  crates/ferroastro-propagate/tests/nightly_wh_irk16.rs) are nightly tier:
+  their last recorded run is the local one of 2026-10-21 (IMPLEMENTATION-NOTES
+  WP29) and is not CI evidence. NUM-001 itself is not verified (M1; its ≥
+  10⁹-step clause is M5).
 ```
 
 ### NUM-004 — Wisdom–Holman / WHFast fast rung
@@ -470,14 +498,14 @@ notes: >-
 
 ```yaml
 id: NUM-012
-title: "Alternative estimators: osculating ϖ, LRL-vector angle, per-orbit mean ellipse"
-status: draft
+title: "Alternative estimators: osculating ϖ, LRL-vector angle"
+status: verified
 criticality: medium
 verification: test
 statement: >-
   FerroAstro SHALL provide alternative precession estimators (osculating
-  ϖ = Ω + ω, Laplace–Runge–Lenz vector angle, per-orbit mean ellipse). Every
-  estimator output SHALL label its definition, frame and span.
+  ϖ = Ω + ω, Laplace–Runge–Lenz vector angle). Every estimator output SHALL
+  label its definition, frame and span.
 acceptance: >-
   A test rejects estimator output lacking definition, frame or span labels. The
   docs report the cross-estimator spread for the Mercury ladder.
@@ -490,6 +518,28 @@ notes: >-
   A 1PN-corrected LRL vector form is UNVERIFIED. Osculating elements from
   harmonic-coordinate states carry ~5 mas periodic terms under 1PN (derived
   here).
+  AMENDED 2026-11-22 (maintainer decision, taken after the milestone audit of
+  main at e86984d): the per-orbit mean-ellipse estimator is dropped from the
+  statement and the title. It was never built (IMPLEMENTATION-NOTES WP6, "Not
+  delivered"). The implemented estimators stay: the LRL eccentricity-vector
+  longitude (ferroastro-precession `lrl`), which is the osculating ϖ in the
+  initial orbit plane; the osculating Ω + ω ("dog-leg") longitude definition
+  of the Park2017 estimator (`LongitudeDefinition::DogLeg`); perihelion
+  passages (`passages`); and the canonical Park2017 estimator (NUM-011). The
+  acceptance is unchanged. VERIFIED 2026-11-22 (same decision). Evidence.
+  Labels:
+  crates/ferroastro-precession/src/report.rs::reports_without_any_metadata_field_are_rejected
+  asserts that a report with a blank or missing frame, estimator (the
+  definition), fit span, fit model, constants, gauge or epoch is refused
+  (FA-E0602). Spread:
+  crates/ferroastro-ladder/tests/num012_estimator_spread.rs::single_body_estimators_agree
+  asserts vector NUM012-ESTIMATOR-SPREAD (max − min over four estimators, at
+  most 1e-4 ″/cy) for rungs SR-a, SR-b/harmonic, GR-SCHW, J2 and LT. Both
+  passed in `ci` run 45030787159 (push to main at e86984d, 2026-11-22; job
+  `rust`, FA_REQUIRE_DATA=1). The spread table is in
+  docs/validation/num012-estimator-spread.md. OI-40 (the 1PN-corrected LRL
+  form, first sentence of these notes) and OI-68 stay open; they qualify this
+  requirement.
 ```
 
 ### NUM-013 — Differential-run harness
@@ -628,7 +678,7 @@ notes: >-
 ```yaml
 id: NUM-015
 title: "Analytic oracles: J₂ (planar and inclined), SR exact, PPN 1PN, Lense–Thirring"
-status: draft
+status: implemented
 criticality: high
 verification: test
 statement: >-
@@ -679,6 +729,25 @@ notes: >-
   passage-time rounding). Whether LT passes 10⁻⁶ relative in f64 is noise
   (2.3e-7 to 2.9e-6 across 250–2000 orbits), so the floor is needed. In
   double-double every rung passes 10⁻⁶ relative directly (≤1.4e-10).
+  STATUS 2026-11-22: implemented, NOT verified (maintainer decision of
+  2026-11-22 to move M2's key requirements to verified, applied as far as the
+  rules allow). The oracles exist in crates/ferroastro-analytic/src/advance.rs
+  and the per-orbit check (`check_num015`: 10⁻⁶ relative or the 1.17×10⁻¹⁵
+  rad/orbit floor, 10³ orbits) is asserted for every single-body rung in
+  crates/ferroastro-ladder/tests/phy005_gr_schw.rs, phy006_ppn_scaling.rs,
+  phy007_sr_a.rs, phy008_sr_b.rs, phy010_j2.rs and phy011_lt.rs, all of which
+  passed in `ci` run 45030787159 (push to main at e86984d, 2026-11-22). What
+  blocks `verified`: OI-37 is open and blocks the inclined J₂ oracle, as the
+  acceptance says. The inclined test
+  (phy010_j2.rs::j2_numerical_matches_park17_eq3_for_inclined_orbit) uses Park
+  et al. 2017 Eq. 3, the in-plane rate, which IMPLEMENTATION-NOTES WP4 records
+  as read in the PDF, while
+  crates/ferroastro-diffrun/tests/num019_isolation.rs (WP20) treats the same
+  formula as "OI-37, not an oracle". Whether Park17 Eq. 3 closes OI-37 for the
+  combination this requirement uses is a maintainer ruling; it has not been
+  made. OI-35 is closed (2026-10-21), so the acceptance's "BLOCKED by OI-35"
+  and the "pending human sign-off" sentence above are out of date; the
+  acceptance text was left as it is. OI-36 qualifies.
 ```
 
 ### NUM-016 — SR rung documents its Hamiltonian
@@ -686,7 +755,7 @@ notes: >-
 ```yaml
 id: NUM-016
 title: "SR rung documents H = γmc² − μm/r and the model dependence of the SR fraction"
-status: draft
+status: verified
 criticality: medium
 verification: inspection
 statement: >-
@@ -702,6 +771,22 @@ parent: ORG-002
 related: [PHY-007]
 notes: >-
   Attribution of the exact formula to Sommerfeld 1916 is UNVERIFIED.
+  VERIFIED 2026-11-22 (maintainer decision of 2026-11-22, taken after the
+  milestone audit of main at e86984d: M2's key requirements move to verified).
+  Inspection record, 2026-11-22, main at e86984d (prepared by an agent for the
+  maintainer's approval): the crate documentation of ferroastro-ladder
+  (crates/ferroastro-ladder/src/lib.rs, module docs) names H = γmc² − μm/r and
+  states that the 1/6 fraction belongs to that model and that other couplings
+  of special relativity to Newtonian gravity give other fractions; the example
+  crates/ferroastro-ladder/examples/phy007_sr_a.rs names the Hamiltonian and
+  says the fraction belongs to this model only; ADR-0012 gives the examples
+  1/3 and 0 (Lemmon & Mondragon v6; Trump & Schieve). In addition,
+  phy007_sr_a.rs::sr_a_gives_one_sixth_of_gr and
+  crates/ferroastro-cli/tests/cli_report.rs::single_body_report_lists_every_rung_with_gauge_and_metadata
+  assert the Hamiltonian string in the rung output and in the CLI report (both
+  passed in `ci` run 45030787159 (push to main at e86984d, 2026-11-22; job
+  `rust`, FA_REQUIRE_DATA=1)). OI-07 stays open and qualifies this
+  requirement.
 ```
 
 ### NUM-017 — 1PN gauge, time argument and units
@@ -709,7 +794,7 @@ notes: >-
 ```yaml
 id: NUM-017
 title: "All 1PN EOMs in PPN isotropic/harmonic gauge, TDB time, TDB-compatible GM"
-status: draft
+status: verified
 criticality: high
 verification: test
 statement: >-
@@ -732,6 +817,20 @@ notes: >-
   The secular per-orbit precession is gauge-invariant at 1PN, but a, n and
   osculating elements are not. TCB/TDB rate difference L_B ≈ 1.55×10⁻⁸ is
   negligible for ″/cy.
+  VERIFIED 2026-11-22 (maintainer decision of 2026-11-22, taken after the
+  milestone audit of main at e86984d: M2's key requirements move to verified).
+  Evidence for the R5 → R3 limit. Numerical:
+  crates/ferroastro-eih/tests/eih_checks.rs::eih_reduces_to_the_schwarzschild_test_particle_numerically
+  asserts vectors EIH-R3-LIMIT-TOTAL-REL (1e-15) and
+  EIH-R3-LIMIT-CORRECTION-REL (1e-13) at β = γ = 1 and at (1 + 10⁻³, 1 −
+  10⁻³); it passed in `ci` run 45030787159 (push to main at e86984d,
+  2026-11-22; job `rust`, FA_REQUIRE_DATA=1). Symbolic:
+  tools/tests/test_eih_limit.py::test_eih_reduces_to_the_schwarzschild_test_particle_equations,
+  with a negative control, passed in the `python` job of the same run. The
+  gauge rule is guarded by
+  crates/ferroastro-forces/src/central.rs::terms_of_different_relativistic_gauges_cannot_be_mixed.
+  OI-33 is closed; OI-36 (IERS equation numbers) stays open and qualifies this
+  requirement.
 ```
 
 ### NUM-018 — EIH implementation details
@@ -813,7 +912,7 @@ notes: >-
 ```yaml
 id: NUM-019
 title: "Solar J₂ with reaction on the Sun; solar-spin LT on every non-Sun body, with γ-dependence"
-status: draft
+status: verified
 criticality: high
 verification: test
 statement: >-
@@ -879,6 +978,33 @@ notes: >-
   every moving non-Sun body, Minor included, and the Sun's reaction
   includes them unless MinorReaction is Off. Since OI-35 closed, the N-body
   LT row NUM019-NBODY-LT-CONTRIBUTION gates.
+  VERIFIED 2026-11-22 (maintainer decision of 2026-11-22, taken after the
+  milestone audit of main at e86984d: M2's key requirements move to verified).
+  Evidence. Momentum:
+  crates/ferroastro-forces/tests/nbody_de440.rs::momentum_is_conserved_with_j2_and_runs_are_bitwise_reproducible
+  (vector NBODY-MOMENTUM-ROUNDOFF-ULPS, 100 yr, J₂ on) and
+  crates/ferroastro-forces/tests/nbody_lt_momentum.rs::momentum_is_conserved_with_solar_j2_and_lense_thirring.
+  Contributions:
+  crates/ferroastro-diffrun/tests/num019_isolation.rs::equatorial_nbody_j2_and_lt_match_their_analytic_rates
+  asserts, in N-body mode (Sun + Mercury, both reactions on, equatorial
+  geometry), that the J₂ and LT differentials are within 1e-4 ″/cy (vector
+  NUM019-ISOLATION-NBODY-DIFF) of the printed 0.0286 and −0.00202, which puts
+  them inside Park17's 0.0286 ± 0.0011 and −0.0020 ± 0.0002. LT on Minor
+  bodies, the reaction switch and the γ-dependence:
+  crates/ferroastro-forces/src/nbody/tests.rs::solar_lense_thirring_acts_on_minor_bodies,
+  ::minor_reaction_off_switches_off_the_lt_reaction_of_minor_bodies and
+  crates/ferroastro-propagate/tests/nbody_lt_gamma.rs::nbody_lense_thirring_uses_the_scenario_gamma.
+  All of these passed in `ci` run 45030787159 (push to main at e86984d,
+  2026-11-22; job `rust`, FA_REQUIRE_DATA=1). In the real solar-equator
+  geometry,
+  crates/ferroastro-ladder/tests/data_single_body.rs::data_j2_and_lt_rungs_in_real_solar_equator_geometry
+  asserts vectors PARK17-J2-RATE and PARK17-LT-RATE (single body) and passed
+  in the scheduled `ci` run 43900563234 (job `data`, main at 28d0fe0,
+  2026-11-16). The full N-body contributions under EIH (+0.0284515 and
+  −0.0020148 ″/cy, crates/ferroastro-diffrun/tests/nightly_num019.rs) are
+  nightly tier, recorded in tests/vectors/m5-evidence.toml from a local run at
+  d1ccbae; they are not CI evidence. Open and qualifying, not blocking: OI-50,
+  OI-76 and issue #42.
 ```
 
 ### NUM-020 — Second independent check of the EIH transcription
