@@ -40,9 +40,10 @@ table:
 cargo test -p ferroastro-ladder --test num012_estimator_spread -- --nocapture
 ```
 
-The run was local (x86-64 Linux, rustc 1.95.0, `header.440` with SHA-256 `0f4636b6…6ac3359`). The same test
-passed in CI at the same commit (`ci` run 45030787159, rustc 1.99.0, the repository's pin), but the CI log
-does not print the table of a passing test, so the digits below are those of the local run.
+The run was local (x86-64 Linux, `header.440` with SHA-256 `0f4636b6…6ac3359`). It was made twice, with
+rustc 1.95.0 and with rustc 1.99.0 (the repository's pin), and both runs printed the same digits in every
+column. The same test passed in CI at the same commit (`ci` run 45030787159, rustc 1.99.0), but the CI log
+does not print the table of a passing test, so the digits below are those of the local runs.
 
 | Rung | Passages | LRL | Park2017 linear (jack-knife σ) | Park2017 quadratic | Analytic | Spread |
 |---|---|---|---|---|---|---|
