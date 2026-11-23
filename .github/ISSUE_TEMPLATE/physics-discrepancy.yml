@@ -1,0 +1,59 @@
+# SPDX-FileCopyrightText: 2026 Proper-Time Physics Institute
+# SPDX-License-Identifier: Apache-2.0
+#
+# Issue form: a result that disagrees with a cited reference value (ORG-006; issue #10).
+name: Physics discrepancy
+description: A FerroAstro result disagrees with a cited reference value.
+title: "physics: "
+labels: ["type:physics-discrepancy"]
+body:
+  - type: input
+    id: quantity
+    attributes:
+      label: Quantity
+      description: What was computed, with its frame, epoch, span and gauge where they apply.
+    validations:
+      required: true
+  - type: input
+    id: expected
+    attributes:
+      label: Expected value
+      description: With its unit.
+    validations:
+      required: true
+  - type: textarea
+    id: citation
+    attributes:
+      label: Source citation
+      description: Paper, table or equation and page, or the id of a vector in tests/vectors/.
+    validations:
+      required: true
+  - type: input
+    id: observed
+    attributes:
+      label: Observed value
+      description: With its unit.
+    validations:
+      required: true
+  - type: input
+    id: tolerance
+    attributes:
+      label: Tolerance
+      description: The tolerance the comparison should meet, and where it comes from.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: How to reproduce
+      description: The exact commands, scenario file or test name, and the commit.
+      render: sh
+    validations:
+      required: true
+  - type: input
+    id: requirement
+    attributes:
+      label: Requirement IDs
+      description: IDs from docs/requirements/ that this bears on, if you know them.
+    validations:
+      required: false

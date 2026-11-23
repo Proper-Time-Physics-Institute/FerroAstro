@@ -1,0 +1,72 @@
+# SPDX-FileCopyrightText: 2026 Proper-Time Physics Institute
+# SPDX-License-Identifier: Apache-2.0
+#
+# Issue form: new or changed requirement (ORG-003, ORG-006; issue #10). The fields are the keys of
+# a requirement block in docs/requirements/ (see docs/requirements/README.md, "Requirement format").
+name: Requirement
+description: Propose a new requirement or a change to an existing one.
+title: "requirement: "
+labels: ["type:requirement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        IDs are never renumbered or reused. A new requirement takes the next free number in its
+        prefix and starts as `draft`. Only a maintainer changes `status` or `verified_by_gate`.
+  - type: input
+    id: requirement-id
+    attributes:
+      label: Requirement ID
+      description: An existing ID (e.g. NUM-012) for a change, or the prefix (e.g. NUM) for a new one.
+    validations:
+      required: true
+  - type: textarea
+    id: statement
+    attributes:
+      label: Statement
+      description: The SHALL text, or the proposed change to it.
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance
+      description: The concrete pass criterion, with numbers and tolerances.
+    validations:
+      required: true
+  - type: dropdown
+    id: verification
+    attributes:
+      label: Verification method
+      options:
+        - test
+        - analysis
+        - inspection
+        - demonstration
+    validations:
+      required: true
+  - type: dropdown
+    id: criticality
+    attributes:
+      label: Criticality
+      description: See docs/requirements/TAILORING.md.
+      options:
+        - high
+        - medium
+        - low
+    validations:
+      required: true
+  - type: input
+    id: parent
+    attributes:
+      label: Parent requirement
+      description: A requirement ID, or "none".
+    validations:
+      required: true
+  - type: textarea
+    id: source
+    attributes:
+      label: Source
+      description: The primary citation. Say so if the value is UNVERIFIED or from a secondary source.
+    validations:
+      required: true
