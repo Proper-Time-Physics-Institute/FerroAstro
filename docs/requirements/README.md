@@ -73,7 +73,7 @@ draft → approved → implemented → verified → retired
 
 ## Criticality tailoring
 
-FerroAstro is research software. Its classification follows the spirit of **NASA NPR 7150.2 Class D/E** ("basic science, engineering design, and research and technology software" / "design concept, research, technology, and general-purpose software") and of **ECSS-E-ST-40C / Q-ST-80C criticality-based tailoring**. **FerroAstro makes no claim of compliance with either standard.** Details will live in `TAILORING.md` (ORG-007).
+FerroAstro is research software. Its classification follows the spirit of **NASA NPR 7150.2 Class D/E** ("basic science, engineering design, and research and technology software" / "design concept, research, technology, and general-purpose software") and of **ECSS-E-ST-40C / Q-ST-80C criticality-based tailoring**. **FerroAstro makes no claim of compliance with either standard.** Details are in [TAILORING.md](TAILORING.md) (ORG-007).
 
 | Criticality | Applied to | What it demands |
 |---|---|---|

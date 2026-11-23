@@ -1,0 +1,45 @@
+# SPDX-FileCopyrightText: 2026 Proper-Time Physics Institute
+# SPDX-License-Identifier: Apache-2.0
+#
+# Issue form: bug report (ORG-006; issue #10).
+name: Bug
+description: Something in FerroAstro does not behave as its documentation or requirements say.
+title: "bug: "
+labels: ["bug"]
+body:
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened
+      description: What you ran, what you expected and what you got. Include any FA-Exxxx error code.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: How to reproduce
+      description: The exact commands, scenario file or test name.
+      render: sh
+    validations:
+      required: true
+  - type: input
+    id: commit
+    attributes:
+      label: Commit
+      description: Output of `git rev-parse HEAD`.
+    validations:
+      required: true
+  - type: input
+    id: requirement
+    attributes:
+      label: Requirement IDs
+      description: IDs from docs/requirements/ that this bug bears on, if you know them (e.g. PHY-004).
+    validations:
+      required: false
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: Operating system, `rustc --version`, and the target if not the host.
+    validations:
+      required: false

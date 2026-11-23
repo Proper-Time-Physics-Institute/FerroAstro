@@ -1,0 +1,43 @@
+# SPDX-FileCopyrightText: 2026 Proper-Time Physics Institute
+# SPDX-License-Identifier: Apache-2.0
+#
+# Issue form: proposal for an architecture decision record (ORG-005, ORG-006; issue #10). The
+# fields are the sections of a MADR 4.0.0 record (docs/adr/README.md).
+name: ADR proposal
+description: Propose a significant decision to be recorded in docs/adr/.
+title: "adr: "
+labels: ["type:adr"]
+body:
+  - type: textarea
+    id: context
+    attributes:
+      label: Context and problem statement
+    validations:
+      required: true
+  - type: textarea
+    id: options
+    attributes:
+      label: Considered options
+    validations:
+      required: true
+  - type: textarea
+    id: outcome
+    attributes:
+      label: Proposed decision
+      description: The option you propose and why.
+    validations:
+      required: true
+  - type: textarea
+    id: confirmation
+    attributes:
+      label: Confirmation
+      description: The CI check or test that would enforce the decision, or "none" with the reason.
+    validations:
+      required: true
+  - type: input
+    id: requirement
+    attributes:
+      label: Requirement IDs
+      description: IDs from docs/requirements/ that the decision affects.
+    validations:
+      required: false

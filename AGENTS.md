@@ -12,8 +12,9 @@ scientific-computing stack. Its flagship is the **Mercury perihelion precession 
 ([docs/strategy/MISSION.md](docs/strategy/MISSION.md)). Each rung is a requirement with a cited value and tolerance.
 
 ## Status
-Pre-M0: strategy, requirements and ADRs only. The Cargo workspace and CI land in milestone M0
-([docs/strategy/ROADMAP.md](docs/strategy/ROADMAP.md)). The commands below are the contract that M0 implements.
+No milestone has exited yet; the state of each one is in
+[docs/strategy/ROADMAP.md](docs/strategy/ROADMAP.md), "Milestone status". The Cargo workspace and CI exist, and
+the commands below are the ones CI runs (`.github/workflows/ci.yml`).
 
 ## Commands (all must pass before a PR)
 ```sh
