@@ -1095,8 +1095,8 @@ notes: >-
   the test records is the E10 template's missing Pluto and DE440's 27
   unmodelled Kuiper-belt objects (IMPLEMENTATION-NOTES WP22 follow-up). (3)
   Issue #42 (Mercury against de440.bsp with
-  LT and the asteroids) is open; issue #70 item 9 records the decision on
-  the approach. (4) Eq. 29's number and
+  LT and the asteroids) is open; issue #70 items 9 and 11 record the decisions
+  on the approach and on the convention. (4) Eq. 29's number and
   typography were not re-read in the paper (WP12 deviation 5, above).
   DECISION (maintainer, 2026-11-23; decision record: issue
   #70): NUM-019 stays `verified` with limit (1) stated: its

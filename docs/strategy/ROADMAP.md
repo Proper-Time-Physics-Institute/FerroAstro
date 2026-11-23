@@ -58,7 +58,9 @@ No milestone has exited yet.
     registered known failures in `ci/nightly-known-failures.toml`.
   - API-003: `draft`. Only its clause (a), an example per implemented rung that runs in CI, is M2 content.
     No open item blocks it: the ten tests of `crates/ferroastro-ladder/tests/api003_examples.rs` passed in
-    the same CI run, and the maintainer has not yet ruled on its status.
+    the same CI run, and the maintainer has not yet ruled on its status. Those tests cover the single-body
+    rungs and PHY-001, PHY-004, PHY-006 and PHY-009; the implemented N-body rungs (PHY-012 onward) have no
+    example, so clause (a) as worded is not fully met.
 
   M2 exits when OI-37 and OI-80 are closed, NUM-015 and NUM-003 are `verified`, and the maintainer has
   ruled on API-003's clause (a). The status lifecycle has no per-clause status, so how that ruling is
