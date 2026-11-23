@@ -46,7 +46,7 @@ fn j2000_plus_days(days: f64) -> Epoch<Tdb> {
 /// The law's values: 0 at the reference epoch, the rate itself one Julian year later, linear in
 /// between and before (at DE440's JDEPOC, from the committed vector), and `GM (1 + offset)`.
 ///
-/// Verifies: PHY-002
+/// Verifies: PHY-023, PHY-002
 #[test]
 fn solar_gm_law_values_follow_the_inferred_linear_form() {
     let law = SolarGmRate::inferred_j2000(RATE_SMALL).unwrap();
@@ -174,7 +174,7 @@ fn norm(a: [f64; 3]) -> f64 {
 /// differ by `δGM`, in which the Sun's own acceleration is bit for bit the same (which is why the
 /// Sun receives nothing).
 ///
-/// Verifies: PHY-002, NUM-009
+/// Verifies: PHY-023, NUM-009
 #[test]
 fn solar_gm_variation_is_the_newtonian_pull_of_delta_gm() {
     let (bodies, x, v) = fixture();
@@ -336,7 +336,7 @@ fn semi_major_axis(p: &NBodyPropagator<Icrf>, gm: f64) -> f64 {
 /// GM a circular orbit keeps `a·GM` (da/dt = −a·GMdot/GM). Pre-registered bound
 /// `GMSUN-RATE-ADIABATIC-SMA-REL` (derivation and justification in the vector).
 ///
-/// Verifies: PHY-002
+/// Verifies: PHY-023
 #[test]
 fn two_body_semi_major_axis_follows_the_adiabatic_law() {
     let epoch = Epoch::<Tdb>::j2000();
@@ -381,7 +381,7 @@ fn two_body_semi_major_axis_follows_the_adiabatic_law() {
 /// The term's time origin is enforced, and the constant-mass energy diagnostic is unavailable
 /// with it (the model is explicitly time dependent).
 ///
-/// Verifies: PHY-002, API-002
+/// Verifies: PHY-023, API-002
 #[test]
 fn time_origin_is_enforced_and_the_energy_diagnostic_is_unavailable() {
     let epoch = Epoch::<Tdb>::j2000();

@@ -37,7 +37,7 @@ citation = "FerroAstro derivation recorded in this vector (two-body problem with
 retrieved = "2026-11-23"
 tolerance = { abs = 1.0e-11 }
 tolerance_rationale = "Pre-registered before the library term existed. 13x the unaveraged analytic bound 7.8e-13; the numerical contributions are far below it (IAS15 energy error ~1e-15 over 41 orbits; vis-viva rounding ~1e-15). The secular signal is |k| T = 1e-5, six orders above the tolerance: a missing term fails by 1e6x, a rate applied per day instead of per Julian year by more, a wrong sign by 2e6x, and a term that used a fixed dGM (no time dependence) by 1e6x."
-verified_by = "Issue #42 implementation agent, 2026-11-23: bound computed from the derivation above before the term was written; not yet run."
+verified_by = "Issue #42 implementation agent, 2026-11-23: bound computed from the derivation above before the term was written. Asserted by crates/ferroastro-forces/tests/solar_gm_rate.rs::two_body_semi_major_axis_follows_the_adiabatic_law."
 
 [[vector]]
 id = "GMSUN-RATE-DE440-MERCURY-HELIO-MAX-M"
@@ -51,7 +51,7 @@ citation = "FerroAstro issue #42 investigation notes of 2026-11-22 (section 3.1,
 retrieved = "2026-11-23"
 tolerance = { abs = 1.0 }
 tolerance_rationale = "Pre-registered (maintainer): Mercury <= 1.0 m. The scratch run gave 0.71 m, dominated by the bodies this configuration omits (Pluto, KBOs, ring: about 0.3 m on Mercury); without the term the residual is 86 m, and with the reference epoch at JDEPOC instead of J2000 it is 102 m, so the bound separates the inferred convention from both by about two orders. The convention is inferred (OI-04); the assertion is provisional on it."
-verified_by = "Issue #42 implementation agent, 2026-11-23: bound copied from the maintainer's instruction before the library term was written; not yet run against the library."
+verified_by = "Issue #42 implementation agent, 2026-11-23: bound copied from the maintainer's instruction before the library term was written. Asserted by crates/ferroastro-propagate/tests/data_solar_gm_rate_de440.rs::data_inferred_solar_gm_rate_ten_years_vs_de440_bsp."
 provisional = "OI-04"
 
 [[vector]]
@@ -66,7 +66,7 @@ citation = "FerroAstro issue #42 investigation notes of 2026-11-22 (section 3.1,
 retrieved = "2026-11-23"
 tolerance = { abs = 5.0 }
 tolerance_rationale = "Pre-registered (maintainer): Venus <= 5.0 m. The scratch run gave about 3 m, the signature of the omitted Pluto, KBOs and ring (with them it is 0.05 m); without the term Venus is off by about 47 m. The convention is inferred (OI-04); the assertion is provisional on it."
-verified_by = "Issue #42 implementation agent, 2026-11-23: bound copied from the maintainer's instruction before the library term was written; not yet run against the library."
+verified_by = "Issue #42 implementation agent, 2026-11-23: bound copied from the maintainer's instruction before the library term was written. Asserted by crates/ferroastro-propagate/tests/data_solar_gm_rate_de440.rs::data_inferred_solar_gm_rate_ten_years_vs_de440_bsp."
 provisional = "OI-04"
 
 [[vector]]
@@ -81,4 +81,4 @@ citation = "FerroAstro issue #42 investigation notes of 2026-11-22 (section 3.1)
 retrieved = "2026-11-23"
 tolerance = { abs = 15.0 }
 tolerance_rationale = "Pre-registered generous two-sided band [70.79, 100.79] m. The run is deterministic and uses no new code, so it should reproduce 85.79 m closely; the band only has to admit round-off-level changes of the force summation and to fail if the default model changes (a default that silently included the term would give under 1 m). Never an acceptance tolerance for the default model: 86 m is the known defect of issue #42."
-verified_by = "Issue #42 implementation agent, 2026-11-23: value copied from the investigation notes; band set before the library term was written."
+verified_by = "Issue #42 implementation agent, 2026-11-23: value copied from the investigation notes; band set before the library term was written. Asserted by crates/ferroastro-propagate/tests/data_solar_gm_rate_de440.rs::data_inferred_solar_gm_rate_ten_years_vs_de440_bsp."

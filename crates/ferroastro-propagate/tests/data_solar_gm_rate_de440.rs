@@ -243,7 +243,7 @@ fn residuals(run: &Run, spk: &Spk<'_>, h: &Header, hprov: &str) -> [(f64, f64); 
 /// maintainer, never moved. The convention is inferred, so the on-assertions are provisional on
 /// OI-04.
 ///
-/// Verifies: PHY-002, CI-007
+/// Verifies: PHY-023, CI-007
 #[test]
 #[ignore = "data: reads the pinned header.440 and de440.bsp from the data cache (no network); two 353-body 10-yr runs; run with --profile data"]
 fn data_inferred_solar_gm_rate_ten_years_vs_de440_bsp() {

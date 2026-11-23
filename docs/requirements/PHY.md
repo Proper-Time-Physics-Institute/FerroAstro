@@ -1081,3 +1081,65 @@ notes: >-
   constrain which clock physical clocks read (s, α = 0), they are not
   reproduced here.
 ```
+
+### PHY-023 — Opt-in time-varying solar GM under the inferred GMSDOT convention
+
+```yaml
+id: PHY-023
+title: "Opt-in time-varying solar GM, GM☉(t) linear in TDB, under the inferred DE440 GMSDOT convention; off by default"
+status: draft
+criticality: medium
+verification: test
+statement: >-
+  The N-body force model SHALL offer, off by default, a time-varying solar
+  gravitational parameter GM☉(t) = GM☉(t0)·[1 + k·(t − t0)/(1 Julian year)],
+  t in TDB, with the rate k and the reference epoch t0 explicit in a typed
+  configuration. A constructor SHALL take k from the DE440 header's GMSDOT
+  and t0 = J2000.0 TDB. This convention is INFERRED (OI-04): every doc
+  comment, error text and report that names it SHALL say so, and none SHALL
+  attribute it to a JPL document. With the option off, every result SHALL be
+  bit for bit the one obtained without the option.
+acceptance: >-
+  (a) Two-body adiabatic law: for a massless body on an initially circular
+  orbit about a Sun whose GM changes at a synthetic rate of −1e-6 per Julian
+  year, |a·GM/(a0·GM0) − 1| ≤ 1e-11 over 10 Julian years
+  (GMSUN-RATE-ADIABATIC-SMA-REL). (b) Data tier, 353-body configuration
+  (Sun, 8 planets, geocentric Moon, 343 asteroids; all-body EIH, solar J2,
+  solar Lense–Thirring), header.440 initial conditions, 10 Julian years
+  against de440.bsp, option on: Mercury's maximum heliocentric residual
+  ≤ 1.0 m and Venus's ≤ 5.0 m (GMSUN-RATE-DE440-MERCURY-HELIO-MAX-M,
+  GMSUN-RATE-DE440-VENUS-HELIO-MAX-M; provisional on OI-04). (c) Same run,
+  option off: Mercury 85.79 ± 15 m
+  (GMSUN-RATE-OFF-DE440-MERCURY-HELIO-MAX-M). (d) The term equals the
+  Newtonian pull of δGM(t) on every moving non-Sun body to round-off, and a
+  time origin other than the propagation's start epoch is refused.
+source: >-
+  Issue #42 and its investigation of 2026-11-22; maintainer decision of
+  2026-11-23 (decision record issue #70, items 9 and 11); OI-04; DE440
+  header.440 (GMSDOT, listed without unit, formula or epoch); JPL IOM
+  335N-20-01 (Williams & Boggs 2020: "(dMS/dt)/MS, from J2000", about the
+  lunar-ranging software).
+parent: ORG-002
+related: [PHY-002, PHY-018, NUM-009, NUM-019, CI-007, REF-002]
+notes: >-
+  INFERRED convention (OI-04, open): no public JPL document states the
+  formula, the unit or the reference epoch; the bounds of (b) were
+  pre-registered (tests/vectors/solar-gm-rate.toml, committed before the
+  term). Only the Sun's Newtonian point-mass pull on the moving bodies (Major
+  and Minor) uses GM☉(t). The EIH, solar J2 and Lense–Thirring terms, the
+  reaction ratios and the relativistic barycentre keep the constant GM☉:
+  scaling them changes Mercury by an estimated 3e-6 m, 4e-9 m and 2e-10 m
+  over 10 yr, which cannot be measured against de440.bsp. The linear and
+  exponential laws differ by about 2e-21 relative over the DE440 span; the
+  linear one is used. With the option on the model has no conserved energy
+  (NBodyModel::energy_over_g returns None) and the constant-GM momentum sum
+  is not conserved. Rust API only (ferroastro_forces::SolarGmRate and
+  SolarGmVariation; ferroastro_propagate::de440_inferred_solar_gm_rate): no
+  scenario switch selects it. Known limit: the time-origin guard is in
+  NBodyPropagator::new only; a generic Ias15, Abm or Irk16 driver started at
+  t0 ≠ 0 is not guarded. Build evidence (2026-11-23): (a) 5.8e-15; (b)
+  Mercury 0.705 m, Venus 2.999 m; (c) 85.788 m. Tests:
+  crates/ferroastro-forces/tests/solar_gm_rate.rs and
+  crates/ferroastro-propagate/tests/data_solar_gm_rate_de440.rs. The vectors
+  keep their pre-registered requirement lists (PHY-002, CI-007).
+```
