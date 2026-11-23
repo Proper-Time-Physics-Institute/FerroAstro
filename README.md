@@ -11,7 +11,8 @@ It is benchmarked in CI against Orekit, REBOUND/REBOUNDx, Swiftest, Mercury6, ER
 planet, solar J2, special relativity and Schwarzschild GR (42.98″/cy) to the full 1PN N-body total of
 **575.31″/cy** (Park et al. 2017), and finally a faster reproduction of JPL DE440.
 
-> Status: **pre-M0**. Strategy, requirements and decisions are in place, and code starts at milestone M0.
+> Status: no milestone has exited yet. The Cargo workspace, the CI gates and the code of the ladder rungs are on
+> `main`; the state of each milestone is in the [Roadmap](docs/strategy/ROADMAP.md), "Milestone status".
 
 | Start here | |
 |---|---|
