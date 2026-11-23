@@ -1277,6 +1277,44 @@ notes: >-
   the asserted default path, not a report-only knob. The ±0.1 tolerance is
   not widened. Evidence history: docs/strategy/IMPLEMENTATION-NOTES.md
   (WP3 NUM-023 section; the NUM-023 investigation).
+  STATE AFTER THE RULING: pc_b_from_g became the Ias15Config default on
+  2026-11-08 and #13 merged on 2026-11-12. The asserting tests are
+  nightly_num023_brouwer_slopes_ias15_f64 and
+  nightly_num023_long_ensemble_brouwer_slopes_ias15_f64
+  (crates/ferroastro-ladder/tests/num023_brouwer.rs, vectors
+  NUM023-ENERGY-SLOPE and NUM023-PHASE-SLOPE, ±0.1); both are nightly tier
+  (#[ignore]) and the nightly tier has not run in CI.
+  LOCAL RUN, NOT CI EVIDENCE (recorded 2026-11-23): nightly tier (nextest
+  profile nightly, release build) of main at e86984d
+  (e86984d00a8e7a55961a6c11e1fc025cc414c34c), rustc 1.99.0 (b940084d7
+  2026-09-28), cargo-nextest 0.9.148, Linux x86_64, 32 CPUs,
+  FA_REQUIRE_DATA=1, started 2026-11-22T16:20:08Z on the maintainer's
+  machine; the log is not committed (kept as
+  fa-evidence/2026-11-22-e86984d-rustc-1.99.0/nightly-tier.log; read
+  2026-11-23 while that tier's last test was still running, sha256 then
+  e126e246…6be1e16a). Numbers as printed in that log, IAS15 epsilon = 1e-9,
+  safety = 0.25, pc_tolerance = 1e-16, formal 1-sigma:
+  (1) nightly_num023_brouwer_slopes_ias15_f64, PASS (26.5 s): 64 runs ×
+  2000 orbits, 9783718 IAS15 steps in total; energy slope 0.436 ± 0.011
+  (|Δ| from ½ = 0.064), phase slope 1.411 ± 0.014 (|Δ| from 3/2 = 0.089),
+  angular-momentum slope 0.477 ± 0.017 (reported, not asserted).
+  (2) nightly_num023_long_ensemble_brouwer_slopes_ias15_f64, PASS (83.7 s):
+  32 runs × 20 000 orbits, 48915142 IAS15 steps in total; energy slope
+  0.466 ± 0.011 (|Δ| = 0.034), phase slope 1.442 ± 0.009 (|Δ| = 0.058),
+  angular-momentum slope 0.485 ± 0.009 (reported).
+  (3) nightly_num023_forward_backward_reversibility, PASS (11.3 s): 1000
+  orbits forward (76430 steps) and back, |dr| = 8.581e-5 km, |dr|/|r0| =
+  1.230e-12 (reported; NUM-023 gives no acceptance value for it).
+  LIMITS OF THAT RUN: the long ensemble took 4.89e7 steps, just under the
+  "≥ 5e7 steps" of the ruling (the step count is not asserted); the phase
+  slope of the default ensemble uses 0.089 of the 0.1 tolerance. In the same
+  log the N-body ensemble nightly_nbody_brouwer_energy_slope_with_solar_j2
+  (32 runs × 100 000 yr, 1.011e9 steps) measured an energy slope of
+  0.065 ± 0.025 against NUM023-ENERGY-SLOPE, which that test prints as a
+  KNOWN FAILURE (the f64-evaluated energy error stays on its evaluation
+  floor; the test passes on its documented-failure bound), so
+  NUM-023 is shown for the two-body ensembles only, not for the N-body
+  model. Status unchanged (draft).
 ```
 
 ### NUM-024 — Benchmark suite against Subbotin 2023
