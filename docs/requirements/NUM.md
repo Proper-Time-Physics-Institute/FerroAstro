@@ -44,7 +44,31 @@ notes: >-
   The acceptance text is unchanged. Issue #34: under both IAS15 predictors the
   f64-evaluated energy error sits at its evaluation floor, so the present
   check cannot measure Brouwer growth and is to be redesigned at M5. Status
-  unchanged (draft); no Kozai test exists yet.
+  unchanged (draft).
+  KOZAI TEST (added 2026-11-23, not yet run in CI): the Kozai-Lidov test of
+  Rein & Spiegel 2015, Sec. 4.3 is
+  crates/ferroastro-integrators/tests/ias15_kozai.rs
+  (kozai_lidov_cycle_matches_rein_spiegel_2015 and
+  kozai_lidov_cycle_is_scale_independent, PR tier), with every set-up value
+  and bound in tests/vectors/ias15-kozai.toml. The bounds were
+  pre-registered: the vector file was committed before the test was written
+  or run. The paper gives no initial phases or eccentricities; the test's
+  choices are in the notes of vector IAS15-KOZAI-EMAX. First run, local
+  (rustc 1.99.0, default Ias15Config, f64; not CI evidence), in G = 1
+  units and in km, s units respectively: e_max 0.993070 and 0.993070
+  against 0.992 ± 0.005 (met); cycle length 1899.5 and 1899.5 binary
+  periods against [1000, 10000] (met); largest |dL|/|L| 4.07e-15 and
+  2.73e-15 against ≤ 1e-14 (met); step counts 182033 and 182034, ratio
+  1.000005 against 1 ± 1 % (met); 0 unconverged steps; largest |dE/E| over
+  the cycle 1.018e-11 and 1.131e-11 against the pre-registered ≤ 1e-11:
+  NOT MET, so both tests FAIL as committed. The bound was not moved. The
+  worst energy samples are transient, at the eccentricity maximum (near
+  1382 and 1393 binary periods, e = 0.993); at the end of the cycle |dE/E|
+  is 1.10e-13 and 7.79e-13 (reported, not asserted). The paper states
+  "a precision 10^-12" without saying whether that is the end-of-run or the
+  worst error; the pre-registered quantity is the worst sample. NEEDS
+  MAINTAINER RULING: which quantity the acceptance means. Until then the
+  Kozai clause of the acceptance is not met.
 ```
 
 ### NUM-002 — Fixed-step ABM PECE/PECEC integrator (ephemeris mode)
