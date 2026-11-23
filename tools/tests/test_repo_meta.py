@@ -19,6 +19,10 @@ from oracles import drift
 ROOT = Path(__file__).resolve().parents[2]
 FORMS = ROOT / ".github" / "ISSUE_TEMPLATE"
 LINK_RE = re.compile(r"\[[^\]]*\]\(([^)\s]+)\)")
+# A link target with a URI scheme (https:, mailto:, ...) is not a file; it is not checked.
+SCHEME_RE = re.compile(r"[A-Za-z][A-Za-z0-9+.-]*:")
+# Element types of the GitHub issue-form schema.
+FORM_TYPES = {"markdown", "input", "textarea", "dropdown", "checkboxes"}
 AGENT_DOCS = ("AGENTS.md", "CLAUDE.md", "CONTRIBUTING.md", "README.md")
 # The crate that the DEP-016 acceptance names, and the diffsol features that enable it.
 NATIVE_CANARY_CRATE = "suitesparse_sys"
@@ -43,7 +47,11 @@ def test_real_workflows_pass_the_workflow_lint() -> None:
 @pytest.mark.parametrize("name", AGENT_DOCS)
 def test_relative_links_of_the_root_docs_resolve(name: str) -> None:
     doc = ROOT / name
-    targets = [t for t in LINK_RE.findall(doc.read_text(encoding="utf-8")) if "://" not in t]
+    targets = [
+        t
+        for t in LINK_RE.findall(doc.read_text(encoding="utf-8"))
+        if not SCHEME_RE.match(t) and not t.startswith("#")
+    ]
     broken = [t for t in targets if not (doc.parent / t.split("#", 1)[0]).exists()]
     assert broken == []
 
@@ -90,6 +98,24 @@ def test_issue_forms_exist_and_are_well_formed() -> None:
         ids = [block["id"] for block in form["body"] if "id" in block]
         assert len(ids) == len(set(ids)), path.name
         assert any(block["type"] != "markdown" for block in form["body"]), path.name
+
+
+# Verifies: ORG-006
+def test_issue_form_elements_follow_the_schema_basics() -> None:
+    for path in sorted(FORMS.glob("*.yml")):
+        for block in load_yaml(path)["body"]:
+            where = f"{path.name}: {block.get('id', block.get('type'))}"
+            assert block["type"] in FORM_TYPES, where
+            attributes = block["attributes"]
+            if block["type"] == "markdown":
+                assert attributes["value"], where
+                assert "id" not in block, where
+                continue
+            assert re.fullmatch(r"[A-Za-z0-9_-]+", block["id"]), where
+            assert attributes["label"], where
+            if block["type"] in ("dropdown", "checkboxes"):
+                assert attributes["options"], where
+            assert isinstance(block.get("validations", {}).get("required", False), bool), where
 
 
 # Verifies: ORG-006

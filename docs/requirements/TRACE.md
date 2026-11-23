@@ -9,7 +9,7 @@
 
 - Requirements: **127** (draft 113, implemented 2, verified 12)
 - `verification: test` requirements cited by at least one test: **82 / 101**
-- Citing tests: **1143**; vectors referencing a requirement: **791**
+- Citing tests: **1144**; vectors referencing a requirement: **791**
 - Gate evidence (ADR-0010): **15** requirements name a gate; **8** counted, **7** `gate (unpinned)`; `verification: test` requirements covered by a counted gate alone: **6**
 
 ## Test evidence
@@ -21,7 +21,7 @@
 | [ORG-003](ORG.md) | draft | medium | test | `tools/tests/test_trace.py::test_gate_outside_scope_is_rejected`<br>`tools/tests/test_trace.py::test_malformed_gate_is_rejected`<br>`tools/tests/test_trace.py::test_parses_real_catalogue`<br>`tools/tests/test_trace.py::test_rejects_bad_enum`<br>`tools/tests/test_trace.py::test_rejects_duplicate_and_malformed` | — |
 | [ORG-004](ORG.md) | draft | medium | test | `tools/tests/test_trace.py::test_approved_requirement_needs_a_citing_test`<br>`tools/tests/test_trace.py::test_gate_evidence_is_a_separate_section`<br>`tools/tests/test_trace.py::test_gate_outside_scope_is_rejected`<br>`tools/tests/test_trace.py::test_high_criticality_gate_is_unpinned_and_not_counted`<br>`tools/tests/test_trace.py::test_malformed_gate_is_rejected`<br>`tools/tests/test_trace.py::test_medium_criticality_gate_counts`<br>`tools/tests/test_trace.py::test_missing_workflow_job_or_step_is_rejected`<br>`tools/tests/test_trace.py::test_render_is_deterministic`<br>`tools/tests/test_trace.py::test_unknown_cited_id_fails` | — |
 | [ORG-005](ORG.md) | draft | low | inspection | — | — |
-| [ORG-006](ORG.md) | draft | low | inspection | `tools/tests/test_repo_meta.py::test_issue_forms_exist_and_are_well_formed`<br>`tools/tests/test_repo_meta.py::test_labels_file_is_well_formed`<br>`tools/tests/test_repo_meta.py::test_labels_used_by_forms_and_checkers_are_defined` | — |
+| [ORG-006](ORG.md) | draft | low | inspection | `tools/tests/test_repo_meta.py::test_issue_form_elements_follow_the_schema_basics`<br>`tools/tests/test_repo_meta.py::test_issue_forms_exist_and_are_well_formed`<br>`tools/tests/test_repo_meta.py::test_labels_file_is_well_formed`<br>`tools/tests/test_repo_meta.py::test_labels_used_by_forms_and_checkers_are_defined` | — |
 | [ORG-007](ORG.md) | draft | low | inspection | — | — |
 | [ORG-008](ORG.md) | draft | high | test | `tools/tests/test_verify_signatures.py::test_check_commit_rules`<br>`tools/tests/test_verify_signatures.py::test_committed_registry_parses`<br>`tools/tests/test_verify_signatures.py::test_end_to_end_ssh`<br>`tools/tests/test_verify_signatures.py::test_gpg_status_parsing`<br>`tools/tests/test_verify_signatures.py::test_incomplete_delegation_and_bad_mode_are_rejected` | — |
 | [ORG-009](ORG.md) | draft | high | test | `tools/tests/test_governance.py::test_a_non_maintainer_hold_also_needs_a_maintainer_to_clear`<br>`tools/tests/test_governance.py::test_hold_label_present_holds_whoever_set_it`<br>`tools/tests/test_governance.py::test_only_a_maintainer_can_clear_a_hold`<br>`tools/tests/test_governance.py::test_pr_number_from_events` | — |
