@@ -1,0 +1,84 @@
+# SPDX-FileCopyrightText: 2026 Proper-Time Physics Institute
+# SPDX-License-Identifier: Apache-2.0
+#
+# Opt-in time-varying solar gravitational parameter GM_sun(t) (issue #42, OI-04; maintainer
+# decision of 2026-11-23, decision record issue #70): PRE-REGISTERED bounds. This file is committed
+# BEFORE the library term and before any test that reads it has run against the library, so no
+# number below was chosen after looking at the library's results.
+#
+# The convention is INFERRED, not documented by JPL:
+#   GM_sun(t) = GMS * (1 + GMSDOT * (t - t0) / 1 Julian year),
+#   GMSDOT = the header.440 value (not reproduced here, #22) read as a dimensionless rate per
+#   Julian year, t0 = J2000.0 TDB (JD 2451545.0), t in TDB.
+# It rests on (a) FerroAstro's own fit against de440.bsp (issue #42 investigation, 2026-11-22),
+# (b) JPL IOM 335N-20-01 describing the lunar-ranging software's parameter "(dMS/dt)/MS, from
+# J2000", and (c) the non-zero GMSDOT in the "used for integration" comment block of the DE440
+# files. No public JPL document states the formula, the unit or the reference epoch. A linear and
+# an exponential law differ by about 2e-21 relative over the DE440 span; the linear one is used.
+#
+# What was known when the bounds were set (disclosed): the issue #42 investigation applied the same
+# formula in TEST code (an uncommitted scratch copy of data_wp22_mercury_diagnostics.rs) and
+# measured, in the 353-body configuration (`all`), Mercury 0.71 m and Venus about 3 m with the
+# term, and Mercury 85.79 m without it. The data-tier bounds below were fixed by the maintainer
+# from those scratch numbers; the library term had not been written.
+#
+# If a bound fails it is NOT moved: the measured value is reported to the maintainer.
+schema_version = 1
+
+[[vector]]
+id = "GMSUN-RATE-ADIABATIC-SMA-REL"
+requirement = ["PHY-002"]
+quantity = "max over yearly samples of |a(t) GM(t) / (a0 GM0) - 1| for a massless body on an initially circular orbit (r0 = 5.8e7 km) about a Sun of GM0 = 1.3e11 km^3/s^2 whose GM changes linearly at the synthetic rate -1e-6 per Julian year (reference epoch = model epoch), 10 Julian years, IAS15 default, f64; a(t) is the osculating semi-major axis from the vis-viva equation with the instantaneous GM(t)"
+value = 0.0
+unit = "1"
+kind = "analytic"
+source = "Derivation (energy and angular momentum under the central force -GM(t) r/r^3, k = GMdot/GM): dE/dt = -GMdot/r with E = -GM/(2a) gives da/dt = -a k (1 + e^2 + 2 e cos f)/(1 - e^2); h^2 = GM a (1 - e^2) constant gives de/dt = -k (e + cos f). For e = 0 this is the adiabatic law da/dt = -a GMdot/GM, i.e. a GM = constant, and d ln(a GM)/dt = -2 k (e^2 + e cos f)/(1 - e^2). From e(0) = 0 the eccentricity stays below about |k|/n (n = sqrt(GM0/r0^3) = 8.16e-7 rad/s = 25.8 rad/yr, |k|/n = 3.9e-8), so without any averaging |a GM/(a0 GM0) - 1| <= 2 |k| T (|k|/n) = 2 x 1e-5 x 3.9e-8 = 7.8e-13 over T = 10 yr (with the averaging of e cos f it is of order (k/n)^2 = 1.5e-15)."
+citation = "FerroAstro derivation recorded in this vector (two-body problem with slowly varying central mass; the adiabatic invariant a GM for a circular orbit); pre-registered for the issue #42 implementation, 2026-11-23"
+retrieved = "2026-11-23"
+tolerance = { abs = 1.0e-11 }
+tolerance_rationale = "Pre-registered before the library term existed. 13x the unaveraged analytic bound 7.8e-13; the numerical contributions are far below it (IAS15 energy error ~1e-15 over 41 orbits; vis-viva rounding ~1e-15). The secular signal is |k| T = 1e-5, six orders above the tolerance: a missing term fails by 1e6x, a rate applied per day instead of per Julian year by more, a wrong sign by 2e6x, and a term that used a fixed dGM (no time dependence) by 1e6x."
+verified_by = "Issue #42 implementation agent, 2026-11-23: bound computed from the derivation above before the term was written; not yet run."
+
+[[vector]]
+id = "GMSUN-RATE-DE440-MERCURY-HELIO-MAX-M"
+requirement = ["PHY-002", "CI-007"]
+quantity = "Mercury's maximum heliocentric residual |(r_Mercury - r_Sun)_FerroAstro - (r_Mercury - r_Sun)_de440.bsp| over 10 Julian yr from JDEPOC (10-d samples), 353-body configuration `all` of the issue #42 investigation (Sun + 8 planets + geocentric Moon from header.440, no Pluto, the 343 asteroids as Minor bodies; all-body EIH, DE440 solar J2 with the WGCCRE 2015 pole, solar Lense-Thirring with reaction; IAS15 default, f64), WITH the opt-in inferred GM_sun(t) term (header GMSDOT per Julian year, reference epoch J2000.0 TDB)"
+value = 0.0
+unit = "m"
+kind = "measured"
+source = "Oracle: de440.bsp (pinned in tests/data/MANIFEST.toml), whose integration this configuration approximates; an exact reproduction gives 0. Bound fixed by the maintainer on 2026-11-23 (decision record issue #70; issue #42) from the scratch measurement of 2026-11-22: 0.71 m with a test-side term of the same formula, 85.79 m without it."
+citation = "FerroAstro issue #42 investigation notes of 2026-11-22 (section 3.1, row `all,massloss:2451545.0`); maintainer decision of 2026-11-23 (issue #70)"
+retrieved = "2026-11-23"
+tolerance = { abs = 1.0 }
+tolerance_rationale = "Pre-registered (maintainer): Mercury <= 1.0 m. The scratch run gave 0.71 m, dominated by the bodies this configuration omits (Pluto, KBOs, ring: about 0.3 m on Mercury); without the term the residual is 86 m, and with the reference epoch at JDEPOC instead of J2000 it is 102 m, so the bound separates the inferred convention from both by about two orders. The convention is inferred (OI-04); the assertion is provisional on it."
+verified_by = "Issue #42 implementation agent, 2026-11-23: bound copied from the maintainer's instruction before the library term was written; not yet run against the library."
+provisional = "OI-04"
+
+[[vector]]
+id = "GMSUN-RATE-DE440-VENUS-HELIO-MAX-M"
+requirement = ["PHY-002", "CI-007"]
+quantity = "Venus's maximum heliocentric residual against de440.bsp, same run as GMSUN-RATE-DE440-MERCURY-HELIO-MAX-M (353-body configuration, 10 Julian yr, 10-d samples, WITH the opt-in inferred GM_sun(t) term)"
+value = 0.0
+unit = "m"
+kind = "measured"
+source = "Oracle: de440.bsp, as for GMSUN-RATE-DE440-MERCURY-HELIO-MAX-M. Bound fixed by the maintainer on 2026-11-23 from the scratch measurement of 2026-11-22: about 3 m along-track at the end of the span with the test-side term (+2.99 m), 46.6 m without it."
+citation = "FerroAstro issue #42 investigation notes of 2026-11-22 (section 3.1, row `all,massloss:2451545.0`); maintainer decision of 2026-11-23 (issue #70)"
+retrieved = "2026-11-23"
+tolerance = { abs = 5.0 }
+tolerance_rationale = "Pre-registered (maintainer): Venus <= 5.0 m. The scratch run gave about 3 m, the signature of the omitted Pluto, KBOs and ring (with them it is 0.05 m); without the term Venus is off by about 47 m. The convention is inferred (OI-04); the assertion is provisional on it."
+verified_by = "Issue #42 implementation agent, 2026-11-23: bound copied from the maintainer's instruction before the library term was written; not yet run against the library."
+provisional = "OI-04"
+
+[[vector]]
+id = "GMSUN-RATE-OFF-DE440-MERCURY-HELIO-MAX-M"
+requirement = ["PHY-002", "CI-007"]
+quantity = "Mercury's maximum heliocentric residual against de440.bsp in the same 353-body configuration and span WITHOUT the GM_sun(t) term (the default model, constant GMS): the known issue #42 residual, asserted two-sided so that the data test demonstrates the effect of the option"
+value = 85.79
+unit = "m"
+kind = "measured"
+source = "FerroAstro scratch run of 2026-11-22 (issue #42 investigation, section 3.1, row `all`): 85.79 m; the WP22 follow-up recorded 86.9 m for the neighbouring configurations (IMPLEMENTATION-NOTES, WP22 review follow-up)."
+citation = "FerroAstro issue #42 investigation notes of 2026-11-22 (section 3.1); docs/strategy/IMPLEMENTATION-NOTES.md, WP22 review follow-up"
+retrieved = "2026-11-23"
+tolerance = { abs = 15.0 }
+tolerance_rationale = "Pre-registered generous two-sided band [70.79, 100.79] m. The run is deterministic and uses no new code, so it should reproduce 85.79 m closely; the band only has to admit round-off-level changes of the force summation and to fail if the default model changes (a default that silently included the term would give under 1 m). Never an acceptance tolerance for the default model: 86 m is the known defect of issue #42."
+verified_by = "Issue #42 implementation agent, 2026-11-23: value copied from the investigation notes; band set before the library term was written."
