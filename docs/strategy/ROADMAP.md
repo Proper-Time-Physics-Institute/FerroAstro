@@ -22,7 +22,7 @@ in [`docs/requirements/TRACE.md`](../requirements/README.md).
 ## Key-list changes
 
 Maintainer decisions of 2026-11-22 and 2026-11-23, taken after the milestone audit of `main` at `e86984d`
-(decision record: issue #TBD-DECISION-ISSUE). Only the **Key requirements** column changed. Scope and exit
+(decision record: issue #70). Only the **Key requirements** column changed. Scope and exit
 criteria are as before.
 
 | Requirement | Was in | Now in | Why |
@@ -46,7 +46,7 @@ No milestone has exited yet.
   `ferroastro ladder --rungs single-body` report. The tests are `phy007_sr_a.rs`, `phy008_sr_b.rs`,
   `phy005_gr_schw.rs`, `phy010_j2.rs` and `phy011_lt.rs` in `crates/ferroastro-ladder/tests/`, and
   `crates/ferroastro-cli/tests/cli_report.rs`. Twelve of the fourteen key requirements are `verified`.
-  **What remains** (maintainer decision of 2026-11-23, decision record: issue #TBD-DECISION-ISSUE): two key
+  **What remains** (maintainer decision of 2026-11-23, decision record: issue #70): two key
   requirements are `implemented`, not `verified`.
   - NUM-015: its acceptance is blocked by OI-37 (the citation for the inclined-orbit J₂ rates), which is
     still open.

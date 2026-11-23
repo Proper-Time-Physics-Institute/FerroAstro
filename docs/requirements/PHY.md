@@ -186,7 +186,7 @@ notes: >-
   matches the "Keplerian GM" Horizons prints. The WP14 harness is to be
   aligned. Every current tolerance exceeds the 3.6e-6 ″/cy difference.
   VERIFIED 2026-11-22 (maintainer decision of 2026-11-22, decision record:
-  issue #TBD-DECISION-ISSUE, taken after the milestone audit of main at
+  issue #70, taken after the milestone audit of main at
   e86984d: M2's key requirements move to verified).
   Evidence:
   crates/ferroastro-analytic/tests/phy004_gr_analytic.rs::gr_schw_analytic_rate_from_de440_and_sw92
@@ -222,7 +222,7 @@ related: [PHY-004, NUM-001, NUM-013, NUM-015, NUM-017]
 notes: >-
   Equations of motion in PPN isotropic/harmonic gauge (NUM-017, Journal #4 R3).
   VERIFIED 2026-11-22 (maintainer decision of 2026-11-22, decision record:
-  issue #TBD-DECISION-ISSUE, taken after the milestone audit of main at
+  issue #70, taken after the milestone audit of main at
   e86984d: M2's key requirements move to verified).
   Evidence:
   crates/ferroastro-ladder/tests/phy005_gr_schw.rs::gr_schw_numerical_reproduces_42_980
@@ -265,7 +265,7 @@ notes: >-
   relative" could not pass, because 42.98 differs from the computed 42.98048 by
   1.1×10⁻⁵ relative.
   VERIFIED 2026-11-22 (maintainer decision of 2026-11-22, decision record:
-  issue #TBD-DECISION-ISSUE, taken after the milestone audit of main at
+  issue #70, taken after the milestone audit of main at
   e86984d: M2's key requirements move to verified).
   Evidence:
   crates/ferroastro-ladder/tests/phy006_ppn_scaling.rs::ppn_rate_scales_as_two_plus_two_gamma_minus_beta_over_three
@@ -303,7 +303,7 @@ notes: >-
   Ch. 7 problem is UNVERIFIED. NUM-015 adds the exact-formula check
   2π[(1−μ²/c²h²)^(−1/2) − 1] at 10⁻⁶ relative.
   VERIFIED 2026-11-22 (maintainer decision of 2026-11-22, decision record:
-  issue #TBD-DECISION-ISSUE, taken after the milestone audit of main at
+  issue #70, taken after the milestone audit of main at
   e86984d: M2's key requirements move to verified).
   Evidence:
   crates/ferroastro-ladder/tests/phy007_sr_a.rs::sr_a_gives_one_sixth_of_gr
@@ -343,7 +343,7 @@ notes: >-
   areal-gauge run is a labelled exemption from NUM-017's
   no-Schwarzschild-coordinate rule.
   VERIFIED 2026-11-22 (maintainer decision of 2026-11-22, decision record:
-  issue #TBD-DECISION-ISSUE, taken after the milestone audit of main at
+  issue #70, taken after the milestone audit of main at
   e86984d: M2's key requirements move to verified).
   Evidence, in crates/ferroastro-ladder/tests/phy008_sr_b.rs:
   ::sr_b_harmonic_and_areal_give_seven_and_five_sixths asserts vectors
@@ -384,7 +384,7 @@ notes: >-
   The D term U(n·v)² is the areal-gauge form, so the D-term check is a labelled
   exemption from NUM-017's no-Schwarzschild-coordinate rule.
   VERIFIED 2026-11-22 (maintainer decision of 2026-11-22, decision record:
-  issue #TBD-DECISION-ISSUE, taken after the milestone audit of main at
+  issue #70, taken after the milestone audit of main at
   e86984d: M2's key requirements move to verified).
   Evidence:
   crates/ferroastro-ladder/tests/phy009_coefficients.rs::each_coefficient_alone_gives_its_units
@@ -436,7 +436,7 @@ notes: >-
   asteroids; FerroAstro's N-body SolarJ2WithReaction acts on Major bodies
   only (WP12 deviations 3 and 4; OI-76).
   VERIFIED 2026-11-22 (maintainer decision of 2026-11-22, decision record:
-  issue #TBD-DECISION-ISSUE, taken after the milestone audit of main at
+  issue #70, taken after the milestone audit of main at
   e86984d: M2's key requirements move to verified).
   Evidence, in crates/ferroastro-ladder/tests/phy010_j2.rs:
   ::j2_analytic_values_with_phy004_inputs asserts vectors
@@ -499,7 +499,7 @@ notes: >-
   G·S = 1.2680765843106158e16 km⁵/s³ from header.440 tokens (S = 1.8999e41
   kg m² s⁻¹), recomputed independently by data_solar_spin_from_fresh_header_440.
   VERIFIED 2026-11-22 (maintainer decision of 2026-11-22, decision record:
-  issue #TBD-DECISION-ISSUE, taken after the milestone audit of main at
+  issue #70, taken after the milestone audit of main at
   e86984d: M2's key requirements move to verified).
   Evidence:
   crates/ferroastro-ladder/tests/phy011_lt.rs::lense_thirring_gives_minus_0_0020

@@ -36,7 +36,7 @@ notes: >-
   Clean-room implementation from the paper only (DEP-008). Typical cost ~15
   force evaluations per step (derived here: ~7 × ~2 iterations).
   MILESTONE SPLIT (maintainer decision of 2026-11-22, decision record: issue
-  #TBD-DECISION-ISSUE, taken after the milestone audit of main at e86984d; it
+  #70, taken after the milestone audit of main at e86984d; it
   follows the deferral of 2026-11-08 in issue #34): in
   docs/strategy/ROADMAP.md the clause "in f64 the energy error
   grows as t^(1/2) over ≥ 10⁹ steps" is an M5 item; the rest of this
@@ -99,7 +99,7 @@ notes: >-
   Derived here: Gauss collocation on the velocity-form ODE in (x, v) is
   symmetric but not canonically symplectic once p ≠ mv.
   STATUS 2026-11-23: implemented, NOT verified (maintainer decision of
-  2026-11-23, decision record: issue #TBD-DECISION-ISSUE). The status
+  2026-11-23, decision record: issue #70). The status
   `verified` proposed on 2026-11-22, after the milestone audit of main at
   e86984d and with the limits below disclosed for the maintainer's ruling,
   is withdrawn. Reason: the statement promises a "round-off-aware
@@ -166,7 +166,7 @@ notes: >-
   The log is kept outside the repository: this is a local run, not CI
   evidence.
   DECISION (maintainer, 2026-11-23; decision record: issue
-  #TBD-DECISION-ISSUE): NUM-003 is held at `implemented`, for the reason
+  #70): NUM-003 is held at `implemented`, for the reason
   given at STATUS 2026-11-23 above. OI-80 blocks `verified`: resolve the
   compensation-gain shortfall, and replace or retire the two order tests
   whose design cannot measure the order (I2 in f64 at round-off; I2b on a
@@ -574,7 +574,7 @@ notes: >-
   harmonic-coordinate states carry ~5 mas periodic terms under 1PN (derived
   here).
   AMENDED 2026-11-22 (maintainer decision of 2026-11-22, decision record:
-  issue #TBD-DECISION-ISSUE, taken after the milestone audit of main at
+  issue #70, taken after the milestone audit of main at
   e86984d): the per-orbit mean-ellipse estimator is dropped from the
   statement and the title. It was never built (IMPLEMENTATION-NOTES WP6, "Not
   delivered"). The implemented estimators stay: the LRL eccentricity-vector
@@ -599,7 +599,7 @@ notes: >-
   single-body rungs (SR-b/areal, J2-DE440, J2-INCL) and every N-body rung
   are not reported, and the dog-leg definition is not a column of the table.
   DECISION (maintainer, 2026-11-23; decision record: issue
-  #TBD-DECISION-ISSUE): NUM-012 stays `verified` with this limit stated: the
+  #70): NUM-012 stays `verified` with this limit stated: the
   validation page covers five of the eight single-body rungs, not all.
   OI-81 qualifies this requirement: extend the page to every single-body
   rung. OI-40 (the 1PN-corrected LRL form, first sentence of these notes)
@@ -795,7 +795,7 @@ notes: >-
   double-double every rung passes 10⁻⁶ relative directly (≤1.4e-10).
   STATUS 2026-11-22: implemented, NOT verified (maintainer decision of
   2026-11-22 to move M2's key requirements to verified, applied as far as the
-  rules allow; decision record: issue #TBD-DECISION-ISSUE). The oracles exist
+  rules allow; decision record: issue #70). The oracles exist
   in crates/ferroastro-analytic/src/advance.rs
   and the per-orbit check (`check_num015`: 10⁻⁶ relative or the 1.17×10⁻¹⁵
   rad/orbit floor, 10³ orbits) is asserted for every single-body rung in
@@ -837,7 +837,7 @@ related: [PHY-007]
 notes: >-
   Attribution of the exact formula to Sommerfeld 1916 is UNVERIFIED.
   VERIFIED 2026-11-22 (maintainer decision of 2026-11-22, decision record:
-  issue #TBD-DECISION-ISSUE, taken after the milestone audit of main at
+  issue #70, taken after the milestone audit of main at
   e86984d: M2's key requirements move to verified).
   Inspection record, 2026-11-22, main at e86984d (prepared by an agent for the
   maintainer's approval): the crate documentation of ferroastro-ladder
@@ -884,7 +884,7 @@ notes: >-
   osculating elements are not. TCB/TDB rate difference L_B ≈ 1.55×10⁻⁸ is
   negligible for ″/cy.
   VERIFIED 2026-11-22 (maintainer decision of 2026-11-22, decision record:
-  issue #TBD-DECISION-ISSUE, taken after the milestone audit of main at
+  issue #70, taken after the milestone audit of main at
   e86984d: M2's key requirements move to verified).
   Evidence for the R5 → R3 limit. Numerical:
   crates/ferroastro-eih/tests/eih_checks.rs::eih_reduces_to_the_schwarzschild_test_particle_numerically
@@ -1048,7 +1048,7 @@ notes: >-
   includes them unless MinorReaction is Off. Since OI-35 closed, the N-body
   LT row NUM019-NBODY-LT-CONTRIBUTION gates.
   VERIFIED 2026-11-22 (maintainer decision of 2026-11-22, decision record:
-  issue #TBD-DECISION-ISSUE, taken after the milestone audit of main at
+  issue #70, taken after the milestone audit of main at
   e86984d: M2's key requirements move to verified).
   Evidence. Momentum:
   crates/ferroastro-forces/tests/nbody_de440.rs::momentum_is_conserved_with_j2_and_runs_are_bitwise_reproducible
@@ -1098,7 +1098,7 @@ notes: >-
   LT and the asteroids) is open and untriaged. (4) Eq. 29's number and
   typography were not re-read in the paper (WP12 deviation 5, above).
   DECISION (maintainer, 2026-11-23; decision record: issue
-  #TBD-DECISION-ISSUE): NUM-019 stays `verified` with limit (1) stated: its
+  #70): NUM-019 stays `verified` with limit (1) stated: its
   acceptance vector NUM019-NBODY-LT-CONTRIBUTION is asserted only in the
   nightly tier, not in per-PR CI. OI-81 qualifies this requirement: add a
   per-PR assertion for that vector.

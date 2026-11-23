@@ -196,7 +196,7 @@ ADRs: ADR-0004's 2026-10-21 revision (`provisional` field) is no longer marked p
 
 ## Milestone-audit decisions 2026-11-22
 
-Applied 2026-11-22 from the maintainer's decisions on the milestone audit of `main` at `e86984d` (decision record: issue #TBD-DECISION-ISSUE). These are the first requirements to leave `draft`. The evidence for each status is in the requirement's `notes` (test, vectors and CI run). The status changes and the NUM-012 statement change need the maintainer's approval of the PR head (`ratchet`, TST-006). No acceptance text, value or tolerance was changed.
+Applied 2026-11-22 from the maintainer's decisions on the milestone audit of `main` at `e86984d` (decision record: issue #70). These are the first requirements to leave `draft`. The evidence for each status is in the requirement's `notes` (test, vectors and CI run). The status changes and the NUM-012 statement change need the maintainer's approval of the PR head (`ratchet`, TST-006). No acceptance text, value or tolerance was changed.
 
 | ID | Change | Evidence |
 |---|---|---|
@@ -211,7 +211,7 @@ M2 has not exited ([ROADMAP](../strategy/ROADMAP.md), "Milestone status"). As of
 
 ## Milestone-audit decisions 2026-11-23
 
-Applied 2026-11-23 from the maintainer's decisions, taken by questionnaire, on the three disclosed limits of the previous section and on the M2 exit (decision record: issue #TBD-DECISION-ISSUE). The NUM-003 status change needs the maintainer's approval of the PR head (`ratchet`, TST-006). No statement, acceptance text, value or tolerance was changed.
+Applied 2026-11-23 from the maintainer's decisions, taken by questionnaire, on the three disclosed limits of the previous section and on the M2 exit (decision record: issue #70). The NUM-003 status change needs the maintainer's approval of the PR head (`ratchet`, TST-006). No statement, acceptance text, value or tolerance was changed.
 
 | ID | Change | Evidence |
 |---|---|---|

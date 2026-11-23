@@ -177,7 +177,7 @@ notes: >-
   Journal #5 said "from M5" using its own milestone numbering; that milestone
   (Showcase & 0.x release) is M6 in ROADMAP.md.
   MOVED TO M6 (maintainer decision of 2026-11-22, decision record: issue
-  #TBD-DECISION-ISSUE, taken after the milestone audit of main at e86984d):
+  #70, taken after the milestone audit of main at e86984d):
   this requirement leaves M0's key list in
   docs/strategy/ROADMAP.md; M6 now lists it in full instead of "STD-007
   gating". The check compares against the last release, and the first release
@@ -295,7 +295,7 @@ notes: >-
   lint only (.github/workflows/pr-title.yml); release automation remains
   unimplemented.
   MOVED TO M6 (maintainer decision of 2026-11-22, decision record: issue
-  #TBD-DECISION-ISSUE, taken after the milestone audit of main at e86984d):
+  #70, taken after the milestone audit of main at e86984d):
   this requirement leaves M0's key list in
   docs/strategy/ROADMAP.md and joins M6's, because release automation belongs
   to the 0.x release. Status unchanged (draft).
