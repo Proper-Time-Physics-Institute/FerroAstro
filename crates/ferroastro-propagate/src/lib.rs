@@ -65,8 +65,8 @@ pub use error::PropagateError;
 pub use nbody::{DEFAULT_ABM_STEP_DAYS, DEFAULT_DT0_DAYS, DEFAULT_FIXED_STEP_DAYS};
 pub use output::{PassageRecord, RunOutput, StateRecord};
 pub use setup::{
-    DataSources, RUNNER, SolarOverrides, SuppliedState, constants_version, de440_solar_spin,
-    refuse_unsupported, supports,
+    DataSources, RUNNER, SolarOverrides, SuppliedState, constants_version,
+    de440_inferred_solar_gm_rate, de440_solar_spin, refuse_unsupported, supports,
 };
 pub use stepper::IntegratorSnapshot;
 

@@ -3,11 +3,13 @@
 //! N-body force models (M3, WP12): tiered Newtonian point masses, the geocentric Moon and solar
 //! J2 with its reaction, behind the [`ForceTerm`] trait, and their IAS15 propagation.
 
+mod gm_rate;
 mod layout;
 mod model;
 mod propagator;
 mod terms;
 
+pub use gm_rate::{SolarGmRate, SolarGmVariation};
 pub use layout::{Accelerations, Layout, MoonPair, MoonVariables, NBody, View};
 pub use model::NBodyModel;
 pub use propagator::NBodyPropagator;

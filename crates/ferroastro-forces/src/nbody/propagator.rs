@@ -25,7 +25,9 @@ impl<F: Frame, R: Real> NBodyPropagator<F, R> {
     /// Earth–Moon pair in DE variables), with first trial step `dt0` and IAS15 settings `cfg`.
     ///
     /// # Errors
-    /// `FA-E0500` for a body missing from `states`; the IAS15 errors (`FA-E040x`) for invalid
+    /// `FA-E0500` for a body missing from `states`, or if the model has an explicitly
+    /// time-dependent term ([`NBodyModel::time_origin`], e.g. the opt-in
+    /// [`crate::SolarGmVariation`]) built for another epoch than `epoch`; the IAS15 errors (`FA-E040x`) for invalid
     /// settings or initial values.
     pub fn new(
         model: NBodyModel<F, R>,
@@ -35,6 +37,19 @@ impl<F: Frame, R: Real> NBodyPropagator<F, R> {
         dt0: TimeSpan<R>,
         cfg: Ias15Config,
     ) -> Result<Self, IntegratorError> {
+        if let Some(origin) = model.time_origin() {
+            let offset = (epoch - origin).seconds();
+            if offset != R::ZERO {
+                return Err(ForceError::Invalid {
+                    name: "start epoch minus the time origin of the model's time-dependent \
+                           terms (s)",
+                    value: offset.to_f64(),
+                    valid: "0: build the time-dependent term (SolarGmVariation) with the \
+                            epoch the propagation starts from",
+                }
+                .into());
+            }
+        }
         let (x, v) = model.pack(states, earth_moon)?;
         let n = x.len();
         let ias = Ias15::new(n, R::ZERO, &x, &v, dt0.seconds(), cfg)?;

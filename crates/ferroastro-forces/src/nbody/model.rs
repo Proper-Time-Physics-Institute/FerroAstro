@@ -6,6 +6,7 @@ use super::layout::{Accelerations, Layout, MoonVariables, NBody, View, slot};
 use super::terms::ForceTerm;
 use crate::{ForceError, ForceModel, Gauge};
 use ferroastro_core::frames::{Barycentric, Center, Frame, Position, State};
+use ferroastro_core::time::{Epoch, Tdb};
 use ferroastro_core::units::{Length, Velocity};
 use ferroastro_integrators::{IntegratorError, SecondOrderSystem};
 use ferroastro_real::{Neumaier, Real};
@@ -55,7 +56,8 @@ impl<F: Frame, R: Real> NBodyModel<F, R> {
     /// # Errors
     /// `FA-E0500` for an invalid layout, a term that cannot bind, or a geocentric pair without
     /// exactly one term that supplies Moon − Earth (or such a term without the pair), or terms
-    /// that disagree on the Minor bodies' reaction setting;
+    /// that disagree on the Minor bodies' reaction setting, or explicitly time-dependent terms
+    /// with different time origins ([`ForceTerm::time_origin`]);
     /// `FA-E0502` if two terms declare different relativistic gauges.
     pub fn new(
         bodies: &[NBody<R>],
@@ -79,6 +81,16 @@ impl<F: Frame, R: Real> NBodyModel<F, R> {
                 f64::from(u32::try_from(reactions.len()).unwrap_or(u32::MAX)),
                 "the same setting in MinorFromMajors, SolarLenseThirring and Eih",
             ));
+        }
+        let mut origins = terms.iter().filter_map(|t| t.time_origin());
+        if let Some(first) = origins.next() {
+            if let Some(other) = origins.find(|o| (*o - first).seconds() != R::ZERO) {
+                return Err(invalid(
+                    "difference between the time origins of two time-dependent terms (s)",
+                    (other - first).seconds().to_f64(),
+                    "0: build every time-dependent term with the same model epoch",
+                ));
+            }
         }
         let mut gauge = Gauge::Newtonian;
         let mut comparison = false;
@@ -128,6 +140,14 @@ impl<F: Frame, R: Real> NBodyModel<F, R> {
     #[must_use]
     pub fn terms(&self) -> &[Box<dyn ForceTerm<F, R>>] {
         &self.terms
+    }
+
+    /// The epoch at which the model's time variable is zero, if a term depends explicitly on
+    /// time ([`ForceTerm::time_origin`]; today only the opt-in [`crate::SolarGmVariation`]);
+    /// `None` for an autonomous model, which may start at any epoch.
+    #[must_use]
+    pub fn time_origin(&self) -> Option<Epoch<Tdb, R>> {
+        self.terms.iter().find_map(|t| t.time_origin())
     }
 
     /// True if a term of the model is a beyond-GR comparison model (ADR-0016, PHY-020,
@@ -318,6 +338,10 @@ impl<F: Frame, R: Real> NBodyModel<F, R> {
 
     /// Total energy divided by G (km⁵/s⁴): `Σ ½ μᵢ vᵢ²` over the moving bodies plus every
     /// term's potential; `None` if a term is not conservative. Neumaier-summed.
+    ///
+    /// The sum uses the constant layout GMs. A model with the opt-in, explicitly time-dependent
+    /// [`crate::SolarGmVariation`] (inferred GM☉(t), OI-04) has no conserved energy, and this
+    /// returns `None` for it.
     #[must_use]
     pub fn energy_over_g(&self, x: &[R], v: &[R]) -> Option<R> {
         if self.layout.check_len(x.len()).is_err() || self.layout.check_len(v.len()).is_err() {
@@ -339,6 +363,12 @@ impl<F: Frame, R: Real> NBodyModel<F, R> {
     /// Total linear momentum divided by G, `Σ μᵢ vᵢ` over the moving bodies (km⁴/s³), and the
     /// scale `Σ μᵢ |vᵢ|` against which its round-off is judged. Neumaier-summed. `None` if `x` or
     /// `v` does not have length `3 n` (PR #13 review R13-CODE-2/3: never a silent zero).
+    ///
+    /// The sum uses the constant layout GMs. With the opt-in [`crate::SolarGmVariation`]
+    /// (inferred GM☉(t), OI-04) it is **not** conserved: that term scales the Sun's pull on the
+    /// other bodies and leaves their pull on the Sun unchanged, so `Σ μᵢ aᵢ` is the term's own
+    /// `−δGM(t) Σ μᵢ (rᵢ − r☉)/|rᵢ − r☉|³`, of relative size `δGM/GM☉` (about 1e-12 for the
+    /// DE440 rate within a few decades of J2000).
     #[must_use]
     pub fn momentum_over_g(&self, x: &[R], v: &[R]) -> Option<([R; 3], R)> {
         if self.layout.check_len(x.len()).is_err() || self.layout.check_len(v.len()).is_err() {
