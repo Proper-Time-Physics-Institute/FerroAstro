@@ -71,9 +71,10 @@ status: draft
 criticality: low
 verification: test
 statement: >-
-  Each public function SHALL have a doctest example using real, cited values
-  (citing the vector ID), and each ladder rung SHALL have a runnable program in
-  examples/ (e.g. cargo run --example mercury_1pn).
+  (a) Every implemented ladder rung SHALL have a runnable program in examples/
+  (e.g. cargo run --example mercury_1pn) that runs in CI. (b) Each public
+  function SHALL have a doctest example using real, cited values (citing the
+  vector ID).
 acceptance: >-
   `cargo test --doc` passes; a check confirms every public fn has a doc
   example and every PHY- rung has a matching example that runs in CI.
@@ -81,7 +82,31 @@ source: >-
   docs/strategy/journal/05-organization-standards.md §6 item 3 and API-003.
 parent: null
 related: [STD-004, ORG-002, AGT-001]
-notes: null
+notes: >-
+  SPLIT BY CLAUSE (maintainer decision of 2026-11-23, decision record: issue
+  #70, taken after the milestone audit of main at e86984d). The statement is
+  amended into two clauses, in one requirement, as was done for NUM-001; no
+  new ID is created. Clause (a), every implemented rung has an example that
+  runs in CI, is this requirement's M2 content, and API-003 stays on M2's key
+  list in docs/strategy/ROADMAP.md. Clause (b), every public function has a
+  doctest, is an M6 item, and the doctest threshold is to be set there. The
+  words "implemented" and "that runs in CI" in clause (a) come from the
+  decision and from the acceptance. The title and the acceptance text are
+  unchanged; the acceptance's "every public fn has a doc example" belongs to
+  clause (b). An earlier revision of this note moved the whole requirement to
+  M6 and called that a decision of 2026-11-22; that was not decided.
+  State at e86984d. Clause (a):
+  crates/ferroastro-ladder/tests/api003_examples.rs has ten tests.
+  every_implemented_phy_rung_has_an_example checks that PHY-001, PHY-004,
+  PHY-006, PHY-009 and every PHY requirement of the single-body rungs have a
+  crates/ferroastro-ladder/examples/phyNNN_*.rs file; example_phy001_runs,
+  example_phy004_runs … example_phy011_runs run the nine examples (PHY-001 and
+  PHY-004…011). All ten passed in `ci` run 45030787159 (push to main at
+  e86984d, 2026-11-22; job `rust`). The check does not enumerate the N-body
+  rungs (PHY-012 onward), which have no example. Clause (b): the check
+  tools/doctest_coverage.py runs in CI as report-only and reports 0 of 864
+  public functions with a doc example. Status unchanged (draft); the
+  maintainer has not ruled on a status.
 ```
 
 ### API-004 — Interactive orbit viewer
