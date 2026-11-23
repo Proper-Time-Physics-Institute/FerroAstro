@@ -82,8 +82,9 @@ source: >-
 parent: null
 related: [STD-004, ORG-002, AGT-001]
 notes: >-
-  MOVED TO M6 (maintainer decision of 2026-11-22, taken after the milestone
-  audit of main at e86984d): this requirement leaves M2's key list in
+  MOVED TO M6 (maintainer decision of 2026-11-22, decision record: issue
+  #TBD-DECISION-ISSUE, taken after the milestone audit of main at e86984d):
+  this requirement leaves M2's key list in
   docs/strategy/ROADMAP.md and joins M6's, where the doctest threshold is to
   be set. State at e86984d: every implemented PHY rung has an example that
   runs in CI (crates/ferroastro-ladder/tests/api003_examples.rs, 10 tests);

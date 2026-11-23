@@ -60,8 +60,9 @@ notes: >-
   ephemeris comparison). Its lead review says the roadmap expands them to the
   kickoff ladder, which is used here. DE440 reproduction is a separate
   milestone; fitting to observations is a later stage (kickoff).
-  MOVED TO M6 (maintainer decision of 2026-11-22, taken after the milestone
-  audit of main at e86984d): this requirement leaves M0's key list in
+  MOVED TO M6 (maintainer decision of 2026-11-22, decision record: issue
+  #TBD-DECISION-ISSUE, taken after the milestone audit of main at e86984d):
+  this requirement leaves M0's key list in
   docs/strategy/ROADMAP.md and joins M6's. Its acceptance is a whole-ladder
   property (every PHY rung requirement verified, none uncovered in TRACE.md),
   and the last rungs to land are M6's (PHY-016, and PHY-017, which waits on
