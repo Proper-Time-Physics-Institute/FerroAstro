@@ -17,6 +17,7 @@ use crate::central::{Pole, cross, dot};
 use crate::oblateness::{j2_field, j2_potential};
 use crate::{ForceError, Gauge};
 use ferroastro_core::frames::Frame;
+use ferroastro_core::time::{Epoch, Tdb};
 use ferroastro_core::units::{SpinGm, Velocity};
 use ferroastro_ephem::NaifId;
 use ferroastro_real::Real;
@@ -55,6 +56,14 @@ pub trait ForceTerm<F: Frame, R: Real = f64>: fmt::Debug + Send + Sync {
     fn minor_reaction(&self) -> Option<MinorReaction> {
         None
     }
+    /// The epoch at which `t = 0` in [`ForceTerm::accumulate`], for a term that depends
+    /// explicitly on time ([`crate::SolarGmVariation`]); `None` (the default) for a term that does
+    /// not. Every term of a model that returns `Some` must agree
+    /// ([`crate::NBodyModel::new`]), and [`crate::NBodyPropagator::new`] refuses a start epoch
+    /// that differs from it.
+    fn time_origin(&self) -> Option<Epoch<Tdb, R>> {
+        None
+    }
     /// Resolve body indices against the model's layout (called once, when the model is built).
     ///
     /// # Errors
@@ -77,7 +86,7 @@ pub trait ForceTerm<F: Frame, R: Real = f64>: fmt::Debug + Send + Sync {
 
 /// `p_j − p_i`.
 #[inline]
-fn sub<R: Real>(a: [R; 3], b: [R; 3]) -> [R; 3] {
+pub(super) fn sub<R: Real>(a: [R; 3], b: [R; 3]) -> [R; 3] {
     let [a0, a1, a2] = a;
     let [b0, b1, b2] = b;
     [a0 - b0, a1 - b1, a2 - b2]
@@ -85,7 +94,7 @@ fn sub<R: Real>(a: [R; 3], b: [R; 3]) -> [R; 3] {
 
 /// `|d|²` with the M0 kernel's operation order.
 #[inline]
-fn r2_of<R: Real>(d: [R; 3]) -> R {
+pub(super) fn r2_of<R: Real>(d: [R; 3]) -> R {
     let [d0, d1, d2] = d;
     d0.mul_add(d0, d1.mul_add(d1, d2 * d2))
 }
@@ -107,7 +116,7 @@ fn scaled<R: Real>(gm: R, d: [R; 3], s: R) -> [R; 3] {
     d.map(|dk| gm * dk * s)
 }
 
-fn singular<R: Real>(i: usize, j: usize, t: R) -> ForceError {
+pub(super) fn singular<R: Real>(i: usize, j: usize, t: R) -> ForceError {
     ForceError::Singular {
         i,
         j,
@@ -777,7 +786,10 @@ impl<F: Frame, R: Real> ForceTerm<F, R> for GrPotential<R> {
 }
 
 /// Find the Major Sun and its GM for a Sun-sourced term (`what` names the term in the error).
-fn major_sun<R: Real>(layout: &Layout<R>, what: &'static str) -> Result<(usize, R), ForceError> {
+pub(super) fn major_sun<R: Real>(
+    layout: &Layout<R>,
+    what: &'static str,
+) -> Result<(usize, R), ForceError> {
     let sun = layout
         .index_of(NaifId::SUN)
         .filter(|&i| layout.tiers().get(i) == Some(&Tier::Major))
