@@ -201,7 +201,10 @@ notes: >-
   2026-11-23: .github/labels.yml and the issue forms under
   .github/ISSUE_TEMPLATE/ exist, checked by tools/tests/test_repo_meta.py. Not
   done: there is no label-sync job (OI-54 open), and the GitHub milestone
-  descriptions do not list requirement IDs.
+  descriptions are incomplete (checked 2026-11-23): M0, M5 and M6 name no
+  requirement ID, M1 to M4 name only some of their key list (PHY-001 and
+  NUM-023; PHY-004..011; PHY-012/013; PHY-014), and only M1 and M4 state an
+  exit criterion, so M0 has none.
 ```
 
 ### ORG-007 — Software classification and tailoring

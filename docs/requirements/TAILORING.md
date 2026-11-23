@@ -67,7 +67,7 @@ The GitHub labels `crit:high`, `crit:medium` and `crit:low` mark issues with the
 | A requirement at `approved` or later with `verification: test` has at least one citing test, or counted gate evidence | every level | Tool: `tools/trace.py --check` |
 | Gate evidence (`verified_by_gate`) counts only when the gate is listed in `PINNED_GATES` in `tools/trace.py`; otherwise TRACE.md shows `gate (unpinned)` | `high` only; `medium` and `low` gates count without it | Tool: `tools/trace.py` |
 | A change of `status` or `verified_by_gate`, and a change of `statement` or `acceptance` in `PHY.md` or `NUM.md`, needs a maintainer's approval of the PR head | every level | Tool: the `ratchet` check (`tools/ratchet.py`, TST-006) |
-| Code implementing the requirement has a published-value test and, where an oracle exists, a reference-comparison test against an independent implementation | `high` | Person: the maintainer who approves the status change. No tool checks it |
+| ORG-007's acceptance: "Crates tagged crit:high require a reference-comparison test against an independent implementation plus a published-value test." | `high` | Person: the maintainer who approves the status change. No tool checks it |
 | At least one automated test or a recorded inspection | `medium` | Person, as above. For `verification: test` the citing-test rule above also applies from `approved` |
 | Inspection is enough | `low` | Person, as above |
 
@@ -76,14 +76,26 @@ declares its `kind` (`defined`, `measured`, `computed-reference` or `analytic`, 
 `tests/vectors/schema.json`) with its source and citation, and the comparisons against independent
 implementations are the tests of `crates/ferroastro-oracle` and the oracle definitions under `ci/`.
 
-Review does not depend on criticality. A maintainer's review is required for the files listed in
-`.github/CODEOWNERS` (the meta surface, ORG-011) and for the findings of the `ratchet` check; everything
-else merges on the required checks (ORG-009, ADR-0015). `.github/CODEOWNERS` has no entry that selects
-paths by criticality.
+Review does not depend on criticality. The policy (ORG-009, ORG-011, ADR-0015) calls for a maintainer's
+review in two cases, and for a merge on the required checks alone otherwise:
+
+- **Findings of the `ratchet` check.** This half is enforced: `ratchet` is a required status check on
+  `main`, and an approval finding passes only when a maintainer has approved the PR head.
+- **Files listed in `.github/CODEOWNERS`** (the meta surface, ORG-011). This half is **not enforced**: on
+  2026-11-23 the `main` ruleset ("Protect Main", id 25209757) has `require_code_owner_review: false` and
+  `required_approving_review_count: 0`, so GitHub lets a PR that touches these files merge without a
+  maintainer's review.
+
+`.github/CODEOWNERS` has no entry that selects paths by criticality.
 
 ## Known gaps on 2026-11-23
 
 - The `high` rule (published-value test plus reference-comparison test) is not checked by any tool.
+- The two statements of the `high` rule do not agree. ORG-007's acceptance requires the
+  reference-comparison test without condition. The README's criticality table requires it only "where an
+  oracle exists". Neither text was changed here; which one holds is the maintainer's decision.
+- Code Owner review of the meta surface is policy (ORG-011) but is not enforced by the ruleset: see
+  "Review does not depend on criticality" above. ORG-011's and TST-004's acceptance depend on it.
 - `PINNED_GATES` in `tools/trace.py` is empty, so every `high` requirement that names a gate shows as
   `gate (unpinned)` in TRACE.md.
 - The README's criticality table says "Two approving reviews on `crit:high` paths via CODEOWNERS". The

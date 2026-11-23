@@ -556,7 +556,8 @@ related: [DEP-006]
 notes: >-
   UMFPACK being GPL-licensed is "per our knowledge", UNVERIFIED for the
   version russell_sparse links.
-  IMPLEMENTED 2026-11-23 as cargo-deny [bans] checks in deny.toml, run by the
+  Configuration added 2026-11-23 (status unchanged, pending the maintainer's
+  ruling): cargo-deny [bans] checks in deny.toml, run by the
   existing `cargo deny check` step of the ci.yml `rust` job: the
   native-library crates suitesparse_sys, sundials-sys, lapack-src, lapack-sys,
   blas-src, blas-sys, openblas-src, netlib-src, intel-mkl-src and
