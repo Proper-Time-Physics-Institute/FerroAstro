@@ -1,6 +1,6 @@
 # SPDX-FileCopyrightText: 2026 Proper-Time Physics Institute
 # SPDX-License-Identifier: Apache-2.0
-# License / advisory / source gating (DEP-001..003, STD-006).
+# License / advisory / source gating (DEP-001..003, STD-006) and the native-library feature audit (DEP-016).
 
 [advisories]
 version = 2
@@ -42,7 +42,33 @@ deny = [
     { crate = "rebound-rs", reason = "GPL-3.0" },
     { crate = "thor-rs-assist", reason = "provenance unverified (DEP-015)" },
     { crate = "erfars", reason = "archived" },
+    # Native-library crates behind optional features of permissive crates (DEP-016). Banning the
+    # crate fails the check whichever feature of whichever dependency pulls it in.
+    { crate = "suitesparse_sys", reason = "SuiteSparse native libraries (DEP-016)" },
+    { crate = "sundials-sys", reason = "SUNDIALS native libraries (DEP-016)" },
+    { crate = "lapack-src", reason = "LAPACK native backend (DEP-016)" },
+    { crate = "lapack-sys", reason = "LAPACK native bindings (DEP-016)" },
+    { crate = "blas-src", reason = "BLAS native backend (DEP-016)" },
+    { crate = "blas-sys", reason = "BLAS native bindings (DEP-016)" },
+    { crate = "openblas-src", reason = "OpenBLAS native library (DEP-016)" },
+    { crate = "netlib-src", reason = "Netlib BLAS/LAPACK native library (DEP-016)" },
+    { crate = "intel-mkl-src", reason = "Intel MKL native library (DEP-016)" },
+    { crate = "accelerate-src", reason = "Apple Accelerate native library (DEP-016)" },
 ]
+
+# DEP-016 feature audit, by feature name as well: the diffsol features that enable its optional
+# suitesparse_sys dependency (diffsol 0.20.0: `suitesparse` and `sundials`), and the russell_sparse
+# features that select a native solver or BLAS backend (russell_sparse 5.6.0). Neither crate is a
+# dependency today; the entries bite if one is added with such a feature.
+[[bans.features]]
+crate = "diffsol"
+deny = ["suitesparse", "sundials"]
+reason = "native SuiteSparse/SUNDIALS (DEP-016)"
+
+[[bans.features]]
+crate = "russell_sparse"
+deny = ["umfpack", "mumps", "intel_mkl", "open_blas"]
+reason = "native UMFPACK/MUMPS/MKL/OpenBLAS (DEP-016)"
 
 [sources]
 unknown-registry = "deny"
