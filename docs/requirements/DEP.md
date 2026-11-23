@@ -526,6 +526,10 @@ notes: >-
   (confirmed with cargo-deny 0.19.8: sofars passed as plain MIT, its SOFA text
   invisible to the gate; red-team L5, Journal #9). Hence the hash-pinned
   clarify rule.
+  2026-11-23: the provenance checklist (licence file read, maintenance status,
+  WASM compatibility, clarify entry) is in .github/PULL_REQUEST_TEMPLATE.md.
+  No tool checks that a PR changing Cargo.lock completed it. deny.toml has no
+  [[licenses.clarify]] entry.
 ```
 
 ### DEP-016 — No native-library features
@@ -552,6 +556,21 @@ related: [DEP-006]
 notes: >-
   UMFPACK being GPL-licensed is "per our knowledge", UNVERIFIED for the
   version russell_sparse links.
+  IMPLEMENTED 2026-11-23 as cargo-deny [bans] checks in deny.toml, run by the
+  existing `cargo deny check` step of the ci.yml `rust` job: the
+  native-library crates suitesparse_sys, sundials-sys, lapack-src, lapack-sys,
+  blas-src, blas-sys, openblas-src, netlib-src, intel-mkl-src and
+  accelerate-src are banned by name, and [[bans.features]] denies diffsol's
+  `suitesparse` and `sundials` features and russell_sparse's `umfpack`,
+  `mumps`, `intel_mkl` and `open_blas`. Local evidence, not CI evidence
+  (cargo-deny 0.20.2; CI pins 0.19.8): `cargo deny check` passes on the
+  workspace; on a scratch copy with `diffsol = { version = "0.20.0",
+  default-features = false, features = ["suitesparse"] }` added to one crate,
+  `cargo deny check bans` fails with feature-banned (diffsol `suitesparse`)
+  and banned (suitesparse_sys 0.1.4), and passes again with the feature
+  removed. The canary PR of the acceptance has not been run on GitHub.
+  tools/tests/test_repo_meta.py checks in the `python` job that these deny.toml
+  entries exist and that Cargo.lock names no banned crate.
 ```
 
 ### DEP-017 — JPL ephemeris data not bundled in releases

@@ -34,6 +34,9 @@ related: [ORG-004, ORG-009, TST-002]
 notes: >-
   Whether `@AGENTS.md` is still the recommended Claude Code import pattern is
   UNVERIFIED. Crate-level crates/*/AGENTS.md hold local physics conventions.
+  2026-11-23: the link check is tools/tests/test_repo_meta.py (relative links
+  of AGENTS.md, CLAUDE.md, CONTRIBUTING.md and README.md resolve), run by
+  pytest in the ci.yml `python` job. External URLs are not checked.
 ```
 
 ### AGT-002 — llms.txt
@@ -76,7 +79,9 @@ source: >-
   docs/strategy/journal/05-organization-standards.md §2.4 and AGT-003.
 parent: null
 related: [ORG-006]
-notes: null
+notes: >-
+  2026-11-23: .github/ISSUE_TEMPLATE/agent-task.yml exists;
+  tools/tests/test_repo_meta.py checks that its four fields are required.
 ```
 
 ### AGT-004 — MCP structured output

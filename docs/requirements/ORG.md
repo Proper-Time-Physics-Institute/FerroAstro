@@ -172,6 +172,8 @@ notes: >-
   benchmark-and-long-run-infrastructure, 0014 per-body-contribution-protocol,
   0015 evidence-gated-merges. Journal #5's proposed seed numbering
   (e.g. 0002 time scales, 0003 reference implementations) is superseded.
+  2026-11-23: .github/PULL_REQUEST_TEMPLATE.md asks for the ADR's Confirmation
+  check, and the adr-proposal issue form has a required Confirmation field.
 ```
 
 ### ORG-006 — Milestones and label taxonomy
@@ -196,6 +198,10 @@ related: [ORG-002]
 notes: >-
   M0–M5 in Journal #5 are a first pass, to be expanded to the kickoff ladder.
   EndBug/label-sync maintenance status is UNVERIFIED.
+  2026-11-23: .github/labels.yml and the issue forms under
+  .github/ISSUE_TEMPLATE/ exist, checked by tools/tests/test_repo_meta.py. Not
+  done: there is no label-sync job (OI-54 open), and the GitHub milestone
+  descriptions do not list requirement IDs.
 ```
 
 ### ORG-007 — Software classification and tailoring
@@ -224,6 +230,10 @@ notes: >-
   UNVERIFIED: which NPR 7150.2 SWEs apply at Class D/E (Appendix C not
   reviewed); the exact ECSS-Q-ST-80C Table D-1 criticality definitions; whether
   Q-ST-80C is now at Rev.2.
+  2026-11-23: TAILORING.md written. It reads "crates tagged crit:high" as code
+  implementing a `high` requirement, because no crate carries a criticality
+  tag, and it records that no tool checks the published-value plus
+  reference-comparison rule.
 ```
 
 ### ORG-008 — DCO sign-off on every commit (revised)
