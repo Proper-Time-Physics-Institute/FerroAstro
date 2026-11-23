@@ -19,7 +19,9 @@
 //! The unit of every exposed entry is checked, and the values are converted to the
 //! [`ferroastro_core`] newtypes. GMs are stored in the header in au³/d² and are converted to
 //! km³/s² with the header's own `AU` and the exact 86 400 s Julian day. Entries tied to an open
-//! item (GMSDOT, OI-04; CENTER, OI-23) are not exposed here.
+//! item (GMSDOT, OI-04; CENTER, OI-23) are not exposed as typed quantities. The one exception is
+//! [`De440::sun_gm_rate_inferred_per_julian_year`], which returns the `GMSDOT` number under a
+//! reading that is **inferred**, not documented (issue #42), for the opt-in GM☉(t) term.
 //!
 //! ```
 //! use ferroastro_constants::De440;
@@ -370,6 +372,38 @@ impl De440 {
     #[must_use]
     pub const fn sun_rotation_rate(&self) -> AngularRate {
         self.omgsun
+    }
+
+    /// The header's `GMSDOT` number, read as a **dimensionless rate of GM☉ per Julian year**:
+    /// `GM☉(t) = GMS · [1 + GMSDOT · (t − t0)/(1 Julian yr)]` with `t0` = J2000.0 TDB.
+    ///
+    /// **Inferred, not documented (OI-04, issue #42).** The header and the DE440 comment block
+    /// list `GMSDOT` without a unit, a formula or a reference epoch, and no public JPL document
+    /// states them. The reading rests on FerroAstro's fit against `de440.bsp`, on the wording
+    /// "(dMS/dt)/MS, from J2000" of JPL IOM 335N-20-01 (about the lunar-ranging software) and on
+    /// the non-zero `GMSDOT` among DE440's "constants used for integration". The metadata keeps
+    /// the entry flagged with its open item and unit `unverified`; this accessor is the only way
+    /// the value leaves the table, and its name says what it assumes. It must not be used as a
+    /// test oracle (AGENTS.md rule 8). Used by the opt-in `ferroastro_forces::SolarGmVariation`
+    /// through `ferroastro_propagate::de440_inferred_solar_gm_rate`.
+    ///
+    /// # Errors
+    /// [`ConstantsError::ConstantMissing`] if the table has no `GMSDOT` entry.
+    ///
+    /// ```
+    /// # #[cfg(feature = "fs")]
+    /// # {
+    /// use ferroastro_constants::De440;
+    /// // With the pinned header in the data cache (`tools/fetch_jpl.py`):
+    /// if let Ok(de) = De440::load_cached() {
+    ///     // The Sun loses mass: the inferred fractional rate is negative and tiny.
+    ///     let k = de.sun_gm_rate_inferred_per_julian_year().unwrap();
+    ///     assert!(k < 0.0 && k > -1.0e-9);
+    /// }
+    /// # }
+    /// ```
+    pub fn sun_gm_rate_inferred_per_julian_year(&self) -> Result<f64, ConstantsError> {
+        Ok(self.table.get("GMSDOT")?.value())
     }
 
     /// The underlying table (run-time tokens, metadata, citations, provenance).

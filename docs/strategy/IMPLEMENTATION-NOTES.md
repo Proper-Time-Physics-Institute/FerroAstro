@@ -7286,3 +7286,51 @@ conformally-flat, preset-full-pt, preset-pt-ppn. The version is 3 because a rese
 Mercury (DE440 ICs, 20 yr, n-body): GR +42.980122, PPN (1/2, −1) −7.163354, kernel −7.163353 ″/cy; ratios
 −0.166666679 and −0.166666652. Viewer, 100 yr: bit 13 (WHFast) −7.163353, PPN preset (IAS15) −7.163354 against
 the engine's −7.163413 (8e-6 relative).
+
+## Issue #42 — opt-in inferred GM☉(t) (PHY-023, OI-04; maintainer decision 2026-11-23, #70 items 9 and 11)
+
+**Cause of #42.** FerroAstro integrated with a constant GM☉; de440.bsp behaves as if integrated with
+GM☉(t) = GMS·[1 + GMSDOT·(t − J2000.0)/1 Julian yr], t in TDB. The convention is INFERRED: FerroAstro's own fit
+against de440.bsp, the wording "(dMS/dt)/MS, from J2000" of JPL IOM 335N-20-01 (about the lunar-ranging software) and
+the non-zero GMSDOT among DE440's "constants used for integration". No public JPL document states the formula, the
+unit or the reference epoch (OI-04 stays open).
+
+**Engine.** `ferroastro_forces::SolarGmRate` (rate per Julian year and TDB reference epoch, both explicit;
+`inferred_j2000`) and the force term `SolarGmVariation` ("solar-gm-rate-inferred", Newtonian gauge): every moving
+non-Sun body, Major and Minor, receives −δGM(t)(rᵢ − r☉)/|rᵢ − r☉|³ with δGM(t) = GM☉·k·(t − t0)/yr. It is a
+separate term, so the default model is bit for bit unchanged and δGM/GM ≈ 1e-12 keeps full precision. EIH, J2, LT,
+the reaction ratios and μ* keep the constant GM☉ (estimated effect on Mercury over 10 yr: 3e-6 m, 4e-9 m, 2e-10 m;
+not measured, far below what de440.bsp can show). New `ForceTerm::time_origin` (default `None`): `NBodyModel::new`
+refuses terms with different origins and `NBodyPropagator::new` refuses a start epoch other than the term's
+(FA-E0500). `De440::sun_gm_rate_inferred_per_julian_year` returns the header number (the metadata entry stays
+flagged OI-04 with unit `unverified`); `ferroastro_propagate::de440_inferred_solar_gm_rate` builds the law. No
+scenario switch and no schema change; `run` never adds the term.
+
+**Diagnostics.** With the term `energy_over_g` is `None` (explicit time dependence) and the constant-GM momentum sum
+is not conserved; both are documented on the functions.
+
+**Pre-registered checks** (bounds in `tests/vectors/solar-gm-rate.toml`, committed in af2b547 before the term):
+
+| check | bound | measured 2026-11-23 |
+|---|---|---|
+| two-body adiabatic a·GM, 10 yr, k = −1e-6/yr (`GMSUN-RATE-ADIABATIC-SMA-REL`) | ≤ 1e-11 | 5.8e-15 |
+| Mercury heliocentric max vs de440.bsp, 353 bodies, 10 yr, option on | ≤ 1.0 m | 0.705 m |
+| Venus, same run | ≤ 5.0 m | 2.999 m |
+| Mercury, option off | 85.79 ± 15 m | 85.788 m (Venus 46.616 m) |
+
+Data test `data_inferred_solar_gm_rate_ten_years_vs_de440_bsp`: both runs in two threads, 85 s wall (release, loaded
+machine), inside the data tier's 600 s.
+
+**Recorded observation (referee's measurement, same 353-body configuration, along-track residual at 10 yr, option
+off → on):** Mercury −65.74 → +0.27 m; Venus −46.62 → +2.99 m; Mars +14.19 → +52.42 m. The shift has the same sign
+for all three and scales roughly with orbital speed, so the term acts consistently; it exposes a separate Mars
+error of about +52 m whose cause is not measured here (the issue #42 investigation found Mars sensitive to Pluto, the
+KBOs and the ring, which this configuration omits, but that was not re-measured with the library term).
+
+**Known limits.** The time-origin guard is in `NBodyPropagator::new` only: a generic `Ias15`, `Abm` or `Irk16`
+driver that advances the model directly and starts its time variable at t0 ≠ 0 is not guarded, and would apply the
+law with a shifted epoch. ABM, WHFast, IRK16, the mixed mode and the SoA kernels were not exercised with the term.
+No scenario/CLI switch or checkpoint tag (follow-up; needs a schema decision). Test-particle mode has no such term.
+The 393-body, 100-yr and 1550–2650 runs with the library term are not done. `crates/ferroastro-constants/data/
+de440-metadata.toml` still says of GMSDOT "presumably au^3/d^2 per year", which contradicts the adopted reading; it
+was left untouched.
