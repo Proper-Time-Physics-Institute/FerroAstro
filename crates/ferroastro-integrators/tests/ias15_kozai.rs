@@ -15,6 +15,14 @@
 //! perturber's distance is measured from the binary's barycentre, both relative position vectors
 //! lie on the line of nodes, and the total barycentre is at rest at the origin.
 //!
+//! The asserted energy error is that of the integrator's full compensated state, `x − x_comp`
+//! and `v − v_comp` taken from [`Ias15::snapshot`] (IAS15 adds each step with compensated
+//! summation and keeps the bits that the f64 positions cannot hold in the compensation words).
+//! The energy of the rounded f64 state that [`Ias15::positions`] exposes is printed, not asserted:
+//! near pericentre one ulp of a position 3.3 au from the origin moves the energy by about 1e-11.
+//! The quantity was changed to the compensated state after the first measurement, by maintainer
+//! decision #70 (2026-11-23); the bound was not moved (vector `IAS15-KOZAI-ENERGY-ERROR` notes).
+//!
 //! Every expected value and bound is loaded from `tests/vectors/ias15-kozai.toml`, which was
 //! committed (pre-registered) before this test was written or run. Clean-room (DEP-008): written
 //! from the paper only; no REBOUND, `REBOUNDx`, ASSIST or Swiftest source was consulted.
@@ -33,7 +41,9 @@
     reason = "test helpers: a failed unwrap is a test failure with a clear message"
 )]
 
-use ferroastro_integrators::{Ias15, Ias15Config, IntegratorError, SecondOrderSystem};
+use ferroastro_integrators::{
+    Ias15, Ias15Config, Ias15Snapshot, IntegratorError, SecondOrderSystem,
+};
 use ferroastro_real::{DoubleDouble, Real};
 use ferroastro_vectors::VectorSet;
 
@@ -92,19 +102,45 @@ fn dd3(s: &[f64], body: usize) -> [Dd; 3] {
     ]
 }
 
+/// The f64 state widened to double-double without change.
+fn widen(s: &[f64]) -> [Dd; DIM] {
+    let mut w = [Dd::ZERO; DIM];
+    for (wi, &si) in w.iter_mut().zip(s) {
+        *wi = Dd::from_f64(si);
+    }
+    w
+}
+
+/// The integrator's full compensated state, `x − x_comp` and `v − v_comp` (Kahan: the sum minus
+/// its compensation), formed exactly in double-double from a snapshot.
+fn compensated_state(snap: &Ias15Snapshot) -> ([Dd; DIM], [Dd; DIM]) {
+    let join = |s: &[[f64; 2]], c: &[[f64; 2]]| {
+        let mut w = [Dd::ZERO; DIM];
+        for ((wi, si), ci) in w.iter_mut().zip(s).zip(c) {
+            *wi = Dd::from_parts(si[0], si[1]) - Dd::from_parts(ci[0], ci[1]);
+        }
+        w
+    };
+    (join(&snap.x, &snap.x_comp), join(&snap.v, &snap.v_comp))
+}
+
 fn dot(a: &[Dd; 3], b: &[Dd; 3]) -> Dd {
     a[0] * b[0] + a[1] * b[1] + a[2] * b[2]
 }
 
-/// `G·E = Σ ½ GMᵢ vᵢ² − Σ GMᵢ GMⱼ / rᵢⱼ` of the f64 state, evaluated in double-double.
-fn energy(gm: &[f64; BODIES], x: &[f64], v: &[f64]) -> Dd {
+fn body3(s: &[Dd; DIM], body: usize) -> [Dd; 3] {
+    [s[3 * body], s[3 * body + 1], s[3 * body + 2]]
+}
+
+/// `G·E = Σ ½ GMᵢ vᵢ² − Σ GMᵢ GMⱼ / rᵢⱼ` of a double-double state, evaluated in double-double.
+fn energy(gm: &[f64; BODIES], x: &[Dd; DIM], v: &[Dd; DIM]) -> Dd {
     let mut e = Dd::ZERO;
     for i in 0..BODIES {
-        let vi = dd3(v, i);
+        let vi = body3(v, i);
         e += Dd::from_f64(gm[i]) * dot(&vi, &vi) * Dd::HALF;
-        let xi = dd3(x, i);
+        let xi = body3(x, i);
         for j in (i + 1)..BODIES {
-            let xj = dd3(x, j);
+            let xj = body3(x, j);
             let d = [xj[0] - xi[0], xj[1] - xi[1], xj[2] - xi[2]];
             e -= Dd::from_f64(gm[i]) * Dd::from_f64(gm[j]) / dot(&d, &d).sqrt();
         }
@@ -141,10 +177,16 @@ fn binary_eccentricity(gm: &[f64; BODIES], x: &[f64], v: &[f64]) -> f64 {
 struct Cycle {
     completed: bool,
     e_max: f64,
+    /// Asserted: worst energy error of the compensated state.
     energy_error: f64,
     angmom_error: f64,
-    /// Reported only: the errors at the last step of the cycle, and where the worst energy
-    /// sample fell (binary periods since the start, and the eccentricity there).
+    /// Reported only: the worst energy error of the rounded f64 state that `positions()` and
+    /// `velocities()` expose, and where it fell (binary periods, eccentricity).
+    energy_error_rounded: f64,
+    worst_rounded_at: (f64, f64),
+    /// Reported only: the errors at the last step of the cycle (energy: compensated state), and
+    /// where the worst compensated energy sample fell (binary periods since the start, and the
+    /// eccentricity there).
     energy_error_final: f64,
     angmom_error_final: f64,
     worst_energy_at: (f64, f64),
@@ -203,7 +245,7 @@ fn kozai_cycle(vs: &VectorSet, gm_sun: f64, au: f64) -> Cycle {
     let max_orbits = cap.value().unwrap() + cap.tolerance.allowed(cap.value().unwrap());
     let t_cap = max_orbits * period;
     let sys = ThreeBody { gm };
-    let energy0 = energy(&gm, &x0, &v0);
+    let energy0 = energy(&gm, &widen(&x0), &widen(&v0));
     let l0 = angular_momentum(&gm, &x0, &v0);
     let l0_norm = dot(&l0, &l0).sqrt();
 
@@ -221,6 +263,8 @@ fn kozai_cycle(vs: &VectorSet, gm_sun: f64, au: f64) -> Cycle {
         e_max: 0.0,
         energy_error: 0.0,
         angmom_error: 0.0,
+        energy_error_rounded: 0.0,
+        worst_rounded_at: (0.0, 0.0),
         energy_error_final: 0.0,
         angmom_error_final: 0.0,
         worst_energy_at: (0.0, 0.0),
@@ -235,7 +279,14 @@ fn kozai_cycle(vs: &VectorSet, gm_sun: f64, au: f64) -> Cycle {
         let (x, v) = (ias.positions(), ias.velocities());
         let e = binary_eccentricity(&gm, x, v);
         out.e_max = out.e_max.max(e);
-        let de = ((energy(&gm, x, v) - energy0) / energy0).to_f64().abs();
+        let rel = |e: Dd| ((e - energy0) / energy0).to_f64().abs();
+        let de_rounded = rel(energy(&gm, &widen(x), &widen(v)));
+        if de_rounded > out.energy_error_rounded {
+            out.energy_error_rounded = de_rounded;
+            out.worst_rounded_at = (ias.time() / period, e);
+        }
+        let (xc, vc) = compensated_state(&ias.snapshot().unwrap());
+        let de = rel(energy(&gm, &xc, &vc));
         if de > out.energy_error {
             out.energy_error = de;
             out.worst_energy_at = (ias.time() / period, e);
@@ -263,9 +314,10 @@ fn kozai_cycle(vs: &VectorSet, gm_sun: f64, au: f64) -> Cycle {
     println!(
         "Kozai-Lidov cycle (GM_sun = {gm_sun:e}, au = {au:e}): completed = {}, {:.1} binary \
          periods, {} steps, {} rejected, {} unconverged, {} force evaluations; e_max = {:.6}, \
-         max |dE/E| = {:.3e}, max |dL|/|L| = {:.3e}; reported only: worst energy sample at \
-         {:.1} binary periods where e = {:.4}, at the end of the cycle |dE/E| = {:.3e}, \
-         |dL|/|L| = {:.3e}",
+         max |dE/E| (compensated state) = {:.3e}, max |dL|/|L| = {:.3e}; reported only: worst \
+         compensated energy sample at {:.1} binary periods where e = {:.4}; max |dE/E| of the \
+         rounded f64 state = {:.3e}, at {:.1} binary periods where e = {:.4}; at the end of the \
+         cycle |dE/E| (compensated) = {:.3e}, |dL|/|L| = {:.3e}",
         out.completed,
         out.binary_orbits,
         st.steps,
@@ -277,6 +329,9 @@ fn kozai_cycle(vs: &VectorSet, gm_sun: f64, au: f64) -> Cycle {
         out.angmom_error,
         out.worst_energy_at.0,
         out.worst_energy_at.1,
+        out.energy_error_rounded,
+        out.worst_rounded_at.0,
+        out.worst_rounded_at.1,
         out.energy_error_final,
         out.angmom_error_final,
     );
@@ -319,7 +374,8 @@ fn check_cycle(vs: &VectorSet, label: &str, c: &Cycle) -> Vec<String> {
 
 /// Rein & Spiegel 2015, Sec. 4.3, in the paper's units (solar masses, au, G = 1): one cycle
 /// reaches the published maximum eccentricity within the published number of binary orbits, and
-/// conserves energy and angular momentum at the published level.
+/// conserves energy (of the integrator's compensated state) and angular momentum at the published
+/// level.
 ///
 /// Verifies: NUM-001
 #[test]
