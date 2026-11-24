@@ -66,9 +66,27 @@ notes: >-
   1382 and 1393 binary periods, e = 0.993); at the end of the cycle |dE/E|
   is 1.10e-13 and 7.79e-13 (reported, not asserted). The paper states
   "a precision 10^-12" without saying whether that is the end-of-run or the
-  worst error; the pre-registered quantity is the worst sample. NEEDS
-  MAINTAINER RULING: which quantity the acceptance means. Until then the
-  Kozai clause of the acceptance is not met.
+  worst error; the pre-registered quantity is the worst sample.
+  KOZAI RULING (maintainer decision of 2026-11-23, decision record: issue
+  #70): the worst energy error is asserted on the integrator's full
+  compensated state (x − x_comp, v − v_comp, read through the public
+  Ias15::snapshot), with the bound 1e-11 unchanged. This changes the
+  vector's quantity after the first measurement (post hoc; recorded in the
+  notes of vector IAS15-KOZAI-ENERGY-ERROR, a golden change). Cause of the
+  1e-11 peak: about 80 % is the rounding of the exposed f64 positions at
+  pericentre (binary 3.3 au from the origin; one ulp at 0.0073 au
+  separation ≈ 9e-12 in energy), whose lost bits IAS15 holds in its
+  compensation words; double-double IAS15 gives 1.2e-23. Measured with
+  the compensated state, local (rustc 1.99.0, not CI evidence): 1.808e-12
+  (G = 1) and 1.705e-12 (km, s) against ≤ 1e-11 (met); both Kozai tests
+  pass. The rounded-f64-state values (1.018e-11 and 1.131e-11) are still
+  printed, reported only.
+  KNOWN LIMIT (issue #74): on this problem in f64, IAS15's step size
+  collapses at epsilon 1e-10 and 1e-11 (to about 1e-17 binary period near
+  high eccentricity; the run never finishes), so the paper's variation of
+  the precision parameter over many orders of magnitude is not reproduced.
+  The default epsilon (1e-9) is unaffected. A fix is planned in the next
+  wave.
 ```
 
 ### NUM-002 — Fixed-step ABM PECE/PECEC integrator (ephemeris mode)
