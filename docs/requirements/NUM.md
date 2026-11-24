@@ -44,7 +44,49 @@ notes: >-
   The acceptance text is unchanged. Issue #34: under both IAS15 predictors the
   f64-evaluated energy error sits at its evaluation floor, so the present
   check cannot measure Brouwer growth and is to be redesigned at M5. Status
-  unchanged (draft); no Kozai test exists yet.
+  unchanged (draft).
+  KOZAI TEST (added 2026-11-23, not yet run in CI): the Kozai-Lidov test of
+  Rein & Spiegel 2015, Sec. 4.3 is
+  crates/ferroastro-integrators/tests/ias15_kozai.rs
+  (kozai_lidov_cycle_matches_rein_spiegel_2015 and
+  kozai_lidov_cycle_is_scale_independent, PR tier), with every set-up value
+  and bound in tests/vectors/ias15-kozai.toml. The bounds were
+  pre-registered: the vector file was committed before the test was written
+  or run. The paper gives no initial phases or eccentricities; the test's
+  choices are in the notes of vector IAS15-KOZAI-EMAX. First run, local
+  (rustc 1.99.0, default Ias15Config, f64; not CI evidence), in G = 1
+  units and in km, s units respectively: e_max 0.993070 and 0.993070
+  against 0.992 ± 0.005 (met); cycle length 1899.5 and 1899.5 binary
+  periods against [1000, 10000] (met); largest |dL|/|L| 4.07e-15 and
+  2.73e-15 against ≤ 1e-14 (met); step counts 182033 and 182034, ratio
+  1.000005 against 1 ± 1 % (met); 0 unconverged steps; largest |dE/E| over
+  the cycle 1.018e-11 and 1.131e-11 against the pre-registered ≤ 1e-11:
+  NOT MET, so both tests FAIL as committed. The bound was not moved. The
+  worst energy samples are transient, at the eccentricity maximum (near
+  1382 and 1393 binary periods, e = 0.993); at the end of the cycle |dE/E|
+  is 1.10e-13 and 7.79e-13 (reported, not asserted). The paper states
+  "a precision 10^-12" without saying whether that is the end-of-run or the
+  worst error; the pre-registered quantity is the worst sample.
+  KOZAI RULING (maintainer decision of 2026-11-23, decision record: issue
+  #70): the worst energy error is asserted on the integrator's full
+  compensated state (x − x_comp, v − v_comp, read through the public
+  Ias15::snapshot), with the bound 1e-11 unchanged. This changes the
+  vector's quantity after the first measurement (post hoc; recorded in the
+  notes of vector IAS15-KOZAI-ENERGY-ERROR, a golden change). Cause of the
+  1e-11 peak: about 80 % is the rounding of the exposed f64 positions at
+  pericentre (binary 3.3 au from the origin; one ulp at 0.0073 au
+  separation ≈ 9e-12 in energy), whose lost bits IAS15 holds in its
+  compensation words; double-double IAS15 gives 1.2e-23. Measured with
+  the compensated state, local (rustc 1.99.0, not CI evidence): 1.808e-12
+  (G = 1) and 1.705e-12 (km, s) against ≤ 1e-11 (met); both Kozai tests
+  pass. The rounded-f64-state values (1.018e-11 and 1.131e-11) are still
+  printed, reported only.
+  KNOWN LIMIT (issue #74): on this problem in f64, IAS15's step size
+  collapses at epsilon 1e-10 and 1e-11 (to about 1e-17 binary period near
+  high eccentricity; the run never finishes), so the paper's variation of
+  the precision parameter over many orders of magnitude is not reproduced.
+  The default epsilon (1e-9) is unaffected. A fix is planned in the next
+  wave.
 ```
 
 ### NUM-002 — Fixed-step ABM PECE/PECEC integrator (ephemeris mode)
@@ -1277,6 +1319,44 @@ notes: >-
   the asserted default path, not a report-only knob. The ±0.1 tolerance is
   not widened. Evidence history: docs/strategy/IMPLEMENTATION-NOTES.md
   (WP3 NUM-023 section; the NUM-023 investigation).
+  STATE AFTER THE RULING: pc_b_from_g became the Ias15Config default on
+  2026-11-08 and #13 merged on 2026-11-12. The asserting tests are
+  nightly_num023_brouwer_slopes_ias15_f64 and
+  nightly_num023_long_ensemble_brouwer_slopes_ias15_f64
+  (crates/ferroastro-ladder/tests/num023_brouwer.rs, vectors
+  NUM023-ENERGY-SLOPE and NUM023-PHASE-SLOPE, ±0.1); both are nightly tier
+  (#[ignore]) and the nightly tier has not run in CI.
+  LOCAL RUN, NOT CI EVIDENCE (recorded 2026-11-23): nightly tier (nextest
+  profile nightly, release build) of main at e86984d
+  (e86984d00a8e7a55961a6c11e1fc025cc414c34c), rustc 1.99.0 (b940084d7
+  2026-09-28), cargo-nextest 0.9.148, Linux x86_64, 32 CPUs,
+  FA_REQUIRE_DATA=1, started 2026-11-22T16:20:08Z on the maintainer's
+  machine; the log is not committed (kept as
+  fa-evidence/2026-11-22-e86984d-rustc-1.99.0/nightly-tier.log; read
+  2026-11-23 while that tier's last test was still running, sha256 then
+  e126e246…6be1e16a). Numbers as printed in that log, IAS15 epsilon = 1e-9,
+  safety = 0.25, pc_tolerance = 1e-16, formal 1-sigma:
+  (1) nightly_num023_brouwer_slopes_ias15_f64, PASS (26.5 s): 64 runs ×
+  2000 orbits, 9783718 IAS15 steps in total; energy slope 0.436 ± 0.011
+  (|Δ| from ½ = 0.064), phase slope 1.411 ± 0.014 (|Δ| from 3/2 = 0.089),
+  angular-momentum slope 0.477 ± 0.017 (reported, not asserted).
+  (2) nightly_num023_long_ensemble_brouwer_slopes_ias15_f64, PASS (83.7 s):
+  32 runs × 20 000 orbits, 48915142 IAS15 steps in total; energy slope
+  0.466 ± 0.011 (|Δ| = 0.034), phase slope 1.442 ± 0.009 (|Δ| = 0.058),
+  angular-momentum slope 0.485 ± 0.009 (reported).
+  (3) nightly_num023_forward_backward_reversibility, PASS (11.3 s): 1000
+  orbits forward (76430 steps) and back, |dr| = 8.581e-5 km, |dr|/|r0| =
+  1.230e-12 (reported; NUM-023 gives no acceptance value for it).
+  LIMITS OF THAT RUN: the long ensemble took 4.89e7 steps, just under the
+  "≥ 5e7 steps" of the ruling (the step count is not asserted); the phase
+  slope of the default ensemble uses 0.089 of the 0.1 tolerance. In the same
+  log the N-body ensemble nightly_nbody_brouwer_energy_slope_with_solar_j2
+  (32 runs × 100 000 yr, 1.011e9 steps) measured an energy slope of
+  0.065 ± 0.025 against NUM023-ENERGY-SLOPE, which that test prints as a
+  KNOWN FAILURE (the f64-evaluated energy error stays on its evaluation
+  floor; the test passes on its documented-failure bound), so
+  NUM-023 is shown for the two-body ensembles only, not for the N-body
+  model. Status unchanged (draft).
 ```
 
 ### NUM-024 — Benchmark suite against Subbotin 2023

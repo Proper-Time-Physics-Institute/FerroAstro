@@ -1,0 +1,140 @@
+# SPDX-FileCopyrightText: 2026 Proper-Time Physics Institute
+# SPDX-License-Identifier: Apache-2.0
+# Kozai-Lidov test of IAS15 (NUM-001 acceptance: "Passes the Kepler and Kozai tests of Rein & Spiegel 2015").
+# Set-up parameters and expected values are those of Rein & Spiegel 2015, Sec. 4.3. Schema: ADR-0004.
+# PRE-REGISTERED 2026-11-23: this file was committed before the test that reads it was written or run.
+# The paper does not state the initial eccentricities or orbital phases. The test's choices (both orbits
+# circular, the perturber's distance measured from the binary's barycentre, both relative position vectors
+# on the line of nodes, barycentric frame) are recorded in IAS15-KOZAI-EMAX `notes`.
+# POST HOC CHANGE 2026-11-23: the `quantity` of IAS15-KOZAI-ENERGY-ERROR was changed after the first
+# measurement (to the energy of the integrator's compensated state), by maintainer decision #70; its
+# value and tolerance are unchanged. See that vector's `notes`.
+schema_version = 1
+
+[[vector]]
+id = "IAS15-KOZAI-BODY-MASS-MSUN"
+requirement = ["NUM-001"]
+quantity = "mass of each of the three bodies of the R&S 2015 Kozai-Lidov test, in solar masses"
+value = 1
+unit = "Msun"
+kind = "measured"
+source = "R&S 2015 Sec. 4.3: \"a central binary with masses of 1 Msun each, separated by 1 AU, and a perturber, also with mass 1 Msun at a distance of 10 AU. The inclination of the perturber's orbit with respect to the plane of inner binary orbit is 89.9 deg. The highest eccentricity of the binary during one Kozai cycle is emax ~ 0.992. We integrate one full Kozai cycle\""
+citation = "Rein, H. & Spiegel, D. S. 2015, MNRAS 446, 1424, doi:10.1093/mnras/stu2164, Sec. 4.3 \"Kozai-Lidov cycles\" and Fig. 5 (arXiv:1409.4779 PDF, sha256 8097c8e50d16edc1527ec05e6680fc68d6f91e4d027dec16c762a6ce7e69033d, read 2026-11-23)"
+retrieved = "2026-11-23"
+tolerance = { abs = 0.0 }
+tolerance_rationale = "A transcribed set-up parameter: the value must equal the published digits exactly."
+verified_by = "M1-exit agent (Claude, FerroAstro session), 2026-11-23: read in the arXiv PDF (sha256 in citation), Sec. 4.3. PRE-REGISTERED: committed before the Kozai test existed or had been run."
+
+[[vector]]
+id = "IAS15-KOZAI-BINARY-SEPARATION-AU"
+requirement = ["NUM-001"]
+quantity = "initial separation of the central binary of the R&S 2015 Kozai-Lidov test"
+value = 1
+unit = "au"
+kind = "measured"
+source = "R&S 2015 Sec. 4.3: \"a central binary with masses of 1 Msun each, separated by 1 AU, and a perturber, also with mass 1 Msun at a distance of 10 AU. The inclination of the perturber's orbit with respect to the plane of inner binary orbit is 89.9 deg. The highest eccentricity of the binary during one Kozai cycle is emax ~ 0.992. We integrate one full Kozai cycle\""
+citation = "Rein, H. & Spiegel, D. S. 2015, MNRAS 446, 1424, doi:10.1093/mnras/stu2164, Sec. 4.3 \"Kozai-Lidov cycles\" and Fig. 5 (arXiv:1409.4779 PDF, sha256 8097c8e50d16edc1527ec05e6680fc68d6f91e4d027dec16c762a6ce7e69033d, read 2026-11-23)"
+retrieved = "2026-11-23"
+tolerance = { abs = 0.0 }
+tolerance_rationale = "A transcribed set-up parameter: the value must equal the published digits exactly."
+verified_by = "M1-exit agent (Claude, FerroAstro session), 2026-11-23: read in the arXiv PDF (sha256 in citation), Sec. 4.3. PRE-REGISTERED: committed before the Kozai test existed or had been run."
+
+[[vector]]
+id = "IAS15-KOZAI-PERTURBER-DISTANCE-AU"
+requirement = ["NUM-001"]
+quantity = "initial distance of the perturber of the R&S 2015 Kozai-Lidov test (taken from the binary's barycentre)"
+value = 10
+unit = "au"
+kind = "measured"
+source = "R&S 2015 Sec. 4.3: \"a central binary with masses of 1 Msun each, separated by 1 AU, and a perturber, also with mass 1 Msun at a distance of 10 AU. The inclination of the perturber's orbit with respect to the plane of inner binary orbit is 89.9 deg. The highest eccentricity of the binary during one Kozai cycle is emax ~ 0.992. We integrate one full Kozai cycle\""
+citation = "Rein, H. & Spiegel, D. S. 2015, MNRAS 446, 1424, doi:10.1093/mnras/stu2164, Sec. 4.3 \"Kozai-Lidov cycles\" and Fig. 5 (arXiv:1409.4779 PDF, sha256 8097c8e50d16edc1527ec05e6680fc68d6f91e4d027dec16c762a6ce7e69033d, read 2026-11-23)"
+retrieved = "2026-11-23"
+tolerance = { abs = 0.0 }
+tolerance_rationale = "A transcribed set-up parameter: the value must equal the published digits exactly."
+verified_by = "M1-exit agent (Claude, FerroAstro session), 2026-11-23: read in the arXiv PDF (sha256 in citation), Sec. 4.3. PRE-REGISTERED: committed before the Kozai test existed or had been run."
+
+[[vector]]
+id = "IAS15-KOZAI-MUTUAL-INCLINATION-DEG"
+requirement = ["NUM-001"]
+quantity = "inclination of the perturber's orbit to the plane of the inner binary orbit, R&S 2015 Kozai-Lidov test"
+value = "89.9"
+unit = "deg"
+kind = "measured"
+source = "R&S 2015 Sec. 4.3: \"a central binary with masses of 1 Msun each, separated by 1 AU, and a perturber, also with mass 1 Msun at a distance of 10 AU. The inclination of the perturber's orbit with respect to the plane of inner binary orbit is 89.9 deg. The highest eccentricity of the binary during one Kozai cycle is emax ~ 0.992. We integrate one full Kozai cycle\""
+citation = "Rein, H. & Spiegel, D. S. 2015, MNRAS 446, 1424, doi:10.1093/mnras/stu2164, Sec. 4.3 \"Kozai-Lidov cycles\" and Fig. 5 (arXiv:1409.4779 PDF, sha256 8097c8e50d16edc1527ec05e6680fc68d6f91e4d027dec16c762a6ce7e69033d, read 2026-11-23)"
+retrieved = "2026-11-23"
+tolerance = { abs = 0.0 }
+tolerance_rationale = "A transcribed set-up parameter: the value must equal the published digits exactly."
+verified_by = "M1-exit agent (Claude, FerroAstro session), 2026-11-23: read in the arXiv PDF (sha256 in citation), Sec. 4.3. PRE-REGISTERED: committed before the Kozai test existed or had been run."
+
+[[vector]]
+id = "IAS15-KOZAI-EMAX"
+requirement = ["NUM-001"]
+quantity = "largest osculating eccentricity of the inner binary (two-body elements of the relative orbit, mu = G(m1+m2)) over one Kozai-Lidov cycle, sampled after every accepted IAS15 step"
+value = 0.992
+unit = "1"
+kind = "measured"
+source = "R&S 2015 Sec. 4.3: \"a central binary with masses of 1 Msun each, separated by 1 AU, and a perturber, also with mass 1 Msun at a distance of 10 AU. The inclination of the perturber's orbit with respect to the plane of inner binary orbit is 89.9 deg. The highest eccentricity of the binary during one Kozai cycle is emax ~ 0.992. We integrate one full Kozai cycle\""
+citation = "Rein, H. & Spiegel, D. S. 2015, MNRAS 446, 1424, doi:10.1093/mnras/stu2164, Sec. 4.3 \"Kozai-Lidov cycles\" and Fig. 5 (arXiv:1409.4779 PDF, sha256 8097c8e50d16edc1527ec05e6680fc68d6f91e4d027dec16c762a6ce7e69033d, read 2026-11-23)"
+retrieved = "2026-11-23"
+tolerance = { abs = 5.0e-3 }
+tolerance_rationale = "The paper prints emax to three figures with an approximately sign and does not state the initial phases, so the published value cannot be met to better than its rounding plus the phase dependence. Phase dependence, estimated before any run: the non-secular (single-averaging) parameter is eps_SA = (a1/a2)^(3/2) * (m3^2 / ((m1+m2)(m1+m2+m3)))^(1/2) = 10^(-3/2) * 6^(-1/2) = 0.0129; it sets the size of the outer-orbit-period fluctuation of the binary's normalised angular momentum j = sqrt(1-e^2). At emax = 0.992, j = 0.126 and de = (j/e) dj, so dj ~ +/-0.02 gives de ~ +/-0.0025; 0.005 is twice that. Independent corroboration of the published value (my own derivation, not the oracle): the quadrupole secular model for an initially circular binary, with conserved total angular momentum and a circular outer orbit, gives cos^2(i) = (cos^2(i0) + 3e^2)/(1 + 4e^2) at the maximum and cos(i) j + (beta/2) j^2 = cos(i0) + beta/2 with beta = L1/L2 = 0.1937 for these masses and separations; its root is j = 0.1255, emax = 0.9921 (the test-particle formula sqrt(1 - (5/3) cos^2 i0) would give 0.9999975, so the bound separates the two). 0.005 also rejects a run that never reaches high eccentricity."
+verified_by = "M1-exit agent (Claude, FerroAstro session), 2026-11-23: read in the arXiv PDF (sha256 in citation), Sec. 4.3. PRE-REGISTERED: committed before the Kozai test existed or had been run."
+notes = "Initial conditions chosen by the test (not stated in the paper): G = 1 units scaled to the unit system under test; inner relative orbit circular in the x-y plane, r = (a1, 0, 0), v = (0, sqrt(G(m1+m2)/a1), 0); perturber relative to the binary barycentre r = (a2, 0, 0), v = sqrt(G(m1+m2+m3)/a2) (0, cos i, sin i); total barycentre at rest at the origin (R&S 2015 Sec. 3.6 on offsets from the origin). One cycle: from t = 0 until the first accepted step with e < 0.1 after e has exceeded 0.5. Integrator: Ias15Config::default() (epsilon = 1e-9), f64."
+
+[[vector]]
+id = "IAS15-KOZAI-CYCLE-BINARY-ORBITS"
+requirement = ["NUM-001"]
+quantity = "length of one Kozai-Lidov cycle of the R&S 2015 test in initial binary periods (from t = 0 until the eccentricity has returned below 0.1 after exceeding 0.5)"
+value = 5500
+unit = "1"
+kind = "measured"
+source = "R&S 2015 Sec. 4.3: \"we only integrated this system for one Kozai-Lidov cycle (a few thousand binary orbits)\""
+citation = "Rein, H. & Spiegel, D. S. 2015, MNRAS 446, 1424, doi:10.1093/mnras/stu2164, Sec. 4.3 \"Kozai-Lidov cycles\" and Fig. 5 (arXiv:1409.4779 PDF, sha256 8097c8e50d16edc1527ec05e6680fc68d6f91e4d027dec16c762a6ce7e69033d, read 2026-11-23)"
+retrieved = "2026-11-23"
+tolerance = { abs = 4500.0 }
+tolerance_rationale = "\"A few thousand\" is read as between 1000 and 10000; value and tolerance encode that interval, [1000, 10000]. Order-of-magnitude check made before any run: t_K ~ ((m1+m2)/m3) P_out^2/P_in = 2 * (1000/3 yr^2) / (0.7071 yr) = 943 yr = 1333 binary periods, times a factor of order a few (logarithmic in the initial eccentricity for a circular start). The upper end is also the test's integration cap: a run whose cycle has not completed after 10000 binary periods fails."
+verified_by = "M1-exit agent (Claude, FerroAstro session), 2026-11-23: read in the arXiv PDF (sha256 in citation), Sec. 4.3. PRE-REGISTERED: committed before the Kozai test existed or had been run."
+
+[[vector]]
+id = "IAS15-KOZAI-ENERGY-ERROR"
+requirement = ["NUM-001"]
+quantity = "largest relative energy error |E - E0|/|E0| of the three-body system over one Kozai-Lidov cycle, IAS15 in f64 at the default epsilon, sampled after every accepted step, the energy being that of the integrator's full compensated state (positions x - x_comp and velocities v - v_comp, the f64 values minus their Kahan compensation words, formed and evaluated in double-double)"
+value = 0.0
+unit = "1"
+kind = "measured"
+source = "R&S 2015 Sec. 4.3: \"IAS15 preserves the energy with a precision 10^-12 and the angular momentum with a precision of 10^-15 in all simulations\" (Fig. 5, all values of epsilon_b including the canonical 1e-9). Energy is an exact integral of the Newtonian three-body problem, so the true value is 0."
+citation = "Rein, H. & Spiegel, D. S. 2015, MNRAS 446, 1424, doi:10.1093/mnras/stu2164, Sec. 4.3 \"Kozai-Lidov cycles\" and Fig. 5 (arXiv:1409.4779 PDF, sha256 8097c8e50d16edc1527ec05e6680fc68d6f91e4d027dec16c762a6ce7e69033d, read 2026-11-23)"
+retrieved = "2026-11-23"
+tolerance = { abs = 1.0e-11 }
+tolerance_rationale = "The paper's figure is an order of magnitude read from a logarithmic plot (10^-12), for one unstated choice of phases and one libm/compiler. The bound is that figure with one decade of margin, fixed before any run: 1e-11. It applies to the worst sample of the cycle, not only the final one, which is the stricter reading. The energy is evaluated in double-double so that the bound measures the integration, not the f64 evaluation floor (near pericentre at e = 0.992 the binary's kinetic and potential terms are each ~1/(1-e) = 125 times its binding energy). It is evaluated on the compensated state (changed post hoc, decision #70; see notes) so that the bound measures the integration, not the rounding of the exposed f64 positions, which near pericentre is itself about 1e-11 in energy."
+verified_by = "M1-exit agent (Claude, FerroAstro session), 2026-11-23: read in the arXiv PDF (sha256 in citation), Sec. 4.3. PRE-REGISTERED: committed before the Kozai test existed or had been run. Quantity changed post hoc to the compensated state (maintainer decision of 2026-11-23, issue #70 item 13); value and tolerance unchanged; see notes."
+notes = "POST HOC CHANGE OF QUANTITY. Pre-registered (commit 2595617) as the energy of the rounded f64 state that Ias15::positions()/velocities() expose. First measurement (commit 0277788), worst |dE/E| over the cycle: 1.018e-11 (G = 1 units) and 1.131e-11 (km, s units), failing the 1e-11 bound; at the end of the cycle 1.10e-13 and 7.79e-13. After that measurement, maintainer decision #70 (GitHub issue #70, 2026-11-23) changed the quantity to the energy of the integrator's compensated state and kept the value and tolerance unchanged; this is a post hoc change and is recorded as such. The rounded-f64-state value is still printed by the test (reported, not asserted). Investigation (2026-11-23, rustc 1.99.0, G = 1 units): the worst sample is at pericentre (binary separation 0.00728 au, e = 0.9928, t = 1381.7 binary periods); consecutive samples near pericentre scatter by several 1e-12 with random sign. Energy of the exposed f64 state evaluated in double-double 1.018e-11, in f64 1.021e-11 (so not round-off in the energy formula); epsilon 1e-8 gives 1.026e-11 and 1e-7 gives 9.96e-12 (so not truncation); IAS15 integrated in double-double at epsilon 1e-9 gives 1.2e-23 (end 6.6e-24). Energy of the compensated state (x - x_comp, v - v_comp): 1.81e-12 (end 1.09e-13). Cause: about 80 % of the peak is the rounding of the exposed f64 positions. The binary sits 3.3 au from the origin, so one ulp of a coordinate (4e-16 au) at 0.0073 au separation changes the energy by about 9e-12; IAS15 adds each step with compensated summation and holds the lost bits in its compensation words. The remaining ~1.8e-12 is real accumulated f64 round-off, which random-walks back to 1e-13 by the end of the cycle. Paper's wording (arXiv:1409.4779): Fig. 5 caption (p. 10): \"This plot shows results of integrations of a Kozai-Lidov cycle. The left panel shows the relative energy error as a function of CPU time.\" (axis label: \"cpu time to complete one Kozai cycle [s]\"); Sec. 4.3: \"IAS15 preserves the energy with a precision 10−12 and the angular momentum with a precision of 10−15 in all simulations.\" The figure shows one point per run, no time series, and the paper does not say whether the worst or the final error is meant. Measured with this quantity (test ias15_kozai.rs): 1.808e-12 (G = 1) and 1.705e-12 (km, s)."
+
+[[vector]]
+id = "IAS15-KOZAI-ANGMOM-ERROR"
+requirement = ["NUM-001"]
+quantity = "largest relative angular-momentum error |L - L0|/|L0| (vector norm) of the three-body system over one Kozai-Lidov cycle, IAS15 in f64 at the default epsilon, sampled after every accepted step (evaluated in double-double from the f64 state)"
+value = 0.0
+unit = "1"
+kind = "measured"
+source = "R&S 2015 Sec. 4.3: \"IAS15 preserves the energy with a precision 10^-12 and the angular momentum with a precision of 10^-15 in all simulations\" (Fig. 5). Total angular momentum is an exact integral, so the true value is 0."
+citation = "Rein, H. & Spiegel, D. S. 2015, MNRAS 446, 1424, doi:10.1093/mnras/stu2164, Sec. 4.3 \"Kozai-Lidov cycles\" and Fig. 5 (arXiv:1409.4779 PDF, sha256 8097c8e50d16edc1527ec05e6680fc68d6f91e4d027dec16c762a6ce7e69033d, read 2026-11-23)"
+retrieved = "2026-11-23"
+tolerance = { abs = 1.0e-14 }
+tolerance_rationale = "The paper's figure is an order of magnitude read from a logarithmic plot (10^-15). The bound is that figure with one decade of margin, fixed before any run: 1e-14. Worst sample of the cycle; evaluated in double-double so that f64 evaluation rounding (a few 1e-16) does not enter."
+verified_by = "M1-exit agent (Claude, FerroAstro session), 2026-11-23: read in the arXiv PDF (sha256 in citation), Sec. 4.3. PRE-REGISTERED: committed before the Kozai test existed or had been run."
+
+[[vector]]
+id = "IAS15-KOZAI-SCALE-STEP-RATIO"
+requirement = ["NUM-001"]
+quantity = "ratio of the accepted IAS15 step counts of the same Kozai-Lidov cycle integrated in two unit systems: (km, s, GM_sun = DE440 GMS) over (au, GM_sun = 1)"
+value = 1.0
+unit = "1"
+kind = "analytic"
+source = "R&S 2015 Sec. 4.3: \"One important driving factor for IAS15 was that it should be scale independent. In other words, only the dynamical properties of the system should determine the outcome, not the simulation units. We verified that IAS15 is indeed scale independent by varying the length and mass scales in Kozai-Lidov cycles. ... several integrators that we tested, including the RADAU integrator ... fail completely in this test problem if the system is simply rescaled.\" The step criterion (Eq. 11) is a ratio of accelerations, so the step sequence in units of the orbital period is the same in any unit system: ratio exactly 1 in exact arithmetic."
+citation = "Rein, H. & Spiegel, D. S. 2015, MNRAS 446, 1424, doi:10.1093/mnras/stu2164, Sec. 4.3 \"Kozai-Lidov cycles\" and Fig. 5 (arXiv:1409.4779 PDF, sha256 8097c8e50d16edc1527ec05e6680fc68d6f91e4d027dec16c762a6ce7e69033d, read 2026-11-23)"
+retrieved = "2026-11-23"
+tolerance = { rel = 1.0e-2 }
+tolerance_rationale = "Fixed before any run. The two runs round differently (the scale factors are not powers of two), so the trajectories separate at round-off level and the cycle end, detected at an accepted step where e crosses 0.1, can shift by a short-period oscillation: half an outer period is ~13 binary periods out of a few thousand, ~0.5 %. 1 % covers that. A step control that carries an absolute length or time scale (the failure the paper describes for RADAU) changes the count by factors, not per cent: the two unit systems differ by 1.5e8 in length and 5e6 in time. Both runs must also each meet IAS15-KOZAI-EMAX, -ENERGY-ERROR, -ANGMOM-ERROR and -CYCLE-BINARY-ORBITS."
+verified_by = "M1-exit agent (Claude, FerroAstro session), 2026-11-23: read in the arXiv PDF (sha256 in citation), Sec. 4.3. PRE-REGISTERED: committed before the Kozai test existed or had been run."
