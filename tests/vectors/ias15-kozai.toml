@@ -6,6 +6,9 @@
 # The paper does not state the initial eccentricities or orbital phases. The test's choices (both orbits
 # circular, the perturber's distance measured from the binary's barycentre, both relative position vectors
 # on the line of nodes, barycentric frame) are recorded in IAS15-KOZAI-EMAX `notes`.
+# POST HOC CHANGE 2026-11-23: the `quantity` of IAS15-KOZAI-ENERGY-ERROR was changed after the first
+# measurement (to the energy of the integrator's compensated state), by maintainer decision #70; its
+# value and tolerance are unchanged. See that vector's `notes`.
 schema_version = 1
 
 [[vector]]
@@ -96,7 +99,7 @@ verified_by = "M1-exit agent (Claude, FerroAstro session), 2026-11-23: read in t
 [[vector]]
 id = "IAS15-KOZAI-ENERGY-ERROR"
 requirement = ["NUM-001"]
-quantity = "largest relative energy error |E - E0|/|E0| of the three-body system over one Kozai-Lidov cycle, IAS15 in f64 at the default epsilon, sampled after every accepted step (energy evaluated in double-double from the f64 state)"
+quantity = "largest relative energy error |E - E0|/|E0| of the three-body system over one Kozai-Lidov cycle, IAS15 in f64 at the default epsilon, sampled after every accepted step, the energy being that of the integrator's full compensated state (positions x - x_comp and velocities v - v_comp, the f64 values minus their Kahan compensation words, formed and evaluated in double-double)"
 value = 0.0
 unit = "1"
 kind = "measured"
@@ -104,8 +107,9 @@ source = "R&S 2015 Sec. 4.3: \"IAS15 preserves the energy with a precision 10^-1
 citation = "Rein, H. & Spiegel, D. S. 2015, MNRAS 446, 1424, doi:10.1093/mnras/stu2164, Sec. 4.3 \"Kozai-Lidov cycles\" and Fig. 5 (arXiv:1409.4779 PDF, sha256 8097c8e50d16edc1527ec05e6680fc68d6f91e4d027dec16c762a6ce7e69033d, read 2026-11-23)"
 retrieved = "2026-11-23"
 tolerance = { abs = 1.0e-11 }
-tolerance_rationale = "The paper's figure is an order of magnitude read from a logarithmic plot (10^-12), for one unstated choice of phases and one libm/compiler. The bound is that figure with one decade of margin, fixed before any run: 1e-11. It applies to the worst sample of the cycle, not only the final one, which is the stricter reading. The energy is evaluated in double-double so that the bound measures the integration, not the f64 evaluation floor (near pericentre at e = 0.992 the binary's kinetic and potential terms are each ~1/(1-e) = 125 times its binding energy)."
+tolerance_rationale = "The paper's figure is an order of magnitude read from a logarithmic plot (10^-12), for one unstated choice of phases and one libm/compiler. The bound is that figure with one decade of margin, fixed before any run: 1e-11. It applies to the worst sample of the cycle, not only the final one, which is the stricter reading. The energy is evaluated in double-double so that the bound measures the integration, not the f64 evaluation floor (near pericentre at e = 0.992 the binary's kinetic and potential terms are each ~1/(1-e) = 125 times its binding energy). It is evaluated on the compensated state (changed post hoc, decision #70; see notes) so that the bound measures the integration, not the rounding of the exposed f64 positions, which near pericentre is itself about 1e-11 in energy."
 verified_by = "M1-exit agent (Claude, FerroAstro session), 2026-11-23: read in the arXiv PDF (sha256 in citation), Sec. 4.3. PRE-REGISTERED: committed before the Kozai test existed or had been run."
+notes = "POST HOC CHANGE OF QUANTITY. Pre-registered (commit 2595617) as the energy of the rounded f64 state that Ias15::positions()/velocities() expose. First measurement (commit 0277788), worst |dE/E| over the cycle: 1.018e-11 (G = 1 units) and 1.131e-11 (km, s units), failing the 1e-11 bound; at the end of the cycle 1.10e-13 and 7.79e-13. After that measurement, maintainer decision #70 (GitHub issue #70, 2026-11-23) changed the quantity to the energy of the integrator's compensated state and kept the value and tolerance unchanged; this is a post hoc change and is recorded as such. The rounded-f64-state value is still printed by the test (reported, not asserted). Investigation (2026-11-23, rustc 1.99.0, G = 1 units): the worst sample is at pericentre (binary separation 0.00728 au, e = 0.9928, t = 1381.7 binary periods); consecutive samples near pericentre scatter by several 1e-12 with random sign. Energy of the exposed f64 state evaluated in double-double 1.018e-11, in f64 1.021e-11 (so not round-off in the energy formula); epsilon 1e-8 gives 1.026e-11 and 1e-7 gives 9.96e-12 (so not truncation); IAS15 integrated in double-double at epsilon 1e-9 gives 1.2e-23 (end 6.6e-24). Energy of the compensated state (x - x_comp, v - v_comp): 1.81e-12 (end 1.09e-13). Cause: about 80 % of the peak is the rounding of the exposed f64 positions. The binary sits 3.3 au from the origin, so one ulp of a coordinate (4e-16 au) at 0.0073 au separation changes the energy by about 9e-12; IAS15 adds each step with compensated summation and holds the lost bits in its compensation words. The remaining ~1.8e-12 is real accumulated f64 round-off, which random-walks back to 1e-13 by the end of the cycle. Paper's wording (arXiv:1409.4779): Fig. 5 caption (p. 10): \"This plot shows results of integrations of a Kozai-Lidov cycle. The left panel shows the relative energy error as a function of CPU time.\" (axis label: \"cpu time to complete one Kozai cycle [s]\"); Sec. 4.3: \"IAS15 preserves the energy with a precision 10−12 and the angular momentum with a precision of 10−15 in all simulations.\" The figure shows one point per run, no time series, and the paper does not say whether the worst or the final error is meant. Measured with this quantity (test ias15_kozai.rs): 1.808e-12 (G = 1) and 1.705e-12 (km, s)."
 
 [[vector]]
 id = "IAS15-KOZAI-ANGMOM-ERROR"
