@@ -1,0 +1,43 @@
+# SPDX-FileCopyrightText: 2026 Proper-Time Physics Institute
+# SPDX-License-Identifier: Apache-2.0
+#
+# Issue form: a task scoped for an AI coding agent (AGT-003, ORG-006; issue #10). AGT-003 requires
+# the four fields scope, files, done-definition and commands, all required.
+name: Agent task
+description: A well-scoped task that an AI coding agent can take, following AGENTS.md.
+title: "task: "
+labels: ["agent:eligible"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        The agent follows AGENTS.md. Say what is out of scope as well as what is in scope.
+  - type: textarea
+    id: scope
+    attributes:
+      label: Scope
+      description: What to do, what is out of scope, and the requirement IDs involved.
+    validations:
+      required: true
+  - type: textarea
+    id: files
+    attributes:
+      label: Files
+      description: The files or directories to read and to change. Name any meta-surface file (.github/CODEOWNERS).
+    validations:
+      required: true
+  - type: textarea
+    id: done-definition
+    attributes:
+      label: Done-definition
+      description: The observable result that means the task is finished (tests that pass, acceptance text met).
+    validations:
+      required: true
+  - type: textarea
+    id: commands
+    attributes:
+      label: Commands to verify
+      description: The exact commands whose success shows the task is done.
+      render: sh
+    validations:
+      required: true

@@ -322,4 +322,7 @@ parent: null
 related: [CI-001]
 notes: >-
   Goal: OpenSSF Best Practices "passing" badge; the effort is UNVERIFIED.
+  2026-11-23: tools/tests/test_repo_meta.py runs tools/lint_workflows.py over
+  the real workflow files in the pytest step of the ci.yml `python` job. There
+  is no scorecard.yml.
 ```

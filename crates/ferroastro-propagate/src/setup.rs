@@ -9,6 +9,7 @@ use ferroastro_core::frames::{Barycentric, Icrf, Position, State};
 use ferroastro_core::time::{Epoch, SECONDS_PER_DAY, Tdb};
 use ferroastro_core::units::{Length, SpinGm, Velocity};
 use ferroastro_ephem::{Ephemeris, NaifId, Spk};
+use ferroastro_forces::SolarGmRate;
 use ferroastro_real::Real;
 use ferroastro_scenario::{IcSource, Mode, ScenarioError, ScenarioSpec};
 use ferroastro_system::{EarthMoon, InitialConditions, SmallBodyStates, SystemState};
@@ -423,6 +424,42 @@ pub fn de440_solar_spin(de: &De440, scenario: &str) -> Result<SpinGm, PropagateE
             "check the DE440 constants of header.440",
         )
     })
+}
+
+/// The **inferred** DE440 law of the Sun's gravitational parameter, for the opt-in
+/// [`ferroastro_forces::SolarGmVariation`] term (issue #42, OI-04; maintainer decision of
+/// 2026-11-23): rate = the header's `GMSDOT` read as a dimensionless rate per Julian year
+/// ([`De440::sun_gm_rate_inferred_per_julian_year`]), reference epoch = J2000.0 TDB
+/// ([`SolarGmRate::inferred_j2000`]).
+///
+/// No public JPL document states the formula, the unit or the reference epoch; the reading is
+/// inferred from FerroAstro's fit against `de440.bsp`, the "(dMS/dt)/MS, from J2000" wording of
+/// JPL IOM 335N-20-01 and the non-zero `GMSDOT` among DE440's integration constants.
+///
+/// Rust API only: no scenario switch selects the term, and [`crate::run`] never adds it (every
+/// scenario result is unchanged). Build the model with `ferroastro_forces::NBodyModel` and push
+/// `SolarGmVariation::new(law, epoch_of_the_initial_conditions)`.
+///
+/// # Errors
+/// `FA-E0301` (wrapped) if the constants have no `GMSDOT`; `FA-E0500` (wrapped) if it is not
+/// finite.
+///
+/// ```
+/// use ferroastro_constants::De440;
+/// use ferroastro_core::time::{Epoch, Tdb};
+/// use ferroastro_propagate::de440_inferred_solar_gm_rate;
+/// // With the pinned header in the data cache (`tools/fetch_jpl.py`):
+/// if let Ok(de) = De440::load_cached() {
+///     let law = de440_inferred_solar_gm_rate(&de).unwrap();
+///     assert_eq!(law.reference_epoch(), Epoch::<Tdb>::j2000());
+///     // JDEPOC (1969) is before J2000, so DE440's inferred GM_sun was larger then.
+///     assert!(law.fractional_offset_at(de.initial_epoch().unwrap()) > 0.0);
+/// }
+/// ```
+pub fn de440_inferred_solar_gm_rate(de: &De440) -> Result<SolarGmRate, PropagateError> {
+    Ok(SolarGmRate::inferred_j2000(
+        de.sun_gm_rate_inferred_per_julian_year()?,
+    )?)
 }
 
 pub(crate) fn setup(

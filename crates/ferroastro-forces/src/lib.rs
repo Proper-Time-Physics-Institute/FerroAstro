@@ -38,6 +38,12 @@
 //! Gill's flat-space force law `a = −(∇V/m)(1 + V/(mc²))` for `V = −GMm/r`, declaring
 //! [`Gauge::ProperTimeKernel`], which replaces the GR 1PN sector and so is refused beside it.
 //!
+//! Issue #42 (OI-04) adds the **opt-in** [`SolarGmVariation`] term: the Newtonian effect of a
+//! time-varying solar GM under the **inferred** linear law of [`SolarGmRate`] (rate per Julian
+//! year and reference epoch explicit; for DE440 the header's `GMSDOT` and J2000.0 TDB, a reading
+//! inferred from a fit against `de440.bsp`, not stated by any public JPL document). No scenario
+//! switch adds it and no default model contains it; with it the model has no conserved energy.
+//!
 //! Internal units: positions in km, velocities in km/s, time in TDB seconds, GM in km³/s². The
 //! typed constructors and [`NewtonianPointMasses::pack`] / [`NewtonianPointMasses::unpack`]
 //! convert from and to the [`ferroastro_core`] newtypes, so raw scalars only appear inside the
@@ -65,8 +71,8 @@ pub use nbody::{
     Accelerations, ConformalPotential, ConformalUniformGamma0, ForceTerm, GeocentricMoon,
     GrPotential, Layout, LtReaction, MOON_TAYLOR_Q_MAX, MOON_TAYLOR_TERMS_DEFAULT,
     MOON_TAYLOR_TERMS_MIN, MinorFromMajors, MinorReaction, MoonPair, MoonVariables, NBody,
-    NBodyModel, NBodyPropagator, NewtonianMutual, ProperTimeKernel, RingMasses,
-    SolarJ2WithReaction, SolarLenseThirring, TermParameter, View,
+    NBodyModel, NBodyPropagator, NewtonianMutual, ProperTimeKernel, RingMasses, SolarGmRate,
+    SolarGmVariation, SolarJ2WithReaction, SolarLenseThirring, TermParameter, View,
 };
 pub use newtonian::NewtonianPointMasses;
 pub use oblateness::SolarJ2;
